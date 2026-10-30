@@ -66,7 +66,7 @@ native('http-request', '[url [url! string!] options [object! none!]]', (t, f, v)
   const headers = new Headers();
   const h = field(opts, 'headers');
   if (h !== null) for (const [k, val] of pairs(h)) headers.set(k, val);
-  let body: string | Uint8Array | URLSearchParams | FormData | undefined;
+  let body: BodyInit | undefined;
   const b = field(opts, 'body');
   const formFields = field(opts, 'form');
   const multipart = field(opts, 'multipart');
@@ -87,7 +87,7 @@ native('http-request', '[url [url! string!] options [object! none!]]', (t, f, v)
     if (b.t === K.String) {
       body = text(b);
     } else if (b.t === K.Binary) {
-      body = new Uint8Array(b.s.data.slice(b.i));
+      body = new Uint8Array(b.s.data.slice(b.i)) as unknown as BodyInit;
     } else {
       body = toJson(b);
       if (!headers.has('content-type')) headers.set('content-type', 'application/json');

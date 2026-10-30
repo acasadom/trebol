@@ -37,6 +37,8 @@ export interface Scheduler {
   onError: (e: ObjectCell, t: HostTask) => void;
   pumping: boolean;
   live: number;
+  /** Called after each round of slices: the browser host syncs the DOM here. */
+  afterPump: (() => void) | null;
 }
 
 let nextId = 1;
@@ -62,7 +64,7 @@ export function dropHandle(c: Cell): void {
 const schedulers = new WeakMap<Runtime, Scheduler>();
 
 export function makeScheduler(rt: Runtime, onError: Scheduler['onError']): Scheduler {
-  const sch: Scheduler = { rt, ready: [], byTask: new WeakMap(), onError, pumping: false, live: 0 };
+  const sch: Scheduler = { rt, ready: [], byTask: new WeakMap(), onError, pumping: false, live: 0, afterPump: null };
   schedulers.set(rt, sch);
   return sch;
 }
@@ -174,6 +176,7 @@ function pump(sch: Scheduler): void {
         break;
     }
   }
+  sch.afterPump?.();
   if (sch.ready.length > 0) schedule(sch);
 }
 

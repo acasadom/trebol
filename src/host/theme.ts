@@ -37,7 +37,7 @@ export const CONTRAST_PAIRS: ReadonlyArray<[Role, Role]> = [
   ['text', 'bg'], ['text', 'surface'], ['text', 'raised'],
   ['muted', 'bg'], ['muted', 'surface'],
   ['on-primary', 'primary'], ['on-primary', 'primary-hover'], ['on-accent', 'accent'], ['on-danger', 'danger'],
-  ['danger', 'surface'], ['primary', 'surface'],
+  ['danger', 'surface'], ['primary', 'surface'], ['success', 'surface'],
 ];
 
 const NEUTRAL_HUE = { cool: 255, neutral: 0, warm: 70 } as const;
@@ -222,6 +222,8 @@ body {
 .tb-small { font-size: 13px; }
 .tb-muted { color: var(--tb-muted); }
 .tb-text.tb-danger { color: var(--tb-danger); }
+.tb-text.tb-success { color: var(--tb-success); }
+.tb-text.tb-primary { color: var(--tb-primary); }
 
 /* forms: labels and controls aligned in two columns */
 .tb-form {

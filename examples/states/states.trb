@@ -1,0 +1,37 @@
+Trebol [title: "Sign up"]
+
+taken: ["admin" "root" "ana"]
+
+view [
+    title "Create your account"
+    text muted "It takes less than a minute. We never share your email."
+    sign-up: panel [
+        form [
+            field name "Full name" "Ada Lovelace" required
+            field email "Email" "you@example.com" required email
+            field user "Username" required length 3 20 check-async [
+                wait 0.4
+                either find taken value ["That username is taken"] [true]
+            ]
+            number age "Age" min 18
+            password pass "Password" "At least 8 characters" required length 8 64
+            password pass2 "Repeat password" match pass
+            check terms "I accept the terms and the privacy policy" required
+            submit "Create account" [
+                sign-up/hidden: true
+                done/text: rejoin ["Welcome, " values/name "! Your account is ready."]
+                done/hidden: false
+            ]
+        ]
+    ]
+    done: text success hidden
+]
+
+; Drive the form from code to show validation states.
+frm: first sign-up/children
+fields: frm/children
+ui-input fields/1 "Ada Lovelace"  ui-blur fields/1
+ui-input fields/2 "ada@"          ui-blur fields/2
+ui-input fields/3 "admin"         ui-blur fields/3
+ui-input fields/4 "16"            ui-blur fields/4
+ui-input fields/5 "short"         ui-blur fields/5

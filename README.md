@@ -15,9 +15,11 @@ view [
 ]
 ```
 
-> Estado: **fase 2** (lenguaje). El núcleo ya evalúa: funciones, objetos,
-> bucles, errores como valores y tareas que se pueden pausar. La UI llega en la
-> fase 3. Diseño completo y hoja de ruta en [`docs/design.md`](docs/design.md).
+> Estado: **fase 3** (UI mínima). El lenguaje, la red y un primer dialecto de
+> UI funcionan: formularios con validación, tema claro y oscuro, sin CSS.
+> Diseño completo y hoja de ruta en [`docs/design.md`](docs/design.md).
+
+![Formulario de alta en tema claro](docs/screenshots/signup-light.png)
 
 ## Requisitos
 
@@ -29,6 +31,10 @@ npm run check        # tipos + tests
 ```
 
 ## Probarlo
+
+```sh
+npm run dev          # y abre http://localhost:5173/examples/signup/
+```
 
 ```sh
 echo 'print 1 + 2 * 3' | npm run trb                 # evalúa (9: sin precedencia)
