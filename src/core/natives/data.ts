@@ -167,13 +167,19 @@ native('value?', '[word [any-word!]]', (_t, f) => {
 
 native('type?', '[value [any-type!]]', (_t, f) => value(datatype(f.args[0]!.t)));
 
-native('bind', '[block [block!] context [any-word! any-object!]]', (_t, f) => {
-  const b = f.args[0] as BlockCell;
+native('bind', '[words [block! any-word!] context [any-word! any-object!] /new]', (_t, f) => {
+  const x = f.args[0]!;
   const c = f.args[1]!;
   const ctx = c.t === K.Object || c.t === K.Error ? c.ctx : (c as WordCell).bind;
   if (ctx === null) return fail('script', 'not-bound', `${mold(c)} is not bound to a context`);
-  bindSeries(b.s, ctx);
-  return value(b);
+  const all = f.args[2] === TRUE;
+  if (x.t !== K.Block) {
+    const w = x as WordCell;
+    if (!all && ctxFind(ctx, w.sym) < 0) return value(w);
+    return value({ t: w.t, sym: w.sym, bind: ctx });
+  }
+  bindSeries(x.s, ctx, all);
+  return value(x);
 });
 
 native('in', '[object [any-object!] word [any-word!]]', (_t, f) => {
@@ -210,68 +216,7 @@ native('pick', '[series [any-value!] index [any-value!]]', (_t, f) => {
   return typeof r === 'string' ? fail('script', 'bad-pick', r) : value(r);
 });
 
-native('select', '[series [any-block! map! object!] key [any-value!]]', (_t, f) => {
-  const x = f.args[0]!;
-  const key = f.args[1]!;
-  if ((x.t === K.Object || x.t === K.Error) && isAnyWord(key.t)) {
-    const i = ctxFind(x.ctx, (key as WordCell).sym);
-    return value(i < 0 ? NONE : x.ctx.vals[i]!);
-  }
-  if (key.t === K.Integer && isAnyBlock(x.t)) {
-    // select looks for the key; it never indexes
-    const b = x as BlockCell;
-    for (let j = b.i; j < b.s.data.length - 1; j++) {
-      const c = b.s.data[j]!;
-      if (c.t === K.Integer && I64.cmp(c.v, key.v) === 0) return value(b.s.data[j + 1]!);
-    }
-    return value(NONE);
-  }
-  const r = pick(x, key);
-  return typeof r === 'string' ? fail('script', 'bad-select', r) : value(r);
-});
-
 native('poke', '[series [any-value!] index [any-value!] value [any-value!]]', (_t, f) => {
   const msg = poke(f.args[0]!, f.args[1]!, f.args[2]!);
   return msg !== null ? fail('script', 'bad-poke', msg) : value(f.args[2]!);
-});
-
-native('append', '[series [series!] value [any-value!] /only]', (_t, f) => {
-  const x = f.args[0]!;
-  const v = f.args[1]!;
-  if (isAnyBlock(x.t)) {
-    const s = (x as BlockCell).s;
-    if (isAnyBlock(v.t) && f.args[2] !== TRUE) s.data.push(...(v as BlockCell).s.data.slice((v as BlockCell).i));
-    else s.data.push(v);
-    return value(x);
-  }
-  const s = (x as StringCell).s;
-  if (x.t === K.Binary) {
-    if (v.t === K.Binary) s.data.push(...v.s.data.slice(v.i));
-    else if (v.t === K.Integer) s.data.push(I64.toNumber(v.v) & 255);
-    else s.data.push(...new TextEncoder().encode(form(v)));
-    return value(x);
-  }
-  if (v.t === K.Char) s.data.push(v.v);
-  else if (isAnyString(v.t)) s.data.push(...(v as StringCell).s.data.slice((v as StringCell).i));
-  else s.data.push(...codePoints(form(v)));
-  return value(x);
-});
-
-native('copy', '[value [series! map! object!] /deep]', (_t, f) => {
-  const x = f.args[0]!;
-  const deep = f.args[1] === TRUE;
-  if (isAnyBlock(x.t)) {
-    const b = x as BlockCell;
-    const s = deep ? copyDeep(b.s, b.i) : { data: b.s.data.slice(b.i) };
-    return value({ t: b.t, s, i: 0 });
-  }
-  if (x.t === K.Map) return value({ t: K.Map, s: deep ? copyDeep(x.s) : { data: x.s.data.slice() } });
-  if (x.t === K.Object || x.t === K.Error) {
-    const ctx = context(x.ctx.keys.slice(), []);
-    for (const v of x.ctx.vals) ctx.vals.push(deep ? rebindValue(v, x.ctx, ctx) : v);
-    return value({ t: x.t, ctx });
-  }
-  if (x.t === K.Bitset) return value({ t: K.Bitset, s: { data: x.s.data.slice() }, neg: x.neg });
-  const s = x as StringCell;
-  return value({ t: s.t, s: { data: s.s.data.slice(s.i) }, i: 0 });
 });

@@ -5,7 +5,7 @@
 // compare by symbol whatever their type. `strictEqual` in values.ts is `==`.
 
 import { K, isAnyBlock, isAnyString, isAnyWord } from './kinds.ts';
-import { canon } from './symbols.ts';
+import { canon, spell } from './symbols.ts';
 import * as I64 from './int64.ts';
 import { decCmp, decFromNumber, decFromBig, type Dec } from './dec.ts';
 import { strictEqual, type Cell, type BlockCell, type StringCell, type WordCell } from './values.ts';
@@ -106,6 +106,11 @@ export function compare(a: Cell, b: Cell): -1 | 0 | 1 | null {
     return 0;
   }
   if (a.t === K.Logic && b.t === K.Logic) return a.v === b.v ? 0 : a.v ? 1 : -1;
+  if (isAnyWord(a.t) && isAnyWord(b.t)) {
+    const x = spell(canon((a as WordCell).sym));
+    const y = spell(canon((b as WordCell).sym));
+    return x < y ? -1 : x > y ? 1 : 0;
+  }
   return null;
 }
 

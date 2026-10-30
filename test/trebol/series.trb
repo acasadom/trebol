@@ -1,0 +1,115 @@
+Trebol [
+    title: "Series, text, conversion and JSON tests"
+]
+
+"navigation"
+[b: [1 2 3] (first next b) = 2]
+[b: [1 2 3] (index? tail b) = 4]
+[b: next [1 2 3] head? head b]
+[tail? tail "abc"]
+[(pick at [a b c] 2 1) = 'b]
+[(skip [1 2 3] 5) = []]
+[(last "abc") = #"c"]
+[empty? []]
+
+"editing"
+[b: [1 2] append b 3 b = [1 2 3]]
+[b: [1 2] append b [3 4] (length? b) = 4]
+[b: [1 2] append/only b [3 4] (length? b) = 3]
+[s: "ab" append s "cd" s = "abcd"]
+[s: "x" append s 42 s = "x42"]
+[b: [2 3] insert b 1 b = [1 2 3]]
+[b: [1 2 3] remove next b b = [1 3]]
+[b: [1 2 3 4] remove/part b 2 b = [3 4]]
+[b: [1 2 3] clear next b b = [1]]
+[b: [1 2 3] change b 9 b = [9 2 3]]
+[b: [1 2 3] c: copy b append c 4 (length? b) = 3]
+[(copy/part "hello" 2) = "he"]
+[b: [[1]] c: copy/deep b append first c 2 b = [[1]]]
+[(reverse [1 2 3]) = [3 2 1]]
+
+"searching"
+[(find [a b c] 'b) = [b c]]
+[none? find [a b c] 'z]
+[(find "Hello" "ell") = "ello"]
+[none? find/case "Hello" "ELL"]
+[(find/tail "abcd" "bc") = "d"]
+[(find/last [1 2 1 3] 1) = [1 3]]
+[(find [1 "a" 2] string!) = ["a" 2]]
+[(select [a 1 b 2] 'b) = 2]
+[(select/skip [a 1 b 2] 'b 2) = 2]
+[m: make map! [x 5] (select m 'x) = 5]
+[(find/match "abc" "ab") = "c"]
+[find any-string! string!]
+
+"ordering"
+[(sort [3 1 2]) = [1 2 3]]
+[(sort/reverse [3 1 2]) = [3 2 1]]
+[(sort ["b" "A" "c"]) = ["A" "b" "c"]]
+[(sort/skip [b 2 a 1] 2) = [a 1 b 2]]
+[(sort/compare [1 3 2] func [a b] [a > b]) = [3 2 1]]
+[(sort [c a b]) = [a b c]]
+
+"iteration"
+[b: [1 2 3 4] remove-each x b [even? x] b = [1 3]]
+[(map-each x [1 2 3] [x * x]) = [1 4 9]]
+[out: copy [] s: [a b c] forall s [append out index? s] out = [1 2 3]]
+[out: copy [] s: [a 1 b 2] forskip s 2 [append out first s] out = [a b]]
+[(collect [foreach x [1 2 3] [if x > 1 [keep x]]]) = [2 3]]
+
+"sets"
+[(unique [1 2 2 3 1]) = [1 2 3]]
+[(union [1 2] [2 3]) = [1 2 3]]
+[(intersect [1 2 3] [2 3 4]) = [2 3]]
+[(difference [1 2 3] [2 3 4]) = [1 4]]
+[(exclude [1 2 3] [2]) = [1 3]]
+[(unique "aAbB") = "ab"]
+
+"text"
+[(uppercase "abc") = "ABC"]
+[(lowercase "ÀBC") = "àbc"]
+[(trim "  a b  ") = "a b"]
+[(trim/all " a b ") = "ab"]
+[(trim/lines "a   b^/ c") = "a b c"]
+[(split "a,b,,c" ",") = ["a" "b" "" "c"]]
+[(split [1 2 3 4 5] 2) = [[1 2] [3 4] [5]]]
+[(rejoin ["a" 1 "b"]) = "a1b"]
+[(rejoin [<a> "b"]) = <ab>]
+[(join "x" 1) = "x1"]
+[(form [1 "a" b]) = "1 a b"]
+[(mold [1 "a"]) = {[1 "a"]}]
+
+"conversion"
+[(to integer! "42") = 42]
+[(to integer! 3.9) = 3]
+[(to decimal! 1) == 1.0]
+[(to string! 'abc) = "abc"]
+[(to word! "abc") = 'abc]
+[(to block! "a 1") = [a 1]]
+[(to money! 12) = $12]
+[(to char! 65) = #"A"]
+[(to logic! none) = false]
+[(to pair! [1 2]) = 1x2]
+[(to time! 90) = 0:01:30]
+[o: construct [a: 1 b: true c: none] all [o/a = 1 o/b = true none? o/c]]
+
+"compose"
+[(compose [1 (1 + 1)]) = [1 2]]
+[(compose [([a b])]) = [a b]]
+[(compose/only [([a b])]) = [[a b]]]
+[(compose/deep [x [(2 * 3)]]) = [x [6]]]
+[(compose [[(1)]]) = [[(1)]]]
+
+"apply and function"
+[(apply :add [1 2]) = 3]
+[f: func [a /twice] [either twice [a * 2] [a]] (apply :f [3 true]) = 6]
+[f: function [] [secret: 42 secret] all [(f) = 42 not value? 'secret]]
+
+"json"
+[j: load-json {{"a": 1, "b": [true, null]}} all [j/a = 1 j/b/1 none? j/b/2]]
+[(load-json "9223372036854775807") = 9223372036854775807]
+[(load-json "1.5e2") = 150.0]
+[(to-json reduce [1 "a" none]) = {[1,"a",null]}]
+[(to-json make map! [k "v"]) = {{"k":"v"}}]
+[error? try [load-json "{"]]
+[(select load-json {{"with space": 1}} "with space") = 1]

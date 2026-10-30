@@ -28,15 +28,17 @@ for (const file of readdirSync(dir).filter(f => f.endsWith('.trb')).sort()) {
     }
     for (const g of groups) {
       test(g.name, () => {
+        const failures: string[] = [];
         for (const t of g.tests) {
           bindSeries(t.s, rt.user, true);
           const r = runSync(rt, t);
           const shown = mold(t);
-          if (r.k === 'error') assert.fail(`${shown}\n  raised: ${form(errorField(r.e, 'message'))}`);
-          if (r.k !== 'done' || r.v.t !== K.Logic || !r.v.v) {
-            assert.fail(`${shown}\n  gave: ${r.k === 'done' ? mold(r.v) : r.k}`);
+          if (r.k === 'error') failures.push(`${shown}\n  raised: ${form(errorField(r.e, 'message'))}`);
+          else if (r.k !== 'done' || r.v.t !== K.Logic || !r.v.v) {
+            failures.push(`${shown}\n  gave: ${r.k === 'done' ? mold(r.v) : r.k}`);
           }
         }
+        if (failures.length > 0) assert.fail(failures.join('\n'));
       });
     }
   });

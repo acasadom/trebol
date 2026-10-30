@@ -15,6 +15,9 @@ import { OPS } from './natives/define.ts';
 import './natives/control.ts';
 import './natives/data.ts';
 import './natives/math.ts';
+import './natives/series.ts';
+import './natives/text.ts';
+import './natives/json.ts';
 import { MEZZANINES } from './mezz.ts';
 
 export function makeRuntime(): Runtime {

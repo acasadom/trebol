@@ -328,7 +328,7 @@ class Molder {
 /** "file:line:col" for an element of a loaded block, for error messages. */
 export function sourceOf(s: Series<Cell>, index: number): string | null {
   const p = s.pos?.[index];
-  if (p === undefined) return null;
+  if (p === undefined || p < 0) return null; // -1: inserted at run time
   const { line, col } = unpackPos(p);
   return `${s.file ? s.file + ':' : ''}${line}:${col}`;
 }

@@ -192,6 +192,9 @@ native('zero?', `[value ${NUMERIC}]`, (_t, f) => {
   return value(logic(false));
 });
 
+native('even?', '[value [integer!]]', (_t, f) => value(logic(I64.isZero(I64.rem((f.args[0] as { v: I64.I64 }).v, 2)!))));
+native('odd?', '[value [integer!]]', (_t, f) => value(logic(!I64.isZero(I64.rem((f.args[0] as { v: I64.I64 }).v, 2)!))));
+
 // --- comparison ------------------------------------------------------------------
 
 native('equal?', '[a [any-type!] b [any-type!]]', (_t, f) => value(logic(isEqual(f.args[0]!, f.args[1]!))));

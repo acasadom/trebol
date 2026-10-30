@@ -53,8 +53,12 @@ export type Step =
   | { readonly k: 'do'; readonly s: Series<Cell>; readonly i: number }
   /** Evaluate one expression from this feed, then call me again with it. */
   | { readonly k: 'expr'; readonly feed: Feed }
-  /** Call a function with these arguments, then call me again with the result. */
-  | { readonly k: 'call'; readonly fn: Cell; readonly args: readonly Cell[] }
+  /**
+   * Call a function with these arguments, then call me again with the result.
+   * With `full`, `args` follows the whole spec as `apply` does: refinements
+   * take a truthy value to be used, followed by their own arguments.
+   */
+  | { readonly k: 'call'; readonly fn: Cell; readonly args: readonly Cell[]; readonly full?: boolean }
   /** Park the task until the host resumes it with the promise's value. */
   | { readonly k: 'await'; readonly p: Promise<Cell> }
   /** Unwind with an error or a non-local exit. */
@@ -528,6 +532,10 @@ function applyStep(t: Task, f: NativeFrame, step: Step): void {
       beginCall(t, null, step.fn, f.name, null, null);
       const a = t.stack[t.stack.length - 1];
       if (t.stack.length > depth && a !== undefined && a.k === F.Args) {
+        if (step.full) {
+          applyFull(a, step.args);
+          return;
+        }
         const n = Math.min(step.args.length, a.plan.length);
         for (let i = 0; i < n; i++) a.vals[a.plan[i]!] = step.args[i]!;
         a.n = n;
@@ -548,6 +556,27 @@ function applyStep(t: Task, f: NativeFrame, step: Step): void {
       return;
     }
   }
+}
+
+/** Fills an Args frame from arguments laid out as the whole spec (see `call` with `full`). */
+function applyFull(a: ArgsFrame, args: readonly Cell[]): void {
+  const params = a.spec.params;
+  a.plan.length = 0;
+  let k = 0;
+  let on = true;
+  for (let i = 0; i < params.length; i++) {
+    const p = params[i]!;
+    if (p.kind === P.Local) continue;
+    const v = args[k++] ?? NONE;
+    if (p.kind === P.Ref) {
+      on = v.t !== K.None && !(v.t === K.Logic && !v.v);
+      a.vals[i] = on ? TRUE : NONE;
+    } else if (p.ref < 0 || on) {
+      a.vals[i] = v;
+      a.plan.push(i);
+    }
+  }
+  a.n = a.plan.length;
 }
 
 // --- paths -----------------------------------------------------------------------

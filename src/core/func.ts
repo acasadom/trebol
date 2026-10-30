@@ -139,7 +139,10 @@ export function parseSpec(b: BlockCell): Spec | string {
 export function typesOf(b: BlockCell): bigint | string {
   let bits = 0n;
   for (const w of b.s.data.slice(b.i)) {
-    const found = w.t === K.Word ? typeBitsByName(spell(w.sym)) : undefined;
+    const found = w.t === K.Word ? typeBitsByName(spell(w.sym))
+      : w.t === K.Datatype ? kindBit(w.k)
+      : w.t === K.Typeset ? w.bits
+      : undefined;
     if (found === undefined) return 'bad type in spec';
     bits |= found;
   }
