@@ -8,8 +8,8 @@ import { K, kindName } from '../kinds.ts';
 import * as I64 from '../int64.ts';
 import { decAdd, decSub, decMul, decDiv, decRem, decToNumber, decEqual, type Dec } from '../dec.ts';
 import {
-  integer, decimal, percent, money, time, pair, logic, strictEqual,
-  type Cell,
+  integer, decimal, percent, money, time, pair, logic, date, strictEqual,
+  type Cell, type DateCell, type DateVal,
 } from '../values.ts';
 import { isEqual, compare, toDec } from '../compare.ts';
 import type { Step } from '../eval.ts';
@@ -108,6 +108,9 @@ function arith(op: Arith, a: Cell, b: Cell): Step {
       const ry = floatOp(op, ay, by);
       return rx === null || ry === null ? zeroDivide() : value(pair(rx, ry));
     }
+  } else if (a.t === K.Date) {
+    const r = dateArith(op, a, b);
+    if (r !== null) return r;
   } else if (a.t === K.Time || b.t === K.Time) {
     const r = timeArith(op, a, b, x, y);
     if (r !== null) return r;
@@ -140,7 +143,39 @@ function timeArith(op: Arith, a: Cell, b: Cell, x: number | null, y: number | nu
   return null;
 }
 
-const NUMERIC = '[number! money! time! pair!]';
+const DAY_NS = 86400e9;
+
+/** Days since 1970-01-01 for a calendar date. */
+function dayNumber(d: DateVal): number {
+  return Date.UTC(d.y, d.m - 1, d.d) / 86400000;
+}
+
+function fromDayNumber(n: number, time: number | null, zone: number | null): Cell {
+  const js = new Date(n * 86400000);
+  return date({ y: js.getUTCFullYear(), m: js.getUTCMonth() + 1, d: js.getUTCDate(), time, zone });
+}
+
+/** date ± integer days, date ± time, date - date in days. */
+function dateArith(op: Arith, a: DateCell, b: Cell): Step | null {
+  const d = a.v;
+  if (b.t === K.Integer && (op === A.Add || op === A.Sub)) {
+    const n = I64.toNumber(b.v);
+    return value(fromDayNumber(dayNumber(d) + (op === A.Add ? n : -n), d.time, d.zone));
+  }
+  if (b.t === K.Time && (op === A.Add || op === A.Sub)) {
+    const total = (d.time ?? 0) + (op === A.Add ? b.v : -b.v);
+    const days = Math.floor(total / DAY_NS);
+    return value(fromDayNumber(dayNumber(d) + days, total - days * DAY_NS, d.zone));
+  }
+  if (b.t === K.Date && op === A.Sub) {
+    const e = b.v;
+    const ns = (dayNumber(d) - dayNumber(e)) * DAY_NS + ((d.time ?? 0) - (d.zone ?? 0) * 60e9) - ((e.time ?? 0) - (e.zone ?? 0) * 60e9);
+    return value(d.time === null && e.time === null ? integer(Math.round(ns / DAY_NS)) : time(ns));
+  }
+  return null;
+}
+
+const NUMERIC = '[number! money! time! pair! date!]';
 
 native('add', `[a ${NUMERIC} b ${NUMERIC}]`, (_t, f) => arith(A.Add, f.args[0]!, f.args[1]!));
 native('subtract', `[a ${NUMERIC} b ${NUMERIC}]`, (_t, f) => arith(A.Sub, f.args[0]!, f.args[1]!));

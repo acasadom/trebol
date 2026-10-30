@@ -19,3 +19,4 @@ export {
 } from './eval.ts';
 export { native, op, value, truthy } from './natives/define.ts';
 export { makeRuntime, runSync, doSource } from './boot.ts';
+export { parseJson, toJson } from './natives/json.ts';

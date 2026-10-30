@@ -8,7 +8,7 @@ import { K, isAnyBlock, isAnyString, isAnyWord, kindName } from './kinds.ts';
 import { canon, spell } from './symbols.ts';
 import * as I64 from './int64.ts';
 import {
-  NONE, integer, char, decimal, time, strictEqual,
+  NONE, integer, char, decimal, time, strictEqual, codePoints, fromCodePoints,
   type Cell, type Series, type BlockCell, type StringCell, type WordCell,
 } from './values.ts';
 import { ctxFind } from './ctx.ts';
@@ -49,6 +49,16 @@ function partName(key: Cell): string | null {
 
 export function pick(cur: Cell, key: Cell): Cell | string {
   switch (cur.t) {
+    case K.Url: case K.File:
+      // url/segment and file/segment build a longer path
+      if (isAnyWord(key.t) || isAnyString(key.t) || key.t === K.Integer) {
+        const base = (cur as StringCell).s.data.slice((cur as StringCell).i);
+        const seg = codePoints(isAnyWord(key.t) ? spell((key as WordCell).sym) : isAnyString(key.t) ? fromCodePoints((key as StringCell).s.data, (key as StringCell).i) : mold(key));
+        const slash = base[base.length - 1] === 47 ? [] : [47];
+        const tail = seg[0] === 47 ? seg.slice(1) : seg;
+        return { t: cur.t, s: { data: [...base, ...slash, ...tail] }, i: 0 };
+      }
+      break;
     case K.Object: case K.Error: {
       if (!isAnyWord(key.t)) return `cannot pick ${mold(key)} in an object`;
       const i = ctxFind(cur.ctx, (key as WordCell).sym);
