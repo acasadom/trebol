@@ -89,5 +89,18 @@ collect: func [
     out
 ]
 
+replace: function [
+    "Replaces the first (or with /all every) occurrence of a pattern in a series."
+    target [series!] pattern value /all
+] [
+    len: either series? :pattern [length? pattern] [1]
+    pos: target
+    while [pos: find pos :pattern] [
+        pos: change/part pos :value len
+        unless all [break]
+    ]
+    target
+]
+
 also: func ["Returns the first value, after evaluating the second." a [any-type!] b [any-type!]] [:a]
 `;

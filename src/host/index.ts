@@ -65,6 +65,14 @@ export function startHost(opts: HostOptions = {}): Host {
   return { rt, sch };
 }
 
+/** URL of the UI dialect source, next to this file. */
+export const UI_SOURCE = new URL('../ui/ui.trb', import.meta.url).href;
+
+/** Loads the UI dialect (view, layout, stylize, theme...) into the user context. */
+export function startUi(host: Host): Promise<Cell> {
+  return runSource(host, `import ${UI_SOURCE}`);
+}
+
 /**
  * Loads source into the user context and runs it as a task. Resolves with
  * its value; rejects with the error! if it fails. Load errors throw LoadError.

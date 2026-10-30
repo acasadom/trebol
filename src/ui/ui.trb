@@ -1,0 +1,374 @@
+Trebol [
+    title: "UI dialect: faces, styles, layout and validation"
+    exports: [
+        face styles stylize layout view theme
+        validate-face form-values ui-input ui-blur ui-click
+    ]
+]
+
+; --- faces ---------------------------------------------------------------------
+;
+; A face is an object. The host keeps one DOM node per face and copies these
+; fields to it after every scheduler slice, so code changes a face by
+; setting a field: `total/text: "42"`.
+
+face: make object! [
+    style: 'face        ; what the host renders
+    name: none          ; field name: the key in `values`, and a word in handlers
+    text: none          ; label, caption or content
+    value: none
+    hint: none          ; placeholder
+    role: none          ; primary accent danger success warning muted
+    size: none          ; small medium large
+    align: none         ; left center right spread
+    cols: none          ; columns of a grid
+    icon: none
+    fill: false
+    hidden: false
+    disabled: false
+    rules: none         ; validation: a block of [rule args...] blocks
+    error: none         ; current message, shown once the face is touched
+    touched: false
+    pending: false      ; an asynchronous check is running
+    async-error: none   ; result of the last asynchronous check
+    action: none        ; the block after the face: click, change
+    events: none        ; [on-change [...] on-select [...]]
+    options: none       ; choices of a choice
+    children: none
+    form: none          ; the enclosing form, if any
+    root: none          ; the view this face belongs to
+    submit: false
+]
+
+; style name -> prototype face
+styles: make map! []
+
+container-styles: [view column row form panel grid]
+input-styles: [field password number area check choice]
+
+foreach [name base] [
+    view column  column column  row row  form form  panel panel  grid grid
+    title title  heading heading  text text  divider divider
+    field field  password password  number number  area area  check check  choice choice
+    button button  link link
+] [
+    poke styles name make face [style: base]
+]
+poke styles 'view make face [style: 'view]
+poke styles 'submit make face [style: 'button role: 'primary submit: true]
+
+stylize: function [
+    "Defines styles from existing ones: name: base [field: value ...]"
+    spec [block!]
+] [
+    parse spec [some [
+        set name set-word! set base word! set defaults block! (
+            proto: select styles base
+            unless proto [do make error! rejoin ["stylize: unknown style " base]]
+            poke styles to word! name make proto defaults
+        )
+    ]]
+]
+
+; --- layout --------------------------------------------------------------------
+
+roles: [primary accent danger success warning muted]
+sizes: [small medium large]
+aligns: [left center right spread]
+flags: [fill hidden disabled]
+simple-rules: [required email url integer date]
+
+add-rule: func [f rule [block!]] [
+    unless f/rules [f/rules: copy []]
+    append/only f/rules rule
+]
+
+event-word?: func [w [word!]] [
+    to logic! find/match form w "on-"
+]
+
+layout: function [
+    "Turns a block of the UI dialect into a block of faces."
+    spec [block!]
+    /local label style-word f proto n s b w a i ev
+] [
+    out: copy []
+    modifier: [
+        set s string! (either f/text [f/hint: s] [f/text: s])
+        | set ev word! if (event-word? ev) set b block! (
+            unless f/events [f/events: copy []]
+            append f/events reduce [ev b]
+        )
+        | set b block! (
+            case [
+                find container-styles f/style [f/children: layout b]
+                f/style = 'choice [f/options: reduce b]
+                true [f/action: b]
+            ]
+        )
+        | set i issue! (f/icon: i)
+        | set n integer! (f/cols: n)
+        | 'min set n number! (add-rule f reduce ['min n])
+        | 'max set n number! (add-rule f reduce ['max n])
+        | 'length set a integer! set n integer! (add-rule f reduce ['length a n])
+        | 'pattern set b block! (add-rule f reduce ['pattern b])
+        | 'match set w word! (add-rule f reduce ['match w])
+        | 'check set b block! (add-rule f reduce ['check b])
+        | 'check-async set b block! (add-rule f reduce ['check-async b])
+        | 'width set w word! (f/size: w)
+        | set w word! if (find roles w) (f/role: w)
+        | set w word! if (find sizes w) (f/size: w)
+        | set w word! if (find aligns w) (f/align: w)
+        | set w word! if (find flags w) (poke f w true)
+        | set w word! if (find simple-rules w) (add-rule f reduce [w])
+    ]
+    unless parse spec [
+        any [
+            (label: none)
+            opt [set label set-word!]
+            set style-word word! (
+                proto: select styles style-word
+                unless proto [do make error! rejoin ["layout: unknown style " style-word]]
+                f: make proto []
+                append out f
+                if label [set label f]
+            )
+            opt [if (find input-styles f/style) set n word! (f/name: n)]
+            any modifier
+        ]
+    ] [
+        do make error! "layout: cannot read the layout"
+    ]
+    out
+]
+
+; Links each face to its view and form, so handlers can find `values`.
+attach: function [f root form] [
+    f/root: root
+    f/form: form
+    if f/children [
+        inner: either f/style = 'form [f] [form]
+        foreach c f/children [attach c root inner]
+    ]
+]
+
+view: function [
+    "Shows a layout as the page."
+    spec [block!]
+] [
+    root: make select styles 'view [children: layout spec]
+    attach root root none
+    foreach f all-faces root [refresh-form f]
+    show root
+]
+
+theme: func [
+    "Sets the theme from a few parameters."
+    spec [block!]
+] [
+    apply-theme construct spec
+]
+
+; --- walking faces -------------------------------------------------------------
+
+all-faces: function [f] [
+    out: copy []
+    collect-faces f out
+    out
+]
+
+collect-faces: function [f out] [
+    append out f
+    if f/children [foreach c f/children [collect-faces c out]]
+]
+
+named-faces: function [scope] [
+    out: copy []
+    foreach f all-faces scope [if f/name [append out f]]
+    out
+]
+
+form-values: function [
+    "The values of the named fields of a form (or view), as a map."
+    scope
+] [
+    m: make map! []
+    foreach f named-faces scope [poke m f/name f/value]
+    m
+]
+
+; --- validation ------------------------------------------------------------------
+
+messages: make map! [
+    required "This field is required"
+    email "Enter a valid email address"
+    url "Enter a valid web address"
+    integer "Enter a whole number"
+    date "Enter a valid date"
+    min "Must be at least #1"
+    max "Must be at most #1"
+    length "Must be between #1 and #2 characters"
+    length-exact "Must be exactly #1 characters"
+    pattern "This value is not valid"
+    match "Must match #1"
+    check "This value is not valid"
+]
+
+message: function [key args [block!]] [
+    out: copy select messages key
+    repeat i length? args [replace out rejoin ["#" i] form pick args i]
+    out
+]
+
+digit: charset "0123456789"
+word-char: charset [#"a" - #"z" #"A" - #"Z" #"0" - #"9" "._%+-"]
+host-char: charset [#"a" - #"z" #"A" - #"Z" #"0" - #"9" "-"]
+email-rule: [some word-char "@" some host-char some ["." some host-char] end]
+url-rule: [["http://" | "https://"] some host-char any ["." some host-char] opt [":" some digit] opt ["/" to end] end]
+
+blank?: func [v] [
+    any [none? :v  all [string? :v  empty? trim copy v]]
+]
+
+label-of: func [f] [any [f/text  form f/name]]
+
+; The message for the first rule a face breaks, or none. Asynchronous checks
+; are skipped here: their last result is kept in async-error.
+validate-face: function [
+    "Checks a face's rules; returns a message or none."
+    f
+] [
+    v: f/value
+    rules: any [f/rules []]
+    if blank? :v [
+        return either find/only rules [required] [message 'required []] [none]
+    ]
+    if all [f/style = 'check  find/only rules [required]  not v] [return message 'required []]
+    foreach r rules [
+        problem: switch first r [
+            email [unless parse v email-rule [message 'email []]]
+            url [unless parse v url-rule [message 'url []]]
+            integer [unless parse form v [opt "-" some digit] [message 'integer []]]
+            date [unless date? attempt [to date! v] [message 'date []]]
+            min [if all [number? v  v < r/2] [message 'min reduce [r/2]]]
+            max [if all [number? v  v > r/2] [message 'max reduce [r/2]]]
+            length [
+                n: length? form v
+                if any [n < r/2  n > r/3] [
+                    either r/2 = r/3 [message 'length-exact reduce [r/2]] [message 'length reduce [r/2 r/3]]
+                ]
+            ]
+            pattern [unless parse form v r/2 [message 'pattern []]]
+            match [
+                other: find-named f r/2
+                if all [other  v <> other/value] [message 'match reduce [label-of other]]
+            ]
+            check [check-result run-handler f r/2]
+        ]
+        if problem [return problem]
+    ]
+    f/async-error
+]
+
+check-result: func [result] [
+    case [
+        string? :result [result]
+        any [none? :result  false = :result] [message 'check []]
+        true [none]
+    ]
+]
+
+find-named: function [f name] [
+    scope: any [f/form f/root]
+    foreach g named-faces scope [if g/name = name [return g]]
+    none
+]
+
+; Runs asynchronous checks of a face (they may fetch).
+check-async: function [f] [
+    foreach r any [f/rules []] [
+        if all [r/1 = 'check-async  not blank? f/value] [
+            f/pending: true
+            f/async-error: check-result run-handler f r/2
+            f/pending: false
+        ]
+    ]
+]
+
+; Updates the errors of touched faces and enables submit buttons only when
+; every field of the form is valid.
+refresh-form: function [scope] [
+    unless find [form view] scope/style [exit]
+    ok: true
+    foreach f all-faces scope [
+        if f/rules [
+            problem: validate-face f
+            f/error: either f/touched [problem] [none]
+            if problem [ok: false]
+        ]
+    ]
+    foreach f all-faces scope [if f/submit [f/disabled: not ok]]
+]
+
+; --- events --------------------------------------------------------------------
+;
+; The host calls these from DOM events, each in its own task.
+
+; A handler block runs with face, value, values and every named field bound.
+run-handler: function [f body [block!]] [
+    scope: any [f/form f/root]
+    words: compose [
+        face: (f)
+        value: (either word? f/value [to lit-word! f/value] [f/value])
+        values: (form-values any [scope f])
+    ]
+    if scope [
+        foreach g named-faces scope [append words reduce [to set-word! g/name g]]
+    ]
+    ctx: make object! words
+    do bind copy/deep body ctx
+]
+
+handler-for: function [f name] [
+    all [f/events  select f/events name]
+]
+
+ui-input: function [
+    "Called by the host when the user changes a field."
+    f new
+] [
+    f/value: switch/default f/style [
+        number [any [attempt [to decimal! new]  none]]
+        check [to logic! new]
+    ] [new]
+    if f/style = 'number [
+        if all [decimal? f/value  f/value = to integer! f/value] [f/value: to integer! f/value]
+    ]
+    f/async-error: none
+    refresh-form any [f/form f/root]
+    if f/action [run-handler f f/action]
+    if h: handler-for f 'on-change [run-handler f h]
+]
+
+ui-blur: function [
+    "Called by the host when the user leaves a field."
+    f
+] [
+    f/touched: true
+    check-async f
+    refresh-form any [f/form f/root]
+]
+
+ui-click: function [
+    "Called by the host when the user activates a button."
+    f
+] [
+    if f/submit [
+        scope: any [f/form f/root]
+        foreach g all-faces scope [if g/rules [g/touched: true]]
+        foreach g all-faces scope [check-async g]
+        refresh-form scope
+        if f/disabled [exit]
+    ]
+    if f/action [run-handler f f/action]
+]
