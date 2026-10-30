@@ -1,0 +1,59 @@
+Trebol [
+    title: "Parse tests"
+]
+
+"strings"
+[parse "abc" ["abc"]]
+[parse "ABC" ["abc"]]
+[not parse/case "ABC" ["abc"]]
+[not parse "abcd" ["abc"]]
+[parse "aaab" [some "a" "b"]]
+[parse "b" [any "a" "b"]]
+[not parse "b" [some "a" "b"]]
+[parse "ab" [opt "x" "a" "b"]]
+[parse "aaa" [3 "a"]]
+[not parse "aa" [3 "a"]]
+[parse "aa" [1 3 "a"]]
+[parse "ab" ["x" | "a" "b"]]
+[parse "hello world" [thru "o" " " to end]]
+[parse "a,b" [to "," skip "b"]]
+[digit: charset "0123456789" parse "2026" [4 digit]]
+[alpha: charset [#"a" - #"z" #"A" - #"Z"] parse "Trebol" [some alpha]]
+[not-space: complement charset " " parse "abc" [some not-space]]
+[parse "x" [skip end]]
+[parse "a" [not "b" skip]]
+[parse "ab" [ahead "a" "ab"]]
+
+"captures"
+[parse "key=value" [copy k to "=" skip copy v to end] all [k = "key" v = "value"]]
+[parse [1 2] [set x integer! set y integer!] all [x = 1 y = 2]]
+[parse "abc" [skip p: to end] p = "bc"]
+[parse "abc" [skip p: :p "bc"]]
+[n: 0 parse "aaa" [some ["a" (n: n + 1)]] n = 3]
+[parse "ab" ["a" if (true) "b"]]
+[not parse "ab" ["a" if (false) "b"]]
+
+"blocks"
+[parse [a 1 "x"] [word! integer! string!]]
+[parse [a b] ['a 'b]]
+[not parse [a b] ['a 'c]]
+[parse [1 [2 3]] [integer! into [some integer!]]]
+[parse [x: 1] [set-word! number!]]
+[rule: [some integer!] parse [1 2 3] rule]
+[expr: [term some ["+" term]] term: [integer!] parse [1 "+" 2 "+" 3] expr]
+
+"collect"
+[(parse [1 a 2 b] [collect [any [keep integer! | skip]]]) = [1 2]]
+[digit: charset "0123456789" (parse "a1b2" [collect [any [keep digit | skip]]]) = [#"1" #"2"]]
+[(parse "aa bb" [collect [some [keep copy w to [" " | end] opt " "]]]) = ["aa" "bb"]]
+[parse [1 2] [collect set out [some [keep integer!]]] out = [1 2]]
+[(parse [1] [collect [keep (10 * 2) skip]]) = [20]]
+
+"control"
+[n: 0 parse "aaaa" [any ["a" (n: n + 1) opt [if (n = 2) break]] to end] n = 2]
+[not parse "a" [fail]]
+[parse "abab" [some ["ab"]]]
+[parse "" []]
+[parse "" [any "a"]]
+[error? try [parse "a" [some]]]
+[error? try [parse "a" [break]]]

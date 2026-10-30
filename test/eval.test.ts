@@ -257,6 +257,17 @@ describe('tasks', () => {
     if (r2.k === 'done') assert.equal(mold(r2.v), '42');
   });
 
+  test('a parse action can await in the middle of a parse', () => {
+    const code = load('got: none ok: parse "ab" ["a" (got: test-pause) "b"] reduce [ok got]');
+    bindSeries(code.s, rt.user, true);
+    const t = newTask(rt, code.s, 0);
+    assert.equal(run(t).k, 'await');
+    resume(t, integer(7));
+    const r = run(t);
+    assert.equal(r.k, 'done');
+    if (r.k === 'done') assert.equal(mold(r.v), '[true 7]');
+  });
+
   test('a rejected await raises a catchable error', () => {
     const code = load('e: try [test-pause] e/message');
     bindSeries(code.s, rt.user, true);

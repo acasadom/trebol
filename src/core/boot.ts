@@ -18,6 +18,7 @@ import './natives/math.ts';
 import './natives/series.ts';
 import './natives/text.ts';
 import './natives/json.ts';
+import './natives/parse.ts';
 import { MEZZANINES } from './mezz.ts';
 
 export function makeRuntime(): Runtime {
