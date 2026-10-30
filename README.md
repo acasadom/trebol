@@ -15,9 +15,9 @@ view [
 ]
 ```
 
-> Estado: **fase 1** (núcleo). Hoy funcionan `load` y `mold`: el lenguaje se
-> lee y se escribe, pero todavía no se evalúa. Diseño completo y hoja de ruta en
-> [`docs/design.md`](docs/design.md).
+> Estado: **fase 2** (lenguaje). El núcleo ya evalúa: funciones, objetos,
+> bucles, errores como valores y tareas que se pueden pausar. La UI llega en la
+> fase 3. Diseño completo y hoja de ruta en [`docs/design.md`](docs/design.md).
 
 ## Requisitos
 
@@ -31,6 +31,8 @@ npm run check        # tipos + tests
 ## Probarlo
 
 ```sh
+echo 'print 1 + 2 * 3' | npm run trb                 # evalúa (9: sin precedencia)
+npm run trb -- fichero.trb
 npm run mold -- examples/load-tour.trb          # lee el fichero y lo vuelve a escribir
 npm run mold -- --all examples/load-tour.trb    # con sintaxis de construcción
 echo '[a: 1 b: 30-Oct-2026 c: $12.50]' | npm run mold
@@ -43,6 +45,6 @@ echo '[a: 1 b: 30-Oct-2026 c: $12.50]' | npm run mold
 | `src/core` | núcleo del lenguaje, portable a Zig |
 | `src/host` | host del navegador (fase 2) |
 | `src/ui` | dialecto de UI (fase 3) |
-| `test` | tests, incluida una prueba de ida y vuelta con valores aleatorios |
+| `test` | tests en TS y en Trebol (`test/trebol`), incluida una prueba de ida y vuelta con valores aleatorios |
 | `examples` | ficheros `.trb` de ejemplo |
 | `docs` | diseño y decisiones |

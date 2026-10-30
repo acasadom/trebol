@@ -1,0 +1,84 @@
+Trebol [
+    title: "Core language tests"
+    ; Format: a string names a group; each block after it is one test and
+    ; must evaluate to true. Any core implementation runs this same file.
+]
+
+"arithmetic"
+[1 + 2 * 3 = 9]
+[7 / 2 = 3.5]
+[6 / 3 == 2]
+[-7 // 2 = -1]
+[$0.10 + $0.20 == $0.30]
+[error? try [9223372036854775807 + 1]]
+[1:00 + 0:30 = 1:30]
+[3x4 + 1 = 4x5]
+[7 = max 3 7]
+["a" = min "b" "a"]
+[5 = abs -5]
+
+"comparison"
+[1 = 1.0]
+[not 1 == 1.0]
+["Hello" = "hello"]
+[#"a" = #"A"]
+['abc = first [abc:]]
+[[1 2] = [1 2]]
+[1-Jan-2026 < 2-Jan-2026]
+[2 >= 2]
+[1 <> 2]
+
+"logic"
+[true and true]
+[not (true and false)]
+[false or true]
+[6 and 3 = 2]
+[none? all [1 none 3]]
+[7 = any [none false 7]]
+
+"words and paths"
+[x: 10 x = 10]
+[b: [a 1 b 2] b/b = 2]
+[b: [10 20 30] n: 2 b/:n = 20]
+[o: make object! [p: make object! [q: 5]] o/p/q = 5]
+[o: make object! [v: 1] o/v: 2 o/v = 2]
+[m: make map! [k 1] m/k: 2 m/k = 2]
+[m: make map! [] none? m/missing]
+[d: 30-Oct-2026 d/month = 10]
+
+"functions"
+[f: func [a b] [a + b] (f 1 2) = 3]
+[f: func [n] [either n < 2 [n] [(f n - 1) + f n - 2]] (f 15) = 610]
+[f: func [/opt v] [either opt [v] [0]] all [(f) = 0 (f/opt 5) = 5]]
+[mk: func [n] [does [n]] a: mk 1 b: mk 2 all [(a) = 1 (b) = 2]]
+[f: func [x [integer!]] [x] error? try [f "no"]]
+[f: does [return 1 2] (f) = 1]
+
+"objects"
+[o: context [a: 1 get-a: does [a]] (o/get-a) = 1]
+[p: context [n: 1 f: does [n]] q: make p [n: 2] all [(p/f) = 1 (q/f) = 2]]
+[o: context [a: 1] (length? o) = 1]
+
+"loops"
+[n: 0 loop 4 [n: n + 1] n = 4]
+[s: 0 repeat i 10 [s: s + i] s = 55]
+[out: copy "" foreach c "abc" [append out c] out = "abc"]
+[n: 0 while [n < 100] [n: n + 1 if n = 7 [break]] n = 7]
+[(loop 3 [break/return 9]) = 9]
+[s: 0 repeat i 4 [if i = 2 [continue] s: s + i] s = 8]
+
+"errors"
+[e: try [1 / 0] e/type = 'math]
+[e: try [undefined-thing] e/id = 'no-value]
+[e: try [do make error! "custom"] e/message = "custom"]
+[none? attempt [1 / 0]]
+[(catch [throw 3]) = 3]
+[(catch/name [throw/name 4 'k] 'k) = 4]
+
+"evaluation"
+[(do [1 + 1]) = 2]
+[(do "2 * 3") = 6]
+[(reduce [1 + 1 2 * 2]) = [2 4]]
+[(quote (1 + 2)) = quote (1 + 2)]
+[c: 0 case/all [true [c: c + 1] true [c: c + 1]] c = 2]
+[(switch 'b [a [1] b [2]]) = 2]

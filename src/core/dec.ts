@@ -50,3 +50,75 @@ export function decEqual(a: Dec, b: Dec): boolean {
 export function decToNumber(v: Dec): number {
   return Number(v.d) / 10 ** v.e;
 }
+
+// --- arithmetic ------------------------------------------------------------------
+
+function align(a: Dec, b: Dec): [bigint, bigint, number] {
+  const e = Math.max(a.e, b.e);
+  return [a.d * 10n ** BigInt(e - a.e), b.d * 10n ** BigInt(e - b.e), e];
+}
+
+export function decAdd(a: Dec, b: Dec): Dec {
+  const [x, y, e] = align(a, b);
+  return dec(x + y, e);
+}
+
+export function decSub(a: Dec, b: Dec): Dec {
+  const [x, y, e] = align(a, b);
+  return dec(x - y, e);
+}
+
+export function decMul(a: Dec, b: Dec): Dec {
+  return dec(a.d * b.d, a.e + b.e);
+}
+
+/** Digits kept after the point by division, rounded half to even. */
+export const DIV_SCALE = 18;
+
+/** a / b with DIV_SCALE fractional digits; null when b is zero. */
+export function decDiv(a: Dec, b: Dec): Dec | null {
+  if (b.d === 0n) return null;
+  // a.d·10^-a.e / b.d·10^-b.e = (a.d·10^(S+b.e) / (b.d·10^a.e)) · 10^-S
+  let num = a.d * 10n ** BigInt(DIV_SCALE + b.e);
+  let den = b.d * 10n ** BigInt(a.e);
+  if (den < 0n) {
+    num = -num;
+    den = -den;
+  }
+  let q = num / den;
+  const r = num % den;
+  const twice = (r < 0n ? -r : r) * 2n;
+  if (twice > den || (twice === den && q % 2n !== 0n)) q += num < 0n ? -1n : 1n;
+  return dec(q, DIV_SCALE);
+}
+
+export function decCmp(a: Dec, b: Dec): -1 | 0 | 1 {
+  const [x, y] = align(a, b);
+  return x < y ? -1 : x > y ? 1 : 0;
+}
+
+/** The exact decimal of a finite JS number's shortest representation. */
+export function decFromNumber(n: number): Dec | null {
+  if (!Number.isFinite(n)) return null;
+  const m = /^(-?)(\d+)(?:\.(\d+))?(?:e([+-]\d+))?$/.exec(String(n));
+  if (!m) return null;
+  const frac = m[3] ?? '';
+  let d = BigInt(m[2]! + frac);
+  let e = frac.length - Number(m[4] ?? 0);
+  if (e < 0) {
+    d *= 10n ** BigInt(-e);
+    e = 0;
+  }
+  return dec(m[1] === '-' ? -d : d, e);
+}
+
+export function decFromBig(n: bigint): Dec {
+  return dec(n, 0);
+}
+
+/** Remainder with the sign of `a`, as `a - b × trunc(a / b)`; null when b is zero. */
+export function decRem(a: Dec, b: Dec): Dec | null {
+  if (b.d === 0n) return null;
+  const [x, y, e] = align(a, b);
+  return dec(x % y, e);
+}

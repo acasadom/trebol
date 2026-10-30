@@ -271,4 +271,13 @@ describe('source positions and newline markers', () => {
     const b = load('{x\ny} z');
     assert.deepEqual(unpackPos(b.s.pos![1]!), { line: 2, col: 4 });
   });
+
+  test('every loaded block records the file, nested ones included', () => {
+    const b = load('a [b (c)]', { file: 'x.trb' });
+    const inner = b.s.data[1] as BlockCell;
+    assert.equal(b.s.file, 'x.trb');
+    assert.equal(inner.s.file, 'x.trb');
+    assert.equal((inner.s.data[1] as BlockCell).s.file, 'x.trb');
+    assert.equal(load('[a]').s.file, undefined);
+  });
 });

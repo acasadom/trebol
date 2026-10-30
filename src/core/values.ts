@@ -36,6 +36,14 @@ export interface Ctx {
   keys: Sym[];
   vals: Cell[];
   parent: Ctx | null;
+  /**
+   * Lookup cache built lazily by `ctxFind`: canonical symbol to the first
+   * index with that key, covering `keys[0 .. idxN)`. Keys are only ever
+   * appended, so the cache is extended, never invalidated.
+   */
+  idx?: Map<Sym, number>;
+  /** How many keys `idx` has seen. */
+  idxN?: number;
 }
 
 // --- dates -----------------------------------------------------------------

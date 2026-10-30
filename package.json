@@ -12,7 +12,8 @@
     "test": "node --test \"test/**/*.test.ts\"",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm test",
-    "mold": "node tools/mold.ts"
+    "mold": "node tools/mold.ts",
+    "trb": "node tools/run.ts"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",

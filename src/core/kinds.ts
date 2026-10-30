@@ -103,3 +103,40 @@ export function isAnyPath(k: Kind): boolean {
 export function isSeries(k: Kind): boolean {
   return (k >= K.String && k <= K.Binary) || isAnyBlock(k);
 }
+
+// --- typesets ------------------------------------------------------------------
+
+/** A set of kinds as a bitmask: bit `k` is set when kind `k` belongs to it. */
+export function kindBit(k: Kind): bigint {
+  return 1n << BigInt(k);
+}
+
+function range(from: Kind, to: Kind): bigint {
+  let bits = 0n;
+  for (let k = from; k <= to; k++) bits |= 1n << BigInt(k);
+  return bits;
+}
+
+const ALL_KINDS = range(K.Unset, (KIND_COUNT - 1) as Kind);
+
+/** Built-in typesets, usable wherever a datatype is expected (function specs, `make typeset!`). */
+export const TYPESETS: Readonly<Record<string, bigint>> = {
+  'any-type!': ALL_KINDS,
+  'any-value!': ALL_KINDS & ~kindBit(K.Unset),
+  'number!': kindBit(K.Integer) | kindBit(K.Decimal) | kindBit(K.Percent),
+  'scalar!': range(K.Logic, K.Time) & ~kindBit(K.Logic),
+  'any-string!': range(K.String, K.Tag),
+  'series!': range(K.String, K.Binary) | range(K.Block, K.LitPath),
+  'any-word!': range(K.Word, K.Issue),
+  'any-block!': range(K.Block, K.LitPath),
+  'any-path!': range(K.Path, K.LitPath),
+  'any-object!': kindBit(K.Object) | kindBit(K.Error),
+  'any-function!': kindBit(K.Function) | kindBit(K.Native) | kindBit(K.Op),
+};
+
+/** Bits for a datatype or typeset name ("integer!", "series!"), or undefined. */
+export function typeBitsByName(name: string): bigint | undefined {
+  const lower = name.toLowerCase();
+  const k = byName.get(lower);
+  return k !== undefined ? kindBit(k) : TYPESETS[lower];
+}

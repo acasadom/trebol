@@ -44,9 +44,7 @@ export interface LoadOptions {
 /** Loads source text into a block. Throws LoadError on malformed input. */
 export function load(src: string, opts: LoadOptions = {}): BlockCell {
   const lx = new Lexer(src, opts.file);
-  const s = lx.parseSeries(null);
-  if (opts.file !== undefined) s.file = opts.file;
-  return { t: K.Block, s, i: 0 };
+  return { t: K.Block, s: lx.parseSeries(null), i: 0 };
 }
 
 // --- token classification table --------------------------------------------
@@ -182,7 +180,9 @@ class Lexer {
       nl.push(sawNewline);
       pos.push(p);
     }
-    return { data, nl, pos };
+    const out: Series<Cell> = { data, nl, pos };
+    if (this.file !== undefined) out.file = this.file;
+    return out;
   }
 
   private parseValue(): Cell {
