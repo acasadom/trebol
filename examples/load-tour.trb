@@ -1,0 +1,45 @@
+Trebol [
+    title: "A tour of everything load understands"
+    file: %load-tour.trb
+]
+
+; Numbers
+count: 42
+big-id: 1853920394857203841     ; beyond 2^53, kept exact
+price: 19.99
+discount: 15%
+total: EUR$1'250.50              ; money! is an exact decimal
+
+; Dates and times
+today: 30-Oct-2026
+meeting: 2026-11-02/9:30+1:00
+duration: 1:30
+lap: 0:00:12.75
+
+; Text
+greeting: "Hola, mundo"
+note: {A string over
+several lines, with {nested} braces}
+initial: #"T"
+avatar: 64#{iVBORw0KGgo=}
+
+; Things with their own syntax
+home: https://example.com/clients?page=2
+contact: ana@example.com
+config: %settings/app.trb
+size: 800x600
+version: 1.4.2
+icon: #search
+
+; A map and a form, which is just data until something evaluates it
+client: #(name: "Ana" age: 40 vip: #[true])
+
+view [
+    title "Clients"
+    form [
+        field name "Name" required
+        field email "Email" required email
+        number age "Age" min 18
+        submit "Save" [save values]
+    ]
+]

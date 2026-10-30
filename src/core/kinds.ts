@@ -1,0 +1,105 @@
+// Datatype identifiers.
+//
+// A plain const object instead of a TS `enum`: enums are not erasable syntax,
+// so Node cannot run them with type stripping. The numeric values are stable
+// and meant to be mirrored 1:1 by a `enum(u8)` in a future Zig core.
+
+export const K = {
+  Unset: 0,
+  None: 1,
+  Logic: 2,
+  Integer: 3,
+  Decimal: 4,
+  Percent: 5,
+  Money: 6,
+  Char: 7,
+  Pair: 8,
+  Tuple: 9,
+  Date: 10,
+  Time: 11,
+
+  // string-like series (code points or bytes)
+  String: 12,
+  File: 13,
+  Email: 14,
+  Url: 15,
+  Tag: 16,
+  Binary: 17,
+  Bitset: 18,
+
+  // word-like (carry a symbol and a binding)
+  Word: 19,
+  SetWord: 20,
+  GetWord: 21,
+  LitWord: 22,
+  Refinement: 23,
+  Issue: 24,
+
+  // block-like (series of cells)
+  Block: 25,
+  Paren: 26,
+  Path: 27,
+  SetPath: 28,
+  GetPath: 29,
+  LitPath: 30,
+
+  // contexts and the rest
+  Map: 31,
+  Object: 32,
+  Error: 33,
+  Function: 34,
+  Native: 35,
+  Op: 36,
+  Datatype: 37,
+  Typeset: 38,
+  Handle: 39,
+} as const;
+
+export type Kind = (typeof K)[keyof typeof K];
+
+/** Datatype names, indexed by Kind. */
+export const KIND_NAMES: readonly string[] = [
+  'unset!', 'none!', 'logic!', 'integer!', 'decimal!', 'percent!', 'money!',
+  'char!', 'pair!', 'tuple!', 'date!', 'time!',
+  'string!', 'file!', 'email!', 'url!', 'tag!', 'binary!', 'bitset!',
+  'word!', 'set-word!', 'get-word!', 'lit-word!', 'refinement!', 'issue!',
+  'block!', 'paren!', 'path!', 'set-path!', 'get-path!', 'lit-path!',
+  'map!', 'object!', 'error!', 'function!', 'native!', 'op!',
+  'datatype!', 'typeset!', 'handle!',
+];
+
+export const KIND_COUNT = KIND_NAMES.length;
+
+const byName = new Map<string, Kind>();
+KIND_NAMES.forEach((n, i) => byName.set(n, i as Kind));
+
+/** Looks up a datatype by its name, e.g. "integer!". Case-insensitive. */
+export function kindByName(name: string): Kind | undefined {
+  return byName.get(name.toLowerCase());
+}
+
+export function kindName(k: Kind): string {
+  return KIND_NAMES[k] ?? '?!';
+}
+
+// --- classification helpers ------------------------------------------------
+
+export function isAnyString(k: Kind): boolean {
+  return k >= K.String && k <= K.Tag;
+}
+
+export function isAnyWord(k: Kind): boolean {
+  return k >= K.Word && k <= K.Issue;
+}
+
+export function isAnyBlock(k: Kind): boolean {
+  return k >= K.Block && k <= K.LitPath;
+}
+
+export function isAnyPath(k: Kind): boolean {
+  return k >= K.Path && k <= K.LitPath;
+}
+
+export function isSeries(k: Kind): boolean {
+  return (k >= K.String && k <= K.Binary) || isAnyBlock(k);
+}
