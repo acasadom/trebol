@@ -7,6 +7,9 @@ import { createServer, type Server } from 'node:http';
 import { createHash } from 'node:crypto';
 import type { Duplex } from 'node:stream';
 import { mold, form, errorField, type ObjectCell } from '../src/core/index.ts';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { pathToFileURL, fileURLToPath } from 'node:url';
 import { startHost, runSource, output } from '../src/host/index.ts';
 
 let server: Server;
@@ -89,13 +92,13 @@ after(() => {
 });
 
 async function ev(src: string): Promise<string> {
-  const host = startHost(() => {});
+  const host = startHost({ onError: () => {} });
   const v = await runSource(host, `base: ${base}\n${src}`);
   return mold(v);
 }
 
 async function evErr(src: string): Promise<string> {
-  const host = startHost(() => {});
+  const host = startHost({ onError: () => {} });
   try {
     const v = await runSource(host, `base: ${base}\n${src}`);
     return assert.fail(`expected an error, got ${mold(v)}`);
@@ -179,6 +182,32 @@ describe('streams', () => {
       send live "ping"
       wait 0.03 close live got`);
     assert.equal(r, '[#(hello: "world") "PING"]');
+  });
+});
+
+describe('modules and storage', () => {
+  const fixtures = join(import.meta.dirname, 'fixtures');
+  const fsHost = () => startHost({
+    onError: () => {},
+    loader: { base: pathToFileURL(fixtures + '/').href, read: href => readFile(fileURLToPath(href), 'utf8') },
+  });
+
+  test('import loads each file once, resolves relative paths and sets exports', async () => {
+    const host = fsHost();
+    const src = await readFile(join(fixtures, 'main.trb'), 'utf8');
+    const v = await runSource(host, src, 'main.trb');
+    assert.equal(mold(v), '[$121.00 21% 1 1]');
+  });
+
+  test('an export that is not defined is an error', async () => {
+    const host = fsHost();
+    await assert.rejects(runSource(host, 'import %broken.trb', 'x.trb'), (e: ObjectCell) => form(errorField(e, 'id')) === 'bad-export');
+    await assert.rejects(runSource(host, 'import %missing.trb', 'x.trb'), (e: ObjectCell) => form(errorField(e, 'id')) === 'import');
+  });
+
+  test('local storage keeps values exact', async () => {
+    assert.equal(await ev('save-local "k" reduce [$1.10 30-Oct-2026 #(a: 1)] load-local "k"'), '[$1.10 30-Oct-2026 #(a: 1)]');
+    assert.equal(await ev('remove-local "k" load-local "k"'), 'none');
   });
 });
 

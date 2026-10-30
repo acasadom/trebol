@@ -241,6 +241,15 @@ export function run(t: Task, budget = Infinity): RunResult {
   return { k: 'yield' };
 }
 
+/** The file of the innermost code being evaluated, if it was loaded from one. */
+export function currentFile(t: Task): string | null {
+  for (let i = t.stack.length - 1; i >= 0; i--) {
+    const f = t.stack[i]!;
+    if ((f.k === F.Do || f.k === F.Expr) && f.feed.s.file !== undefined) return f.feed.s.file;
+  }
+  return null;
+}
+
 // --- errors ----------------------------------------------------------------------
 
 export function throwError(type: string, id: string, message: string): Step {

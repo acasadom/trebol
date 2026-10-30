@@ -8,7 +8,7 @@ import {
   NONE, TRUE, FALSE, string, codePoints, text, datatype, typeset, context,
   type Cell, type BlockCell, type StringCell, type WordCell, type Ctx, type ObjectCell, type Series,
 } from '../values.ts';
-import { bindSeries, collectSetWords, copyDeep, ctxFind, getWord, setWord } from '../ctx.ts';
+import { bindSeries, bindSelf, collectSetWords, copyDeep, ctxFind, getWord, setWord } from '../ctx.ts';
 import { makeError } from '../errors.ts';
 import { makeFunc, typesOf, type FuncDef } from '../func.ts';
 import { load, LoadError } from '../lexer.ts';
@@ -54,6 +54,10 @@ function makeObject(proto: Ctx | null, spec: BlockCell, kind: typeof K.Object | 
   collectSetWords(spec.s, spec.i, ctx);
   const body = copyDeep(spec.s, spec.i);
   bindSeries(body, ctx);
+  if (kind === K.Object) {
+    ctx.self = true;
+    bindSelf(body, ctx);
+  }
   return { obj: { t: kind, ctx }, body };
 }
 

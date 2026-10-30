@@ -14,9 +14,9 @@ export * from './func.ts';
 export * from './compare.ts';
 export { pick, poke } from './access.ts';
 export {
-  T, F, run, resume, resumeError, newTask, registerNative, throwError,
+  T, F, run, resume, resumeError, newTask, registerNative, throwError, currentFile,
   type Task, type Runtime, type RunResult, type Step, type Thrown, type Feed, type NativeFrame, type NativeFn,
 } from './eval.ts';
 export { native, op, value, truthy } from './natives/define.ts';
-export { makeRuntime, runSync, doSource } from './boot.ts';
+export { makeRuntime, runSync, doSource, scriptStart } from './boot.ts';
 export { parseJson, toJson } from './natives/json.ts';

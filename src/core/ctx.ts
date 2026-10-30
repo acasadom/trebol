@@ -10,7 +10,7 @@
 // code can shadow lib without touching it.
 
 import { K, isAnyBlock } from './kinds.ts';
-import { canon, type Sym } from './symbols.ts';
+import { canon, intern, type Sym } from './symbols.ts';
 import { UNSET, type Cell, type Ctx, type Series, type BlockCell, type WordCell } from './values.ts';
 
 /** Below this many keys a linear scan beats building a hash index. */
@@ -57,8 +57,23 @@ export function getWord(w: WordCell): Cell | null {
   for (let ctx = w.bind; ctx !== null; ctx = ctx.parent) {
     const i = ctxFind(ctx, w.sym);
     if (i >= 0) return ctx.vals[i]!;
+    if (ctx.self === true && canon(w.sym) === SELF) return { t: K.Object, ctx };
   }
   return null;
+}
+
+const SELF = canon(intern('self'));
+
+/** Binds every `self` word in a block, deeply, to an object context. */
+export function bindSelf(s: Series<Cell>, ctx: Ctx, seen = new Set<Series<Cell>>()): void {
+  if (seen.has(s)) return;
+  seen.add(s);
+  const data = s.data;
+  for (let i = 0; i < data.length; i++) {
+    const c = data[i]!;
+    if (isBindable(c) && canon(c.sym) === SELF) data[i] = { t: c.t, sym: c.sym, bind: ctx };
+    else if (isAnyBlock(c.t)) bindSelf((c as BlockCell).s, ctx, seen);
+  }
 }
 
 /** Sets a bound word in its own context, adding the key if needed. False if unbound. */

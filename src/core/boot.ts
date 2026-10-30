@@ -5,7 +5,7 @@
 // `makeRuntime`; every registered native ends up in lib.
 
 import { K, KIND_NAMES, TYPESETS, type Kind } from './kinds.ts';
-import { intern } from './symbols.ts';
+import { intern, canon } from './symbols.ts';
 import { NONE, TRUE, FALSE, datatype, typeset, context, type Cell, type BlockCell } from './values.ts';
 import { ctxAdd, ctxFind, bindSeries } from './ctx.ts';
 import { load } from './lexer.ts';
@@ -57,9 +57,23 @@ export function runSync(rt: Runtime, code: BlockCell): RunResult {
   return r;
 }
 
+const TREBOL = canon(intern('trebol'));
+
+/**
+ * Where the code of a script starts: after a `Trebol [...]` header if it has
+ * one. Returns the header block too (null without one).
+ */
+export function scriptStart(code: BlockCell): { header: BlockCell | null; start: number } {
+  const d = code.s.data;
+  const head = d[code.i];
+  const hdr = d[code.i + 1];
+  if (head?.t === K.Word && canon(head.sym) === TREBOL && hdr?.t === K.Block) return { header: hdr, start: code.i + 2 };
+  return { header: null, start: code.i };
+}
+
 /** Loads source into the user context and runs it to completion. */
 export function doSource(rt: Runtime, src: string, file?: string): RunResult {
   const code = load(src, file !== undefined ? { file } : {});
   bindSeries(code.s, rt.user, true);
-  return runSync(rt, code);
+  return runSync(rt, { ...code, i: scriptStart(code).start });
 }

@@ -106,6 +106,7 @@ native('copy', '[value [series! map! object! bitset!] /part length [integer! ser
   if (x.t === K.Map) return value({ t: K.Map, s: deep ? copyDeep(x.s) : { data: x.s.data.slice() } });
   if (x.t === K.Object || x.t === K.Error) {
     const ctx = context(x.ctx.keys.slice(), x.ctx.vals.slice());
+    if (x.ctx.self) ctx.self = true;
     return value({ t: x.t, ctx });
   }
   if (x.t === K.Bitset) return value({ t: K.Bitset, s: { data: x.s.data.slice() }, neg: x.neg });

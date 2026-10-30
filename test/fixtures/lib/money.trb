@@ -1,0 +1,9 @@
+Trebol [
+    title: "Money helpers"
+    exports: [with-vat]
+]
+
+util: import %../util.trb
+rate: 21%
+with-vat: func [amount [money!]] [amount + (amount * rate)]
+loads: util/count-load

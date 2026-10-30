@@ -44,6 +44,8 @@ export interface Ctx {
   idx?: Map<Sym, number>;
   /** How many keys `idx` has seen. */
   idxN?: number;
+  /** Set on object contexts: the word `self` bound here means the object. */
+  self?: boolean;
 }
 
 // --- dates -----------------------------------------------------------------

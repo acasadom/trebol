@@ -1,0 +1,4 @@
+Trebol [title: "Shared state, loaded once"]
+
+loaded: 0
+count-load: does [loaded: loaded + 1]

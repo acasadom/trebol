@@ -1,0 +1,6 @@
+Trebol [title: "Imports"]
+
+m: import %lib/money.trb
+again: import %lib/money.trb
+u: import %util.trb
+reduce [with-vat $100 m/rate same-module: again/loads u/loaded]

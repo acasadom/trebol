@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-  makeRuntime, load, bindSeries, runSync, mold, form, errorField, text, K,
+  makeRuntime, load, bindSeries, runSync, mold, form, errorField, text, scriptStart, K,
   type Cell, type BlockCell,
 } from '../src/core/index.ts';
 
@@ -17,8 +17,7 @@ for (const file of readdirSync(dir).filter(f => f.endsWith('.trb')).sort()) {
     const rt = makeRuntime();
     const code = load(readFileSync(join(dir, file), 'utf8'), { file });
     const items = code.s.data;
-    // Skip the `Trebol [header]`.
-    let i = items[0]?.t === K.Word && items[1]?.t === K.Block ? 2 : 0;
+    let i = scriptStart(code).start;
     const groups: Array<{ name: string; tests: BlockCell[] }> = [];
     for (; i < items.length; i++) {
       const c: Cell = items[i]!;

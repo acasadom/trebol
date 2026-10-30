@@ -3,13 +3,15 @@
 
 import './natives.ts';
 import './net.ts';
+import { setLoader, defaultLoader, type Loader } from './modules.ts';
 import {
-  K, makeRuntime, load, bindSeries, doSource, errorField, errorMessage, form, mold,
+  K, makeRuntime, load, bindSeries, doSource, scriptStart, errorField, errorMessage, form, mold,
   type Cell, type ObjectCell, type Runtime,
 } from '../core/index.ts';
 import { makeScheduler, spawn, taskResult, type Scheduler } from './scheduler.ts';
 
 export { output } from './natives.ts';
+export type { Loader } from './modules.ts';
 export * from './scheduler.ts';
 
 /** Host mezzanines: the Trebol side of the host natives. */
@@ -45,8 +47,17 @@ export function report(e: ObjectCell): string {
   return lines.join('\n');
 }
 
-export function startHost(onError: (e: ObjectCell) => void = e => console.error(report(e))): Host {
+export interface HostOptions {
+  /** Reports errors of tasks nobody waits for. */
+  onError?: (e: ObjectCell) => void;
+  /** How `import` finds files; defaults to fetch relative to the page. */
+  loader?: Loader;
+}
+
+export function startHost(opts: HostOptions = {}): Host {
+  const onError = opts.onError ?? (e => console.error(report(e)));
   const rt = makeRuntime();
+  setLoader(rt, opts.loader ?? defaultLoader());
   const r = doSource(rt, HOST_MEZZANINES, 'host');
   // Host mezzanines failing to load is a bug in Trebol itself.
   if (r.k === 'error') throw new Error(`host mezzanines failed: ${errorMessage(r.e)}`);
@@ -61,5 +72,5 @@ export function startHost(onError: (e: ObjectCell) => void = e => console.error(
 export function runSource(host: Host, src: string, file?: string): Promise<Cell> {
   const code = load(src, file !== undefined ? { file } : {});
   bindSeries(code.s, host.rt.user, true);
-  return taskResult(spawn(host.sch, code.s, 0));
+  return taskResult(spawn(host.sch, code.s, scriptStart(code).start));
 }
