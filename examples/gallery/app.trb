@@ -25,6 +25,21 @@ view [
             button #plus "More" [upload/value: min 100% upload/value + 10%]
         ]
     ]
+    panel "Layout" [
+        text muted narrow-only "You are on a narrow screen."
+        text muted wide-only "You are on a wide screen."
+        row gap 1 [button "Tight" button "Row" button "Gap 1"]
+        log: scroll small "Activity" pad 3 [
+            text "Ada signed in"
+            text "Grace added a client"
+            text "Linus exported the list"
+            text "Margaret changed the theme"
+            text "Alan deleted a draft"
+            text "Barbara invited Ken"
+            text "Ken accepted the invitation"
+            text "Dennis updated his phone"
+        ]
+    ]
     panel "Icons" [
         row [
             icon #home icon #user icon #mail primary icon #star accent

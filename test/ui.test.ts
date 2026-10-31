@@ -271,6 +271,20 @@ describe('components', () => {
     assert.equal(r, '[false false]');
   });
 
+  test('pad and gap take a spacing step; scroll is a container; screen flags', async () => {
+    const r = await ev(`
+      root: view [
+        s: scroll small pad 2 gap none [text "a" text "b"]
+        row gap wide narrow-only [text "x"]
+        text "wide" wide-only
+      ]
+      r: second root/children
+      reduce [s/style s/size s/pad s/gap length? s/children r/gap r/narrow-only
+        select third root/children 'wide-only]`);
+    assert.equal(r, '[scroll small 2 0 2 6 true true]');
+    await assert.rejects(runSource(host, 'view [column pad 8 []]'));
+  });
+
   test('tables need words for columns; tabs need label and block pairs', async () => {
     await assert.rejects(runSource(host, 'view [table t ["Name"]]'));
     await assert.rejects(runSource(host, 'view [tabs ["A"]]'));

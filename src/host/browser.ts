@@ -137,6 +137,13 @@ function build(face: ObjectCell): HTMLElement {
       case 'column': node = el('div', 'tb-column'); break;
       case 'row': node = el('div', 'tb-row'); break;
       case 'grid': node = el('div', 'tb-grid'); break;
+      case 'scroll': {
+        // focusable, so keyboard users can scroll it too
+        node = el('div', 'tb-scroll');
+        node.tabIndex = 0;
+        node.setAttribute('role', 'region');
+        break;
+      }
       case 'panel': {
         node = el('section', 'tb-panel');
         const t = str(face, 'text');
@@ -739,6 +746,8 @@ function sync(m: Mounted): void {
   const cls: string[] = [];
   if (hidden && style !== 'dialog') cls.push('tb-hidden');
   if (flag(f, 'fill')) cls.push('tb-fill');
+  if (flag(f, 'narrow-only')) cls.push('tb-narrow-only');
+  if (flag(f, 'wide-only')) cls.push('tb-wide-only');
   if (role !== null && !INPUTS.has(style)) cls.push(`tb-${role}`);
   const size = word(f, 'size');
   if (size !== null) cls.push(`tb-${size}`);
@@ -747,6 +756,8 @@ function sync(m: Mounted): void {
   if (err !== null) cls.push('tb-invalid');
   if (flag(f, 'pending')) cls.push('tb-pending');
   setExtra(m.el, cls);
+  space(m.el, 'padding', get(f, 'pad'));
+  space(m.el, 'gap', get(f, 'gap'));
 
   if (style === 'radio') return syncRadio(m, err);
   if (m.input !== null) {
@@ -787,6 +798,11 @@ function sync(m: Mounted): void {
     case 'dialog': syncDialog(m); break;
     case 'tabs': syncTabs(m); return;
     case 'tab': if (m.button !== null) m.button.textContent = t ?? ''; break;
+    case 'scroll': {
+      if (t !== null) m.el.setAttribute('aria-label', t);
+      else m.el.removeAttribute('aria-label');
+      break;
+    }
     case 'grid': {
       const cols = get(f, 'cols');
       m.el.style.setProperty('--tb-cols', cols.t === K.Integer ? String(cols.v) : '2');
@@ -803,6 +819,12 @@ function sync(m: Mounted): void {
     box.replaceChildren(...(keep ? [keep] : []));
     appendChildren(box, f, style);
   }
+}
+
+/** Sets a spacing property to a step of the theme's scale, or back to the stylesheet's. */
+function space(e: HTMLElement, prop: string, v: Cell): void {
+  if (v.t === K.Integer) e.style.setProperty(prop, `var(--tb-space-${v.v})`);
+  else e.style.removeProperty(prop);
 }
 
 /** Sets the face-driven classes, keeping the base classes from build. */

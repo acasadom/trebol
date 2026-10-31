@@ -24,6 +24,10 @@ face: make object! [
     cols: none          ; columns of a grid
     icon: none
     fill: false
+    pad: none           ; inner and between-children spacing, a step of the spacing scale (0-7)
+    gap: none
+    narrow-only: false  ; shown only on narrow screens
+    wide-only: false    ; hidden on narrow screens
     hidden: false
     disabled: false
     rules: none         ; validation: a block of [rule args...] blocks
@@ -47,12 +51,12 @@ face: make object! [
 ; style name -> prototype face
 styles: make map! []
 
-container-styles: [view column row form panel grid dialog]
+container-styles: [view column row form panel grid dialog scroll]
 input-styles: [field password number area check toggle choice radio]
 data-styles: [table list]
 
 foreach [name base] [
-    view column  column column  row row  form form  panel panel  grid grid
+    view column  column column  row row  form form  panel panel  grid grid  scroll scroll
     title title  heading heading  text text  divider divider
     field field  password password  number number  area area  check check  choice choice
     toggle toggle  radio radio  progress progress  image image  icon icon
@@ -83,9 +87,9 @@ stylize: function [
 roles: [primary accent danger success warning muted]
 sizes: [small medium large]
 aligns: [left center right spread]
-flags: [fill hidden disabled]
+flags: [fill hidden disabled narrow-only wide-only]
 simple-rules: [required email url integer date]
-rule-words: [min max length pattern match check check-async width]
+rule-words: [min max length pattern match check check-async width pad gap]
 
 ; Words that never name a field. email, url, integer and date are rules too,
 ; but also common field names, so the first word after an input style names it.
@@ -137,6 +141,7 @@ layout: function [
         | 'check set b block! (add-rule f reduce ['check b])
         | 'check-async set b block! (add-rule f reduce ['check-async b])
         | 'width set w word! (f/size: w)
+        | set w ['pad | 'gap] [set n integer! | 'none (n: 0) | 'wide (n: 6)] (poke f w spacing n)
         | 'key set w word! (f/key: w)
         | set w word! if (find roles w) (f/role: w)
         | set w word! if (find sizes w) (f/size: w)
@@ -164,6 +169,11 @@ layout: function [
         do make error! "layout: cannot read the layout"
     ]
     out
+]
+
+spacing: func [n [integer!]] [
+    unless all [n >= 0  n <= 7] [do make error! "layout: pad and gap take a step from 0 to 7"]
+    n
 ]
 
 ; [name "Name" email] -> [name "Name" email "email"]
