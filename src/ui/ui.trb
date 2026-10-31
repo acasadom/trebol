@@ -51,7 +51,7 @@ face: make object! [
 ; style name -> prototype face
 styles: make map! []
 
-container-styles: [view column row form panel grid dialog scroll]
+container-styles: [view column row form panel grid dialog scroll split]
 input-styles: [field password number area check toggle choice radio]
 data-styles: [table list]
 
@@ -68,6 +68,7 @@ poke styles 'view make face [style: 'view]
 poke styles 'submit make face [style: 'button role: 'primary submit: true]
 poke styles 'dialog make face [style: 'dialog hidden: true]
 poke styles 'tabs make face [style: 'tabs value: 1]
+poke styles 'split make face [style: 'split value: 1]   ; value: the pane shown on narrow screens
 
 stylize: function [
     "Defines styles from existing ones: name: base [field: value ...]"
@@ -123,7 +124,12 @@ layout: function [
         )
         | set b block! (
             case [
-                find container-styles f/style [f/children: layout b]
+                find container-styles f/style [
+                    f/children: layout b
+                    if all [f/style = 'split  2 <> length? f/children] [
+                        do make error! "layout: split takes two faces, one per pane"
+                    ]
+                ]
                 find data-styles f/style [f/columns: columns-of b]
                 f/style = 'tabs [f/children: tabs-of b]
                 find [choice radio] f/style [f/options: reduce b]

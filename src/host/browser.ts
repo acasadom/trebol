@@ -197,6 +197,7 @@ function build(face: ObjectCell): HTMLElement {
       case 'table': case 'list': node = buildRows(face, style, m); break;
       case 'dialog': node = buildDialog(face, m); break;
       case 'tabs': node = buildTabs(face, m); break;
+      case 'split': node = buildSplit(face, m); break;
       case 'tab': {
         node = el('div', 'tb-tab-panel');
         node.setAttribute('role', 'tabpanel');
@@ -204,7 +205,7 @@ function build(face: ObjectCell): HTMLElement {
       }
       default: node = el('div');
     }
-    if (children(face).length > 0 && style !== 'tabs') appendChildren(m.box ?? node, face, style);
+    if (children(face).length > 0 && style !== 'tabs' && style !== 'split') appendChildren(m.box ?? node, face, style);
   }
   m.el = node;
   byNode.set(node, m);
@@ -708,6 +709,72 @@ function syncTabs(m: Mounted): void {
   });
 }
 
+// A split shows two panes side by side with a handle between them; on narrow
+// screens it shows one pane, the one its value names, and the second pane
+// gets a back button.
+function buildSplit(face: ObjectCell, m: Mounted): HTMLElement {
+  const node = el('div', 'tb-split');
+  const [a, b] = children(face);
+  const first = el('div', 'tb-split-pane');
+  const second = el('div', 'tb-split-pane');
+  first.tabIndex = second.tabIndex = -1;
+  const handle = el('div', 'tb-split-handle');
+  handle.tabIndex = 0;
+  handle.setAttribute('role', 'separator');
+  handle.setAttribute('aria-orientation', 'vertical');
+  handle.setAttribute('aria-label', 'Resize panes');
+  handle.setAttribute('aria-valuemin', '20');
+  handle.setAttribute('aria-valuemax', '80');
+  const resize = (pct: number): void => {
+    const p = Math.round(Math.min(80, Math.max(20, pct)));
+    node.style.setProperty('--tb-split', `${p}%`);
+    handle.setAttribute('aria-valuenow', String(p));
+  };
+  resize(40);
+  handle.addEventListener('pointerdown', ev => {
+    handle.setPointerCapture(ev.pointerId);
+    ev.preventDefault();
+  });
+  handle.addEventListener('pointermove', ev => {
+    if (!handle.hasPointerCapture(ev.pointerId)) return;
+    const r = node.getBoundingClientRect();
+    resize(((ev.clientX - r.left) / r.width) * 100);
+  });
+  handle.addEventListener('keydown', ev => {
+    const now = Number(handle.getAttribute('aria-valuenow'));
+    const to = ev.key === 'ArrowLeft' ? now - 5 : ev.key === 'ArrowRight' ? now + 5
+      : ev.key === 'Home' ? 20 : ev.key === 'End' ? 80 : null;
+    if (to === null) return;
+    ev.preventDefault();
+    resize(to);
+  });
+  const back = el('button', 'tb-button tb-split-back');
+  back.type = 'button';
+  const arrow = iconNode('arrow-left');
+  const caption = el('span');
+  caption.textContent = 'Back';
+  back.append(...(arrow !== null ? [arrow] : []), caption);
+  back.addEventListener('click', () => void fire('ui-input', face, { t: K.Integer, v: 1 }));
+  if (a !== undefined) first.append(build(a));
+  second.append(back);
+  if (b !== undefined) second.append(build(b));
+  node.append(first, handle, second);
+  return node;
+}
+
+function syncSplit(m: Mounted): void {
+  const v = get(m.face, 'value');
+  const pane = v.t === K.Integer && Number(v.v) === 2 ? '2' : '1';
+  const was = m.el.dataset['pane'];
+  if (was === pane) return;
+  m.el.dataset['pane'] = pane;
+  // on narrow screens the other pane just appeared: take the focus there
+  if (was !== undefined && matchMedia('(max-width: 640px)').matches) {
+    const shown = m.el.children[pane === '2' ? 2 : 0] as HTMLElement;
+    (shown.querySelector<HTMLElement>('.tb-selected') ?? shown).focus();
+  }
+}
+
 let toasts: HTMLElement | null = null;
 
 native('show-toast', '[message [string!] kind [word! none!]]', (_t, f) => {
@@ -797,6 +864,7 @@ function sync(m: Mounted): void {
     case 'table': case 'list': syncRows(m); return;
     case 'dialog': syncDialog(m); break;
     case 'tabs': syncTabs(m); return;
+    case 'split': syncSplit(m); return;
     case 'tab': if (m.button !== null) m.button.textContent = t ?? ''; break;
     case 'scroll': {
       if (t !== null) m.el.setAttribute('aria-label', t);

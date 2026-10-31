@@ -196,7 +196,7 @@ body {
   flex-direction: column;
   gap: var(--tb-space-5);
 }
-.tb-view.tb-wide { max-width: 1120px; }
+.tb-view:has(> .tb-split) { max-width: 1120px; }
 .tb-column { display: flex; flex-direction: column; gap: var(--tb-space-4); min-width: 0; }
 .tb-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--tb-space-3); }
 .tb-row:has(> .tb-field) { align-items: flex-end; }
@@ -505,6 +505,25 @@ select.tb-input { appearance: none; background-image: linear-gradient(45deg, tra
 .tb-tab-panel { display: flex; flex-direction: column; gap: var(--tb-space-4); min-width: 0; }
 .tb-tab-panel[hidden] { display: none; }
 
+/* split: two panes and a handle; one pane at a time when narrow */
+.tb-split { display: grid; grid-template-columns: minmax(0, var(--tb-split, 40%)) auto minmax(0, 1fr); align-items: start; }
+.tb-split-pane { display: flex; flex-direction: column; gap: var(--tb-space-4); min-width: 0; }
+.tb-split-pane:focus { outline: none; }
+.tb-split-handle {
+  align-self: stretch;
+  width: var(--tb-space-5);
+  cursor: col-resize;
+  touch-action: none;
+  display: flex;
+  justify-content: center;
+  border-radius: var(--tb-radius);
+}
+.tb-split-handle::before { content: ""; width: 1px; background: var(--tb-border); transition: background var(--tb-fast) var(--tb-ease), width var(--tb-fast) var(--tb-ease); }
+.tb-split-handle:hover::before { width: 3px; background: var(--tb-border-strong); }
+.tb-split-handle:focus-visible { outline: none; }
+.tb-split-handle:focus-visible::before { width: 3px; background: var(--tb-focus); }
+.tb-split-back { display: none; }
+
 /* toasts */
 .tb-toasts {
   position: fixed;
@@ -550,6 +569,10 @@ select.tb-input { appearance: none; background-image: linear-gradient(45deg, tra
 
 @media (max-width: 640px) {
   .tb-wide-only { display: none !important; }
+  .tb-split { display: block; }
+  .tb-split-handle { display: none; }
+  .tb-split[data-pane="1"] > .tb-split-pane:last-child, .tb-split[data-pane="2"] > .tb-split-pane:first-child { display: none; }
+  .tb-split-back { display: inline-flex; align-self: flex-start; padding: 0 var(--tb-space-3); border: 0; background: transparent; color: var(--tb-primary); }
   .tb-view { padding: var(--tb-space-5) var(--tb-space-4); }
   .tb-form { grid-template-columns: minmax(0, 1fr); }
   .tb-form > .tb-field { display: flex; }

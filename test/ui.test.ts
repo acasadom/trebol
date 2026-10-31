@@ -285,6 +285,14 @@ describe('components', () => {
     await assert.rejects(runSource(host, 'view [column pad 8 []]'));
   });
 
+  test('split holds two panes and starts on the first', async () => {
+    const r = await ev(`
+      root: view [s: split [list people [name] column [text "Detail"]]]
+      reduce [s/value collect [foreach c s/children [keep c/style]]]`);
+    assert.equal(r, '[1 [list column]]');
+    await assert.rejects(runSource(host, 'view [split [text "only one"]]'));
+  });
+
   test('tables need words for columns; tabs need label and block pairs', async () => {
     await assert.rejects(runSource(host, 'view [table t ["Name"]]'));
     await assert.rejects(runSource(host, 'view [tabs ["A"]]'));

@@ -5,6 +5,17 @@ Trebol [title: "Gallery"]
 view [
     title "Gallery"
     text muted "Every component of the UI dialect, with no HTML or CSS."
+    people-pane: split [
+        list people [name "Name" job "Job"] on-select [
+            person/text: row/name
+            about/text: row/about
+            people-pane/value: 2
+        ]
+        panel [
+            person: heading "Choose someone"
+            about: text muted "Their details show here. On a narrow screen this pane replaces the list."
+        ]
+    ]
     panel "Inputs" [
         form [
             field #search "Search" "Name or email"
@@ -52,4 +63,10 @@ view [
             link #external "Trebol on the web" https://example.com
         ]
     ]
+]
+
+people/data: [
+    #(id: 1 name: "Ada Lovelace" job: "Analyst" about: "Wrote the first program for the Analytical Engine.")
+    #(id: 2 name: "Grace Hopper" job: "Admiral" about: "Built the first compiler and popularised COBOL.")
+    #(id: 3 name: "Alan Turing" job: "Mathematician" about: "Defined computability with the Turing machine.")
 ]
