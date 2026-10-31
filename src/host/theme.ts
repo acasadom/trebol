@@ -280,7 +280,7 @@ select.tb-input { appearance: none; background-image: linear-gradient(45deg, tra
   height: 20px;
   flex: none;
   border-radius: 10px;
-  background: var(--tb-border-strong);
+  background: var(--tb-muted);
   position: relative;
   transition: background var(--tb-fast) var(--tb-ease);
 }
@@ -325,7 +325,9 @@ select.tb-input { appearance: none; background-image: linear-gradient(45deg, tra
 .tb-button.tb-primary:hover { background: var(--tb-primary-hover); border-color: var(--tb-primary-hover); }
 .tb-button.tb-accent { background: var(--tb-accent); border-color: var(--tb-accent); color: var(--tb-on-accent); }
 .tb-button.tb-danger { background: var(--tb-danger); border-color: var(--tb-danger); color: var(--tb-on-danger); }
-.tb-button:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+.tb-button:disabled, .tb-button[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+.tb-button.tb-primary[aria-disabled="true"]:hover { background: var(--tb-primary); border-color: var(--tb-primary); }
+.tb-button.tb-has-icon:not(:has(> span:not(:empty))) { padding: 0; width: var(--tb-control); }
 
 .tb-icon { width: 1.25em; height: 1.25em; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .tb-button .tb-icon { width: 18px; height: 18px; }

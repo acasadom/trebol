@@ -60,6 +60,7 @@ view [
             button primary #plus "New client"
             button #edit "Edit"
             button danger #trash "Delete"
+            button #settings
             link #external "Trebol on the web" https://example.com
         ]
     ]

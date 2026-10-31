@@ -157,12 +157,8 @@ function build(face: ObjectCell): HTMLElement {
       case 'form': {
         const f = el('form', 'tb-form');
         f.noValidate = true;
-        f.addEventListener('submit', ev => {
-          ev.preventDefault();
-          const b = f.querySelector<HTMLButtonElement>('button[type="submit"]');
-          const submit = b !== null ? byNode.get(b) : undefined;
-          if (submit && !b!.disabled) clickSubmit(submit.face, f);
-        });
+        // Enter in a field clicks the submit button, which handles it
+        f.addEventListener('submit', ev => ev.preventDefault());
         node = f;
         break;
       }
@@ -185,8 +181,13 @@ function build(face: ObjectCell): HTMLElement {
       }
       case 'button': {
         const b = el('button', 'tb-button');
-        b.type = flag(face, 'submit') ? 'submit' : 'button';
-        if (!flag(face, 'submit')) b.addEventListener('click', () => void fire('ui-click', face));
+        const submit = flag(face, 'submit');
+        b.type = submit ? 'submit' : 'button';
+        b.addEventListener('click', ev => {
+          if (!submit) return void fire('ui-click', face);
+          ev.preventDefault();
+          clickSubmit(face, b.closest<HTMLElement>('form, .tb-view') ?? document.body);
+        });
         withIcon(b, face, m);
         node = b;
         break;
@@ -223,6 +224,15 @@ function withIcon(node: HTMLElement, face: ObjectCell, m: Mounted): void {
   if (svg === null) return;
   m.label = el('span');
   node.append(svg, m.label);
+  node.classList.add('tb-has-icon');
+}
+
+/** A face with an icon and no text is named after its icon: #arrow-left -> "Arrow left". */
+function iconLabel(face: ObjectCell): string | null {
+  const name = iconName(face);
+  if (name === null || str(face, 'text') !== null) return null;
+  const words = name.replace(/-/g, ' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 /** Children of a container; consecutive buttons in a form share an action row. */
@@ -243,7 +253,7 @@ function appendChildren(node: HTMLElement, face: ObjectCell, style: string): voi
   }
 }
 
-function clickSubmit(face: ObjectCell, formEl: HTMLFormElement): void {
+function clickSubmit(face: ObjectCell, formEl: HTMLElement): void {
   void fire('ui-click', face).then(() => {
     // after a failed submit, take the user to the first problem
     for (const i of Array.from(formEl.querySelectorAll<HTMLElement>('input, textarea, select'))) {
@@ -431,7 +441,9 @@ function syncRadio(m: Mounted, err: string | null): void {
     r.checked = r.value === want;
     r.disabled = flag(f, 'disabled');
   }
-  m.radios![0]?.parentElement!.parentElement!.setAttribute('aria-invalid', err !== null ? 'true' : 'false');
+  const group = m.radios![0]?.parentElement!.parentElement;
+  group?.setAttribute('aria-invalid', err !== null ? 'true' : 'false');
+  group?.setAttribute('aria-required', hasRule(f, 'required') ? 'true' : 'false');
   m.error!.textContent = err ?? '';
 }
 
@@ -782,12 +794,13 @@ native('show-toast', '[message [string!] kind [word! none!]]', (_t, f) => {
     // a manual popover sits in the top layer, so toasts show above open dialogs
     toasts = el('div', 'tb-toasts');
     toasts.popover = 'manual';
+    toasts.setAttribute('aria-live', 'polite');
     document.body.append(toasts);
   }
   const kind = f.args[1]!.t === K.Word ? spell((f.args[1] as WordCell).sym).toLowerCase() : null;
   const t = el('div', kind !== null ? `tb-toast tb-${kind}` : 'tb-toast');
-  t.setAttribute('role', kind === 'danger' ? 'alert' : 'status');
-  t.textContent = text(f.args[0] as StringCell);
+  if (kind === 'danger') t.setAttribute('role', 'alert');
+  const message = text(f.args[0] as StringCell);
   const box = toasts;
   const dismiss = (): void => {
     t.remove();
@@ -798,6 +811,8 @@ native('show-toast', '[message [string!] kind [word! none!]]', (_t, f) => {
   if (box.matches(':popover-open')) box.hidePopover();
   box.append(t);
   box.showPopover();
+  // screen readers announce text that changes inside a live region already shown
+  setTimeout(() => { t.textContent = message; }, 50);
   return value(f.args[0]!);
 });
 
@@ -843,6 +858,7 @@ function sync(m: Mounted): void {
       if (hint !== null && !(m.input instanceof HTMLSelectElement)) m.input.placeholder = hint;
     }
     m.input.disabled = flag(f, 'disabled');
+    m.input.setAttribute('aria-required', hasRule(f, 'required') ? 'true' : 'false');
     m.input.setAttribute('aria-invalid', err !== null ? 'true' : 'false');
     if (m.error !== null) m.error.textContent = err ?? '';
     return;
@@ -851,7 +867,14 @@ function sync(m: Mounted): void {
     case 'title': case 'heading': case 'text':
       m.el.textContent = t ?? '';
       break;
-    case 'button': case 'link': (m.label ?? m.el).textContent = t ?? ''; break;
+    case 'button': case 'link': {
+      (m.label ?? m.el).textContent = t ?? '';
+      const named = iconLabel(f);
+      if (named !== null) m.el.setAttribute('aria-label', named);
+      else m.el.removeAttribute('aria-label');
+      m.el.title = named ?? '';
+      break;
+    }
     case 'progress': syncProgress(m); return;
     case 'icon': syncIcon(m); return;
     case 'image': {
@@ -877,7 +900,11 @@ function sync(m: Mounted): void {
       break;
     }
   }
-  if (m.el instanceof HTMLButtonElement) m.el.disabled = flag(f, 'disabled');
+  if (m.el instanceof HTMLButtonElement) {
+    // a submit stays focusable while the form has errors; clicking it shows them
+    if (flag(f, 'submit')) m.el.setAttribute('aria-disabled', flag(f, 'disabled') ? 'true' : 'false');
+    else m.el.disabled = flag(f, 'disabled');
+  }
   // children replaced by code: rebuild this container
   const kids = get(f, 'children');
   if (kids.t === K.Block && (m.kids as BlockCell | undefined)?.s !== kids.s) {
