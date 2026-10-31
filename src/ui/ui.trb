@@ -77,6 +77,16 @@ sizes: [small medium large]
 aligns: [left center right spread]
 flags: [fill hidden disabled]
 simple-rules: [required email url integer date]
+rule-words: [min max length pattern match check check-async width]
+
+; Words that never name a field. email, url, integer and date are rules too,
+; but also common field names, so the first word after an input style names it.
+field-name?: func [w [word!]] [
+    not any [
+        find roles w  find sizes w  find aligns w  find flags w
+        find rule-words w  w = 'required  event-word? w
+    ]
+]
 
 add-rule: func [f rule [block!]] [
     unless f/rules [f/rules: copy []]
@@ -133,7 +143,7 @@ layout: function [
                 append out f
                 if label [set label f]
             )
-            opt [if (find input-styles f/style) set n word! (f/name: n)]
+            opt [if (find input-styles f/style) set n word! if (field-name? n) (f/name: n)]
             any modifier
         ]
     ] [

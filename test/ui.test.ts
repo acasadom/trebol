@@ -63,6 +63,19 @@ describe('layout', () => {
     assert.equal(r, '[row field search "Search" "Type here" true primary "Go" true]');
   });
 
+  test('reserved words never name a field; email and friends can', async () => {
+    const r = await ev(`
+      root: view [form [
+        field required "A"
+        field primary "B"
+        field on-change [x: 1] "C"
+        number min 1 "D"
+        field email "E" email
+      ]]
+      collect [foreach f select first root/children 'children [keep f/name keep length? any [f/rules []]]]`);
+    assert.equal(r, '[none 1 none 0 none 0 none 1 email 1]');
+  });
+
   test('set-words name faces; stylize derives styles', async () => {
     const r = await ev(`
       stylize [risky: button [role: 'danger]]
