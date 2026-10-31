@@ -6,13 +6,16 @@
 //   <script type="module" src=".../src/host/browser.ts"></script>
 //   <script type="text/trebol" src="app.trb"></script>
 //
-// There is one DOM node per face and no virtual DOM. After every round of
-// scheduler slices the host copies the fields of each mounted face to its
-// node, so `total/text: "42"` shows up without any explicit refresh.
+// There is one DOM node per face and no virtual DOM. Setting a field of a
+// mounted face marks it dirty (see `ctxSet` in the core); after every round
+// of scheduler slices the host copies the fields of the dirty faces to their
+// nodes, so `total/text: "42"` shows up without any explicit refresh.
+// Changing a series in place (`append f/text "x"`) does not mark the face:
+// set the field again to repaint it.
 
 import {
   K, NONE, TRUE, FALSE, native, value, string, form, ctxFind, intern, spell, text,
-  type Cell, type ObjectCell, type BlockCell, type WordCell, type StringCell,
+  type Cell, type ObjectCell, type BlockCell, type WordCell, type StringCell, type Ctx,
 } from '../core/index.ts';
 import { startHost, startUi, runSource, report, type Host } from './index.ts';
 import { spawn, taskResult } from './scheduler.ts';
@@ -65,7 +68,12 @@ interface Mounted {
 }
 
 let host: Host;
-let mounted: Mounted[] = [];
+/** Mounted faces by their node and by their input. */
+const byNode = new WeakMap<Element, Mounted>();
+/** Mounted faces by context; a face rebuilt in a new container replaces its entry. */
+const byCtx = new WeakMap<Ctx, Mounted>();
+/** Contexts of mounted faces written since the last repaint (filled by the core). */
+const dirty: Ctx[] = [];
 let nextId = 1;
 
 /** Runs a UI event function (ui-input, ui-blur, ui-click) as a new task. */
@@ -114,8 +122,9 @@ function build(face: ObjectCell): HTMLElement {
         f.noValidate = true;
         f.addEventListener('submit', ev => {
           ev.preventDefault();
-          const submit = mounted.find(x => x.el.closest('form') === f && flag(x.face, 'submit'));
-          if (submit && !(submit.el as HTMLButtonElement).disabled) clickSubmit(submit.face, f);
+          const b = f.querySelector<HTMLButtonElement>('button[type="submit"]');
+          const submit = b !== null ? byNode.get(b) : undefined;
+          if (submit && !b!.disabled) clickSubmit(submit.face, f);
         });
         node = f;
         break;
@@ -148,7 +157,10 @@ function build(face: ObjectCell): HTMLElement {
     if (children(face).length > 0) appendChildren(node, face, style);
   }
   m.el = node;
-  mounted.push(m);
+  byNode.set(node, m);
+  if (m.input !== null) byNode.set(m.input, m);
+  byCtx.set(face.ctx, m);
+  face.ctx.watch = dirty;
   sync(m);
   return node;
 }
@@ -174,8 +186,10 @@ function appendChildren(node: HTMLElement, face: ObjectCell, style: string): voi
 function clickSubmit(face: ObjectCell, formEl: HTMLFormElement): void {
   void fire('ui-click', face).then(() => {
     // after a failed submit, take the user to the first problem
-    const bad = mounted.find(x => x.input !== null && formEl.contains(x.input) && get(x.face, 'error').t === K.String);
-    bad?.input?.focus();
+    for (const i of Array.from(formEl.querySelectorAll<HTMLElement>('input, textarea, select'))) {
+      const m = byNode.get(i);
+      if (m !== undefined && get(m.face, 'error').t === K.String) return i.focus();
+    }
   });
 }
 
@@ -320,9 +334,13 @@ function setExtra(e: HTMLElement, cls: string[]): void {
   e.dataset['tb'] = cls.join(' ');
 }
 
-function syncAll(): void {
-  mounted = mounted.filter(m => m.el.isConnected);
-  for (const m of mounted) sync(m);
+function syncDirty(): void {
+  for (const ctx of dirty) {
+    ctx.dirty = false;
+    const m = byCtx.get(ctx);
+    if (m !== undefined && m.el.isConnected) sync(m);
+  }
+  dirty.length = 0;
 }
 
 // --- natives -----------------------------------------------------------------------
@@ -386,7 +404,7 @@ native('apply-theme', '[spec [object!]]', (_t, f) => {
 async function boot(): Promise<void> {
   setTheme(DEFAULT_THEME);
   host = startHost();
-  host.sch.afterPump = syncAll;
+  host.sch.afterPump = syncDirty;
   await startUi(host);
   for (const s of Array.from(document.querySelectorAll<HTMLScriptElement>('script[type="text/trebol"]'))) {
     const src = s.getAttribute('src');

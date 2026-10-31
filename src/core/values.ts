@@ -46,6 +46,13 @@ export interface Ctx {
   idxN?: number;
   /** Set on object contexts: the word `self` bound here means the object. */
   self?: boolean;
+  /**
+   * Set by a host that renders this context (a UI face): the first write
+   * through `ctxSet` pushes the context here and sets `dirty`, so the host
+   * repaints only what changed. The host clears `dirty` when it repaints.
+   */
+  watch?: Ctx[];
+  dirty?: boolean;
 }
 
 // --- dates -----------------------------------------------------------------

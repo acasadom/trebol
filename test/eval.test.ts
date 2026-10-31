@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   makeRuntime, doSource, mold, load, bindSeries, newTask, run, resume, resumeError,
   native, value, errorField, makeError, form, integer,
-  type RunResult, type Cell,
+  type RunResult, type Cell, type ObjectCell, type Ctx,
 } from '../src/core/index.ts';
 
 let pending: { resolve: (v: Cell) => void } | null = null;
@@ -105,6 +105,22 @@ describe('binding', () => {
     assert.equal(ev('o: make object! [v: 7] b: [v * 2] do bind b o'), '14');
     assert.equal(ev('o: make object! [v: 7] get in o \'v'), '7');
     assert.equal(ev('v: 1 use [v] [v: 99] v'), '1');
+  });
+
+  test('writes to a watched object mark it dirty once', () => {
+    const r = result('w: make object! [a: 1 b: 2 f: does [b: 3]]');
+    assert.equal(r.k, 'done');
+    const ctx = ((r as { v: Cell }).v as ObjectCell).ctx;
+    const list: Ctx[] = [];
+    ctx.watch = list;
+    ev('w/a');
+    assert.equal(list.length, 0);
+    ev('w/a: 5 w/f set in w \'a 6');
+    assert.deepEqual([list.length, list[0] === ctx, ctx.dirty], [1, true, true]);
+    ctx.dirty = false;
+    list.length = 0;
+    ev('w/f');
+    assert.equal(list.length, 1);
   });
 
   test('loop words are local to the loop', () => {

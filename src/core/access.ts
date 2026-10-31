@@ -11,7 +11,7 @@ import {
   NONE, integer, char, decimal, time, strictEqual, codePoints, fromCodePoints,
   type Cell, type Series, type BlockCell, type StringCell, type WordCell,
 } from './values.ts';
-import { ctxFind } from './ctx.ts';
+import { ctxFind, ctxSet } from './ctx.ts';
 import { mold } from './mold.ts';
 
 /** Keys of maps and selects: words by symbol (any word type), the rest strictly. */
@@ -141,7 +141,7 @@ export function poke(cur: Cell, key: Cell, v: Cell): string | null {
       if (!isAnyWord(key.t)) return `cannot set ${mold(key)} in an object`;
       const i = ctxFind(cur.ctx, (key as WordCell).sym);
       if (i < 0) return `${mold(key)} is not a field of the object`;
-      cur.ctx.vals[i] = v;
+      ctxSet(cur.ctx, i, v);
       return null;
     }
     case K.Map: {

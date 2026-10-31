@@ -76,11 +76,20 @@ export function bindSelf(s: Series<Cell>, ctx: Ctx, seen = new Set<Series<Cell>>
   }
 }
 
+/** Sets the value at `i`, marking a watched context dirty. */
+export function ctxSet(ctx: Ctx, i: number, v: Cell): void {
+  ctx.vals[i] = v;
+  if (ctx.watch !== undefined && ctx.dirty !== true) {
+    ctx.dirty = true;
+    ctx.watch.push(ctx);
+  }
+}
+
 /** Sets a bound word in its own context, adding the key if needed. False if unbound. */
 export function setWord(w: WordCell, v: Cell): boolean {
   const ctx = w.bind;
   if (ctx === null) return false;
-  ctx.vals[ctxEnsure(ctx, w.sym)] = v;
+  ctxSet(ctx, ctxEnsure(ctx, w.sym), v);
   return true;
 }
 
