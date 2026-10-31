@@ -15,6 +15,11 @@ native('show', '[root [object!]]', (_t, f) => {
   shown = f.args[0]!;
   return value(shown);
 });
+let toasts: string[] = [];
+native('show-toast', '[message [string!] kind [word! none!]]', (_t, f) => {
+  toasts.push(mold(f.args[0]!) + ' ' + mold(f.args[1]!));
+  return value(f.args[0]!);
+});
 native('apply-theme', '[spec [object!]]', (_t, f) => {
   themed = f.args[0]!;
   return value(themed);
@@ -160,6 +165,74 @@ describe('handlers', () => {
   test('theme passes its parameters to the host', async () => {
     await ev('theme [base: 160 neutral: warm mode: dark]');
     assert.equal(mold(themed!).replace(/\s+/g, ' '), 'make object! [ base: 160 neutral: warm mode: dark ]');
+  });
+});
+
+describe('components', () => {
+  test('a word after table labels it globally; columns take optional labels', async () => {
+    const r = await ev(`
+      root: view [table clients [name "Name" email] key code on-select [x: 1]]
+      clients/text: "seen"
+      reduce [select first root/children 'text clients/style clients/columns clients/key clients/data]`);
+    assert.equal(r, '["seen" table [name "Name" email "email"] code none]');
+  });
+
+  test('choosing a row binds row in on-select', async () => {
+    const r = await ev(`
+      picked: none
+      root: view [table people [name] on-select [picked: reduce [row/name face/style]]]
+      people/data: reduce [make map! [id 1 name "Ada"] make map! [id 2 name "Alan"]]
+      ui-select people second people/data
+      reduce [picked people/selected/id]`);
+    assert.equal(r, '[["Alan" table] 2]');
+  });
+
+  test('dialogs start hidden; open, close and dismissing toggle them', async () => {
+    const r = await ev(`
+      closed: 0
+      root: view [edit: dialog "Edit" [form [field name "Name"]] on-close [closed: closed + 1]]
+      a: edit/hidden open edit b: edit/hidden close edit c: edit/hidden
+      open edit ui-close edit
+      reduce [a b c edit/hidden closed edit/text length? edit/children]`);
+    assert.equal(r, '[true false true true 1 "Edit" 1]');
+  });
+
+  test('close still closes streams', async () => {
+    const r = await ev(`reduce [attempt [close 1] type? :close-stream]`);
+    assert.equal(r, '[none native!]');
+  });
+
+  test('toast passes its message and role to the host', async () => {
+    toasts = [];
+    await ev(`toast "Saved" toast/role "Failed" 'danger`);
+    assert.deepEqual(toasts, ['"Saved" none', '"Failed" danger']);
+  });
+
+  test('tabs hold a face per tab and select the first one', async () => {
+    const r = await ev(`
+      root: view [tabs ["General" [field name "Name"] "Advanced" [check debug "Debug"]]]
+      t: first root/children
+      reduce [t/value collect [foreach c t/children [keep c/style keep c/text keep length? c/children]]
+        form-values root]`);
+    assert.equal(r, '[1 [tab "General" 1 tab "Advanced" 1] #(name: none debug: none)]');
+  });
+
+  test('set-values fills a form and forgets that it was touched', async () => {
+    const r = await ev(`
+      root: view [f: form [field name "Name" required check ok "OK" submit "Save" [x: 1]]]
+      n: first f/children
+      ui-blur n
+      a: n/error
+      set-values f make map! reduce ['name "Ada" 'ok true 'extra 1]
+      b: reduce [n/value n/touched n/error select second f/children 'value select third f/children 'disabled]
+      set-values f none
+      reduce [a b n/value]`);
+    assert.equal(r, '["This field is required" ["Ada" false none true false] none]');
+  });
+
+  test('tables need words for columns; tabs need label and block pairs', async () => {
+    await assert.rejects(runSource(host, 'view [table t ["Name"]]'));
+    await assert.rejects(runSource(host, 'view [tabs ["A"]]'));
   });
 });
 

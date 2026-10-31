@@ -1,0 +1,81 @@
+Trebol [title: "Clients"]
+
+; Clients of a small business, kept by the REST API that `npm run dev`
+; serves under /api/clients: list, search, add, edit and delete.
+
+api: "/api/clients"
+everyone: copy []
+editing: none
+
+load-clients: does [
+    either error? e: try [everyone: fetch api] [
+        toast/role "Could not load the clients" 'danger
+    ] [
+        show-clients
+    ]
+]
+
+; Filters on the client, so typing never waits for the network.
+show-clients: does [
+    q: any [search/value ""]
+    clients/data: collect [
+        foreach c everyone [
+            if any [empty? q  find c/name q  find c/email q] [keep c]
+        ]
+    ]
+]
+
+edit-client: func [client] [
+    editing: client
+    editor/text: either client ["Edit client"] ["New client"]
+    remove-button/hidden: none? client
+    set-values client-form client
+    open editor
+]
+
+save-client: func [values] [
+    either error? e: try [
+        either editing [
+            fetch/with rejoin [api "/" editing/id] [method: 'PUT body: values]
+        ] [
+            fetch/with api [method: 'POST body: values]
+        ]
+    ] [
+        toast/role "Could not save the client" 'danger
+    ] [
+        toast/role either editing ["Client updated"] ["Client added"] 'success
+        close editor
+        load-clients
+    ]
+]
+
+delete-client: does [
+    either error? e: try [fetch/with rejoin [api "/" editing/id] [method: 'DELETE]] [
+        toast/role "Could not delete the client" 'danger
+    ] [
+        toast rejoin [editing/name " was deleted"]
+        close editor
+        load-clients
+    ]
+]
+
+view [
+    title "Clients"
+    row [
+        search: field "Search" "Name or email" fill on-change [show-clients]
+        button primary "New client" [edit-client none]
+    ]
+    table clients [name "Name" email "Email" phone "Phone" kind "Kind"] on-select [edit-client row]
+    editor: dialog "Client" [
+        client-form: form [
+            field name "Name" required
+            field email "Email" required email
+            field phone "Phone"
+            choice kind "Kind" ["Person" "Company"] required
+            submit "Save" [save-client values]
+            remove-button: button danger "Delete" [delete-client]
+        ]
+    ]
+]
+
+load-clients

@@ -8,7 +8,7 @@
 import {
   K, NONE, I64, native, value, string, text, makeError, throwError, form, spell, ctxFind, intern,
   parseJson, toJson,
-  type Cell, type BlockCell, type StringCell, type ObjectCell, type WordCell, type Step,
+  type Cell, type BlockCell, type StringCell, type ObjectCell, type WordCell, type Step, type NativeFn,
 } from '../core/index.ts';
 import { schedulerOf, spawnHandler, makeHandle, handleOf, type Scheduler } from './scheduler.ts';
 import { cancellers } from './natives.ts';
@@ -285,7 +285,10 @@ native('send', '[stream [handle!] data [any-value!]]', (_t, f) => {
 });
 
 cancellers['stream'] = obj => (obj as Stream).close();
-native('close', '[stream [handle!]]', (_t, f) => {
+const closeStream: NativeFn = (_t, f) => {
   handleOf<Stream>(f.args[0]!, 'stream')?.close();
   return value(f.args[0]!);
-});
+};
+native('close', '[stream [handle!]]', closeStream);
+// the UI dialect redefines close for dialogs and falls back to this one
+native('close-stream', '[stream [handle!]]', closeStream);

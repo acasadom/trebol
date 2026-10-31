@@ -1,8 +1,8 @@
 Trebol [
     title: "UI dialect: faces, styles, layout and validation"
     exports: [
-        face styles stylize layout view theme
-        validate-face form-values ui-input ui-blur ui-click
+        face styles stylize layout view theme open close toast
+        validate-face form-values set-values ui-input ui-blur ui-click ui-select ui-close
     ]
 ]
 
@@ -35,6 +35,10 @@ face: make object! [
     events: none        ; [on-change [...] on-select [...]]
     options: none       ; choices of a choice
     children: none
+    columns: none       ; table and list: [field "Label" ...]
+    data: none          ; table and list: a block of map! or object! rows
+    key: 'id            ; the row field that identifies a row
+    selected: none      ; the row last chosen
     form: none          ; the enclosing form, if any
     root: none          ; the view this face belongs to
     submit: false
@@ -43,19 +47,22 @@ face: make object! [
 ; style name -> prototype face
 styles: make map! []
 
-container-styles: [view column row form panel grid]
+container-styles: [view column row form panel grid dialog]
 input-styles: [field password number area check choice]
+data-styles: [table list]
 
 foreach [name base] [
     view column  column column  row row  form form  panel panel  grid grid
     title title  heading heading  text text  divider divider
     field field  password password  number number  area area  check check  choice choice
-    button button  link link
+    button button  link link  table table  list list  tabs tabs  tab tab
 ] [
     poke styles name make face [style: base]
 ]
 poke styles 'view make face [style: 'view]
 poke styles 'submit make face [style: 'button role: 'primary submit: true]
+poke styles 'dialog make face [style: 'dialog hidden: true]
+poke styles 'tabs make face [style: 'tabs value: 1]
 
 stylize: function [
     "Defines styles from existing ones: name: base [field: value ...]"
@@ -112,6 +119,8 @@ layout: function [
         | set b block! (
             case [
                 find container-styles f/style [f/children: layout b]
+                find data-styles f/style [f/columns: columns-of b]
+                f/style = 'tabs [f/children: tabs-of b]
                 f/style = 'choice [f/options: reduce b]
                 true [f/action: b]
             ]
@@ -126,6 +135,7 @@ layout: function [
         | 'check set b block! (add-rule f reduce ['check b])
         | 'check-async set b block! (add-rule f reduce ['check-async b])
         | 'width set w word! (f/size: w)
+        | 'key set w word! (f/key: w)
         | set w word! if (find roles w) (f/role: w)
         | set w word! if (find sizes w) (f/size: w)
         | set w word! if (find aligns w) (f/align: w)
@@ -144,10 +154,32 @@ layout: function [
                 if label [set label f]
             )
             opt [if (find input-styles f/style) set n word! if (field-name? n) (f/name: n)]
+            ; table clients [...] is the same as clients: table [...]
+            opt [if (find data-styles f/style) set n word! if (all [field-name? n  n <> 'key]) (set n f)]
             any modifier
         ]
     ] [
         do make error! "layout: cannot read the layout"
+    ]
+    out
+]
+
+; [name "Name" email] -> [name "Name" email "email"]
+columns-of: function [spec [block!]] [
+    out: copy []
+    unless parse spec [any [set w word! (label: form w) opt [set label string!] (append out reduce [w label])]] [
+        do make error! "layout: table columns are words, each with an optional label"
+    ]
+    out
+]
+
+; ["General" [...] "Advanced" [...]] -> a tab face per pair
+tabs-of: function [spec [block!]] [
+    out: copy []
+    unless parse spec [any [set label string! set b block! (
+        append out make select styles 'tab [text: label children: layout b]
+    )]] [
+        do make error! "layout: tabs take a label and a block per tab"
     ]
     out
 ]
@@ -170,6 +202,29 @@ view: function [
     attach root root none
     foreach f all-faces root [refresh-form f]
     show root
+]
+
+open: func [
+    "Shows a dialog."
+    dialog [object!]
+] [
+    dialog/hidden: false
+]
+
+close: func [
+    "Hides a dialog; closes a stream."
+    target [object! handle!]
+] [
+    either object? target [target/hidden: true] [close-stream target]
+]
+
+toast: func [
+    "Shows a short notice that goes away by itself."
+    message [string!]
+    /role "primary, success, warning or danger"
+        kind [word!]
+] [
+    show-toast message either role [kind] [none]
 ]
 
 theme: func [
@@ -205,6 +260,19 @@ form-values: function [
     m: make map! []
     foreach f named-faces scope [poke m f/name f/value]
     m
+]
+
+set-values: function [
+    "Fills the named fields of a form (or view) from a map or object; none clears them."
+    scope data [map! object! none!]
+] [
+    foreach f named-faces scope [
+        v: either data [select data f/name] [none]
+        f/value: either f/style = 'check [true = v] [v]
+        f/touched: false
+        f/async-error: none
+    ]
+    refresh-form scope
 ]
 
 ; --- validation ------------------------------------------------------------------
@@ -332,6 +400,7 @@ run-handler: function [f body [block!]] [
         value: (either word? f/value [to lit-word! f/value] [f/value])
         values: (form-values any [scope f])
     ]
+    if find data-styles f/style [append words compose [row: (f/selected)]]
     if scope [
         foreach g named-faces scope [append words reduce [to set-word! g/name g]]
     ]
@@ -381,4 +450,20 @@ ui-click: function [
         if f/disabled [exit]
     ]
     if f/action [run-handler f f/action]
+]
+
+ui-select: function [
+    "Called by the host when the user chooses a row of a table or list."
+    f row
+] [
+    f/selected: row
+    if h: handler-for f 'on-select [run-handler f h]
+]
+
+ui-close: function [
+    "Called by the host when the user dismisses a dialog."
+    f
+] [
+    f/hidden: true
+    if h: handler-for f 'on-close [run-handler f h]
 ]

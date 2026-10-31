@@ -4,12 +4,15 @@
 //
 //   npm run dev                      then open http://localhost:5173/examples/signup/
 //   npm run dev -- --port 8080
+//
+// It also serves a small in-memory REST API under /api (see api.ts).
 
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { watch } from 'node:fs';
 import { join, extname, normalize } from 'node:path';
 import { stripTypeScriptTypes } from 'node:module';
+import { handleApi } from './api.ts';
 
 const root = normalize(join(import.meta.dirname, '..'));
 const portArg = process.argv.indexOf('--port');
@@ -39,6 +42,7 @@ const server = createServer(async (req, res) => {
     req.on('close', () => clients.delete(res));
     return;
   }
+  if (await handleApi(req, res, url.pathname)) return;
   let path = normalize(join(root, decodeURIComponent(url.pathname)));
   if (!path.startsWith(root)) {
     res.writeHead(403).end();

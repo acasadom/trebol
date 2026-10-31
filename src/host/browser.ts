@@ -14,8 +14,8 @@
 // set the field again to repaint it.
 
 import {
-  K, NONE, TRUE, FALSE, native, value, string, form, ctxFind, intern, spell, text,
-  type Cell, type ObjectCell, type BlockCell, type WordCell, type StringCell, type Ctx,
+  K, NONE, TRUE, FALSE, native, value, string, form, ctxFind, intern, spell, text, canon,
+  type Cell, type ObjectCell, type BlockCell, type WordCell, type StringCell, type Ctx, type Sym,
 } from '../core/index.ts';
 import { startHost, startUi, runSource, report, type Host } from './index.ts';
 import { spawn, taskResult } from './scheduler.ts';
@@ -65,11 +65,21 @@ interface Mounted {
   label: HTMLElement | null;
   error: HTMLElement | null;
   kids: unknown;
+  /** Where children or rows go, when it is not `el`. */
+  box: HTMLElement | null;
+  /** Rows of a table or list, by key. */
+  rows: Map<string, HTMLElement> | null;
+  /** Shown instead of the rows when there are none. */
+  empty: HTMLElement | null;
+  /** The tab button of a tab face. */
+  button: HTMLButtonElement | null;
 }
 
 let host: Host;
 /** Mounted faces by their node and by their input. */
 const byNode = new WeakMap<Element, Mounted>();
+/** The row cell each table row or list item shows. */
+const rowOf = new WeakMap<Element, Cell>();
 /** Mounted faces by context; a face rebuilt in a new container replaces its entry. */
 const byCtx = new WeakMap<Ctx, Mounted>();
 /** Contexts of mounted faces written since the last repaint (filled by the core). */
@@ -95,7 +105,10 @@ const INPUTS = new Set(['field', 'password', 'number', 'area', 'choice']);
 
 function build(face: ObjectCell): HTMLElement {
   const style = word(face, 'style') ?? 'face';
-  const m: Mounted = { face, el: null!, input: null, label: null, error: null, kids: get(face, 'children') };
+  const m: Mounted = {
+    face, el: null!, input: null, label: null, error: null, kids: get(face, 'children'),
+    box: null, rows: null, empty: null, button: null,
+  };
   let node: HTMLElement;
   if (INPUTS.has(style)) {
     node = buildInput(face, style, m);
@@ -152,9 +165,17 @@ function build(face: ObjectCell): HTMLElement {
         node = b;
         break;
       }
+      case 'table': case 'list': node = buildRows(face, style, m); break;
+      case 'dialog': node = buildDialog(face, m); break;
+      case 'tabs': node = buildTabs(face, m); break;
+      case 'tab': {
+        node = el('div', 'tb-tab-panel');
+        node.setAttribute('role', 'tabpanel');
+        break;
+      }
       default: node = el('div');
     }
-    if (children(face).length > 0) appendChildren(node, face, style);
+    if (children(face).length > 0 && style !== 'tabs') appendChildren(m.box ?? node, face, style);
   }
   m.el = node;
   byNode.set(node, m);
@@ -264,6 +285,306 @@ function buildCheck(face: ObjectCell, m: Mounted): HTMLElement {
   return row;
 }
 
+// --- tables and lists ---------------------------------------------------------------
+
+interface Column { sym: Sym; label: string }
+
+function columns(face: ObjectCell): Column[] {
+  const c = get(face, 'columns');
+  if (c.t !== K.Block) return [];
+  const out: Column[] = [];
+  const d = c.s.data;
+  for (let i = c.i; i + 1 < d.length; i += 2) {
+    const w = d[i]!;
+    if (w.t === K.Word) out.push({ sym: (w as WordCell).sym, label: form(d[i + 1]!) });
+  }
+  return out;
+}
+
+/** A field of a map! or object! row; map keys may be words or strings. */
+function rowField(row: Cell, sym: Sym): Cell {
+  if (row.t === K.Object) {
+    const i = ctxFind(row.ctx, sym);
+    return i < 0 ? NONE : row.ctx.vals[i]!;
+  }
+  if (row.t === K.Map) {
+    const d = row.s.data;
+    const c = canon(sym);
+    for (let i = 0; i + 1 < d.length; i += 2) {
+      const k = d[i]!;
+      if (k.t === K.Word || k.t === K.SetWord || k.t === K.LitWord) {
+        if (canon((k as WordCell).sym) === c) return d[i + 1]!;
+      } else if (k.t === K.String && canon(intern(text(k as StringCell))) === c) {
+        return d[i + 1]!;
+      }
+    }
+  }
+  return NONE;
+}
+
+function sameRow(a: Cell, b: Cell): boolean {
+  if (a.t === K.Map && b.t === K.Map) return a.s === b.s;
+  if (a.t === K.Object && b.t === K.Object) return a.ctx === b.ctx;
+  return false;
+}
+
+function cellText(v: Cell): string {
+  if (v.t === K.None) return '';
+  if (v.t === K.Logic) return v.v ? 'Yes' : 'No';
+  return form(v);
+}
+
+const NUMERIC: ReadonlySet<number> = new Set([K.Integer, K.Decimal, K.Money, K.Percent]);
+
+function buildRows(face: ObjectCell, style: string, m: Mounted): HTMLElement {
+  const wrap = el('div', style === 'table' ? 'tb-table-wrap' : 'tb-list-wrap');
+  let box: HTMLElement;
+  if (style === 'table') {
+    // explicit roles keep the table semantics when narrow screens restyle it as cards
+    const table = el('table', 'tb-table');
+    table.setAttribute('role', 'table');
+    const head = el('thead');
+    const tr = el('tr');
+    tr.setAttribute('role', 'row');
+    for (const c of columns(face)) {
+      const th = el('th');
+      th.scope = 'col';
+      th.setAttribute('role', 'columnheader');
+      th.textContent = c.label;
+      tr.append(th);
+    }
+    head.append(tr);
+    box = el('tbody');
+    table.append(head, box);
+    wrap.append(table);
+  } else {
+    box = el('ul', 'tb-list');
+    wrap.append(box);
+  }
+  const empty = el('p', 'tb-empty');
+  wrap.append(empty);
+  const choose = (target: EventTarget | null): void => {
+    const item = (target as Element | null)?.closest(style === 'table' ? 'tr' : 'li');
+    const row = item ? rowOf.get(item) : undefined;
+    if (row !== undefined) void fire('ui-select', face, row);
+  };
+  box.addEventListener('click', ev => choose(ev.target));
+  box.addEventListener('keydown', ev => {
+    if (ev.key === 'Enter' || ev.key === ' ') {
+      ev.preventDefault();
+      choose(ev.target);
+    }
+  });
+  m.box = box;
+  m.rows = new Map();
+  m.empty = empty;
+  return wrap;
+}
+
+/** Creates, updates, moves or removes only the rows whose key changed. */
+function syncRows(m: Mounted): void {
+  const f = m.face;
+  const box = m.box!;
+  const table = box.tagName === 'TBODY';
+  const cols = columns(f);
+  const data = get(f, 'data');
+  const rows = data.t === K.Block ? data.s.data.slice(data.i) : [];
+  const keyWord = get(f, 'key');
+  const key = keyWord.t === K.Word || keyWord.t === K.LitWord ? (keyWord as WordCell).sym : intern('id');
+  const selected = get(f, 'selected');
+  const selectable = handlerFor(f, 'on-select');
+  box.parentElement!.classList.toggle('tb-selectable', selectable);
+  const old = m.rows!;
+  const next = new Map<string, HTMLElement>();
+  let cursor = box.firstChild;
+  rows.forEach((row, i) => {
+    const id = rowField(row, key);
+    let k = id.t === K.None ? `#${i}` : `${id.t}:${form(id)}`;
+    if (next.has(k)) k = `${k}#${i}`;
+    let item = old.get(k);
+    if (item === undefined) item = table ? newTableRow(cols) : newListItem();
+    next.set(k, item);
+    rowOf.set(item, row);
+    fillRow(item, row, cols, table);
+    if (selectable) item.tabIndex = 0;
+    else item.removeAttribute('tabindex');
+    const on = selected.t !== K.None && sameRow(selected, row);
+    item.classList.toggle('tb-selected', on);
+    if (selectable) item.setAttribute('aria-selected', on ? 'true' : 'false');
+    else item.removeAttribute('aria-selected');
+    if (item !== cursor) box.insertBefore(item, cursor);
+    else cursor = cursor.nextSibling;
+  });
+  for (const [k, item] of old) if (next.get(k) !== item) item.remove();
+  m.rows = next;
+  m.empty!.textContent = str(f, 'text') ?? 'Nothing to show yet';
+  m.empty!.hidden = rows.length > 0;
+}
+
+function newTableRow(cols: Column[]): HTMLElement {
+  const tr = el('tr');
+  tr.setAttribute('role', 'row');
+  for (const c of cols) {
+    const td = el('td');
+    td.setAttribute('role', 'cell');
+    td.dataset['label'] = c.label;
+    tr.append(td);
+  }
+  return tr;
+}
+
+function newListItem(): HTMLElement {
+  const li = el('li');
+  li.append(el('span', 'tb-list-primary'), el('span', 'tb-list-secondary'));
+  return li;
+}
+
+function fillRow(item: HTMLElement, row: Cell, cols: Column[], table: boolean): void {
+  const set = (e: Element, t: string): void => {
+    if (e.textContent !== t) e.textContent = t;
+  };
+  if (table) {
+    cols.forEach((c, i) => {
+      const v = rowField(row, c.sym);
+      const td = item.children[i]!;
+      set(td, cellText(v));
+      td.classList.toggle('tb-num', NUMERIC.has(v.t));
+    });
+    return;
+  }
+  // a list shows its first column, then the others on a quieter line
+  const [first, ...rest] = cols.map(c => cellText(rowField(row, c.sym)));
+  set(item.children[0]!, first ?? '');
+  set(item.children[1]!, rest.filter(Boolean).join(' · '));
+}
+
+function handlerFor(face: ObjectCell, name: string): boolean {
+  const ev = get(face, 'events');
+  if (ev.t !== K.Block) return false;
+  const c = canon(intern(name));
+  return ev.s.data.some(x => x.t === K.Word && canon((x as WordCell).sym) === c);
+}
+
+// --- dialogs, tabs and toasts --------------------------------------------------------
+
+function buildDialog(face: ObjectCell, m: Mounted): HTMLElement {
+  const d = el('dialog', 'tb-dialog');
+  const head = el('header', 'tb-dialog-head');
+  const title = el('h2', 'tb-dialog-title');
+  title.id = `tb-${nextId++}`;
+  d.setAttribute('aria-labelledby', title.id);
+  const x = el('button', 'tb-dialog-close');
+  x.type = 'button';
+  x.setAttribute('aria-label', 'Close');
+  x.textContent = '×';
+  x.addEventListener('click', () => void fire('ui-close', face));
+  head.append(title, x);
+  const body = el('div', 'tb-dialog-body');
+  d.append(head, body);
+  // Esc: let the face decide, so code that keeps it open still wins
+  d.addEventListener('cancel', ev => {
+    ev.preventDefault();
+    void fire('ui-close', face);
+  });
+  m.label = title;
+  m.box = body;
+  return d;
+}
+
+function syncDialog(m: Mounted): void {
+  const d = m.el as HTMLDialogElement;
+  m.label!.textContent = str(m.face, 'text') ?? '';
+  const open = !flag(m.face, 'hidden');
+  if (open === d.open) return;
+  if (!d.isConnected) {
+    queueMicrotask(() => { if (d.isConnected) syncDialog(m); });
+    return;
+  }
+  if (!open) return d.close();
+  d.showModal();
+  // after this repaint, which never writes into a focused input
+  queueMicrotask(() => d.querySelector<HTMLElement>('input, textarea, select')?.focus());
+}
+
+function buildTabs(face: ObjectCell, m: Mounted): HTMLElement {
+  const node = el('div', 'tb-tabs');
+  const list = el('div', 'tb-tablist');
+  list.setAttribute('role', 'tablist');
+  node.append(list);
+  const tabs = children(face);
+  const pick = (i: number): void => {
+    void fire('ui-input', face, { t: K.Integer, v: i + 1 });
+    (list.children[i] as HTMLElement | undefined)?.focus();
+  };
+  tabs.forEach((t, i) => {
+    const panel = build(t);
+    const b = el('button', 'tb-tab');
+    b.type = 'button';
+    b.id = `tb-${nextId++}`;
+    panel.id = `${b.id}-panel`;
+    b.setAttribute('role', 'tab');
+    b.setAttribute('aria-controls', panel.id);
+    panel.setAttribute('aria-labelledby', b.id);
+    b.textContent = str(t, 'text') ?? '';
+    b.addEventListener('click', () => pick(i));
+    const tm = byCtx.get(t.ctx)!;
+    tm.button = b;
+    list.append(b);
+    node.append(panel);
+  });
+  list.addEventListener('keydown', ev => {
+    const at = Array.prototype.indexOf.call(list.children, document.activeElement);
+    const n = tabs.length;
+    const to = ev.key === 'ArrowRight' ? (at + 1) % n : ev.key === 'ArrowLeft' ? (at - 1 + n) % n
+      : ev.key === 'Home' ? 0 : ev.key === 'End' ? n - 1 : -1;
+    if (to < 0 || at < 0) return;
+    ev.preventDefault();
+    pick(to);
+  });
+  m.box = list;
+  return node;
+}
+
+function syncTabs(m: Mounted): void {
+  const v = get(m.face, 'value');
+  const tabs = children(m.face);
+  const at = v.t === K.Integer ? Math.min(Math.max(Number(v.v), 1), tabs.length) - 1 : 0;
+  tabs.forEach((t, i) => {
+    const tm = byCtx.get(t.ctx);
+    if (tm === undefined || tm.button === null) return;
+    const on = i === at;
+    tm.button.setAttribute('aria-selected', on ? 'true' : 'false');
+    tm.button.tabIndex = on ? 0 : -1;
+    tm.el.hidden = !on;
+  });
+}
+
+let toasts: HTMLElement | null = null;
+
+native('show-toast', '[message [string!] kind [word! none!]]', (_t, f) => {
+  if (toasts === null) {
+    // a manual popover sits in the top layer, so toasts show above open dialogs
+    toasts = el('div', 'tb-toasts');
+    toasts.popover = 'manual';
+    document.body.append(toasts);
+  }
+  const kind = f.args[1]!.t === K.Word ? spell((f.args[1] as WordCell).sym).toLowerCase() : null;
+  const t = el('div', kind !== null ? `tb-toast tb-${kind}` : 'tb-toast');
+  t.setAttribute('role', kind === 'danger' ? 'alert' : 'status');
+  t.textContent = text(f.args[0] as StringCell);
+  const box = toasts;
+  const dismiss = (): void => {
+    t.remove();
+    if (box.childElementCount === 0 && box.matches(':popover-open')) box.hidePopover();
+  };
+  t.addEventListener('click', dismiss);
+  setTimeout(dismiss, kind === 'danger' ? 6000 : 4000);
+  if (box.matches(':popover-open')) box.hidePopover();
+  box.append(t);
+  box.showPopover();
+  return value(f.args[0]!);
+});
+
 // --- syncing -----------------------------------------------------------------------
 
 function sync(m: Mounted): void {
@@ -274,7 +595,7 @@ function sync(m: Mounted): void {
   const hidden = flag(f, 'hidden');
   const err = str(f, 'error');
   const cls: string[] = [];
-  if (hidden) cls.push('tb-hidden');
+  if (hidden && style !== 'dialog') cls.push('tb-hidden');
   if (flag(f, 'fill')) cls.push('tb-fill');
   if (role !== null && !INPUTS.has(style)) cls.push(`tb-${role}`);
   const size = word(f, 'size');
@@ -309,6 +630,10 @@ function sync(m: Mounted): void {
     case 'title': case 'heading': case 'text': case 'button': case 'link':
       m.el.textContent = t ?? '';
       break;
+    case 'table': case 'list': syncRows(m); return;
+    case 'dialog': syncDialog(m); break;
+    case 'tabs': syncTabs(m); return;
+    case 'tab': if (m.button !== null) m.button.textContent = t ?? ''; break;
     case 'grid': {
       const cols = get(f, 'cols');
       m.el.style.setProperty('--tb-cols', cols.t === K.Integer ? String(cols.v) : '2');
@@ -320,9 +645,10 @@ function sync(m: Mounted): void {
   const kids = get(f, 'children');
   if (kids.t === K.Block && (m.kids as BlockCell | undefined)?.s !== kids.s) {
     m.kids = kids;
-    const keep = m.el.querySelector(':scope > .tb-panel-title');
-    m.el.replaceChildren(...(keep ? [keep] : []));
-    appendChildren(m.el, f, style);
+    const box = m.box ?? m.el;
+    const keep = box.querySelector(':scope > .tb-panel-title');
+    box.replaceChildren(...(keep ? [keep] : []));
+    appendChildren(box, f, style);
   }
 }
 
