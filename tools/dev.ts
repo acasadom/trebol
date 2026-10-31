@@ -49,7 +49,14 @@ const server = createServer(async (req, res) => {
     return;
   }
   try {
-    if ((await stat(path)).isDirectory()) path = join(path, 'index.html');
+    if ((await stat(path)).isDirectory()) {
+      // relative URLs in the page (src="app.trb") need the trailing slash
+      if (!url.pathname.endsWith('/')) {
+        res.writeHead(301, { location: `${url.pathname}/${url.search}` }).end();
+        return;
+      }
+      path = join(path, 'index.html');
+    }
     let body: string | Buffer = await readFile(path);
     const ext = extname(path);
     if (ext === '.ts') body = stripTypeScriptTypes(body.toString(), { mode: 'strip' });
