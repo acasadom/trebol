@@ -116,6 +116,17 @@ describe('validation', () => {
     assert.equal(await ev('reduce [saved/name saved/age saved/terms]'), '["Ana" 21 true]');
   });
 
+  test('a view leaves the submits of its forms alone', async () => {
+    const r = await ev(`
+      root: view [
+        f: form [field name "Name" required submit "Save" [x: 1]]
+        field note "Note"
+        go: submit "Go" [y: 1]
+      ]
+      reduce [select last f/children 'disabled go/disabled]`);
+    assert.equal(r, '[true false]');
+  });
+
   test('errors show only after a field is touched, with readable messages', async () => {
     await ev(SIGNUP);
     assert.equal(await ev(`e: get-face 'email ui-input e "nope" e/error`), 'none');

@@ -247,6 +247,18 @@ collect-faces: function [f out] [
     if f/children [foreach c f/children [collect-faces c out]]
 ]
 
+; Faces that belong to a scope: nested forms keep their own fields and submits.
+own-faces: function [scope] [
+    out: reduce [scope]
+    if scope/children [foreach c scope/children [collect-own c out]]
+    out
+]
+
+collect-own: function [f out] [
+    append out f
+    if all [f/children  f/style <> 'form] [foreach c f/children [collect-own c out]]
+]
+
 named-faces: function [scope] [
     out: copy []
     foreach f all-faces scope [if f/name [append out f]]
@@ -374,18 +386,19 @@ check-async: function [f] [
 ]
 
 ; Updates the errors of touched faces and enables submit buttons only when
-; every field of the form is valid.
+; every field of the form is valid. A view checks only the faces outside its forms.
 refresh-form: function [scope] [
     unless find [form view] scope/style [exit]
     ok: true
-    foreach f all-faces scope [
+    faces: own-faces scope
+    foreach f faces [
         if f/rules [
             problem: validate-face f
             f/error: either f/touched [problem] [none]
             if problem [ok: false]
         ]
     ]
-    foreach f all-faces scope [if f/submit [f/disabled: not ok]]
+    foreach f faces [if f/submit [f/disabled: not ok]]
 ]
 
 ; --- events --------------------------------------------------------------------
@@ -444,8 +457,9 @@ ui-click: function [
 ] [
     if f/submit [
         scope: any [f/form f/root]
-        foreach g all-faces scope [if g/rules [g/touched: true]]
-        foreach g all-faces scope [check-async g]
+        faces: own-faces scope
+        foreach g faces [if g/rules [g/touched: true]]
+        foreach g faces [check-async g]
         refresh-form scope
         if f/disabled [exit]
     ]
