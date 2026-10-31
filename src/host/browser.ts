@@ -20,6 +20,7 @@ import {
 import { startHost, startUi, runSource, report, type Host } from './index.ts';
 import { spawn, taskResult } from './scheduler.ts';
 import { themeCss, DEFAULT_THEME, type ThemeParams } from './theme.ts';
+import { iconNode } from './icons.ts';
 
 // --- reading faces -----------------------------------------------------------------
 
@@ -49,6 +50,18 @@ function children(face: ObjectCell): ObjectCell[] {
   return c.s.data.slice(c.i).filter(x => x.t === K.Object) as ObjectCell[];
 }
 
+/** The name of a face's icon (`#search` -> "search"). */
+function iconName(face: ObjectCell): string | null {
+  const v = get(face, 'icon');
+  return v.t === K.Issue ? spell((v as WordCell).sym).toLowerCase() : null;
+}
+
+function icon(name: string, label: string | null = null): SVGSVGElement | null {
+  const svg = iconNode(name, label);
+  if (svg === null) console.warn(`Trebol: unknown icon #${name}`);
+  return svg;
+}
+
 function hasRule(face: ObjectCell, rule: string): boolean {
   const rules = get(face, 'rules');
   if (rules.t !== K.Block) return false;
@@ -73,6 +86,8 @@ interface Mounted {
   empty: HTMLElement | null;
   /** The tab button of a tab face. */
   button: HTMLButtonElement | null;
+  /** The options of a radio. */
+  radios: HTMLInputElement[] | null;
 }
 
 let host: Host;
@@ -107,13 +122,15 @@ function build(face: ObjectCell): HTMLElement {
   const style = word(face, 'style') ?? 'face';
   const m: Mounted = {
     face, el: null!, input: null, label: null, error: null, kids: get(face, 'children'),
-    box: null, rows: null, empty: null, button: null,
+    box: null, rows: null, empty: null, button: null, radios: null,
   };
   let node: HTMLElement;
   if (INPUTS.has(style)) {
     node = buildInput(face, style, m);
-  } else if (style === 'check') {
-    node = buildCheck(face, m);
+  } else if (style === 'check' || style === 'toggle') {
+    node = buildCheck(face, m, style === 'toggle');
+  } else if (style === 'radio') {
+    node = buildRadio(face, m);
   } else {
     switch (style) {
       case 'view': node = el('main', 'tb-view'); break;
@@ -149,6 +166,7 @@ function build(face: ObjectCell): HTMLElement {
       case 'link': {
         const a = el('a', 'tb-link');
         a.href = str(face, 'value') ?? '#';
+        withIcon(a, face, m);
         a.addEventListener('click', ev => {
           if (get(face, 'action').t === K.Block) {
             ev.preventDefault();
@@ -162,9 +180,13 @@ function build(face: ObjectCell): HTMLElement {
         const b = el('button', 'tb-button');
         b.type = flag(face, 'submit') ? 'submit' : 'button';
         if (!flag(face, 'submit')) b.addEventListener('click', () => void fire('ui-click', face));
+        withIcon(b, face, m);
         node = b;
         break;
       }
+      case 'progress': node = buildProgress(m); break;
+      case 'image': node = el('img', 'tb-image'); break;
+      case 'icon': node = el('span', 'tb-icon-face'); break;
       case 'table': case 'list': node = buildRows(face, style, m); break;
       case 'dialog': node = buildDialog(face, m); break;
       case 'tabs': node = buildTabs(face, m); break;
@@ -184,6 +206,15 @@ function build(face: ObjectCell): HTMLElement {
   face.ctx.watch = dirty;
   sync(m);
   return node;
+}
+
+/** Puts the face's icon before its caption, which then goes in `m.label`. */
+function withIcon(node: HTMLElement, face: ObjectCell, m: Mounted): void {
+  const name = iconName(face);
+  const svg = name !== null ? icon(name) : null;
+  if (svg === null) return;
+  m.label = el('span');
+  node.append(svg, m.label);
 }
 
 /** Children of a container; consecutive buttons in a form share an action row. */
@@ -256,7 +287,15 @@ function buildInput(face: ObjectCell, style: string, m: Mounted): HTMLElement {
     void fire('ui-input', face, input.value === '' ? NONE : string(input.value));
   });
   input.addEventListener('blur', () => void fire('ui-blur', face));
-  control.append(input, error);
+  const iconWord = style === 'area' || style === 'choice' ? null : iconName(face);
+  const svg = iconWord !== null ? icon(iconWord) : null;
+  if (svg !== null) {
+    const box = el('div', 'tb-input-icon');
+    box.append(svg, input);
+    control.append(box, error);
+  } else {
+    control.append(input, error);
+  }
   wrap.append(label, control);
   m.input = input;
   m.label = label;
@@ -264,11 +303,12 @@ function buildInput(face: ObjectCell, style: string, m: Mounted): HTMLElement {
   return wrap;
 }
 
-function buildCheck(face: ObjectCell, m: Mounted): HTMLElement {
+function buildCheck(face: ObjectCell, m: Mounted, toggle: boolean): HTMLElement {
   const row = el('div', 'tb-check-row tb-control');
-  const label = el('label', 'tb-check');
+  const label = el('label', toggle ? 'tb-check tb-switch' : 'tb-check');
   const box = el('input');
   box.type = 'checkbox';
+  if (toggle) box.setAttribute('role', 'switch');
   const caption = el('span');
   const error = el('div', 'tb-error');
   error.id = `tb-${nextId++}-error`;
@@ -283,6 +323,108 @@ function buildCheck(face: ObjectCell, m: Mounted): HTMLElement {
   m.label = caption;
   m.error = error;
   return row;
+}
+
+function buildRadio(face: ObjectCell, m: Mounted): HTMLElement {
+  const id = `tb-${nextId++}`;
+  const wrap = el('div', 'tb-field');
+  const label = el('span', 'tb-label');
+  label.id = id;
+  const control = el('div', 'tb-control');
+  const group = el('div', 'tb-radios');
+  group.setAttribute('role', 'radiogroup');
+  group.setAttribute('aria-labelledby', id);
+  const error = el('div', 'tb-error');
+  error.id = `${id}-error`;
+  error.setAttribute('aria-live', 'polite');
+  group.setAttribute('aria-describedby', error.id);
+  const opts = get(face, 'options');
+  m.radios = [];
+  for (const o of opts.t === K.Block ? opts.s.data.slice(opts.i) : []) {
+    const option = el('label', 'tb-check');
+    const r = el('input');
+    r.type = 'radio';
+    r.name = id;
+    r.value = form(o);
+    r.addEventListener('change', () => {
+      if (r.checked) void fire('ui-input', face, string(r.value)).then(() => fire('ui-blur', face));
+    });
+    const caption = el('span');
+    caption.textContent = r.value;
+    option.append(r, caption);
+    group.append(option);
+    m.radios.push(r);
+  }
+  control.append(group, error);
+  wrap.append(label, control);
+  m.label = label;
+  m.error = error;
+  return wrap;
+}
+
+function buildProgress(m: Mounted): HTMLElement {
+  const wrap = el('div', 'tb-progress-wrap');
+  const label = el('span', 'tb-progress-label');
+  label.id = `tb-${nextId++}`;
+  const track = el('div', 'tb-progress');
+  track.setAttribute('role', 'progressbar');
+  track.setAttribute('aria-valuemin', '0');
+  track.setAttribute('aria-valuemax', '100');
+  track.append(el('div', 'tb-progress-bar'));
+  wrap.append(label, track);
+  m.label = label;
+  m.box = track;
+  return wrap;
+}
+
+/** A progress value as a fraction, or null while it is unknown. */
+function fraction(v: Cell): number | null {
+  const n = v.t === K.Percent || v.t === K.Decimal ? v.v : v.t === K.Integer ? Number(v.v) : null;
+  return n === null || Number.isNaN(n) ? null : Math.min(1, Math.max(0, n));
+}
+
+function syncProgress(m: Mounted): void {
+  const t = str(m.face, 'text');
+  const label = m.label!;
+  label.textContent = t ?? '';
+  label.hidden = t === null;
+  const track = m.box!;
+  if (t !== null) track.setAttribute('aria-labelledby', label.id);
+  else track.removeAttribute('aria-labelledby');
+  const n = fraction(get(m.face, 'value'));
+  track.classList.toggle('tb-indeterminate', n === null);
+  const bar = track.firstChild as HTMLElement;
+  if (n === null) {
+    track.removeAttribute('aria-valuenow');
+    bar.style.removeProperty('width');
+  } else {
+    track.setAttribute('aria-valuenow', String(Math.round(n * 100)));
+    bar.style.width = `${n * 100}%`;
+  }
+}
+
+function syncIcon(m: Mounted): void {
+  const name = iconName(m.face) ?? '';
+  const label = str(m.face, 'text');
+  const key = `${name} ${label ?? ''}`;
+  if (m.el.dataset['icon'] === key) return;
+  m.el.dataset['icon'] = key;
+  const svg = name !== '' ? icon(name, label) : null;
+  m.el.replaceChildren(...(svg !== null ? [svg] : []));
+}
+
+function syncRadio(m: Mounted, err: string | null): void {
+  const f = m.face;
+  m.label!.textContent = str(f, 'text') ?? '';
+  m.label!.classList.toggle('tb-required', hasRule(f, 'required'));
+  const v = get(f, 'value');
+  const want = v.t === K.None ? null : form(v);
+  for (const r of m.radios!) {
+    r.checked = r.value === want;
+    r.disabled = flag(f, 'disabled');
+  }
+  m.radios![0]?.parentElement!.parentElement!.setAttribute('aria-invalid', err !== null ? 'true' : 'false');
+  m.error!.textContent = err ?? '';
 }
 
 // --- tables and lists ---------------------------------------------------------------
@@ -599,13 +741,14 @@ function sync(m: Mounted): void {
   if (flag(f, 'fill')) cls.push('tb-fill');
   if (role !== null && !INPUTS.has(style)) cls.push(`tb-${role}`);
   const size = word(f, 'size');
-  if (size === 'small') cls.push('tb-small');
+  if (size !== null) cls.push(`tb-${size}`);
   const align = word(f, 'align');
   if (align !== null && style === 'row') cls.push(`tb-${align}`);
   if (err !== null) cls.push('tb-invalid');
   if (flag(f, 'pending')) cls.push('tb-pending');
   setExtra(m.el, cls);
 
+  if (style === 'radio') return syncRadio(m, err);
   if (m.input !== null) {
     if (m.label !== null) {
       m.label.textContent = t ?? '';
@@ -627,9 +770,19 @@ function sync(m: Mounted): void {
     return;
   }
   switch (style) {
-    case 'title': case 'heading': case 'text': case 'button': case 'link':
+    case 'title': case 'heading': case 'text':
       m.el.textContent = t ?? '';
       break;
+    case 'button': case 'link': (m.label ?? m.el).textContent = t ?? ''; break;
+    case 'progress': syncProgress(m); return;
+    case 'icon': syncIcon(m); return;
+    case 'image': {
+      const img = m.el as HTMLImageElement;
+      const src = str(f, 'value') ?? '';
+      if (img.getAttribute('src') !== src) img.src = src;
+      img.alt = t ?? '';
+      return;
+    }
     case 'table': case 'list': syncRows(m); return;
     case 'dialog': syncDialog(m); break;
     case 'tabs': syncTabs(m); return;

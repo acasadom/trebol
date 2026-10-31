@@ -1,0 +1,40 @@
+Trebol [title: "Gallery"]
+
+; Every component of the UI dialect on one page.
+
+view [
+    title "Gallery"
+    text muted "Every component of the UI dialect, with no HTML or CSS."
+    panel "Inputs" [
+        form [
+            field #search "Search" "Name or email"
+            field name "Name" required
+            choice kind "Kind" ["Person" "Company"]
+            radio size "Size" ["Small" "Medium" "Large"] required
+            toggle alerts "Email alerts"
+            check terms "I accept the terms" required
+            submit "Save" [toast/role "Saved" 'success]
+            button "Reset" [set-values face/form none]
+        ]
+    ]
+    panel "Progress" [
+        upload: progress "Uploading photos" 40%
+        progress "Waiting for the server"
+        row [
+            button #minus "Less" [upload/value: max 0% upload/value - 10%]
+            button #plus "More" [upload/value: min 100% upload/value + 10%]
+        ]
+    ]
+    panel "Icons" [
+        row [
+            icon #home icon #user icon #mail primary icon #star accent
+            icon #heart danger icon #check success icon #warning warning icon #info muted
+        ]
+        row [
+            button primary #plus "New client"
+            button #edit "Edit"
+            button danger #trash "Delete"
+            link #external "Trebol on the web" https://example.com
+        ]
+    ]
+]

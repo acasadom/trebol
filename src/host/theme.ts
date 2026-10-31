@@ -272,6 +272,34 @@ select.tb-input { appearance: none; background-image: linear-gradient(45deg, tra
 .tb-check { display: inline-flex; align-items: center; gap: var(--tb-space-3); min-height: var(--tb-control); cursor: pointer; }
 .tb-check input { width: 18px; height: 18px; margin: 0; accent-color: var(--tb-primary); cursor: pointer; }
 .tb-check input:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-focus-ring); border-radius: 4px; }
+.tb-check input[type="radio"]:focus-visible { border-radius: 50%; }
+.tb-radios { display: flex; flex-wrap: wrap; column-gap: var(--tb-space-5); }
+.tb-switch input {
+  appearance: none;
+  width: 36px;
+  height: 20px;
+  flex: none;
+  border-radius: 10px;
+  background: var(--tb-border-strong);
+  position: relative;
+  transition: background var(--tb-fast) var(--tb-ease);
+}
+.tb-switch input::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--tb-surface);
+  box-shadow: var(--tb-shadow-1);
+  transition: transform var(--tb-fast) var(--tb-ease);
+}
+.tb-switch input:checked { background: var(--tb-primary); }
+.tb-switch input:checked::before { transform: translateX(16px); }
+.tb-switch input:focus-visible { border-radius: 10px; }
+.tb-check input:disabled, .tb-check input:disabled + span { opacity: 0.45; cursor: not-allowed; }
 
 .tb-actions { display: flex; flex-wrap: wrap; gap: var(--tb-space-3); padding-top: var(--tb-space-2); }
 .tb-button {
@@ -298,9 +326,43 @@ select.tb-input { appearance: none; background-image: linear-gradient(45deg, tra
 .tb-button.tb-accent { background: var(--tb-accent); border-color: var(--tb-accent); color: var(--tb-on-accent); }
 .tb-button.tb-danger { background: var(--tb-danger); border-color: var(--tb-danger); color: var(--tb-on-danger); }
 .tb-button:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
-.tb-link { color: var(--tb-primary); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+
+.tb-icon { width: 1.25em; height: 1.25em; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.tb-button .tb-icon { width: 18px; height: 18px; }
+.tb-icon-face { display: inline-flex; align-self: flex-start; color: var(--tb-text); }
+.tb-icon-face .tb-icon { width: 24px; height: 24px; }
+.tb-icon-face.tb-small .tb-icon { width: 18px; height: 18px; }
+.tb-icon-face.tb-large .tb-icon { width: 32px; height: 32px; }
+.tb-icon-face.tb-muted { color: var(--tb-muted); }
+.tb-icon-face.tb-primary { color: var(--tb-primary); }
+.tb-icon-face.tb-accent { color: var(--tb-accent); }
+.tb-icon-face.tb-danger { color: var(--tb-danger); }
+.tb-icon-face.tb-success { color: var(--tb-success); }
+.tb-icon-face.tb-warning { color: var(--tb-warning); }
+.tb-input-icon { position: relative; display: flex; }
+.tb-input-icon > .tb-icon { position: absolute; left: var(--tb-space-3); top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--tb-muted); pointer-events: none; }
+.tb-input-icon > .tb-input { padding-left: calc(var(--tb-space-3) + 26px); }
+.tb-link { display: inline-flex; align-items: center; gap: var(--tb-space-1); color: var(--tb-primary); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 
 .tb-hidden { display: none !important; }
+
+.tb-image { display: block; max-width: 100%; height: auto; border-radius: var(--tb-radius); }
+.tb-image.tb-small { width: 96px; }
+.tb-image.tb-medium { width: 240px; }
+.tb-image.tb-large { width: 480px; }
+.tb-image.tb-fill { width: 100%; }
+
+.tb-progress-wrap { display: flex; flex-direction: column; gap: var(--tb-space-2); min-width: 0; }
+.tb-progress-label { font-size: 14px; font-weight: 550; }
+.tb-progress-label[hidden] { display: none; }
+.tb-progress { height: 8px; border-radius: 4px; background: var(--tb-border); overflow: hidden; }
+.tb-progress-bar { height: 100%; width: 0; border-radius: inherit; background: var(--tb-primary); transition: width 300ms var(--tb-ease); }
+.tb-success .tb-progress-bar { background: var(--tb-success); }
+.tb-warning .tb-progress-bar { background: var(--tb-warning); }
+.tb-danger .tb-progress-bar { background: var(--tb-danger); }
+.tb-accent .tb-progress-bar { background: var(--tb-accent); }
+.tb-indeterminate .tb-progress-bar { width: 35%; animation: tb-indeterminate 1.4s var(--tb-ease) infinite; }
+@keyframes tb-indeterminate { from { transform: translateX(-100%); } to { transform: translateX(290%); } }
 
 /* tables: rows become cards on narrow screens */
 .tb-table-wrap, .tb-list-wrap { min-width: 0; }
@@ -502,5 +564,8 @@ select.tb-input { appearance: none; background-image: linear-gradient(45deg, tra
   .tb-dialog { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; border-radius: 0; }
 }
 @media (pointer: coarse) { :root { --tb-control: 44px; } }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+  .tb-indeterminate .tb-progress-bar { width: 100%; opacity: 0.35; }
+}
 `;

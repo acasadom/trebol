@@ -16,7 +16,7 @@ face: make object! [
     style: 'face        ; what the host renders
     name: none          ; field name: the key in `values`, and a word in handlers
     text: none          ; label, caption or content
-    value: none
+    value: none         ; a field's value; also a progress (0-1 or percent) or an image (file or url)
     hint: none          ; placeholder
     role: none          ; primary accent danger success warning muted
     size: none          ; small medium large
@@ -33,7 +33,7 @@ face: make object! [
     async-error: none   ; result of the last asynchronous check
     action: none        ; the block after the face: click, change
     events: none        ; [on-change [...] on-select [...]]
-    options: none       ; choices of a choice
+    options: none       ; choices of a choice or radio
     children: none
     columns: none       ; table and list: [field "Label" ...]
     data: none          ; table and list: a block of map! or object! rows
@@ -48,13 +48,14 @@ face: make object! [
 styles: make map! []
 
 container-styles: [view column row form panel grid dialog]
-input-styles: [field password number area check choice]
+input-styles: [field password number area check toggle choice radio]
 data-styles: [table list]
 
 foreach [name base] [
     view column  column column  row row  form form  panel panel  grid grid
     title title  heading heading  text text  divider divider
     field field  password password  number number  area area  check check  choice choice
+    toggle toggle  radio radio  progress progress  image image  icon icon
     button button  link link  table table  list list  tabs tabs  tab tab
 ] [
     poke styles name make face [style: base]
@@ -107,7 +108,7 @@ event-word?: func [w [word!]] [
 layout: function [
     "Turns a block of the UI dialect into a block of faces."
     spec [block!]
-    /local label style-word f proto n s b w a i ev
+    /local label style-word f proto n s b w a i v ev
 ] [
     out: copy []
     modifier: [
@@ -121,11 +122,12 @@ layout: function [
                 find container-styles f/style [f/children: layout b]
                 find data-styles f/style [f/columns: columns-of b]
                 f/style = 'tabs [f/children: tabs-of b]
-                f/style = 'choice [f/options: reduce b]
+                find [choice radio] f/style [f/options: reduce b]
                 true [f/action: b]
             ]
         )
         | set i issue! (f/icon: i)
+        | set v [file! | url! | percent!] (f/value: v)
         | set n integer! (f/cols: n)
         | 'min set n number! (add-rule f reduce ['min n])
         | 'max set n number! (add-rule f reduce ['max n])
@@ -280,7 +282,7 @@ set-values: function [
 ] [
     foreach f named-faces scope [
         v: either data [select data f/name] [none]
-        f/value: either f/style = 'check [true = v] [v]
+        f/value: either logic-face? f [true = v] [v]
         f/touched: false
         f/async-error: none
     ]
@@ -316,6 +318,9 @@ host-char: charset [#"a" - #"z" #"A" - #"Z" #"0" - #"9" "-"]
 email-rule: [some word-char "@" some host-char some ["." some host-char] end]
 url-rule: [["http://" | "https://"] some host-char any ["." some host-char] opt [":" some digit] opt ["/" to end] end]
 
+; check and toggle hold true or false
+logic-face?: func [f] [to logic! find [check toggle] f/style]
+
 blank?: func [v] [
     any [none? :v  all [string? :v  empty? trim copy v]]
 ]
@@ -333,7 +338,7 @@ validate-face: function [
     if blank? :v [
         return either find/only rules [required] [message 'required []] [none]
     ]
-    if all [f/style = 'check  find/only rules [required]  not v] [return message 'required []]
+    if all [logic-face? f  find/only rules [required]  not v] [return message 'required []]
     foreach r rules [
         problem: switch first r [
             email [unless parse v email-rule [message 'email []]]
@@ -432,6 +437,7 @@ ui-input: function [
     f/value: switch/default f/style [
         number [any [attempt [to decimal! new]  none]]
         check [to logic! new]
+        toggle [to logic! new]
     ] [new]
     if f/style = 'number [
         if all [decimal? f/value  f/value = to integer! f/value] [f/value: to integer! f/value]

@@ -241,6 +241,36 @@ describe('components', () => {
     assert.equal(r, '["This field is required" ["Ada" false none true false] none]');
   });
 
+  test('toggle, radio, progress, image and icon', async () => {
+    const r = await ev(`
+      root: view [form [
+        toggle dark "Dark mode" required
+        radio size "Size" ["S" "M" "L"] required
+        progress "Upload" 40%
+        image %logo.png "Logo" small
+        icon #search primary
+        button #plus "New"
+      ]]
+      f: first root/children
+      t: first f/children r: second f/children
+      a: reduce [validate-face t validate-face r]
+      ui-input t true ui-input r "M"
+      reduce [a t/value r/value r/options form-values f
+        collect [foreach g skip f/children 2 [keep g/style keep g/value keep g/icon]]]`);
+    assert.equal(r, '[["This field is required" "This field is required"] true "M" ["S" "M" "L"] '
+      + '#(dark: true size: "M") [progress 40% none image %logo.png none icon none #search button none #plus]]');
+  });
+
+  test('set-values sets a toggle to true or false', async () => {
+    const r = await ev(`
+      root: view [f: form [toggle on "On"]]
+      set-values f make map! [on: 1]
+      a: select first f/children 'value
+      set-values f none
+      reduce [a select first f/children 'value]`);
+    assert.equal(r, '[false false]');
+  });
+
   test('tables need words for columns; tabs need label and block pairs', async () => {
     await assert.rejects(runSource(host, 'view [table t ["Name"]]'));
     await assert.rejects(runSource(host, 'view [tabs ["A"]]'));
