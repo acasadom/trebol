@@ -252,34 +252,275 @@ function listen(m: Mounted, style: string): void {
     });
   }
   if (str(f, 'shortcut') !== null) shortcuts.add(m);
-  if (get(f, 'menu').t === K.Block) {
-    // a button or link without an action opens its menu; anything else has it as its context menu
-    if ((style === 'button' || style === 'link') && get(f, 'action').t !== K.Block) {
-      node.setAttribute('aria-haspopup', 'menu');
-      node.setAttribute('aria-expanded', 'false');
-      node.addEventListener('click', ev => {
-        ev.preventDefault();
-        const r = node.getBoundingClientRect();
-        openMenu(f, get(f, 'menu') as BlockCell, r.left, r.bottom + 4, NONE, node);
-      });
-    } else {
-      node.addEventListener('contextmenu', ev => {
-        ev.preventDefault();
-        ev.stopPropagation();
-        const target = ev.target as Element;
-        const item = style === 'table' || style === 'list' ? target.closest('tr, li') : null;
-        const row = item !== null ? rowOf.get(item) ?? NONE : NONE;
-        // from the keyboard (Menu key, Shift+F10) there is no pointer: open by the focused element
-        let { clientX: x, clientY: y } = ev;
-        if (x === 0 && y === 0) {
-          const r = (item ?? (document.activeElement && node.contains(document.activeElement) ? document.activeElement : node)).getBoundingClientRect();
-          x = r.left + 8;
-          y = r.top + Math.min(r.height, 40);
+  if (flag(f, 'drop')) dropZones.add(m);
+  const menu = get(f, 'menu');
+  // a button or link without an action opens its menu; anything else has it as its context menu
+  if (menu.t === K.Block && (style === 'button' || style === 'link') && get(f, 'action').t !== K.Block) {
+    node.setAttribute('aria-haspopup', 'menu');
+    node.setAttribute('aria-expanded', 'false');
+    node.addEventListener('click', ev => {
+      ev.preventDefault();
+      const r = node.getBoundingClientRect();
+      openMenu(trebolEntries(f, menu as BlockCell, NONE), r.left, r.bottom + 4, node);
+    });
+  } else if (menu.t === K.Block || flag(f, 'drag')) {
+    node.addEventListener('contextmenu', ev => {
+      const target = ev.target as Element;
+      const item = style === 'table' || style === 'list' ? target.closest('tr, li') : null;
+      if (item === null && (style === 'table' || style === 'list') && menu.t !== K.Block) return;
+      const row = item !== null ? rowOf.get(item) ?? NONE : NONE;
+      const entries = menu.t === K.Block ? trebolEntries(f, menu as BlockCell, row) : [];
+      // faces you can drag can also be moved to a drop zone from the menu, without a mouse
+      if (flag(f, 'drag')) {
+        const zones = moveTargets(f, item !== null ? row : get(f, 'value'));
+        if (zones.length > 0) {
+          if (entries.length > 0) entries.push({ text: '', divider: true });
+          entries.push({ text: 'Move to', sub: zones });
         }
-        openMenu(f, get(f, 'menu') as BlockCell, x, y, row, (item as HTMLElement | null) ?? (target as HTMLElement));
-      });
+      }
+      if (entries.length === 0) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      // from the keyboard (Menu key, Shift+F10) there is no pointer: open by the focused element
+      let { clientX: x, clientY: y } = ev;
+      if (x === 0 && y === 0) {
+        const r = (item ?? (document.activeElement && node.contains(document.activeElement) ? document.activeElement : node)).getBoundingClientRect();
+        x = r.left + 8;
+        y = r.top + Math.min(r.height, 40);
+      }
+      openMenu(entries, x, y, (item as HTMLElement | null) ?? (target as HTMLElement));
+    });
+  }
+}
+
+// --- drag and drop -----------------------------------------------------------------
+//
+// Pointer events rather than HTML drag and drop, so it also works with touch
+// (after a long press) and shows the theme's own indicator.
+
+/** Mounted faces that accept drops. */
+const dropZones = new Set<Mounted>();
+
+/** What is being dragged: a face, or a row of a table or list. */
+interface Source {
+  face: ObjectCell;
+  el: HTMLElement;
+  payload: Cell;
+  /** The container it can be reordered in, and its position there (0-based). */
+  within: Mounted | null;
+  index: number;
+}
+
+/** Where a drag would land. */
+interface Target { m: Mounted; index: number; reorder: boolean }
+
+const isData = (m: Mounted): boolean => m.rows !== null;
+
+/** The elements a drop target places things between: rows, or child faces. */
+function slots(m: Mounted): HTMLElement[] {
+  if (isData(m)) return Array.from(m.box!.children) as HTMLElement[];
+  return children(m.face).map(c => byCtx.get(c.ctx)?.el).filter((e): e is HTMLElement => e !== undefined && e.isConnected);
+}
+
+function mountedAbove(e: Element | null): Mounted | undefined {
+  for (let x = e; x !== null; x = x.parentElement) {
+    const m = byNode.get(x);
+    if (m !== undefined && m.el === x) return m;
+  }
+  return undefined;
+}
+
+/** The drag source at an element: a draggable face, a row, or a child of a reorderable container. */
+function sourceAt(start: Element): Source | null {
+  if (start.closest('input, textarea, select, [contenteditable], .tb-split-handle, .tb-menu') !== null) return null;
+  for (let e: Element | null = start; e !== null; e = e.parentElement) {
+    const row = rowOf.get(e);
+    if (row !== undefined) {
+      const m = mountedAbove(e)!;
+      if (!flag(m.face, 'drag') && !flag(m.face, 'reorder')) return null;
+      const index = Array.prototype.indexOf.call(m.box!.children, e);
+      return { face: m.face, el: e as HTMLElement, payload: row, within: flag(m.face, 'reorder') ? m : null, index };
+    }
+    const m = byNode.get(e);
+    if (m === undefined || m.el !== e) continue;
+    const parent = mountedAbove(e.parentElement);
+    const reorder = parent !== undefined && !isData(parent) && flag(parent.face, 'reorder');
+    if (flag(m.face, 'drag') && !isData(m) || reorder) {
+      const index = reorder ? slots(parent!).indexOf(e as HTMLElement) : -1;
+      return { face: m.face, el: e as HTMLElement, payload: get(m.face, 'value'), within: reorder ? parent! : null, index };
     }
   }
+  return null;
+}
+
+/** The drop target under a point, and the insertion index there. */
+function targetAt(src: Source, x: number, y: number): Target | null {
+  for (let m = mountedAbove(document.elementFromPoint(x, y)); m !== undefined; m = mountedAbove(m.el.parentElement)) {
+    const reorder = m === src.within;
+    if ((reorder || flag(m.face, 'drop')) && m.el !== src.el && !src.el.contains(m.el)) {
+      return { m, index: insertionAt(m, x, y), reorder };
+    }
+  }
+  return null;
+}
+
+const horizontal = (m: Mounted): boolean => word(m.face, 'style') === 'row';
+
+function insertionAt(m: Mounted, x: number, y: number): number {
+  const across = horizontal(m);
+  let i = 0;
+  for (const e of slots(m)) {
+    const r = e.getBoundingClientRect();
+    if ((across ? x : y) > (across ? r.left + r.width / 2 : r.top + r.height / 2)) i++;
+  }
+  return i;
+}
+
+let line: HTMLElement | null = null;
+
+/** Shows where a drop would land: a line between slots, and the target outlined. */
+function indicate(t: Target | null): void {
+  document.querySelectorAll('.tb-drop-over').forEach(e => e.classList.remove('tb-drop-over'));
+  if (t === null) { line?.remove(); line = null; return; }
+  t.m.el.classList.add('tb-drop-over');
+  if (line === null) {
+    line = el('div', 'tb-drop-line');
+    line.setAttribute('aria-hidden', 'true');
+    document.body.append(line);
+  }
+  const across = horizontal(t.m);
+  const all = slots(t.m);
+  const box = (t.m.box ?? t.m.el).getBoundingClientRect();
+  const before = all[t.index]?.getBoundingClientRect();
+  const after = all[t.index - 1]?.getBoundingClientRect();
+  line.classList.toggle('tb-across', across);
+  if (across) {
+    const at = before && after ? (after.right + before.left) / 2 : before ? before.left - 3 : after ? after.right + 3 : box.left + 8;
+    const r = before ?? after ?? box;
+    Object.assign(line.style, { left: `${at - 1}px`, top: `${r.top}px`, width: '', height: `${r.height}px` });
+  } else {
+    const at = before && after ? (after.bottom + before.top) / 2 : before ? before.top - 3 : after ? after.bottom + 3 : box.top + 8;
+    const r = before ?? after ?? box;
+    Object.assign(line.style, { left: `${r.left}px`, top: `${at - 1}px`, width: `${r.width}px`, height: '' });
+  }
+}
+
+/** Ends a drag on a target: a move inside its container, or a drop. */
+function land(src: Source, t: Target): void {
+  if (t.reorder) {
+    const to = t.index > src.index ? t.index - 1 : t.index;
+    if (to !== src.index) void reorder(t.m, src.index, to);
+  } else {
+    void fire('ui-drop', t.m.face, src.payload, src.face, int(t.index + 1));
+  }
+}
+
+const int = (n: number): Cell => ({ t: K.Integer, v: n });
+
+/** Moves a child or row and keeps the focus on it once the page is repainted. */
+async function reorder(m: Mounted, from: number, to: number): Promise<void> {
+  const had = document.activeElement !== null && document.activeElement !== document.body && m.el.contains(document.activeElement);
+  await fire('ui-reorder', m.face, int(from + 1), int(to + 1));
+  syncDirty();
+  if (!had) return;
+  const e = slots(m)[to];
+  const focusable = e?.matches('[tabindex], button, a, input, textarea, select') ? e : e?.querySelector<HTMLElement>('[tabindex], button, a, input, textarea, select');
+  (focusable ?? null)?.focus();
+}
+
+/** "Move to" entries: the visible drop zones other than the face itself. */
+function moveTargets(face: ObjectCell, payload: Cell): MenuEntry[] {
+  const out: MenuEntry[] = [];
+  for (const z of dropZones) {
+    if (!z.el.isConnected) { dropZones.delete(z); continue; }
+    if (z.face.ctx === face.ctx || z.el.getClientRects().length === 0) continue;
+    out.push({
+      text: str(z.face, 'text') ?? word(z.face, 'style') ?? '',
+      run: () => void fire('ui-drop', z.face, payload, face, int(slots(z).length + 1)),
+    });
+  }
+  return out;
+}
+
+interface Dragging { src: Source; x: number; y: number; id: number; on: boolean; ghost: HTMLElement | null; target: Target | null; timer: number }
+let dragging: Dragging | null = null;
+
+function startDrag(d: Dragging): void {
+  d.on = true;
+  d.ghost = el('div', 'tb-drag-ghost');
+  d.ghost.textContent = (d.src.el.innerText || d.src.el.textContent || '').split('\n').find(t => t.trim() !== '')?.trim() ?? '';
+  d.ghost.setAttribute('aria-hidden', 'true');
+  document.body.append(d.ghost);
+  d.src.el.classList.add('tb-dragging');
+  getSelection()?.removeAllRanges();
+  document.documentElement.classList.add('tb-drag-active');
+  moveDrag(d, d.x, d.y);
+}
+
+function moveDrag(d: Dragging, x: number, y: number): void {
+  d.ghost!.style.transform = `translate(${x + 12}px, ${y + 12}px)`;
+  d.target = targetAt(d.src, x, y);
+  indicate(d.target);
+}
+
+function endDrag(drop: boolean): void {
+  const d = dragging;
+  if (d === null) return;
+  dragging = null;
+  clearTimeout(d.timer);
+  if (!d.on) return;
+  d.ghost?.remove();
+  d.src.el.classList.remove('tb-dragging');
+  document.documentElement.classList.remove('tb-drag-active');
+  indicate(null);
+  if (drop && d.target !== null) land(d.src, d.target);
+  // the click that ends a drag is not a click
+  addEventListener('click', swallowClick, true);
+  setTimeout(() => removeEventListener('click', swallowClick, true), 0);
+}
+
+function swallowClick(ev: Event): void {
+  ev.stopPropagation();
+  ev.preventDefault();
+}
+
+function onPointerDown(ev: PointerEvent): void {
+  if (ev.button !== 0 || dragging !== null) return;
+  const src = sourceAt(ev.target as Element);
+  if (src === null) return;
+  const d: Dragging = { src, x: ev.clientX, y: ev.clientY, id: ev.pointerId, on: false, ghost: null, target: null, timer: 0 };
+  dragging = d;
+  // on touch a long press starts the drag, so a swipe still scrolls
+  if (ev.pointerType === 'touch') d.timer = setTimeout(() => { if (dragging === d) startDrag(d); }, 400) as unknown as number;
+}
+
+function onPointerMove(ev: PointerEvent): void {
+  const d = dragging;
+  if (d === null || ev.pointerId !== d.id) return;
+  if (!d.on) {
+    const far = Math.hypot(ev.clientX - d.x, ev.clientY - d.y) > 5;
+    if (!far) return;
+    if (ev.pointerType === 'touch') return endDrag(false);
+    d.x = ev.clientX;
+    d.y = ev.clientY;
+    startDrag(d);
+  }
+  ev.preventDefault();
+  moveDrag(d, ev.clientX, ev.clientY);
+}
+
+/** Alt+Up and Alt+Down move the focused row or child inside a reorderable container. */
+function onReorderKey(ev: KeyboardEvent): void {
+  if (!ev.altKey || ev.ctrlKey || ev.metaKey || (ev.key !== 'ArrowUp' && ev.key !== 'ArrowDown')) return;
+  const at = document.activeElement;
+  if (at === null) return;
+  const src = sourceAt(at);
+  if (src === null || src.within === null) return;
+  const to = src.index + (ev.key === 'ArrowUp' ? -1 : 1);
+  if (to < 0 || to >= slots(src.within).length) return;
+  ev.preventDefault();
+  seenKeys.add(ev);
+  void reorder(src.within, src.index, to);
 }
 
 // --- menus ---------------------------------------------------------------------------
@@ -313,8 +554,30 @@ function menuItems(mn: HTMLElement): HTMLElement[] {
   return Array.from(mn.querySelectorAll<HTMLElement>(':scope > [role="menuitem"]'));
 }
 
-/** Opens a menu of item objects at x, y; level > 0 is a submenu. */
-function openMenu(face: ObjectCell, items: BlockCell, x: number, y: number, row: Cell, opener: HTMLElement, level = 0): void {
+interface MenuEntry {
+  text: string;
+  icon?: string | null;
+  divider?: boolean;
+  sub?: MenuEntry[];
+  run?: () => void;
+}
+
+/** A menu block of the dialect as menu entries; choosing one runs ui-menu. */
+function trebolEntries(face: ObjectCell, items: BlockCell, row: Cell): MenuEntry[] {
+  return (items.s.data.slice(items.i).filter(x => x.t === K.Object) as ObjectCell[]).map(item => {
+    const sub = get(item, 'items');
+    return {
+      text: str(item, 'text') ?? '',
+      icon: iconName(item),
+      divider: flag(item, 'divider'),
+      sub: sub.t === K.Block ? trebolEntries(face, sub as BlockCell, row) : undefined,
+      run: () => void fire('ui-menu', face, item, row),
+    };
+  });
+}
+
+/** Opens a menu at x, y; level > 0 is a submenu. */
+function openMenu(entries: MenuEntry[], x: number, y: number, opener: HTMLElement, level = 0): void {
   closeMenus(level, false);
   if (level === 0) {
     menuOpener = opener;
@@ -326,10 +589,8 @@ function openMenu(face: ObjectCell, items: BlockCell, x: number, y: number, row:
   mn.setAttribute('popover', 'manual');
   const label = opener.getAttribute('aria-label') ?? opener.textContent;
   if (label) mn.setAttribute('aria-label', label.trim());
-  for (const it of items.s.data.slice(items.i)) {
-    if (it.t !== K.Object) continue;
-    const item = it as ObjectCell;
-    if (flag(item, 'divider')) {
+  for (const item of entries) {
+    if (item.divider) {
       const d = el('div', 'tb-menu-divider');
       d.setAttribute('role', 'separator');
       mn.append(d);
@@ -339,20 +600,19 @@ function openMenu(face: ObjectCell, items: BlockCell, x: number, y: number, row:
     b.type = 'button';
     b.tabIndex = -1;
     b.setAttribute('role', 'menuitem');
-    const name = iconName(item);
-    const svg = name !== null ? icon(name) : null;
+    const svg = item.icon ? icon(item.icon) : null;
     const text = el('span');
-    text.textContent = str(item, 'text') ?? '';
+    text.textContent = item.text;
     b.append(svg ?? el('span', 'tb-menu-gap'), text);
-    const sub = get(item, 'items');
-    if (sub.t === K.Block) {
+    const sub = item.sub;
+    if (sub !== undefined) {
       b.setAttribute('aria-haspopup', 'menu');
       b.setAttribute('aria-expanded', 'false');
       const chevron = icon('chevron-right');
       if (chevron !== null) b.append(chevron);
       const openSub = (): void => {
         const r = b.getBoundingClientRect();
-        openMenu(face, sub as BlockCell, r.right - 4, r.top - 5, row, b, level + 1);
+        openMenu(sub, r.right - 4, r.top - 5, b, level + 1);
         b.setAttribute('aria-expanded', 'true');
       };
       b.addEventListener('click', openSub);
@@ -360,7 +620,7 @@ function openMenu(face: ObjectCell, items: BlockCell, x: number, y: number, row:
     } else {
       b.addEventListener('click', () => {
         closeMenus();
-        void fire('ui-menu', face, item, row);
+        item.run?.();
       });
     }
     b.addEventListener('pointerenter', () => b.focus());
@@ -1090,6 +1350,7 @@ function sync(m: Mounted): void {
   if (flag(f, 'fill')) cls.push('tb-fill');
   if (flag(f, 'narrow-only')) cls.push('tb-narrow-only');
   if (flag(f, 'wide-only')) cls.push('tb-wide-only');
+  if (flag(f, 'drop')) cls.push('tb-drop-zone');
   if (role !== null && !INPUTS.has(style)) cls.push(`tb-${role}`);
   const size = word(f, 'size');
   if (size !== null) cls.push(`tb-${size}`);
@@ -1267,6 +1528,14 @@ async function boot(): Promise<void> {
   host = startHost();
   host.sch.afterPump = syncDirty;
   document.addEventListener('keydown', onKeyDown, true);
+  document.addEventListener('keydown', onReorderKey);
+  document.addEventListener('pointerdown', onPointerDown);
+  document.addEventListener('pointermove', onPointerMove, { passive: false });
+  document.addEventListener('pointerup', () => endDrag(true));
+  document.addEventListener('pointercancel', () => endDrag(false));
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && dragging?.on) { ev.preventDefault(); seenKeys.add(ev); endDrag(false); } }, true);
+  // a touch drag must not scroll the page
+  document.addEventListener('touchmove', ev => { if (dragging?.on) ev.preventDefault(); }, { passive: false });
   document.addEventListener('keydown', onViewKey);
   await startUi(host);
   for (const s of Array.from(document.querySelectorAll<HTMLScriptElement>('script[type="text/trebol"]'))) {

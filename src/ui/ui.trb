@@ -2,7 +2,7 @@ Trebol [
     title: "UI dialect: faces, styles, layout and validation"
     exports: [
         face styles stylize layout view theme open close toast
-        validate-face form-values set-values set-content ui-input ui-blur ui-click ui-select ui-close ui-event ui-menu
+        validate-face form-values set-values set-content ui-input ui-blur ui-click ui-select ui-close ui-event ui-menu ui-drop ui-reorder
     ]
 ]
 
@@ -30,6 +30,9 @@ face: make object! [
     wide-only: false    ; hidden on narrow screens
     hidden: false
     disabled: false
+    drag: false         ; can be dragged: carries its value, or the row in a table or list
+    drop: false         ; accepts drops (on-drop)
+    reorder: false      ; its children or rows can be moved around (on-reorder)
     rules: none         ; validation: a block of [rule args...] blocks
     error: none         ; current message, shown once the face is touched
     touched: false
@@ -90,7 +93,7 @@ stylize: function [
 roles: [primary accent danger success warning muted]
 sizes: [small medium large]
 aligns: [left center right spread]
-flags: [fill hidden disabled narrow-only wide-only]
+flags: [fill hidden disabled narrow-only wide-only drag drop reorder]
 simple-rules: [required email url integer date]
 rule-words: [min max length pattern match check check-async width pad gap menu]
 
@@ -480,7 +483,7 @@ run-handler: function [f body [block!] /with extra [block!]] [
     scope: any [f/form f/root]
     words: compose [
         face: (f)
-        value: (either word? f/value [to lit-word! f/value] [f/value])
+        value: (quoted f/value)
         values: (form-values any [scope f])
     ]
     if find data-styles f/style [append words compose [row: (f/selected)]]
@@ -491,6 +494,9 @@ run-handler: function [f body [block!] /with extra [block!]] [
     ctx: make object! words
     do bind copy/deep body ctx
 ]
+
+; A value as it must appear in a block given to make object!
+quoted: func [v] [either any [word? :v  path? :v] [to lit-word! :v] [:v]]
 
 handler-for: function [f name] [
     all [f/events  select f/events name]
@@ -567,4 +573,29 @@ ui-menu: function [
 ] [
     if row [f/selected: row]
     if item/action [run-handler f item/action]
+]
+
+ui-drop: function [
+    "Called by the host when something is dropped on a face; index is where it goes (1-based)."
+    f dropped source index [integer!]
+] [
+    if h: handler-for f 'on-drop [
+        run-handler/with f h reduce [quote dropped: quoted :dropped  quote source: source  quote index: index]
+    ]
+]
+
+ui-reorder: function [
+    "Called by the host when the user moves a child or row of a face from one position to another."
+    f from [integer!] to [integer!]
+] [
+    either find data-styles f/style [f/data: move-item f/data from to] [f/children: move-item f/children from to]
+    if h: handler-for f 'on-reorder [run-handler/with f h reduce [quote from: from  quote to: to]]
+]
+
+move-item: function [items [block!] from [integer!] to [integer!]] [
+    items: copy items
+    x: pick items from
+    remove at items from
+    insert/only at items to :x
+    items
 ]

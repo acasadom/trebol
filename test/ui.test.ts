@@ -354,6 +354,26 @@ describe('components', () => {
     await assert.rejects(runSource(host, 'view [text "x" menu ["A"]]'));
   });
 
+  test('dropping runs on-drop; reordering moves rows or children and runs on-reorder', async () => {
+    const r = await ev(`
+      log: copy []
+      root: view [
+        list palette [label] drag
+        canvas: column [text "a" text "b" text "c"] drop reorder
+          on-drop [append/only log reduce [dropped/label source/style index]]
+          on-reorder [append/only log reduce [from to]]
+        list items [name] reorder
+      ]
+      palette/data: reduce [make map! [id 1 label "Field"]]
+      ui-drop canvas first palette/data palette 2
+      ui-reorder canvas 1 3
+      items/data: reduce [make map! [id 1 name "x"] make map! [id 2 name "y"]]
+      ui-reorder items 2 1
+      t: collect [foreach c canvas/children [keep c/text]]
+      reduce [log t collect [foreach row items/data [keep row/name]] palette/drag canvas/drop]`);
+    assert.equal(r, '[[["Field" list 2] [1 3]] ["b" "c" "a"] ["y" "x"] true true]');
+  });
+
   test('tables need words for columns; tabs need label and block pairs', async () => {
     await assert.rejects(runSource(host, 'view [table t ["Name"]]'));
     await assert.rejects(runSource(host, 'view [tabs ["A"]]'));
