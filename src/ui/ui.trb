@@ -2,7 +2,7 @@ Trebol [
     title: "UI dialect: faces, styles, layout and validation"
     exports: [
         face styles stylize layout view theme open close toast
-        validate-face form-values set-values ui-input ui-blur ui-click ui-select ui-close
+        validate-face form-values set-values set-content ui-input ui-blur ui-click ui-select ui-close
     ]
 ]
 
@@ -220,6 +220,22 @@ view: function [
     attach root root none
     foreach f all-faces root [refresh-form f]
     show root
+]
+
+set-content: function [
+    "Replaces the faces inside a container with a new layout; the host rebuilds that part of the page."
+    container [object!]
+    spec [block!]
+] [
+    kids: layout spec
+    inner: either container/style = 'form [container] [container/form]
+    foreach c kids [attach c container/root inner]
+    if all [container/style = 'split  2 <> length? kids] [
+        do make error! "set-content: split takes two faces, one per pane"
+    ]
+    container/children: kids
+    if container/root [refresh-form any [inner container/root]]
+    container
 ]
 
 open: func [

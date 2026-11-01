@@ -293,6 +293,23 @@ describe('components', () => {
     await assert.rejects(runSource(host, 'view [split [text "only one"]]'));
   });
 
+  test('set-content replaces the faces of a container and links them to its form', async () => {
+    const r = await ev(`
+      sent: none
+      root: view [frm: form [field a "A"] box: column [text "old"]]
+      set-content frm [field b "B" required  submit "Go" [sent: values]]
+      set-content box [text "new" text "more"]
+      b-face: first frm/children
+      go: last frm/children
+      x: reduce [b-face/form = frm  b-face/root = root  go/disabled]
+      ui-input b-face "hi"
+      ui-click go
+      first-text: first box/children
+      reduce [x sent/b  length? box/children  first-text/text]`);
+    assert.equal(r, '[[true true true] "hi" 2 "new"]');
+    await assert.rejects(runSource(host, 'r: view [s: split [text "a" text "b"]] set-content s [text "c"]'));
+  });
+
   test('tables need words for columns; tabs need label and block pairs', async () => {
     await assert.rejects(runSource(host, 'view [table t ["Name"]]'));
     await assert.rejects(runSource(host, 'view [tabs ["A"]]'));
