@@ -173,7 +173,10 @@ Toda la organización se hace con **grupos**, que son la jerarquía de composici
 - un grupo **contiene** otros grupos, Conceptos y objetos, en un orden fijado a mano;
 - un grupo puede tener además **enlaces simbólicos**: muestra algo que no contiene ni es suyo, que
   sigue viviendo en su grupo de origen y con sus permisos;
-- cada usuario tiene un grupo de **inicio**: al entrar ve el árbol que parte de él.
+- todo usuario tiene un grupo de **inicio** (su *home*, como en Unix): es donde entra y la raíz de
+  lo que ve; hay además un inicio **público** para quien entra sin sesión;
+- el sistema vacío tiene la raíz, el inicio del administrador y el inicio público;
+- dentro de un grupo, el orden por defecto es el de creación, y se puede reorganizar a mano.
 
 La estructura de una administración se construye así:
 
@@ -230,6 +233,23 @@ un campo opcional o cambiar etiquetas no necesita versión nueva.
 - **Backend**: FastAPI con SQLite al principio. Lee el esquema JSON de cada Concepto (sección 9) y
   guarda los objetos. Mientras no exista, el servidor de desarrollo sirve un backend falso en memoria
   que habla el mismo protocolo.
+
+### 7.1 Navegación
+
+El sistema se recorre como un sistema de ficheros, o como habitaciones con puertas:
+
+- un **grupo** es una carpeta (o una habitación): se entra y se sale de él, y muestra lo que
+  contiene, subgrupos, Conceptos y enlaces simbólicos;
+- abrir un **Concepto** muestra la **lista** de sus objetos en su vista resumen (los campos marcados
+  `summary`); sobre esa lista se filtra, se busca, se crea, se edita, se borra y se duplica;
+- abrir un **objeto** muestra su vista completa, la del diseñador, con anterior y siguiente para
+  recorrer la lista sin volver a ella;
+- una ruta de migas (breadcrumb) dice siempre dónde se está y permite volver a cualquier nivel.
+
+Todo lo que la aplicación pide al servidor es esa navegación (contenido de un grupo, lista de un
+Concepto con su filtro y orden, un objeto) y las acciones (crear, modificar, borrar, filtrar,
+publicar). En pantalla ancha, grupo, lista y objeto pueden verse a la vez en columnas, como la vista
+en columnas del Finder; en estrecho, un nivel cada vez con vuelta atrás (`split`).
 
 ## 8. Usuarios, roles y permisos
 
@@ -288,10 +308,7 @@ Sustituyen a la fase 5 de `design.md` (escritorio), que pasa a después de estas
   enlace simbólico dentro del grupo político.
 - Las agrupaciones libres son grupos, que contienen Conceptos y objetos y admiten enlaces
   simbólicos.
-
-## 12. Preguntas abiertas
-
-1. ¿El grupo de inicio público (lo que ve quien no ha iniciado sesión) es uno solo por
-   administración?
-2. Los Conceptos dentro de un grupo y los objetos dentro de un grupo, ¿se muestran mezclados en el
-   orden manual o separados (primero subgrupos, luego Conceptos, luego objetos)?
+- Todo usuario tiene un grupo de inicio; hay un inicio público para quien entra sin sesión. El
+  sistema vacío tiene el inicio del administrador.
+- Dentro de un grupo, orden de creación por defecto, reorganizable.
+- Navegación como un sistema de ficheros (sección 7.1).
