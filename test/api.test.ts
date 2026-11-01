@@ -8,7 +8,7 @@ import { handleApi } from '../tools/api.ts';
 
 test('clients can be listed, added, updated and deleted', async () => {
   const server = createServer((req, res) => {
-    void handleApi(req, res, new URL(req.url ?? '/', 'http://x').pathname).then(ok => {
+    void handleApi(req, res, new URL(req.url ?? '/', 'http://x')).then(ok => {
       if (!ok) res.writeHead(404).end();
     });
   });

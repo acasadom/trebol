@@ -89,18 +89,21 @@ cambiar cuando se quiera. Los datos se guardan por id, así que renombrar un cam
 etiqueta y no toca ningún dato. Esto sustituye al diccionario de alias del sistema original
 (`renamedAttrs`). Borrar un campo es la única operación destructiva y pide confirmación.
 
+Lo mismo vale para las opciones de un `choice`: cada opción tiene un id y una etiqueta por idioma, y
+el objeto guarda el id. Renombrar una opción o cambiar de idioma no toca los datos.
+
 ## 3. Campos
 
 ### 3.1 Tipos
 
 | Tipo | Valor | Notas |
 | --- | --- | --- |
-| `text` | cadena corta | buscable |
+| `text` | cadena corta | buscable; con `translated` es un texto por idioma |
 | `long-text` | texto con formato | se muestra saneado, nunca como HTML crudo |
 | `number`, `money`, `date` | número, importe, fecha | con formato del idioma activo |
 | `yes-no` | lógico | |
 | `password` | cadena | solo se envía; el backend guarda el hash |
-| `choice` | una opción | las opciones son un valor de nivel `class` del mismo campo |
+| `choice` | id de una opción | las opciones son un valor de nivel `class` del mismo campo; cada una tiene id y etiqueta por idioma |
 | `ref` | id de un objeto | `to`: Concepto destino |
 | `concept-ref` | id de un Concepto | "es de la clase X" |
 | `refs` | lista de ids | `ordered` si el orden importa |
@@ -129,7 +132,10 @@ concept grant [
         level: choice [
             label [es "Nivel de estudios" en "Level of studies"]
             level both
-            options [es ["Grado" "Máster"] en ["Degree" "Master"]]
+            options [
+                degree [es "Grado" en "Degree"]
+                master [es "Máster" en "Master"]
+            ]
         ]
         transcript: file [label [es "Expediente académico" en "Transcript"] required]
     ]
@@ -278,13 +284,39 @@ Cada Concepto produce su esquema, que el backend usa para validar y guardar:
   "fields": [
     { "id": "amount", "type": "money", "level": "instance", "required": true },
     { "id": "level", "type": "choice", "level": "both",
-      "options": { "es": ["Grado", "Máster"], "en": ["Degree", "Master"] } },
+      "options": [{ "id": "degree", "label": { "es": "Grado", "en": "Degree" } },
+                  { "id": "master", "label": { "es": "Máster", "en": "Master" } }] },
     { "id": "transcript", "type": "file", "level": "instance", "required": true }
   ]
 }
 ```
 
 Las vistas no forman parte del esquema: el backend las guarda como texto Trebol sin interpretarlas.
+
+### 9.1 Protocolo
+
+Todo registro es un objeto, plano en JSON: `id`, `class`, `group` y `version` son claves del sistema
+(ningún campo puede llamarse así) y el resto son valores por id de campo. Un Concepto es un objeto de
+clase `concept`, así que el esquema de arriba es tal cual el objeto que se guarda; sus valores de
+nivel `class` (un plazo, por ejemplo) van como claves más del mismo objeto.
+
+```
+GET    /api/objects?class=grant&group=g   lista, en orden de creación
+GET    /api/objects/:id                   un objeto
+POST   /api/objects                       crea (el id se genera si no viene)
+PUT    /api/objects/:id                   sustituye; id y clase no cambian
+DELETE /api/objects/:id                   borra; no si tiene instancias o contenido
+```
+
+Formatos: `money` es un número JSON escrito exacto (`1200.50`), `date` es `AAAA-MM-DD`, una
+referencia es el id del objeto, un texto `translated` es `{ "es": ..., "en": ... }`. Las contraseñas
+se guardan con hash y nunca se devuelven. Un error de validación responde 422 con
+`{ "error": mensaje, "field": id }`. Los ids son cadenas; los de los Conceptos de serie y los del
+arranque (`concept`, `group`, `user`, `role`, `root`, `admin-home`, `public-home`, `administrator`,
+`public`, `admin`) son fijos.
+
+El servidor de desarrollo sirve este protocolo en memoria (`tools/objects.ts`) hasta que exista el
+backend real.
 
 ## 10. Fases
 

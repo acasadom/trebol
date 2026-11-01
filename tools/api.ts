@@ -8,8 +8,11 @@
 //
 // Records need a name and an email; anything else answers 422 with a
 // message. The data lives only as long as the server.
+//
+// /api/objects is the object store of the meta-system (see objects.ts).
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { Store, handleObjects } from './objects.ts';
 
 interface Client { id: number; name: string; email: string; phone: string; kind: string }
 
@@ -46,8 +49,12 @@ function clientFrom(body: Record<string, unknown> | null, id: number): Client | 
   return { id, name: s('name'), email: s('email'), phone: s('phone'), kind: s('kind') || 'Person' };
 }
 
+const store = new Store();
+
 /** Answers a request under /api; returns false when the path is not an API path. */
-export async function handleApi(req: IncomingMessage, res: ServerResponse, path: string): Promise<boolean> {
+export async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): Promise<boolean> {
+  if (await handleObjects(store, req, res, url)) return true;
+  const path = url.pathname;
   const m = /^\/api\/clients(?:\/(\d+))?\/?$/.exec(path);
   if (m === null) {
     if (!path.startsWith('/api/')) return false;

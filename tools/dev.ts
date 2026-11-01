@@ -42,7 +42,7 @@ const server = createServer(async (req, res) => {
     req.on('close', () => clients.delete(res));
     return;
   }
-  if (await handleApi(req, res, url.pathname)) return;
+  if (await handleApi(req, res, url)) return;
   let path = normalize(join(root, decodeURIComponent(url.pathname)));
   if (!path.startsWith(root)) {
     res.writeHead(403).end();
