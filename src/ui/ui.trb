@@ -2,7 +2,7 @@ Trebol [
     title: "UI dialect: faces, styles, layout and validation"
     exports: [
         face styles stylize layout view theme open close toast
-        validate-face form-values set-values set-content ui-input ui-blur ui-click ui-select ui-close ui-event
+        validate-face form-values set-values set-content ui-input ui-blur ui-click ui-select ui-close ui-event ui-menu
     ]
 ]
 
@@ -38,6 +38,7 @@ face: make object! [
     action: none        ; the block after the face: click, change
     events: none        ; [on-change [...] on-select [...]]
     shortcut: none      ; a key that activates a button or link: "Ctrl+S"
+    menu: none          ; context menu (or the menu a button opens): a block of menu items
     options: none       ; choices of a choice or radio
     children: none
     columns: none       ; table and list: [field "Label" ...]
@@ -91,7 +92,7 @@ sizes: [small medium large]
 aligns: [left center right spread]
 flags: [fill hidden disabled narrow-only wide-only]
 simple-rules: [required email url integer date]
-rule-words: [min max length pattern match check check-async width pad gap]
+rule-words: [min max length pattern match check check-async width pad gap menu]
 
 ; Words that never name a field. email, url, integer and date are rules too,
 ; but also common field names, so the first word after an input style names it.
@@ -149,6 +150,7 @@ layout: function [
         | 'check-async set b block! (add-rule f reduce ['check-async b])
         | 'width set w word! (f/size: w)
         | set w ['pad | 'gap] [set n integer! | 'none (n: 0) | 'wide (n: 6)] (poke f w spacing n)
+        | 'menu set b block! (f/menu: menu-of b)
         | 'key set s string! (f/shortcut: s)
         | 'key set w word! (f/key: w)
         | set w word! if (find roles w) (f/role: w)
@@ -200,6 +202,29 @@ tabs-of: function [spec [block!]] [
         append out make select styles 'tab [text: label children: layout b]
     )]] [
         do make error! "layout: tabs take a label and a block per tab"
+    ]
+    out
+]
+
+menu-item: make object! [
+    text: none
+    icon: none
+    action: none        ; the block run when the item is chosen
+    items: none         ; a submenu
+    divider: false
+]
+
+; ["Edit" [...] #trash "Delete" [...] divider "Move to" menu [...]] -> menu items
+menu-of: function [spec [block!] /local i label b] [
+    out: copy []
+    unless parse spec [any [
+        'divider (append out make menu-item [divider: true])
+        | (i: none) opt [set i issue!] set label string! [
+            'menu set b block! (append out make menu-item [text: label icon: i items: menu-of b])
+            | set b block! (append out make menu-item [text: label icon: i action: b])
+        ]
+    ]] [
+        do make error! "layout: a menu takes a label and a block per item, or divider"
     ]
     out
 ]
@@ -534,4 +559,12 @@ ui-event: function [
     f name [word!] extra [block!]
 ] [
     if h: handler-for f name [run-handler/with f h extra]
+]
+
+ui-menu: function [
+    "Called by the host when the user chooses a menu item; row is the row it was opened on."
+    f item row
+] [
+    if row [f/selected: row]
+    if item/action [run-handler f item/action]
 ]

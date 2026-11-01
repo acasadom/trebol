@@ -336,6 +336,24 @@ describe('components', () => {
     assert.equal(r, '[[focus "Ada" true "Ada" enter false "z"] "Ctrl+S" id 1]');
   });
 
+  test('menus hold items, dividers and submenus; choosing one runs it with the row bound', async () => {
+    const r = await ev(`
+      got: none
+      root: view [
+        list people [name] menu [#edit "Edit" [got: row/name] divider "Move to" menu ["Top" [got: 'top]]]
+        button "File" menu ["New" [got: 'new]]
+      ]
+      m: people/menu
+      people/data: reduce [make map! [id 1 name "Ada"] make map! [id 2 name "Alan"]]
+      ui-menu people first m second people/data
+      a: got
+      sub: third m
+      ui-menu people first sub/items none
+      reduce [a got length? m m/2/divider m/1/icon sub/text people/selected/id]`);
+    assert.equal(r, '["Alan" top 3 true #edit "Move to" 2]');
+    await assert.rejects(runSource(host, 'view [text "x" menu ["A"]]'));
+  });
+
   test('tables need words for columns; tabs need label and block pairs', async () => {
     await assert.rejects(runSource(host, 'view [table t ["Name"]]'));
     await assert.rejects(runSource(host, 'view [tabs ["A"]]'));
