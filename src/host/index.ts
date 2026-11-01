@@ -67,18 +67,12 @@ export function startHost(opts: HostOptions = {}): Host {
 
 /** URL of the UI dialect source, next to this file. */
 export const UI_SOURCE = new URL('../ui/ui.trb', import.meta.url).href;
+/** URL of the languages module (i18n, tr, translated). */
+export const I18N_SOURCE = new URL('../ui/i18n.trb', import.meta.url).href;
 
-/** Loads the UI dialect (view, layout, stylize, theme...) into the user context. */
+/** Loads languages and the UI dialect (view, layout, stylize, theme...) into the user context. */
 export function startUi(host: Host): Promise<Cell> {
-  return runSource(host, `import ${UI_SOURCE}`);
-}
-
-/** URL of the object model (Concepts, languages, the object store), next to this file. */
-export const MODEL_SOURCE = new URL('../model/model.trb', import.meta.url).href;
-
-/** Loads the object model (concept, tr, the store client...) into the user context. */
-export function startModel(host: Host): Promise<Cell> {
-  return runSource(host, `import ${MODEL_SOURCE}`);
+  return runSource(host, `import ${I18N_SOURCE}  import ${UI_SOURCE}`);
 }
 
 /**

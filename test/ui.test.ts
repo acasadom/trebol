@@ -322,3 +322,12 @@ describe('theme', () => {
     assert.ok(!themeCss({ ...DEFAULT_THEME, mode: 'light' }).includes('prefers-color-scheme'));
   });
 });
+
+test('texts show in the active language and fall back to the main one', async () => {
+  assert.equal(await ev('label: translated [es "Solicitud" en "Application"]  i18n/language: \'en  tr label'), '"Application"');
+  assert.equal(await ev('tr translated "Plazo"'), '"Plazo"');
+  assert.equal(await ev('i18n/texts/save: translated [es "Guardar" en "Save"]  tr \'save'), '"Save"');
+  assert.equal(await ev('i18n/language: \'es  tr \'save'), '"Guardar"');
+  assert.equal(await ev('tr \'unknown-word'), '"unknown-word"');
+  assert.equal(await ev('tr none'), '""');
+});

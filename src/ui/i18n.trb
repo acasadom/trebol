@@ -1,0 +1,48 @@
+Trebol [
+    title: "Languages: the active language, texts per language and a dictionary"
+    exports: [i18n tr translated]
+]
+
+; A text per language is a map: #(es: "Guardar" en: "Save"). `tr` picks the
+; active language, then the main one, then any. Settings live in the `i18n`
+; object, so code changes them with `i18n/language: 'en`.
+
+i18n: make object! [
+    language: 'es       ; the active language
+    main: 'es           ; what shows when a text is missing in the active one
+    languages: [es en]
+    texts: make map! [] ; the application's dictionary: word -> text per language
+]
+
+translated: function [
+    "A text per language (a map) from a string in the main language or a block [es ... en ...]."
+    text [string! block! map!]
+] [
+    if map? text [return text]
+    m: make map! []
+    either string? text [poke m i18n/main text] [
+        foreach [lang t] text [poke m to word! lang t]
+    ]
+    m
+]
+
+tr: function [
+    "A text in the active language: from a string, a text per language, or a word of the dictionary."
+    text [any-type!]
+] [
+    case [
+        none? :text [copy ""]
+        string? :text [text]
+        word? :text [either t: select i18n/texts text [tr t] [form text]]
+        block? :text [tr translated text]
+        map? :text [
+            any [
+                select text i18n/language
+                select text i18n/main
+                foreach [lang t] to block! text [if string? :t [return t]]
+                copy ""
+            ]
+        ]
+        true [form :text]
+    ]
+]
