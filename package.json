@@ -3,6 +3,10 @@
   "version": "0.0.1",
   "description": "Trebol: a Rebol-derived language for building beautiful web UIs without HTML or CSS",
   "type": "module",
+  "exports": {
+    "./core": "./src/core/index.ts",
+    "./host": "./src/host/index.ts"
+  },
   "license": "UNLICENSED",
   "private": true,
   "engines": {
