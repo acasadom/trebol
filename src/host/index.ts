@@ -73,6 +73,14 @@ export function startUi(host: Host): Promise<Cell> {
   return runSource(host, `import ${UI_SOURCE}`);
 }
 
+/** URL of the object model (Concepts, languages, the object store), next to this file. */
+export const MODEL_SOURCE = new URL('../model/model.trb', import.meta.url).href;
+
+/** Loads the object model (concept, tr, the store client...) into the user context. */
+export function startModel(host: Host): Promise<Cell> {
+  return runSource(host, `import ${MODEL_SOURCE}`);
+}
+
 /**
  * Loads source into the user context and runs it as a task. Resolves with
  * its value; rejects with the error! if it fails. Load errors throw LoadError.

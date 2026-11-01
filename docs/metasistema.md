@@ -78,9 +78,9 @@ Cada campo declara a qué nivel vive su valor:
 | `instance` | cada instancia | nombre del solicitante, importe pedido |
 | `both` | el Concepto da un valor por defecto; la instancia puede cambiarlo | unidad responsable, icono |
 
-Leer un campo en un objeto busca primero en el objeto, luego en su clase y luego en lo que esa clase
-hereda (`extends`). Es la delegación de los objetos de Trebol, así que en el frontend no hace falta
-copiar valores de la clase a cada instancia.
+Leer un campo de nivel `class` o `both` en un objeto busca primero en el objeto, luego en su clase y
+luego en lo que esa clase hereda (`extends`); uno de nivel `instance` solo en el objeto. En el
+frontend lo hace `value-of`, así que no hace falta copiar valores de la clase a cada instancia.
 
 ### 2.3 Identidad estable de los campos
 
@@ -147,6 +147,12 @@ concept grant [
     ]
 ]
 ```
+
+En la definición, cada campo es `id: tipo [propiedades]`: `label` y `help` (un texto o
+`[es ... en ...]`), `level`, las marcas `required unique searchable summary read-only translated
+ordered`, `to` (Concepto destino de una referencia), `options` (de un `choice`), `columns` (de una
+`table`) y `expr` (de un `calculated`). Sin `level`, un campo es de instancia. Fuera de `fields`,
+`nombre: valor` da el valor de nivel `class` de un campo del propio Concepto (`deadline: 30`).
 
 - **Distribución en flujo**: filas, columnas, rejillas con columnas que ocupa cada componente,
   pestañas y paneles. Se adapta sola a móvil. No hay posiciones absolutas.
@@ -318,6 +324,24 @@ arranque (`concept`, `group`, `user`, `role`, `root`, `admin-home`, `public-home
 El servidor de desarrollo sirve este protocolo en memoria (`tools/objects.ts`) hasta que exista el
 backend real.
 
+## 9.2 El modelo en Trebol
+
+`src/model/model.trb` es el lado Trebol del modelo. Un objeto es un `map!` con la misma forma que su
+JSON; un Concepto, también.
+
+| Palabra | Qué hace |
+| --- | --- |
+| `concept nombre [...]` | define un Concepto (sección 4), lo registra en `concepts` y lo asigna a `nombre` |
+| `schema-of c` | el esquema: el Concepto sin sus vistas; `to-json schema-of c` es el JSON de la sección 9 |
+| `fields-of c`, `field-of campos id` | los campos con los heredados, y uno por id |
+| `concept-of x`, `value-of obj id` | la clase de un objeto, y un valor con la caída a la clase |
+| `i18n`, `tr x`, `translated x` | idioma activo y principal, diccionario del marco, texto en el idioma activo |
+| `store`, `get-object`, `list-objects`, `create-object`, `update-object`, `delete-object` | el cliente del protocolo 9.1 |
+| `save-concept c`, `load-concept id` | guarda un Concepto (crea o sustituye) y lo lee con lo que hereda |
+
+Los valores leídos del almacén toman el tipo de su campo (`money!`, `date!`). Un rechazo del almacén
+es un error con `message`, `field` y `status`, para que un formulario marque el campo.
+
 ## 10. Fases
 
 Sustituyen a la fase 5 de `design.md` (escritorio), que pasa a después de estas.
@@ -329,6 +353,10 @@ Sustituyen a la fase 5 de `design.md` (escritorio), que pasa a después de estas
 | 7 · Diseñador | paleta, lienzo y propiedades; tipo `design`; acción `publish` | diseñar con el ratón un procedimiento para hacer procedimientos, crear con él un procedimiento, publicarlo y abrir un expediente suyo |
 | 8 · Estructura y sede | grupos, enlaces simbólicos e inicio por usuario; roles y permisos; catálogo y buscador para la ciudadanía | definir un ayuntamiento pequeño (jerarquía política y servicios) y entrar en su sede como ciudadano |
 | Después | tramitador (estados y vistas por estado), notificaciones, informes, escritorio | |
+
+Estado: **fase 5 hecha**. El gate es un test (`test/model.test.ts`): el Concepto `grant`, definido en
+Trebol, produce su esquema, se guarda en el almacén falso y sus objetos se crean, leen, modifican y
+borran desde Trebol. Queda para la fase 6 dar formato a fechas e importes según el idioma.
 
 ## 11. Decisiones del propietario (2026-11-01)
 
@@ -344,3 +372,4 @@ Sustituyen a la fase 5 de `design.md` (escritorio), que pasa a después de estas
   sistema vacío tiene el inicio del administrador.
 - Dentro de un grupo, orden de creación por defecto, reorganizable.
 - Navegación como un sistema de ficheros (sección 7.1).
+- Las opciones de un `choice` tienen id y etiqueta por idioma; el objeto guarda el id.

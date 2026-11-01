@@ -1,0 +1,321 @@
+Trebol [
+    title: "Model: Concepts, objects, languages and the object store"
+    exports: [
+        concept concepts field-types schema-of fields-of field-of concept-of value-of
+        i18n tr translated
+        store get-object list-objects create-object update-object delete-object
+        save-concept load-concept
+    ]
+]
+
+; The object model of docs/metasistema.md. Objects are maps shaped like
+; their JSON: `id`, `class`, `group` and `version` are system keys, every
+; other key is a field id. A Concept is an object of class "concept" whose
+; `fields` (a block of field maps) define its instances. Ids and types are
+; strings, as they come back from the store.
+
+; --- languages -------------------------------------------------------------------
+
+i18n: make object! [
+    language: 'es       ; the active language
+    main: 'es           ; what shows when a text is missing in the active one
+    languages: [es en]
+    texts: make map! [] ; the frame's dictionary: word -> text per language
+]
+
+translated: function [
+    "A text per language (a map) from a string in the main language or a block [es ... en ...]."
+    text [string! block! map!]
+] [
+    if map? text [return text]
+    m: make map! []
+    either string? text [poke m i18n/main text] [
+        foreach [lang t] text [poke m to word! lang t]
+    ]
+    m
+]
+
+tr: function [
+    "A text in the active language: from a string, a text per language, or a word of the dictionary."
+    text [any-type!]
+] [
+    case [
+        none? :text [copy ""]
+        string? :text [text]
+        word? :text [either t: select i18n/texts text [tr t] [form text]]
+        block? :text [tr translated text]
+        map? :text [
+            any [
+                select text i18n/language
+                select text i18n/main
+                foreach [lang t] to block! text [if string? :t [return t]]
+                copy ""
+            ]
+        ]
+        true [form :text]
+    ]
+]
+
+; --- Concepts --------------------------------------------------------------------
+
+field-types: [
+    "text" "long-text" "number" "money" "date" "yes-no" "password" "choice" "ref" "concept-ref"
+    "refs" "table" "calculated" "link" "file" "image" "address" "design"
+]
+system-keys: ["id" "class" "group" "version"]
+flag: ['required | 'unique | 'searchable | 'summary | 'read-only | 'translated | 'ordered]
+
+; Concepts known to this page, by id.
+concepts: make map! []
+
+bad-definition: func [what [string!] near] [
+    do make error! rejoin [what " near " mold copy/part near 4]
+]
+
+field-def: function [
+    "A field map from its name, type and spec block."
+    name [set-word!] type [word!] spec [block! none!]
+    /local x w here
+] [
+    f: make map! []
+    poke f 'id form to word! name
+    unless find field-types form type [bad-definition rejoin ["unknown field type " type] reduce [name type]]
+    poke f 'type form type
+    poke f 'level "instance"
+    if spec [
+        unless parse spec [any [here:
+            'label set x [string! | block!] (poke f 'label translated x)
+            | 'help set x [string! | block!] (poke f 'help translated x)
+            | 'level set x ['class | 'instance | 'both] (poke f 'level form x)
+            | set w flag (poke f w true)
+            | 'to set x word! (poke f 'to form x)
+            | 'options set x block! (poke f 'options options-def x)
+            | 'columns set x block! (poke f 'columns fields-def x)
+            | 'expr set x block! (poke f 'expr mold x)
+        ]] [bad-definition rejoin ["cannot read field " f/id] here]
+    ]
+    f
+]
+
+options-def: function [
+    "Options of a choice: [id [es ... en ...] ...]; each one a map with id and label."
+    spec [block!]
+    /local id label here
+] [
+    out: copy []
+    unless parse spec [any [here:
+        set id word! set label [string! | block!] (
+            append out make map! reduce ['id form id 'label translated label]
+        )
+    ]] [bad-definition "cannot read options" here]
+    out
+]
+
+fields-def: function [
+    "Field maps from [name: type [spec] ...]."
+    spec [block!]
+    /local name type body here
+] [
+    out: copy []
+    unless parse spec [any [here:
+        set name set-word! set type word! (body: none) opt [set body block!] (
+            f: field-def name type body
+            if find system-keys f/id [bad-definition rejoin [f/id " is reserved and cannot name a field"] here]
+            if field-of out f/id [bad-definition rejoin ["the field " f/id " is defined twice"] here]
+            append out f
+        )
+    ]] [bad-definition "cannot read fields" here]
+    out
+]
+
+concept: function [
+    "Defines a Concept: label, extends, fields, views and class-level values (name: value)."
+    'name [word!] spec [block!]
+    /local x w here
+] [
+    c: make map! reduce ['id form name 'class "concept" 'version 1]
+    poke c 'fields copy []
+    unless parse spec [any [here:
+        'label set x [string! | block!] (poke c 'label translated x)
+        | 'extends set x word! (poke c 'extends form x)
+        | 'version set x integer! (poke c 'version x)
+        | 'fields set x block! (poke c 'fields fields-def x)
+        | 'views set x block! (poke c 'views x)
+        | set w set-word! set x any-type! (poke c to word! w :x)
+    ]] [bad-definition rejoin ["cannot read concept " name] here]
+    poke concepts c/id c
+    set name c
+]
+
+concept-of: function [
+    "The Concept an object is an instance of, or a Concept from its id."
+    x [map! string! word! none!]
+] [
+    case [
+        none? x [none]
+        map? x [select concepts select x 'class]
+        true [select concepts form x]
+    ]
+]
+
+field-of: function [
+    "The field with an id in a block of fields, or none."
+    fields [block!] id [string! word!]
+] [
+    id: form id
+    foreach f fields [if f/id = id [return f]]
+    none
+]
+
+fields-of: function [
+    "The fields of a Concept, inherited ones first; a field redefined by a child replaces its parent's."
+    c [map! string! word!]
+] [
+    unless map? c [c: concept-of c]
+    chain: copy []
+    while [c] [
+        insert chain c
+        c: concept-of select c 'extends
+        if find chain c [break]
+    ]
+    out: copy []
+    foreach k chain [
+        foreach f any [select k 'fields []] [
+            either pos: find out field-of out f/id [change pos f] [append out f]
+        ]
+    ]
+    out
+]
+
+value-of: function [
+    {A field's value in an object. Fields of level class or both fall back to the
+    class, then to what it extends.}
+    obj [map!] field [string! word!]
+] [
+    key: to word! field
+    v: select obj key
+    if not none? :v [return :v]
+    c: concept-of obj
+    f: all [c field-of fields-of c key]
+    unless all [f f/level <> "instance"] [return none]
+    while [c] [
+        v: select c key
+        if not none? :v [return :v]
+        c: concept-of select c 'extends
+    ]
+    none
+]
+
+schema-of: function [
+    "The schema of a Concept, as the backend reads it: the Concept without its views."
+    c [map! word!]
+] [
+    if word? c [c: get c]
+    out: make map! []
+    foreach [k v] to block! c [unless k = 'views [poke out k :v]]
+    out
+]
+
+; --- the object store (docs/metasistema.md, section 9.1) ----------------------------
+
+store: make object! [
+    url: "/api/objects"   ; where the store answers
+]
+
+store-call: function [
+    "Calls the store. A refusal is an error with the store's message, field and status."
+    method [word!] url [string!] body [map! none!]
+    /optional "Returns none when the object does not exist"
+] [
+    options: compose [method: (to lit-word! method) full: true]
+    if body [append options compose [body: (body)]]
+    r: fetch/with url options
+    if all [optional r/status = 404] [return none]
+    if r/status >= 400 [
+        b: r/body
+        do make error! compose [
+            type: 'access id: 'invalid
+            message: (either all [map? b select b 'error] [b/error] [rejoin ["HTTP " r/status " for " url]])
+            field: (either map? b [select b 'field] [none])
+            status: (r/status)
+        ]
+    ]
+    from-store r/body
+]
+
+; JSON has no money or dates: values read back take the type of their field.
+from-store: function [x] [
+    if block? x [return map-each o x [from-store o]]
+    unless map? x [return x]
+    fields: either c: concept-of x [fields-of c] [copy []]
+    if x/class = "concept" [append fields any [select x 'fields []]]   ; its own class-level values
+    foreach f fields [
+        k: to word! f/id
+        v: select x k
+        case [
+            all [f/type = "money" number? v] [poke x k to money! v]
+            all [f/type = "date" string? v] [poke x k to date! v]
+        ]
+    ]
+    x
+]
+
+id-of: func [x] [either map? x [select x 'id] [form x]]
+object-url: func [x] [rejoin [store/url "/" id-of x]]
+
+get-object: func ["An object by id, or none." id [string! word!]] [
+    store-call/optional 'GET object-url id none
+]
+
+list-objects: function [
+    "The objects of a Concept, in creation order."
+    class [map! string! word!]
+    /within "Only those in a group" group [map! string! word!]
+] [
+    url: rejoin [store/url "?class=" id-of class]
+    if within [append url rejoin ["&group=" id-of group]]
+    store-call 'GET url none
+]
+
+create-object: func ["Stores a new object; answers it with its id." obj [map!]] [
+    store-call 'POST store/url obj
+]
+
+update-object: func ["Replaces a stored object." obj [map!]] [
+    store-call 'PUT object-url obj obj
+]
+
+delete-object: func ["Deletes a stored object." obj [map! string! word!]] [
+    store-call 'DELETE object-url obj none
+]
+
+; Views travel as Trebol text: the backend keeps them without reading them.
+adopt-concept: function [c [map!]] [
+    if string? v: select c 'views [poke c 'views first load v]
+    poke concepts c/id c
+    c
+]
+
+save-concept: function [
+    "Stores a Concept, creating or replacing it."
+    c [map! word!]
+] [
+    if word? c [c: get c]
+    body: copy c
+    if block? select body 'views [poke body 'views mold select body 'views]
+    adopt-concept either get-object c/id [
+        store-call 'PUT object-url c body
+    ] [
+        store-call 'POST store/url body
+    ]
+]
+
+load-concept: function [
+    "Reads a Concept from the store, and what it extends, into concepts."
+    id [string! word!]
+] [
+    c: get-object id
+    unless c [do make error! rejoin ["no Concept " id]]
+    if all [e: select c 'extends  not concept-of e] [load-concept e]
+    adopt-concept c
+]
