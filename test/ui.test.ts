@@ -310,6 +310,32 @@ describe('components', () => {
     await assert.rejects(runSource(host, 'r: view [s: split [text "a" text "b"]] set-content s [text "c"]'));
   });
 
+  test('general events run their handler with the event words bound', async () => {
+    const r = await ev(`
+      log: copy []
+      root: view [
+        field name "Name" on-focus [append log 'focus] on-blur [append log value]
+        card: panel [] on-hover [append log over]
+        list people [name] on-double-click [append log row/name]
+        button "Save" key "Ctrl+S" on-key [append log reduce [key ctrl]]
+      ]
+      nm: first root/children
+      btn: last root/children
+      ui-event nm 'on-focus []
+      ui-input nm "Ada"
+      ui-event nm 'on-blur []
+      ui-event card 'on-hover [over: true]
+      people/data: reduce [make map! [id 1 name "Ada"]]
+      ui-select people first people/data
+      ui-event people 'on-double-click []
+      ui-event btn 'on-key [key: 'enter ctrl: false]
+      ui-event btn 'on-focus []
+      v: view [on-key [append log key] text "x"]
+      ui-event v 'on-key [key: "z"]
+      reduce [log btn/shortcut people/key length? v/children]`);
+    assert.equal(r, '[[focus "Ada" true "Ada" enter false "z"] "Ctrl+S" id 1]');
+  });
+
   test('tables need words for columns; tabs need label and block pairs', async () => {
     await assert.rejects(runSource(host, 'view [table t ["Name"]]'));
     await assert.rejects(runSource(host, 'view [tabs ["A"]]'));

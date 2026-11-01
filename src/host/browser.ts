@@ -14,7 +14,7 @@
 // set the field again to repaint it.
 
 import {
-  K, NONE, TRUE, FALSE, native, value, string, form, ctxFind, intern, spell, text, canon,
+  K, NONE, TRUE, FALSE, native, value, string, form, ctxFind, intern, spell, text, canon, blockOf, wordOf,
   type Cell, type ObjectCell, type BlockCell, type WordCell, type StringCell, type Ctx, type Sym,
 } from '../core/index.ts';
 import { startHost, startUi, runSource, report, type Host } from './index.ts';
@@ -102,9 +102,8 @@ const dirty: Ctx[] = [];
 let nextId = 1;
 
 /** Runs a UI event function (ui-input, ui-blur, ui-click) as a new task. */
-function fire(fn: string, face: ObjectCell, arg?: Cell): Promise<Cell> {
-  const call: Cell[] = [{ t: K.Word, sym: intern(fn), bind: host.rt.user }, face];
-  if (arg !== undefined) call.push(arg);
+function fire(fn: string, face: ObjectCell, ...args: Cell[]): Promise<Cell> {
+  const call: Cell[] = [{ t: K.Word, sym: intern(fn), bind: host.rt.user }, face, ...args];
   const t = taskResult(spawn(host.sch, { data: call }, 0));
   t.catch(e => console.error(report(e as ObjectCell)));
   return t;
@@ -213,8 +212,121 @@ function build(face: ObjectCell): HTMLElement {
   if (m.input !== null) byNode.set(m.input, m);
   byCtx.set(face.ctx, m);
   face.ctx.watch = dirty;
+  listen(m, style);
   sync(m);
   return node;
+}
+
+// --- general events ------------------------------------------------------------------
+
+/** Runs a face's on-xxx handler; `words` are the event's own [word: value ...]. */
+function fireEvent(face: ObjectCell, name: string, words: [string, Cell][] = []): void {
+  const extra = words.flatMap(([w, v]) => [wordOf(K.SetWord, w), v]);
+  void fire('ui-event', face, wordOf(K.LitWord, name), blockOf(K.Block, extra));
+}
+
+/** Keydown events some face's on-key already saw; the view gets the rest. */
+const seenKeys = new WeakSet<Event>();
+/** The view with an on-key handler, if any. */
+let viewKeys: ObjectCell | null = null;
+/** Mounted buttons and links with a shortcut. */
+const shortcuts = new Set<Mounted>();
+
+function listen(m: Mounted, style: string): void {
+  const f = m.face;
+  const node = m.el;
+  const left = (ev: FocusEvent): boolean => !node.contains(ev.relatedTarget as Node | null);
+  if (handlerFor(f, 'on-focus')) node.addEventListener('focusin', ev => { if (left(ev)) fireEvent(f, 'on-focus'); });
+  if (handlerFor(f, 'on-blur')) node.addEventListener('focusout', ev => { if (left(ev)) fireEvent(f, 'on-blur'); });
+  if (handlerFor(f, 'on-hover')) {
+    node.addEventListener('pointerenter', () => fireEvent(f, 'on-hover', [['over', TRUE]]));
+    node.addEventListener('pointerleave', () => fireEvent(f, 'on-hover', [['over', FALSE]]));
+  }
+  if (handlerFor(f, 'on-double-click')) node.addEventListener('dblclick', () => fireEvent(f, 'on-double-click'));
+  if (handlerFor(f, 'on-key')) {
+    if (style === 'view') viewKeys = f;
+    else node.addEventListener('keydown', ev => {
+      if (seenKeys.has(ev) || keyCell(ev) === null) return;
+      seenKeys.add(ev);
+      fireEvent(f, 'on-key', keyWords(ev));
+    });
+  }
+  if (str(f, 'shortcut') !== null) shortcuts.add(m);
+}
+
+const MODIFIER_KEYS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'AltGraph', 'CapsLock', 'Dead', 'Unidentified']);
+
+/** A character key as a string ("a"), any other key as a word ('enter, 'arrow-down, 'space). */
+function keyCell(ev: KeyboardEvent): Cell | null {
+  if (MODIFIER_KEYS.has(ev.key)) return null;
+  if (ev.key === ' ') return wordOf(K.LitWord, 'space');
+  if ([...ev.key].length === 1) return string(ev.key);
+  return wordOf(K.LitWord, ev.key.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase());
+}
+
+function keyWords(ev: KeyboardEvent): [string, Cell][] {
+  const b = (x: boolean): Cell => x ? TRUE : FALSE;
+  return [['key', keyCell(ev)!], ['ctrl', b(ev.ctrlKey)], ['shift', b(ev.shiftKey)], ['alt', b(ev.altKey)], ['meta', b(ev.metaKey)]];
+}
+
+const APPLE = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
+const KEY_NAMES: Record<string, string> = {
+  esc: 'escape', space: ' ', del: 'delete', up: 'arrowup', down: 'arrowdown', left: 'arrowleft', right: 'arrowright',
+};
+
+interface Shortcut { key: string; ctrl: boolean; shift: boolean; alt: boolean; meta: boolean }
+
+/** "Ctrl+Shift+K" -> its parts; Ctrl also means Cmd on Apple devices. */
+function parseShortcut(spec: string): Shortcut {
+  const parts = spec.toLowerCase().split('+').map(p => p.trim());
+  const key = parts.pop() ?? '';
+  const has = (...names: string[]): boolean => parts.some(p => names.includes(p));
+  return { key: KEY_NAMES[key] ?? key, ctrl: has('ctrl', 'control'), shift: has('shift'), alt: has('alt', 'option'), meta: has('meta', 'cmd') };
+}
+
+function matches(ev: KeyboardEvent, s: Shortcut): boolean {
+  const ctrl = APPLE ? ev.metaKey || ev.ctrlKey : ev.ctrlKey;
+  if (ctrl !== (s.ctrl || (APPLE && s.meta)) || ev.shiftKey !== s.shift || ev.altKey !== s.alt) return false;
+  if (!APPLE && ev.metaKey !== s.meta) return false;
+  // letters and digits by physical key, so Shift or Alt do not change them
+  if (/^[a-z]$/.test(s.key)) return ev.code === `Key${s.key.toUpperCase()}`;
+  if (/^[0-9]$/.test(s.key)) return ev.code === `Digit${s.key}`;
+  return ev.key.toLowerCase() === s.key;
+}
+
+/** How a shortcut is announced (aria-keyshortcuts) and shown (tooltip). */
+function shortcutAria(spec: string): string {
+  return spec.split('+').map(p => {
+    const w = p.trim().toLowerCase();
+    if (w === 'ctrl' || w === 'control') return APPLE ? 'Meta' : 'Control';
+    if (w === 'cmd') return 'Meta';
+    return p.trim().length === 1 ? p.trim().toUpperCase() : p.trim();
+  }).join('+');
+}
+
+function shortcutLabel(spec: string): string {
+  return APPLE ? spec.replace(/ctrl|control/i, 'Cmd') : spec;
+}
+
+/** Shortcuts beat the browser's own keys; the view's on-key gets keys nobody handled. */
+function onKeyDown(ev: KeyboardEvent): void {
+  const modal = Array.from(document.querySelectorAll('dialog[open]')).pop();
+  for (const m of shortcuts) {
+    if (!m.el.isConnected) { shortcuts.delete(m); continue; }
+    const spec = str(m.face, 'shortcut');
+    if (spec === null || !matches(ev, parseShortcut(spec))) continue;
+    // only what the user can see: not in a hidden tab, a closed dialog or behind a modal
+    if (m.el.getClientRects().length === 0 || (modal !== undefined && !modal.contains(m.el))) continue;
+    ev.preventDefault();
+    seenKeys.add(ev);
+    m.el.click();
+    return;
+  }
+}
+
+function onViewKey(ev: KeyboardEvent): void {
+  if (viewKeys === null || seenKeys.has(ev) || keyCell(ev) === null) return;
+  fireEvent(viewKeys, 'on-key', keyWords(ev));
 }
 
 /** Puts the face's icon before its caption, which then goes in `m.label`. */
@@ -872,7 +984,11 @@ function sync(m: Mounted): void {
       const named = iconLabel(f);
       if (named !== null) m.el.setAttribute('aria-label', named);
       else m.el.removeAttribute('aria-label');
-      m.el.title = named ?? '';
+      const keys = str(f, 'shortcut');
+      if (keys !== null) m.el.setAttribute('aria-keyshortcuts', shortcutAria(keys));
+      else m.el.removeAttribute('aria-keyshortcuts');
+      const tip = named ?? (keys !== null ? t : null);
+      m.el.title = tip === null ? '' : keys === null ? tip : `${tip} (${shortcutLabel(keys)})`;
       break;
     }
     case 'progress': syncProgress(m); return;
@@ -945,6 +1061,7 @@ let root: HTMLElement | null = null;
 
 native('show', '[face [object!]]', (_t, f) => {
   const face = f.args[0] as ObjectCell;
+  viewKeys = null;
   const node = build(face);
   if (root !== null) root.replaceWith(node);
   else document.body.append(node);
@@ -1001,6 +1118,8 @@ async function boot(): Promise<void> {
   setTheme(DEFAULT_THEME);
   host = startHost();
   host.sch.afterPump = syncDirty;
+  document.addEventListener('keydown', onKeyDown, true);
+  document.addEventListener('keydown', onViewKey);
   await startUi(host);
   for (const s of Array.from(document.querySelectorAll<HTMLScriptElement>('script[type="text/trebol"]'))) {
     const src = s.getAttribute('src');

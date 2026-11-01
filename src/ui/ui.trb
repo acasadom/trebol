@@ -2,7 +2,7 @@ Trebol [
     title: "UI dialect: faces, styles, layout and validation"
     exports: [
         face styles stylize layout view theme open close toast
-        validate-face form-values set-values set-content ui-input ui-blur ui-click ui-select ui-close
+        validate-face form-values set-values set-content ui-input ui-blur ui-click ui-select ui-close ui-event
     ]
 ]
 
@@ -37,6 +37,7 @@ face: make object! [
     async-error: none   ; result of the last asynchronous check
     action: none        ; the block after the face: click, change
     events: none        ; [on-change [...] on-select [...]]
+    shortcut: none      ; a key that activates a button or link: "Ctrl+S"
     options: none       ; choices of a choice or radio
     children: none
     columns: none       ; table and list: [field "Label" ...]
@@ -148,6 +149,7 @@ layout: function [
         | 'check-async set b block! (add-rule f reduce ['check-async b])
         | 'width set w word! (f/size: w)
         | set w ['pad | 'gap] [set n integer! | 'none (n: 0) | 'wide (n: 6)] (poke f w spacing n)
+        | 'key set s string! (f/shortcut: s)
         | 'key set w word! (f/key: w)
         | set w word! if (find roles w) (f/role: w)
         | set w word! if (find sizes w) (f/size: w)
@@ -215,8 +217,13 @@ attach: function [f root form] [
 view: function [
     "Shows a layout as the page."
     spec [block!]
+    /local ev b
 ] [
+    ; on-xxx handlers before the first face belong to the view itself
+    events: copy []
+    parse spec [any [set ev word! if (event-word? ev) set b block! (append events reduce [ev b])] spec:]
     root: make select styles 'view [children: layout spec]
+    unless empty? events [root/events: events]
     attach root root none
     foreach f all-faces root [refresh-form f]
     show root
@@ -442,8 +449,9 @@ refresh-form: function [scope] [
 ;
 ; The host calls these from DOM events, each in its own task.
 
-; A handler block runs with face, value, values and every named field bound.
-run-handler: function [f body [block!]] [
+; A handler block runs with face, value, values and every named field bound,
+; plus the event's own words given as [word: value ...] with /with.
+run-handler: function [f body [block!] /with extra [block!]] [
     scope: any [f/form f/root]
     words: compose [
         face: (f)
@@ -451,6 +459,7 @@ run-handler: function [f body [block!]] [
         values: (form-values any [scope f])
     ]
     if find data-styles f/style [append words compose [row: (f/selected)]]
+    if with [append words extra]
     if scope [
         foreach g named-faces scope [append words reduce [to set-word! g/name g]]
     ]
@@ -518,4 +527,11 @@ ui-close: function [
 ] [
     f/hidden: true
     if h: handler-for f 'on-close [run-handler f h]
+]
+
+ui-event: function [
+    "Called by the host for on-focus, on-blur, on-hover, on-double-click and on-key."
+    f name [word!] extra [block!]
+] [
+    if h: handler-for f name [run-handler/with f h extra]
 ]
