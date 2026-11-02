@@ -14,7 +14,6 @@ const dir = join(import.meta.dirname, 'trebol');
 
 for (const file of readdirSync(dir).filter(f => f.endsWith('.trb')).sort()) {
   describe(file, () => {
-    const rt = makeRuntime();
     const code = load(readFileSync(join(dir, file), 'utf8'), { file });
     const items = code.s.data;
     let i = scriptStart(code).start;
@@ -27,6 +26,8 @@ for (const file of readdirSync(dir).filter(f => f.endsWith('.trb')).sort()) {
     }
     for (const g of groups) {
       test(g.name, () => {
+        // each group runs in a fresh runtime, so words set by one group never leak into another
+        const rt = makeRuntime();
         const failures: string[] = [];
         for (const t of g.tests) {
           bindSeries(t.s, rt.user, true);

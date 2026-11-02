@@ -1,12 +1,12 @@
 // The UI dialect (src/ui/ui.trb) without a browser: layout, faces,
 // validation and events, with `show` and `apply-theme` captured here.
 
-import { test, describe, before } from 'node:test';
+import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { K, native, value, mold, form, string, text, blockOf, errorField, type Cell, type ObjectCell, type StringCell } from '../src/core/index.ts';
-import { startHost, startUi, runSource, type Host } from '../src/host/index.ts';
+import { startHost, startUi, runSource, output, type Host } from '../src/host/index.ts';
 import { themeCss, DEFAULT_THEME, palette, contrast, CONTRAST_PAIRS } from '../src/host/theme.ts';
 
 let shown: Cell | null = null;
@@ -36,7 +36,8 @@ native('set-route', '[route [block!] replace [logic!]]', (_t, f) => {
 });
 
 let host: Host;
-before(async () => {
+// every test gets a fresh user context, so words one test sets never leak into the next
+beforeEach(async () => {
   host = startHost({ onError: () => {}, loader: { base: 'file:///', read: href => readFile(fileURLToPath(href), 'utf8') } });
   await startUi(host);
 });
@@ -454,6 +455,18 @@ describe('components', () => {
     assert.deepEqual(links, ['replace home', 'push client/42', 'replace home', 'push clients']);
     await assert.rejects(runSource(host, 'go [nowhere 1]'));
     await assert.rejects(runSource(host, 'view [screens [home "Home" [1] []]]'));
+  });
+
+  test('a field whose name is a function says so once on the console', async () => {
+    const said: string[] = [];
+    const line = output.line;
+    output.line = t => { said.push(t); };
+    try {
+      await ev(`view [form [field copy "Copy" field copy "Again" field title "Title"]]`);
+    } finally {
+      output.line = line;
+    }
+    assert.deepEqual(said, ['Trebol: the field copy hides the function copy in its handlers; rename the field']);
   });
 
   test('tables need words for columns; tabs need label and block pairs', async () => {

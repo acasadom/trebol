@@ -109,6 +109,16 @@ field-name?: func [w [word!]] [
     ]
 ]
 
+; Handlers bind each field name, so a field named copy hides the function copy
+; inside them. Said once per name, on the console.
+warned: copy []
+warn-hidden: func [w [word!]] [
+    if all [attempt [any-function? get/any w]  not find warned w] [
+        append warned w
+        print rejoin ["Trebol: the field " w " hides the function " w " in its handlers; rename the field"]
+    ]
+]
+
 add-rule: func [f rule [block!]] [
     unless f/rules [f/rules: copy []]
     append/only f/rules rule
@@ -192,7 +202,7 @@ layout: function [
                 append out f
                 if label [set label f]
             )
-            opt [if (find input-styles f/style) set n word! if (field-name? n) (f/name: n)]
+            opt [if (find input-styles f/style) set n word! if (field-name? n) (f/name: n  warn-hidden n)]
             ; table clients [...] is the same as clients: table [...]
             opt [if (find data-styles f/style) set n word! if (all [field-name? n  n <> 'key]) (set n f)]
             any modifier
