@@ -109,16 +109,6 @@ field-name?: func [w [word!]] [
     ]
 ]
 
-; Handlers bind each field name, so a field named copy hides the function copy
-; inside them. Said once per name, on the console.
-warned: copy []
-warn-hidden: func [w [word!]] [
-    if all [attempt [any-function? get/any w]  not find warned w] [
-        append warned w
-        print rejoin ["Trebol: the field " w " hides the function " w " in its handlers; rename the field"]
-    ]
-]
-
 add-rule: func [f rule [block!]] [
     unless f/rules [f/rules: copy []]
     append/only f/rules rule
@@ -128,20 +118,52 @@ event-word?: func [w [word!]] [
     to logic! find/match form w "on-"
 ]
 
+; Labels (`search: field`, `table clients`) are local to the layout, as R3
+; planned for its VID: each layout gets an object holding them, and the
+; layout's blocks (its handlers too) are bound to it. `global search: field`
+; sets a global word instead.
+
 layout: function [
     "Turns a block of the UI dialect into a view face; /only gives the block of faces."
     spec [block!]
     /only "Return the faces, not a view holding them"
-    /local label style-word f proto n s b w a i v ev
+    /local ev b
 ] [
-    unless only [
+    ; a copy, so laying out the same block twice never shares bindings
+    spec: copy/deep spec
+    labels: copy []
+    either only [
+        out: build-faces spec labels
+    ] [
         ; on-xxx handlers before the first face belong to the view itself
         events: copy []
-        parse spec [any [set ev word! if (event-word? ev) set b block! (append events reduce [ev b])] spec:]
-        root: make select styles 'view [pane: layout/only spec]
-        unless empty? events [root/events: events]
-        return root
+        parse spec [any [set ev word! if (event-word? ev) set b block! (append events reduce [ev b])] body:]
+        out: make select styles 'view [pane: build-faces body labels]
+        unless empty? events [out/events: events]
     ]
+    bind-labels spec labels copy []
+    out
+]
+
+; Binds a laid-out block to an object of its labels and the given [word: value ...].
+bind-labels: function [spec [block!] labels [block!] words [block!] /local w f] [
+    foreach [w f] labels [append words reduce [to set-word! w f]]
+    unless empty? words [bind spec make object! words]
+]
+
+; Keeps a label for a face: in the layout's labels, or as a global word.
+label-face: function [label labels [block!] global? [logic!] f] [
+    either global? [set label f] [
+        w: to word! label
+        either p: find/skip labels w 2 [p/2: f] [append labels reduce [w f]]
+    ]
+]
+
+; The faces of a block of the dialect; labels collects [word face ...].
+build-faces: function [
+    spec [block!] labels [block!]
+    /local label global? style-word f proto n s b w a i v ev
+] [
     out: copy []
     modifier: [
         set s string! (either f/text [f/hint: s] [f/text: s])
@@ -153,7 +175,7 @@ layout: function [
             case [
                 find container-styles f/style [
                     ; --- in a toolbar is a separator
-                    f/pane: layout/only either f/style = 'toolbar [replace/all copy b '--- 'divider] [b]
+                    f/pane: build-faces either f/style = 'toolbar [replace/all copy b '--- 'divider] [b] labels
                     if all [f/style = 'split  2 <> length? f/pane] [
                         do make error! "layout: split takes two faces, one per pane"
                     ]
@@ -161,7 +183,7 @@ layout: function [
                 find data-styles f/style [f/columns: columns-of b]
                 ; the first block holds the items, the second is the action
                 all [f/style = 'breadcrumb  none? f/data] [f/data: crumbs-of b]
-                f/style = 'tabs [f/pane: tabs-of b]
+                f/style = 'tabs [f/pane: tabs-of b labels]
                 f/style = 'screens [f/data: screens-of b]
                 find [choice radio] f/style [f/options: reduce b]
                 true [f/action: b]
@@ -193,18 +215,19 @@ layout: function [
     ]
     unless parse spec [
         any [
-            (label: none)
+            (label: none  global?: false)
+            opt ['global (global?: true)]
             opt [set label set-word!]
             set style-word word! (
                 proto: select styles style-word
                 unless proto [do make error! rejoin ["layout: unknown style " style-word]]
                 f: make proto []
                 append out f
-                if label [set label f]
+                if label [label-face label labels global? f]
             )
-            opt [if (find input-styles f/style) set n word! if (field-name? n) (f/name: n  warn-hidden n)]
+            opt [if (find input-styles f/style) set n word! if (field-name? n) (f/name: n)]
             ; table clients [...] is the same as clients: table [...]
-            opt [if (find data-styles f/style) set n word! if (all [field-name? n  n <> 'key]) (set n f)]
+            opt [if (find data-styles f/style) set n word! if (all [field-name? n  n <> 'key]) (label-face n labels global? f)]
             any modifier
         ]
     ] [
@@ -228,10 +251,10 @@ columns-of: function [spec [block!]] [
 ]
 
 ; ["General" [...] "Advanced" [...]] -> a tab face per pair
-tabs-of: function [spec [block!]] [
+tabs-of: function [spec [block!] labels [block!]] [
     out: copy []
     unless parse spec [any [set label string! set b block! (
-        append out make select styles 'tab [text: label pane: layout/only b]
+        append out make select styles 'tab [text: label pane: build-faces b labels]
     )]] [
         do make error! "layout: tabs take a label and a block per tab"
     ]
@@ -332,14 +355,17 @@ find-screen: function [f route [block!] /local n t a b] [
 ; Builds the screen a route names as the only child of f; returns the screen face.
 enter-screen: function [f route [block!] /local ev b] [
     def: find-screen f route
-    words: copy []
-    repeat i length? def/3 [append words reduce [to set-word! pick def/3 i  pick route i + 1]]
-    body: bind copy/deep def/4 make object! words
+    ; a screen's arguments and labels are local to it
+    spec: copy/deep def/4
+    labels: copy []
     ; on-xxx handlers before the first face belong to the screen
     events: copy []
-    parse body [any [set ev word! if (event-word? ev) set b block! (append events reduce [ev b])] body:]
-    s: make select styles 'screen [text: def/2  pane: layout/only body]
+    parse spec [any [set ev word! if (event-word? ev) set b block! (append events reduce [ev b])] body:]
+    s: make select styles 'screen [text: def/2  pane: build-faces body labels]
     unless empty? events [s/events: events]
+    words: copy []
+    repeat i length? def/3 [append words reduce [to set-word! pick def/3 i  pick route i + 1]]
+    bind-labels spec labels words
     f/value: copy route
     f/pane: reduce [s]
     ui-pane f
@@ -597,8 +623,9 @@ refresh-form: function [scope] [
 ;
 ; The host calls these from DOM events, each in its own task.
 
-; A handler block runs with face, value, values, every named field and, as in
-; Red, event bound; event is an object (event/key, event/away? ...) or none.
+; A handler block runs with face, value, values and, as in Red, event bound;
+; event is an object (event/key, event/away? ...) or none. Named fields are
+; not bound: their values are in values, their faces reached through labels.
 run-handler: function [f body [block!] /with ev [object!] /on node "row is this node, not the selected one"] [
     scope: any [f/form f/root]
     words: compose [
@@ -607,9 +634,6 @@ run-handler: function [f body [block!] /with ev [object!] /on node "row is this 
         values: (form-values any [scope f])
     ]
     if find data-styles f/style [append words compose [row: (either on [node] [f/selected])]]
-    if scope [
-        foreach g named-faces scope [append words reduce [to set-word! g/name g]]
-    ]
     append words compose [event: (either with [ev] [none])]
     ctx: make object! words
     do bind copy/deep body ctx

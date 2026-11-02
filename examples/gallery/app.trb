@@ -6,7 +6,7 @@ view [
     title "Gallery"
     text muted "Every component of the UI dialect, with no HTML or CSS."
     people-pane: split [
-        list people [name "Name" job "Job"] on-select [
+        global list people [name "Name" job "Job"] on-select [
             person/text: row/name
             about/text: row/about
             people-pane/value: 2
@@ -29,7 +29,7 @@ view [
         ]
     ]
     panel "Tree" [
-        files: tree [name] reorder on-select [toast row/name] on-expand [
+        global files: tree [name] reorder on-select [toast row/name] on-expand [
             if empty? row/children [
                 row/children: reduce [make map! [id 99 name "Loaded when opened"]]
                 files/data: files/data

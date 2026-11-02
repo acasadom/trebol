@@ -62,18 +62,18 @@ delete-client: does [
 view [
     title "Clients"
     row [
-        search: field "Search" "Name or email" fill on-change [show-clients]
+        global search: field "Search" "Name or email" fill on-change [show-clients]
         button primary "New client" [edit-client none]
     ]
-    table clients [name "Name" email "Email" phone "Phone" kind "Kind"] on-select [edit-client row]
-    editor: dialog "Client" [
-        client-form: form [
+    global table clients [name "Name" email "Email" phone "Phone" kind "Kind"] on-select [edit-client row]
+    global editor: dialog "Client" [
+        global client-form: form [
             field name "Name" required
             field email "Email" required email
             field phone "Phone"
             choice kind "Kind" ["Person" "Company"] required
             submit "Save" [save-client values]
-            remove-button: button danger "Delete" [delete-client]
+            global remove-button: button danger "Delete" [delete-client]
         ]
     ]
 ]

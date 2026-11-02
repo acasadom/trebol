@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { K, native, value, mold, form, string, text, blockOf, errorField, type Cell, type ObjectCell, type StringCell } from '../src/core/index.ts';
-import { startHost, startUi, runSource, output, type Host } from '../src/host/index.ts';
+import { startHost, startUi, runSource, type Host } from '../src/host/index.ts';
 import { themeCss, DEFAULT_THEME, palette, contrast, CONTRAST_PAIRS } from '../src/host/theme.ts';
 
 let shown: Cell | null = null;
@@ -92,10 +92,10 @@ describe('layout', () => {
     assert.equal(r, '[none 1 none 0 none 0 none 1 email 1]');
   });
 
-  test('set-words name faces; stylize derives styles', async () => {
+  test('global set-words name faces outside the view; stylize derives styles', async () => {
     const r = await ev(`
       stylize [risky: button [role: 'danger]]
-      root: view [total: text "0" risky "Delete"]
+      root: view [global total: text "0" risky "Delete"]
       reduce [total/text select last root/pane 'role]`);
     assert.equal(r, '["0" danger]');
   });
@@ -130,9 +130,9 @@ describe('validation', () => {
   test('a view leaves the submits of its forms alone', async () => {
     const r = await ev(`
       root: view [
-        f: form [field name "Name" required submit "Save" [x: 1]]
+        global f: form [field name "Name" required submit "Save" [x: 1]]
         field note "Note"
-        go-btn: submit "Go" [y: 1]
+        global go-btn: submit "Go" [y: 1]
       ]
       reduce [select last f/pane 'disabled go-btn/disabled]`);
     assert.equal(r, '[true false]');
@@ -169,19 +169,19 @@ describe('validation', () => {
 });
 
 describe('handlers', () => {
-  test('handlers see face, value, values and named fields', async () => {
+  test('handlers see face, value, values and the labels of their layout, not field names', async () => {
     const r = await ev(`
       got: none
       root: view [form [
-        field first-name "First" on-change [got: reduce [face/name value]]
-        button "Go" [got: reduce [values/first-name first-name/value]]
+        fn: field first-name "First" on-change [got: reduce [face/name value]]
+        button "Go" [got: reduce [values/first-name fn/value value? 'first-name]]
       ]]
       fm: first root/pane
       ui-input first fm/pane "Eva"
       a: got
       ui-click second fm/pane
       reduce [a got]`);
-    assert.equal(r, '[[first-name "Eva"] ["Eva" "Eva"]]');
+    assert.equal(r, '[[first-name "Eva"] ["Eva" "Eva" false]]');
   });
 
   test('theme passes its parameters to the host', async () => {
@@ -191,9 +191,9 @@ describe('handlers', () => {
 });
 
 describe('components', () => {
-  test('a word after table labels it globally; columns take optional labels', async () => {
+  test('a word after table labels it; columns take optional labels', async () => {
     const r = await ev(`
-      root: view [table clients [name "Name" email] key code on-select [x: 1]]
+      root: view [global table clients [name "Name" email] key code on-select [x: 1]]
       clients/text: "seen"
       reduce [select first root/pane 'text clients/style clients/columns clients/key clients/data]`);
     assert.equal(r, '["seen" table [name "Name" email "email"] code none]');
@@ -202,7 +202,7 @@ describe('components', () => {
   test('choosing a row binds row in on-select', async () => {
     const r = await ev(`
       picked: none
-      root: view [table people [name] on-select [picked: reduce [row/name face/style]]]
+      root: view [global table people [name] on-select [picked: reduce [row/name face/style]]]
       people/data: reduce [make map! [id 1 name "Ada"] make map! [id 2 name "Alan"]]
       ui-select people second people/data
       reduce [picked people/selected/id]`);
@@ -212,7 +212,7 @@ describe('components', () => {
   test('dialogs start hidden; open, close and dismissing toggle them', async () => {
     const r = await ev(`
       closed: 0
-      root: view [edit: dialog "Edit" [form [field name "Name"]] on-close [closed: closed + 1]]
+      root: view [global edit: dialog "Edit" [form [field name "Name"]] on-close [closed: closed + 1]]
       a: edit/hidden open edit b: edit/hidden close edit c: edit/hidden
       open edit ui-close edit
       reduce [a b c edit/hidden closed edit/text length? edit/pane]`);
@@ -241,7 +241,7 @@ describe('components', () => {
 
   test('set-values fills a form and forgets that it was touched', async () => {
     const r = await ev(`
-      root: view [f: form [field name "Name" required check ok "OK" submit "Save" [x: 1]]]
+      root: view [global f: form [field name "Name" required check ok "OK" submit "Save" [x: 1]]]
       n: first f/pane
       ui-blur n
       a: n/error
@@ -274,7 +274,7 @@ describe('components', () => {
 
   test('set-values sets a toggle to true or false', async () => {
     const r = await ev(`
-      root: view [f: form [toggle on "On"]]
+      root: view [global f: form [toggle on "On"]]
       set-values f make map! [on: 1]
       a: select first f/pane 'value
       set-values f none
@@ -285,7 +285,7 @@ describe('components', () => {
   test('pad and gap take a spacing step; scroll is a container; screen flags', async () => {
     const r = await ev(`
       root: view [
-        s: scroll small pad 2 gap none [text "a" text "b"]
+        global s: scroll small pad 2 gap none [text "a" text "b"]
         row gap wide narrow-only [text "x"]
         text "wide" wide-only
       ]
@@ -298,7 +298,7 @@ describe('components', () => {
 
   test('split holds two panes and starts on the first', async () => {
     const r = await ev(`
-      root: view [s: split [list people [name] column [text "Detail"]]]
+      root: view [global s: split [list people [name] column [text "Detail"]]]
       reduce [s/value collect [foreach c s/pane [keep c/style]]]`);
     assert.equal(r, '[1 [list column]]');
     await assert.rejects(runSource(host, 'view [split [text "only one"]]'));
@@ -307,7 +307,7 @@ describe('components', () => {
   test('assigning a pane and calling ui-pane links the new faces to their form', async () => {
     const r = await ev(`
       sent: none
-      root: view [frm: form [field a "A"] box: column [text "old"]]
+      root: view [global frm: form [field a "A"] global box: column [text "old"]]
       frm/pane: layout/only [field b "B" required  submit "Go" [sent: values]]
       ui-pane frm
       box/pane: layout/only [text "new" text "more"]
@@ -328,8 +328,8 @@ describe('components', () => {
       log: copy []
       root: view [
         field name "Name" on-focus [append log event/type] on-unfocus [append log value]
-        card: panel [] on-over [append log event/away?]
-        list people [name] on-dbl-click [append log row/name]
+        global card: panel [] on-over [append log event/away?]
+        global list people [name] on-dbl-click [append log row/name]
         button "Save" key "Ctrl+S" on-key [append/only log reduce [event/key event/ctrl? event/alt?]]
       ]
       nm: first root/pane
@@ -356,7 +356,7 @@ describe('components', () => {
     const r = await ev(`
       got: none
       root: view [
-        list people [name] menu [#edit "Edit" edit --- "Move to" ["Top" top]] on-menu [got: reduce [event/picked row/name]]
+        global list people [name] menu [#edit "Edit" edit --- "Move to" ["Top" top]] on-menu [got: reduce [event/picked row/name]]
         button "File" menu ["New" new]
       ]
       m: people/menu
@@ -374,11 +374,11 @@ describe('components', () => {
     const r = await ev(`
       log: copy []
       root: view [
-        list palette [label] drag
-        canvas: column [text "a" text "b" text "c"] drop reorder
+        global list palette [label] drag
+        global canvas: column [text "a" text "b" text "c"] drop reorder
           on-drop [append/only log reduce [event/type event/dropped/label event/source/style event/index]]
           on-reorder [append/only log reduce [event/from event/to]]
-        list items [name] reorder
+        global list items [name] reorder
       ]
       palette/data: reduce [make map! [id 1 label "Field"]]
       ui-drop canvas first palette/data palette 2 none
@@ -392,7 +392,7 @@ describe('components', () => {
 
   test('a toolbar is a container whose --- are separators', async () => {
     const r = await ev(`
-      root: view [bar: toolbar "Actions" [button #plus "New" --- button #trash "Delete"]]
+      root: view [global bar: toolbar "Actions" [button #plus "New" --- button #trash "Delete"]]
       reduce [bar/text collect [foreach c bar/pane [keep c/style]]]`);
     assert.equal(r, '["Actions" [button divider button]]');
   });
@@ -400,7 +400,7 @@ describe('components', () => {
   test('a breadcrumb takes label and word items; choosing one runs its action with the word in value', async () => {
     const r = await ev(`
       went: none
-      root: view [crumbs: breadcrumb ["Home" home "Clients" clients "Ada"] [went: value]]
+      root: view [global crumbs: breadcrumb ["Home" home "Clients" clients "Ada"] [went: value]]
       ui-crumb crumbs 'clients
       reduce [went crumbs/value length? crumbs/data]`);
     assert.equal(r, '[clients clients 5]');
@@ -411,7 +411,7 @@ describe('components', () => {
     const r = await ev(`
       log: copy []
       root: view [
-        tree folders [name] drop reorder
+        global tree folders [name] drop reorder
           on-select [append log row/name]
           on-expand [append log join "open " row/name  row/children: reduce [make map! [id 9 name "Late"]]]
           on-reorder [append/only log reduce [event/from event/to either event/parent [event/parent/name] [none]]]
@@ -437,10 +437,10 @@ describe('components', () => {
     const r = await ev(`
       log: copy []
       root: view [
-        main: screens [
+        global main: screens [
           home "Home" [on-enter [append log 'home] title "Welcome" link "Clients" 'clients]
-          clients "Clients" [list people [name] on-select [go [client row/id]]]
-          client "Client" [id] [on-enter [append log join "client " id  shown/text: id] shown: text]
+          clients "Clients" [global list people [name] on-select [go [client row/id]]]
+          client "Client" [id] [on-enter [append log join "client " id  shown/text: id] global shown: text]
         ]
       ]
       first-screen: main/pane/1
@@ -457,16 +457,23 @@ describe('components', () => {
     await assert.rejects(runSource(host, 'view [screens [home "Home" [1] []]]'));
   });
 
-  test('a field whose name is a function says so once on the console', async () => {
-    const said: string[] = [];
-    const line = output.line;
-    output.line = t => { said.push(t); };
-    try {
-      await ev(`view [form [field copy "Copy" field copy "Again" field title "Title"]]`);
-    } finally {
-      output.line = line;
-    }
-    assert.deepEqual(said, ['Trebol: the field copy hides the function copy in its handlers; rename the field']);
+  test('labels are local to their layout and seen by all its handlers; global makes them global', async () => {
+    const r = await ev(`
+      got: none
+      one: view [
+        a: text "one"
+        tabs ["T" [b: text "tab"]]
+        column [button "x" [got: reduce [a/text b/text]]]
+        screens [home "Home" [w: text "w" button "y" [got: reduce [w/text a/text]]]]
+        global g: text "g"
+      ]
+      two: view [a: text "two"]
+      ui-click first select third one/pane 'pane
+      x: got
+      home: first select fourth one/pane 'pane
+      ui-click second home/pane
+      reduce [x got value? 'a value? 'w g/text]`);
+    assert.equal(r, '[["one" "tab"] ["w" "one"] false false "g"]');
   });
 
   test('tables need words for columns; tabs need label and block pairs', async () => {
