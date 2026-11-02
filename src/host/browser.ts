@@ -88,6 +88,8 @@ interface Mounted {
   button: HTMLButtonElement | null;
   /** The options of a radio. */
   radios: HTMLInputElement[] | null;
+  /** The keys of the open nodes of a tree. */
+  open: Set<string> | null;
 }
 
 let host: Host;
@@ -121,7 +123,7 @@ function build(face: ObjectCell): HTMLElement {
   const style = word(face, 'style') ?? 'face';
   const m: Mounted = {
     face, el: null!, input: null, label: null, error: null, kids: get(face, 'pane'),
-    box: null, rows: null, empty: null, button: null, radios: null,
+    box: null, rows: null, empty: null, button: null, radios: null, open: null,
   };
   let node: HTMLElement;
   if (INPUTS.has(style)) {
@@ -197,6 +199,7 @@ function build(face: ObjectCell): HTMLElement {
       case 'image': node = el('img', 'tb-image'); break;
       case 'icon': node = el('span', 'tb-icon-face'); break;
       case 'table': case 'list': node = buildRows(face, style, m); break;
+      case 'tree': node = buildTree(face, m); break;
       case 'dialog': node = buildDialog(face, m); break;
       case 'tabs': node = buildTabs(face, m); break;
       case 'split': node = buildSplit(face, m); break;
@@ -269,8 +272,9 @@ function listen(m: Mounted, style: string): void {
   } else if (menu.t === K.Block || flag(f, 'drag')) {
     node.addEventListener('contextmenu', ev => {
       const target = ev.target as Element;
-      const item = style === 'table' || style === 'list' ? target.closest('tr, li') : null;
-      if (item === null && (style === 'table' || style === 'list') && menu.t !== K.Block) return;
+      const data = style === 'table' || style === 'list' || style === 'tree';
+      const item = data ? target.closest(style === 'tree' ? '[role="treeitem"]' : 'tr, li') : null;
+      if (item === null && data && menu.t !== K.Block) return;
       const row = item !== null ? rowOf.get(item) ?? NONE : NONE;
       const entries = menu.t === K.Block ? trebolEntries(f, menu as BlockCell, row) : [];
       // faces you can drag can also be moved to a drop zone from the menu, without a mouse
@@ -304,7 +308,7 @@ function listen(m: Mounted, style: string): void {
 /** Mounted faces that accept drops. */
 const dropZones = new Set<Mounted>();
 
-/** What is being dragged: a face, or a row of a table or list. */
+/** What is being dragged: a face, or a row of a table, list or tree. */
 interface Source {
   face: ObjectCell;
   el: HTMLElement;
@@ -312,10 +316,16 @@ interface Source {
   /** The container it can be reordered in, and its position there (0-based). */
   within: Mounted | null;
   index: number;
+  /** The element holding a row and its siblings (a tree has one per level). */
+  group: HTMLElement | null;
 }
 
-/** Where a drag would land. */
-interface Target { m: Mounted; index: number; reorder: boolean }
+/**
+ * Where a drag would land. In a tree, `group` holds the siblings it goes
+ * between, `parent` is their node (none at the root) and `into` the row of a
+ * folder it goes into, at the end.
+ */
+interface Target { m: Mounted; index: number; reorder: boolean; group?: HTMLElement; parent?: Cell; into?: HTMLElement }
 
 const isData = (m: Mounted): boolean => m.rows !== null;
 
@@ -341,8 +351,9 @@ function sourceAt(start: Element): Source | null {
     if (row !== undefined) {
       const m = mountedAbove(e)!;
       if (!flag(m.face, 'drag') && !flag(m.face, 'reorder')) return null;
-      const index = Array.prototype.indexOf.call(m.box!.children, e);
-      return { face: m.face, el: e as HTMLElement, payload: row, within: flag(m.face, 'reorder') ? m : null, index };
+      const group = e.parentElement!;
+      const index = Array.prototype.indexOf.call(group.children, e);
+      return { face: m.face, el: e as HTMLElement, payload: row, within: flag(m.face, 'reorder') ? m : null, index, group };
     }
     const m = byNode.get(e);
     if (m === undefined || m.el !== e) continue;
@@ -350,7 +361,7 @@ function sourceAt(start: Element): Source | null {
     const reorder = parent !== undefined && !isData(parent) && flag(parent.face, 'reorder');
     if (flag(m.face, 'drag') && !isData(m) || reorder) {
       const index = reorder ? slots(parent!).indexOf(e as HTMLElement) : -1;
-      return { face: m.face, el: e as HTMLElement, payload: get(m.face, 'value'), within: reorder ? parent! : null, index };
+      return { face: m.face, el: e as HTMLElement, payload: get(m.face, 'value'), within: reorder ? parent! : null, index, group: null };
     }
   }
   return null;
@@ -359,6 +370,11 @@ function sourceAt(start: Element): Source | null {
 /** The drop target under a point, and the insertion index there. */
 function targetAt(src: Source, x: number, y: number): Target | null {
   for (let m = mountedAbove(document.elementFromPoint(x, y)); m !== undefined; m = mountedAbove(m.el.parentElement)) {
+    if (m.open !== null) {
+      const t = treeTarget(m, src, x, y);
+      if (t !== null) return t;
+      continue;
+    }
     const reorder = m === src.within;
     if ((reorder || flag(m.face, 'drop')) && m.el !== src.el && !src.el.contains(m.el)) {
       return { m, index: insertionAt(m, x, y), reorder };
@@ -385,6 +401,13 @@ let line: HTMLElement | null = null;
 function indicate(t: Target | null): void {
   document.querySelectorAll('.tb-drop-over').forEach(e => e.classList.remove('tb-drop-over'));
   if (t === null) { line?.remove(); line = null; return; }
+  if (t.into !== undefined) {
+    // into a folder: outline its row instead of drawing a line
+    t.into.querySelector(':scope > .tb-tree-row')!.classList.add('tb-drop-over');
+    line?.remove();
+    line = null;
+    return;
+  }
   t.m.el.classList.add('tb-drop-over');
   if (line === null) {
     line = el('div', 'tb-drop-line');
@@ -392,8 +415,8 @@ function indicate(t: Target | null): void {
     document.body.append(line);
   }
   const across = horizontal(t.m);
-  const all = slots(t.m);
-  const box = (t.m.box ?? t.m.el).getBoundingClientRect();
+  const all = t.group !== undefined ? Array.from(t.group.children) : slots(t.m);
+  const box = (t.group ?? t.m.box ?? t.m.el).getBoundingClientRect();
   const before = all[t.index]?.getBoundingClientRect();
   const after = all[t.index - 1]?.getBoundingClientRect();
   line.classList.toggle('tb-across', across);
@@ -412,21 +435,21 @@ function indicate(t: Target | null): void {
 function land(src: Source, t: Target): void {
   if (t.reorder) {
     const to = t.index > src.index ? t.index - 1 : t.index;
-    if (to !== src.index) void reorder(t.m, src.index, to);
+    if (to !== src.index) void reorder(t.m, src.index, to, t.group, t.parent);
   } else {
-    void fire('ui-drop', t.m.face, src.payload, src.face, int(t.index + 1));
+    void fire('ui-drop', t.m.face, src.payload, src.face, int(t.index + 1), t.parent ?? NONE);
   }
 }
 
 const int = (n: number): Cell => ({ t: K.Integer, v: n });
 
 /** Moves a child or row and keeps the focus on it once the page is repainted. */
-async function reorder(m: Mounted, from: number, to: number): Promise<void> {
+async function reorder(m: Mounted, from: number, to: number, group?: HTMLElement, parent: Cell = NONE): Promise<void> {
   const had = document.activeElement !== null && document.activeElement !== document.body && m.el.contains(document.activeElement);
-  await fire('ui-reorder', m.face, int(from + 1), int(to + 1));
+  await fire('ui-reorder', m.face, int(from + 1), int(to + 1), parent);
   syncDirty();
   if (!had) return;
-  const e = slots(m)[to];
+  const e = (group !== undefined ? Array.from(group.children) as HTMLElement[] : slots(m))[to];
   const focusable = e?.matches('[tabindex], button, a, input, textarea, select') ? e : e?.querySelector<HTMLElement>('[tabindex], button, a, input, textarea, select');
   (focusable ?? null)?.focus();
 }
@@ -439,7 +462,7 @@ function moveTargets(face: ObjectCell, payload: Cell): MenuEntry[] {
     if (z.face.ctx === face.ctx || z.el.getClientRects().length === 0) continue;
     out.push({
       text: str(z.face, 'text') ?? word(z.face, 'style') ?? '',
-      run: () => void fire('ui-drop', z.face, payload, face, int(slots(z).length + 1)),
+      run: () => void fire('ui-drop', z.face, payload, face, int(slots(z).length + 1), NONE),
     });
   }
   return out;
@@ -520,10 +543,11 @@ function onReorderKey(ev: KeyboardEvent): void {
   const src = sourceAt(at);
   if (src === null || src.within === null) return;
   const to = src.index + (ev.key === 'ArrowUp' ? -1 : 1);
-  if (to < 0 || to >= slots(src.within).length) return;
+  if (to < 0 || to >= (src.group !== null ? src.group.children.length : slots(src.within).length)) return;
   ev.preventDefault();
   seenKeys.add(ev);
-  void reorder(src.within, src.index, to);
+  const group = src.group ?? undefined;
+  void reorder(src.within, src.index, to, group, group !== undefined && src.within.open !== null ? groupParent(src.within, group) : NONE);
 }
 
 // --- menus ---------------------------------------------------------------------------
@@ -1163,6 +1187,204 @@ function handlerFor(face: ObjectCell, name: string): boolean {
   return ev.s.data.some(x => x.t === K.Word && canon((x as WordCell).sym) === c);
 }
 
+// --- trees ---------------------------------------------------------------------------
+
+const CHILDREN = intern('children');
+const EXPANDED = intern('expanded');
+
+function treeItems(m: Mounted): HTMLElement[] {
+  return Array.from(m.box!.querySelectorAll<HTMLElement>('[role="treeitem"]'));
+}
+
+/** The node whose children a group holds; none for the root. */
+function groupParent(m: Mounted, group: HTMLElement): Cell {
+  if (group === m.box) return NONE;
+  const item = group.closest('[role="treeitem"]');
+  return item !== null ? rowOf.get(item) ?? NONE : NONE;
+}
+
+function buildTree(face: ObjectCell, m: Mounted): HTMLElement {
+  const wrap = el('div', 'tb-tree-wrap');
+  const box = el('ul', 'tb-tree');
+  box.setAttribute('role', 'tree');
+  const empty = el('p', 'tb-empty');
+  wrap.append(box, empty);
+  box.addEventListener('click', ev => {
+    const target = ev.target as Element;
+    const item = target.closest<HTMLElement>('[role="treeitem"]');
+    if (item === null) return;
+    if (target.closest('.tb-tree-toggle') !== null) return toggleNode(m, item);
+    focusItem(m, item);
+    selectNode(m, item);
+  });
+  box.addEventListener('keydown', ev => treeKey(m, ev));
+  m.box = box;
+  m.rows = new Map();
+  m.empty = empty;
+  m.open = new Set();
+  return wrap;
+}
+
+function newTreeItem(): HTMLElement {
+  const li = el('li');
+  li.setAttribute('role', 'treeitem');
+  const row = el('div', 'tb-tree-row');
+  const toggle = el('span', 'tb-tree-toggle');
+  toggle.setAttribute('aria-hidden', 'true');
+  const chevron = icon('chevron-right');
+  if (chevron !== null) toggle.append(chevron);
+  row.append(toggle, el('span', 'tb-tree-label'));
+  const group = el('ul');
+  group.setAttribute('role', 'group');
+  li.append(row, group);
+  return li;
+}
+
+/** Creates, updates, moves or removes the items of a tree, level by level, by key. */
+function syncTree(m: Mounted): void {
+  const f = m.face;
+  const label = columns(f)[0]?.sym ?? intern('name');
+  const keyWord = get(f, 'key');
+  const key = keyWord.t === K.Word || keyWord.t === K.LitWord ? (keyWord as WordCell).sym : intern('id');
+  const selected = get(f, 'selected');
+  const old = m.rows!;
+  const open = m.open!;
+  const next = new Map<string, HTMLElement>();
+  const level = (group: HTMLElement, nodes: Cell[], depth: number, parentKey: string): void => {
+    let cursor = group.firstChild;
+    nodes.forEach((node, i) => {
+      const id = rowField(node, key);
+      let k = id.t === K.None ? `${parentKey}/${i}` : `${id.t}:${form(id)}`;
+      if (next.has(k)) k = `${parentKey}/${i}#${k}`;
+      const known = old.get(k);
+      const item = known ?? newTreeItem();
+      next.set(k, item);
+      rowOf.set(item, node);
+      item.dataset['key'] = k;
+      item.setAttribute('aria-level', String(depth));
+      item.style.setProperty('--tb-level', String(depth - 1));
+      const text = cellText(rowField(node, label));
+      const name = item.firstElementChild!.lastElementChild!;
+      if (name.textContent !== text) name.textContent = text;
+      const kids = rowField(node, CHILDREN);
+      const folder = kids.t === K.Block;
+      // `expanded: true` opens a node the first time it shows
+      if (folder && known === undefined && rowField(node, EXPANDED).t === K.Logic && (rowField(node, EXPANDED) as { v: boolean }).v) open.add(k);
+      const isOpen = folder && open.has(k);
+      if (folder) item.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      else item.removeAttribute('aria-expanded');
+      const sub = item.lastElementChild as HTMLElement;
+      if (isOpen) level(sub, (kids as BlockCell).s.data.slice((kids as BlockCell).i), depth + 1, k);
+      else sub.replaceChildren();
+      sub.hidden = sub.childElementCount === 0;
+      const on = selected.t !== K.None && sameRow(selected, node);
+      item.classList.toggle('tb-selected', on);
+      item.setAttribute('aria-selected', on ? 'true' : 'false');
+      if (item !== cursor) group.insertBefore(item, cursor);
+      else cursor = cursor.nextSibling;
+    });
+    // whatever is left after the last placed item is gone from the data
+    while (cursor !== null) {
+      const gone = cursor;
+      cursor = cursor.nextSibling;
+      gone.remove();
+    }
+  };
+  const data = get(f, 'data');
+  level(m.box!, data.t === K.Block ? data.s.data.slice(data.i) : [], 1, '');
+  m.rows = next;
+  // one Tab stop: the item that had it, else the selected one, else the first
+  const items = treeItems(m);
+  const current = items.find(e => e.tabIndex === 0 && e.hasAttribute('tabindex'))
+    ?? items.find(e => e.classList.contains('tb-selected')) ?? items[0];
+  for (const e of items) e.tabIndex = e === current ? 0 : -1;
+  m.empty!.textContent = str(f, 'text') ?? 'Nothing to show yet';
+  m.empty!.hidden = items.length > 0;
+}
+
+function focusItem(m: Mounted, item: HTMLElement): void {
+  for (const e of treeItems(m)) e.tabIndex = e === item ? 0 : -1;
+  item.focus();
+}
+
+function selectNode(m: Mounted, item: HTMLElement): void {
+  const node = rowOf.get(item);
+  if (node !== undefined) void fire('ui-select', m.face, node);
+}
+
+/** Opens or closes a folder; opening runs on-expand, which may load its children. */
+function toggleNode(m: Mounted, item: HTMLElement, want?: boolean): void {
+  if (!item.hasAttribute('aria-expanded')) return;
+  const k = item.dataset['key']!;
+  const open = want ?? !m.open!.has(k);
+  if (open === m.open!.has(k)) return;
+  const inside = document.activeElement !== item && item.contains(document.activeElement);
+  if (open) m.open!.add(k);
+  else m.open!.delete(k);
+  syncTree(m);
+  if (inside) focusItem(m, item);
+  const node = rowOf.get(item);
+  if (open && node !== undefined) void fire('ui-expand', m.face, node);
+}
+
+/** The keys of the treeview pattern: arrows, Home, End, Enter, Space and a letter to jump. */
+function treeKey(m: Mounted, ev: KeyboardEvent): void {
+  const item = (ev.target as Element).closest<HTMLElement>('[role="treeitem"]');
+  if (item === null || ev.altKey || ev.ctrlKey || ev.metaKey) return;
+  const items = treeItems(m);
+  const i = items.indexOf(item);
+  const expanded = item.getAttribute('aria-expanded');
+  let to: HTMLElement | null | undefined = null;
+  switch (ev.key) {
+    case 'ArrowDown': to = items[i + 1]; break;
+    case 'ArrowUp': to = items[i - 1]; break;
+    case 'Home': to = items[0]; break;
+    case 'End': to = items[items.length - 1]; break;
+    case 'ArrowRight':
+      if (expanded === 'false') toggleNode(m, item, true);
+      else if (expanded === 'true') to = item.querySelector<HTMLElement>('[role="treeitem"]');
+      break;
+    case 'ArrowLeft':
+      if (expanded === 'true') toggleNode(m, item, false);
+      else to = item.parentElement!.closest<HTMLElement>('[role="treeitem"]');
+      break;
+    case 'Enter': case ' ': selectNode(m, item); break;
+    default: {
+      if (ev.key.length !== 1 || ev.key.trim() === '') return;
+      const c = ev.key.toLowerCase();
+      const label = (e: HTMLElement): string => (e.querySelector('.tb-tree-label')?.textContent ?? '').toLowerCase();
+      to = [...items.slice(i + 1), ...items.slice(0, i)].find(e => label(e).startsWith(c));
+    }
+  }
+  ev.preventDefault();
+  if (to) focusItem(m, to);
+}
+
+/** Where a drag over a tree lands: between siblings, or into a folder when over the middle of its row. */
+function treeTarget(m: Mounted, src: Source, x: number, y: number): Target | null {
+  const at = document.elementFromPoint(x, y)?.closest<HTMLElement>('[role="treeitem"]');
+  const drop = flag(m.face, 'drop');
+  let t: Target;
+  if (at === null || at === undefined || !m.box!.contains(at)) {
+    t = { m, index: insertionAt(m, x, y), reorder: false, group: m.box!, parent: NONE };
+  } else {
+    const r = at.querySelector(':scope > .tb-tree-row')!.getBoundingClientRect();
+    if (at.hasAttribute('aria-expanded') && y > r.top + r.height / 4 && y < r.bottom - r.height / 4) {
+      const node = rowOf.get(at)!;
+      const kids = rowField(node, CHILDREN) as BlockCell;
+      t = { m, index: kids.s.data.length - kids.i, reorder: false, group: at.lastElementChild as HTMLElement, parent: node, into: at };
+    } else {
+      const group = at.parentElement!;
+      const index = Array.prototype.indexOf.call(group.children, at) + (y > r.top + r.height / 2 ? 1 : 0);
+      t = { m, index, reorder: false, group, parent: groupParent(m, group) };
+    }
+  }
+  // never into itself or below itself
+  if (src.el === t.into || src.el.contains(t.group!)) return null;
+  t.reorder = src.within === m && t.group === src.group && t.into === undefined;
+  return t.reorder || drop ? t : null;
+}
+
 // --- toolbars and breadcrumbs -------------------------------------------------------
 
 const BAR_ITEMS = 'button, a[href], input, select, textarea, [tabindex]';
@@ -1546,6 +1768,7 @@ function sync(m: Mounted): void {
       return;
     }
     case 'table': case 'list': syncRows(m); return;
+    case 'tree': syncTree(m); return;
     case 'breadcrumb': syncBreadcrumb(m); return;
     case 'toolbar': {
       if (t !== null) m.el.setAttribute('aria-label', t);

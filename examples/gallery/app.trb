@@ -28,6 +28,14 @@ view [
             button #settings "Settings" menu ["Theme" theme "Language" language] on-menu [toast form event/picked]
         ]
     ]
+    panel "Tree" [
+        files: tree [name] reorder on-select [toast row/name] on-expand [
+            if empty? row/children [
+                row/children: reduce [make map! [id 99 name "Loaded when opened"]]
+                files/data: files/data
+            ]
+        ]
+    ]
     panel "Inputs" [
         form [
             field #search "Search" "Name or email"
@@ -83,3 +91,19 @@ people/data: [
     #(id: 2 name: "Grace Hopper" job: "Admiral" about: "Built the first compiler and popularised COBOL.")
     #(id: 3 name: "Alan Turing" job: "Mathematician" about: "Defined computability with the Turing machine.")
 ]
+
+node: function [id name kids] [
+    n: make map! reduce ['id id 'name name]
+    if kids [n/children: kids]
+    n
+]
+files/data: reduce [
+    node 1 "Documents" reduce [
+        node 2 "Invoices" reduce [node 3 "2026-01.pdf" none node 4 "2026-02.pdf" none]
+        node 5 "Contracts" reduce [node 6 "Lease.pdf" none]
+        node 7 "Notes.txt" none
+    ]
+    node 8 "Photos" copy []
+    node 9 "Readme.md" none
+]
+files/data/1/expanded: true

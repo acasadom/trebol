@@ -370,10 +370,10 @@ describe('components', () => {
         list items [name] reorder
       ]
       palette/data: reduce [make map! [id 1 label "Field"]]
-      ui-drop canvas first palette/data palette 2
-      ui-reorder canvas 1 3
+      ui-drop canvas first palette/data palette 2 none
+      ui-reorder canvas 1 3 none
       items/data: reduce [make map! [id 1 name "x"] make map! [id 2 name "y"]]
-      ui-reorder items 2 1
+      ui-reorder items 2 1 none
       t: collect [foreach c canvas/pane [keep c/text]]
       reduce [log t collect [foreach row items/data [keep row/name]] palette/drag canvas/drop]`);
     assert.equal(r, '[[[drop "Field" list 2] [1 3]] ["b" "c" "a"] ["y" "x"] true true]');
@@ -394,6 +394,30 @@ describe('components', () => {
       reduce [went crumbs/value length? crumbs/data]`);
     assert.equal(r, '[clients clients 5]');
     await assert.rejects(runSource(host, 'view [breadcrumb ["Home" "Clients" clients]]'));
+  });
+
+  test('a tree selects nodes, expands them lazily, and reorders among siblings', async () => {
+    const r = await ev(`
+      log: copy []
+      root: view [
+        tree folders [name] drop reorder
+          on-select [append log row/name]
+          on-expand [append log join "open " row/name  row/children: reduce [make map! [id 9 name "Late"]]]
+          on-reorder [append/only log reduce [event/from event/to either event/parent [event/parent/name] [none]]]
+          on-drop [append/only log reduce [event/dropped event/index event/parent/name]]
+      ]
+      docs: make map! [id 1 name "Docs"]
+      docs/children: reduce [make map! [id 2 name "A"] make map! [id 3 name "B"]]
+      lazy: make map! [id 4 name "Lazy"]
+      lazy/children: copy []
+      folders/data: reduce [docs lazy]
+      ui-select folders second folders/data
+      ui-expand folders second folders/data
+      ui-reorder folders 2 1 docs
+      ui-reorder folders 2 1 none
+      ui-drop folders "x" none 1 docs
+      reduce [log collect [foreach n docs/children [keep n/name]] folders/data/1/name lazy/children/1/name folders/selected/id]`);
+    assert.equal(r, '[["Lazy" "open Lazy" [2 1 "Docs"] [2 1 none] ["x" 1 "Docs"]] ["B" "A"] "Lazy" "Late" 4]');
   });
 
   test('tables need words for columns; tabs need label and block pairs', async () => {

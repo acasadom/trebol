@@ -2,7 +2,7 @@ Trebol [
     title: "UI dialect: faces, styles, layout and validation"
     exports: [
         face styles stylize layout view theme open close toast
-        validate-face form-values set-values ui-pane ui-input ui-blur ui-click ui-select ui-close ui-event ui-menu ui-drop ui-reorder ui-crumb
+        validate-face form-values set-values ui-pane ui-input ui-blur ui-click ui-select ui-close ui-event ui-menu ui-drop ui-reorder ui-crumb ui-expand
     ]
 ]
 
@@ -30,7 +30,7 @@ face: make object! [
     wide-only: false    ; hidden on narrow screens
     hidden: false
     disabled: false
-    drag: false         ; can be dragged: carries its value, or the row in a table or list
+    drag: false         ; can be dragged: carries its value, or the row in a table, list or tree
     drop: false         ; accepts drops (on-drop)
     reorder: false      ; its children or rows can be moved around (on-reorder)
     rules: none         ; validation: a block of [rule args...] blocks
@@ -44,8 +44,9 @@ face: make object! [
     menu: none          ; context menu (or the menu a button opens): a block of menu items; on-menu runs
     options: none       ; choices of a choice or radio
     pane: none
-    columns: none       ; table and list: [field "Label" ...]
-    data: none          ; table and list: a block of map! or object! rows; breadcrumb: its items
+    columns: none       ; table, list and tree: [field "Label" ...]
+    data: none          ; table, list and tree: a block of map! or object! rows (a tree's
+                        ; have their own in `children`); breadcrumb: its items
     key: 'id            ; the row field that identifies a row
     selected: none      ; the row last chosen
     form: none          ; the enclosing form, if any
@@ -58,7 +59,7 @@ styles: make map! []
 
 container-styles: [view column row form panel grid dialog scroll split toolbar]
 input-styles: [field password number area check toggle choice radio]
-data-styles: [table list]
+data-styles: [table list tree]
 
 foreach [name base] [
     view column  column column  row row  form form  panel panel  grid grid  scroll scroll
@@ -66,7 +67,7 @@ foreach [name base] [
     field field  password password  number number  area area  check check  choice choice
     toggle toggle  radio radio  progress progress  image image  icon icon
     button button  link link  table table  list list  tabs tabs  tab tab
-    toolbar toolbar  breadcrumb breadcrumb
+    toolbar toolbar  breadcrumb breadcrumb  tree tree
 ] [
     poke styles name make face [style: base]
 ]
@@ -488,14 +489,14 @@ refresh-form: function [scope] [
 
 ; A handler block runs with face, value, values, every named field and, as in
 ; Red, event bound; event is an object (event/key, event/away? ...) or none.
-run-handler: function [f body [block!] /with ev [object!]] [
+run-handler: function [f body [block!] /with ev [object!] /on node "row is this node, not the selected one"] [
     scope: any [f/form f/root]
     words: compose [
         face: (f)
         value: (quoted f/value)
         values: (form-values any [scope f])
     ]
-    if find data-styles f/style [append words compose [row: (f/selected)]]
+    if find data-styles f/style [append words compose [row: (either on [node] [f/selected])]]
     if scope [
         foreach g named-faces scope [append words reduce [to set-word! g/name g]]
     ]
@@ -602,18 +603,38 @@ ui-menu: function [
 ]
 
 ui-drop: function [
-    "Called by the host when something is dropped on a face; index is where it goes (1-based)."
-    f dropped source index [integer!]
+    "Called by the host when something is dropped on a face; index is where it goes (1-based), parent the tree node."
+    f dropped source index [integer!] parent
 ] [
-    fire-event f 'on-drop reduce [quote dropped: quoted :dropped  quote source: source  quote index: index]
+    fields: reduce [quote dropped: quoted :dropped  quote source: source  quote index: index]
+    if f/style = 'tree [append fields reduce [quote parent: parent]]
+    fire-event f 'on-drop fields
 ]
 
 ui-reorder: function [
-    "Called by the host when the user moves a child or row of a face from one position to another."
-    f from [integer!] to [integer!]
+    "Called by the host when the user moves a child or row of a face; in a tree, among the children of parent."
+    f from [integer!] to [integer!] parent
 ] [
-    either find data-styles f/style [f/data: move-item f/data from to] [f/pane: move-item f/pane from to]
-    fire-event f 'on-reorder reduce [quote from: from  quote to: to]
+    fields: reduce [quote from: from  quote to: to]
+    case [
+        f/style = 'tree [
+            either parent [parent/children: move-item parent/children from to] [f/data: move-item f/data from to]
+            f/data: f/data      ; repaint the tree
+            append fields reduce [quote parent: parent]
+        ]
+        find data-styles f/style [f/data: move-item f/data from to]
+        true [f/pane: move-item f/pane from to]
+    ]
+    fire-event f 'on-reorder fields
+]
+
+ui-expand: function [
+    "Called by the host when the user opens a node of a tree."
+    f node
+] [
+    if h: handler-for f 'on-expand [
+        run-handler/with/on f h make object! [type: 'expand] node
+    ]
 ]
 
 move-item: function [items [block!] from [integer!] to [integer!]] [
