@@ -16,6 +16,18 @@ view [
             about: text muted "Their details show here. On a narrow screen this pane replaces the list."
         ]
     ]
+    panel "Navigation" [
+        crumbs: breadcrumb ["Home" home "Clients" clients "Companies" companies "Acme" acme "Invoices"] [
+            toast rejoin ["Go to " value]
+        ]
+        toolbar "Document" [
+            button #plus "New" [toast "New"]
+            button #edit "Edit" [toast "Edit"]
+            ---
+            button #trash "Delete" [toast/role "Deleted" 'danger]
+            button #settings "Settings" menu ["Theme" theme "Language" language] on-menu [toast form event/picked]
+        ]
+    ]
     panel "Inputs" [
         form [
             field #search "Search" "Name or email"

@@ -2,7 +2,7 @@ Trebol [
     title: "UI dialect: faces, styles, layout and validation"
     exports: [
         face styles stylize layout view theme open close toast
-        validate-face form-values set-values ui-pane ui-input ui-blur ui-click ui-select ui-close ui-event ui-menu ui-drop ui-reorder
+        validate-face form-values set-values ui-pane ui-input ui-blur ui-click ui-select ui-close ui-event ui-menu ui-drop ui-reorder ui-crumb
     ]
 ]
 
@@ -45,7 +45,7 @@ face: make object! [
     options: none       ; choices of a choice or radio
     pane: none
     columns: none       ; table and list: [field "Label" ...]
-    data: none          ; table and list: a block of map! or object! rows
+    data: none          ; table and list: a block of map! or object! rows; breadcrumb: its items
     key: 'id            ; the row field that identifies a row
     selected: none      ; the row last chosen
     form: none          ; the enclosing form, if any
@@ -56,7 +56,7 @@ face: make object! [
 ; style name -> prototype face
 styles: make map! []
 
-container-styles: [view column row form panel grid dialog scroll split]
+container-styles: [view column row form panel grid dialog scroll split toolbar]
 input-styles: [field password number area check toggle choice radio]
 data-styles: [table list]
 
@@ -66,6 +66,7 @@ foreach [name base] [
     field field  password password  number number  area area  check check  choice choice
     toggle toggle  radio radio  progress progress  image image  icon icon
     button button  link link  table table  list list  tabs tabs  tab tab
+    toolbar toolbar  breadcrumb breadcrumb
 ] [
     poke styles name make face [style: base]
 ]
@@ -139,12 +140,15 @@ layout: function [
         | set b block! (
             case [
                 find container-styles f/style [
-                    f/pane: layout/only b
+                    ; --- in a toolbar is a separator
+                    f/pane: layout/only either f/style = 'toolbar [replace/all copy b '--- 'divider] [b]
                     if all [f/style = 'split  2 <> length? f/pane] [
                         do make error! "layout: split takes two faces, one per pane"
                     ]
                 ]
                 find data-styles f/style [f/columns: columns-of b]
+                ; the first block holds the items, the second is the action
+                all [f/style = 'breadcrumb  none? f/data] [f/data: crumbs-of b]
                 f/style = 'tabs [f/pane: tabs-of b]
                 find [choice radio] f/style [f/options: reduce b]
                 true [f/action: b]
@@ -239,6 +243,14 @@ menu-of: function [spec [block!] /local i label w b] [
         do make error! "layout: a menu takes a label and a word per item, a block for a submenu, or ---"
     ]
     out
+]
+
+; ["Home" home "Clients" clients "Ada"]: a label and a word per item; the last one may have no word
+crumbs-of: function [spec [block!] /local label w] [
+    unless parse spec [any [set label string! set w word!] opt string!] [
+        do make error! "layout: a breadcrumb takes a label and a word per item; only the last may have no word"
+    ]
+    copy spec
 ]
 
 ; Links each face to its view and form, so handlers can find `values`.
@@ -571,6 +583,14 @@ ui-event: function [
     f name [word!] fields [block!]
 ] [
     fire-event f name fields
+]
+
+ui-crumb: function [
+    "Called by the host when the user chooses an item of a breadcrumb."
+    f item [word!]
+] [
+    f/value: item
+    if f/action [run-handler f f/action]
 ]
 
 ui-menu: function [

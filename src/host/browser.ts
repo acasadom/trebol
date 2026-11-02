@@ -135,6 +135,8 @@ function build(face: ObjectCell): HTMLElement {
       case 'view': node = el('main', 'tb-view'); break;
       case 'column': node = el('div', 'tb-column'); break;
       case 'row': node = el('div', 'tb-row'); break;
+      case 'toolbar': node = buildToolbar(); break;
+      case 'breadcrumb': node = buildBreadcrumb(m); break;
       case 'grid': node = el('div', 'tb-grid'); break;
       case 'scroll': {
         // focusable, so keyboard users can scroll it too
@@ -780,7 +782,9 @@ function appendChildren(node: HTMLElement, face: ObjectCell, style: string): voi
       actions.append(build(c));
     } else {
       actions = null;
-      node.append(build(c));
+      const n = build(c);
+      if (style === 'toolbar' && n.tagName === 'HR') n.setAttribute('aria-orientation', 'vertical');
+      node.append(n);
     }
   }
 }
@@ -1159,6 +1163,124 @@ function handlerFor(face: ObjectCell, name: string): boolean {
   return ev.s.data.some(x => x.t === K.Word && canon((x as WordCell).sym) === c);
 }
 
+// --- toolbars and breadcrumbs -------------------------------------------------------
+
+const BAR_ITEMS = 'button, a[href], input, select, textarea, [tabindex]';
+
+/** The controls of a toolbar, in order; `shown` skips hidden and disabled ones. */
+function barItems(bar: HTMLElement, shown = true): HTMLElement[] {
+  return Array.from(bar.querySelectorAll<HTMLElement>(BAR_ITEMS)).filter(e => e.closest('.tb-toolbar') === bar
+    && (!shown || e.getClientRects().length > 0 && !(e as HTMLButtonElement).disabled));
+}
+
+function buildToolbar(): HTMLElement {
+  const bar = el('div', 'tb-toolbar');
+  bar.setAttribute('role', 'toolbar');
+  // one Tab stop: the arrows move between the controls (roving tabindex)
+  bar.addEventListener('keydown', ev => {
+    const at = ev.target as HTMLElement;
+    if (ev.altKey || ev.ctrlKey || ev.metaKey || at.matches('input, select, textarea')) return;
+    const items = barItems(bar);
+    const i = items.indexOf(at);
+    if (i < 0) return;
+    const to = ev.key === 'ArrowRight' ? (i + 1) % items.length : ev.key === 'ArrowLeft' ? (i - 1 + items.length) % items.length
+      : ev.key === 'Home' ? 0 : ev.key === 'End' ? items.length - 1 : -1;
+    if (to < 0) return;
+    ev.preventDefault();
+    items[to]!.focus();
+  });
+  bar.addEventListener('focusin', ev => {
+    const at = ev.target as HTMLElement;
+    if (!barItems(bar, false).includes(at)) return;
+    for (const e of barItems(bar, false)) e.tabIndex = e === at ? 0 : -1;
+  });
+  return bar;
+}
+
+/** Keeps exactly one control of a toolbar in the Tab order, and the text of its buttons as their tooltip. */
+function syncToolbar(bar: HTMLElement): void {
+  for (const e of Array.from(bar.children)) {
+    const m = byNode.get(e);
+    if (m !== undefined && m.el === e && word(m.face, 'style') === 'button') sync(m);
+  }
+  // the bar may not be on the page yet, so visibility is checked only when moving
+  const items = barItems(bar, false);
+  const current = items.find(e => e.tabIndex === 0 && e.hasAttribute('tabindex')) ?? items[0];
+  for (const e of items) e.tabIndex = e === current ? 0 : -1;
+}
+
+interface Crumb { text: string; id: Cell }
+
+/** The items of a breadcrumb: a label and a word each, the last one maybe without a word. */
+function crumbs(face: ObjectCell): Crumb[] {
+  const d = get(face, 'data');
+  if (d.t !== K.Block) return [];
+  const out: Crumb[] = [];
+  const cells = d.s.data.slice(d.i);
+  for (let i = 0; i < cells.length; i++) {
+    const c = cells[i]!;
+    if (c.t !== K.String) continue;
+    const next = cells[i + 1];
+    const id = next !== undefined && next.t === K.Word ? next : NONE;
+    if (id !== NONE) i++;
+    out.push({ text: text(c as StringCell), id });
+  }
+  return out;
+}
+
+function buildBreadcrumb(m: Mounted): HTMLElement {
+  const nav = el('nav', 'tb-breadcrumb');
+  nav.setAttribute('aria-label', 'Breadcrumb');
+  m.box = el('ol');
+  nav.append(m.box);
+  return nav;
+}
+
+/** Rebuilds the items; on narrow screens the middle ones hide behind a "…" that lists them in a menu. */
+function syncBreadcrumb(m: Mounted): void {
+  const f = m.face;
+  const items = crumbs(f);
+  // choosing an item sets value, which repaints the face: keep the nodes (and the focus) if nothing changed
+  const signature = items.map(c => `${c.text}\u0000${form(c.id)}`).join('\u0001');
+  if (m.kids === signature) return;
+  m.kids = signature;
+  const pick = (c: Crumb): void => void fire('ui-crumb', f, wordOf(K.LitWord, form(c.id)));
+  const middle = items.length > 3 ? items.slice(1, -2) : [];
+  const nodes: HTMLElement[] = items.map((c, i) => {
+    const li = el('li');
+    if (middle.includes(c)) li.className = 'tb-crumb-middle';
+    if (c.id === NONE) {
+      const span = el('span', 'tb-crumb');
+      span.textContent = c.text;
+      if (i === items.length - 1) span.setAttribute('aria-current', 'page');
+      li.append(span);
+    } else {
+      const b = el('button', 'tb-crumb');
+      b.type = 'button';
+      b.textContent = c.text;
+      b.addEventListener('click', () => pick(c));
+      li.append(b);
+    }
+    return li;
+  });
+  if (middle.length > 0) {
+    const li = el('li', 'tb-crumb-more');
+    const b = el('button', 'tb-crumb');
+    b.type = 'button';
+    b.textContent = '…';
+    b.setAttribute('aria-label', 'Show more levels');
+    b.setAttribute('aria-haspopup', 'menu');
+    b.setAttribute('aria-expanded', 'false');
+    b.addEventListener('click', () => {
+      const r = b.getBoundingClientRect();
+      openMenu(middle.map(c => ({ text: c.text, run: () => pick(c) })), r.left, r.bottom + 4, b);
+    });
+    li.append(b);
+    nodes.splice(1, 0, li);
+  }
+  m.box!.replaceChildren(...nodes);
+}
+
 // --- dialogs, tabs and toasts --------------------------------------------------------
 
 function buildDialog(face: ObjectCell, m: Mounted): HTMLElement {
@@ -1408,7 +1530,9 @@ function sync(m: Mounted): void {
       const keys = str(f, 'shortcut');
       if (keys !== null) m.el.setAttribute('aria-keyshortcuts', shortcutAria(keys));
       else m.el.removeAttribute('aria-keyshortcuts');
-      const tip = named ?? (keys !== null ? t : null);
+      // in a toolbar, narrow screens show only the icon, so the text goes in the tooltip too
+      const bar = m.label !== null && m.el.parentElement?.classList.contains('tb-toolbar') === true;
+      const tip = named ?? (keys !== null || bar ? t : null);
       m.el.title = tip === null ? '' : keys === null ? tip : `${tip} (${shortcutLabel(keys)})`;
       break;
     }
@@ -1422,6 +1546,12 @@ function sync(m: Mounted): void {
       return;
     }
     case 'table': case 'list': syncRows(m); return;
+    case 'breadcrumb': syncBreadcrumb(m); return;
+    case 'toolbar': {
+      if (t !== null) m.el.setAttribute('aria-label', t);
+      else m.el.removeAttribute('aria-label');
+      break;
+    }
     case 'dialog': syncDialog(m); break;
     case 'tabs': syncTabs(m); return;
     case 'split': syncSplit(m); return;
@@ -1437,6 +1567,7 @@ function sync(m: Mounted): void {
       break;
     }
   }
+  if (style === 'toolbar') syncToolbar(m.el);
   if (m.el instanceof HTMLButtonElement) {
     // a submit stays focusable while the form has errors; clicking it shows them
     if (flag(f, 'submit')) m.el.setAttribute('aria-disabled', flag(f, 'disabled') ? 'true' : 'false');

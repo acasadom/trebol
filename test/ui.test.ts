@@ -379,6 +379,23 @@ describe('components', () => {
     assert.equal(r, '[[[drop "Field" list 2] [1 3]] ["b" "c" "a"] ["y" "x"] true true]');
   });
 
+  test('a toolbar is a container whose --- are separators', async () => {
+    const r = await ev(`
+      root: view [bar: toolbar "Actions" [button #plus "New" --- button #trash "Delete"]]
+      reduce [bar/text collect [foreach c bar/pane [keep c/style]]]`);
+    assert.equal(r, '["Actions" [button divider button]]');
+  });
+
+  test('a breadcrumb takes label and word items; choosing one runs its action with the word in value', async () => {
+    const r = await ev(`
+      went: none
+      root: view [crumbs: breadcrumb ["Home" home "Clients" clients "Ada"] [went: value]]
+      ui-crumb crumbs 'clients
+      reduce [went crumbs/value length? crumbs/data]`);
+    assert.equal(r, '[clients clients 5]');
+    await assert.rejects(runSource(host, 'view [breadcrumb ["Home" "Clients" clients]]'));
+  });
+
   test('tables need words for columns; tabs need label and block pairs', async () => {
     await assert.rejects(runSource(host, 'view [table t ["Name"]]'));
     await assert.rejects(runSource(host, 'view [tabs ["A"]]'));
