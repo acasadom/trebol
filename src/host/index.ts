@@ -3,6 +3,7 @@
 
 import './natives.ts';
 import './net.ts';
+import './locale.ts';
 import { setLoader, defaultLoader, type Loader } from './modules.ts';
 import {
   K, makeRuntime, load, bindSeries, doSource, scriptStart, errorField, errorMessage, form, mold,
@@ -11,6 +12,7 @@ import {
 import { makeScheduler, spawn, taskResult, type Scheduler } from './scheduler.ts';
 
 export { output } from './natives.ts';
+export { formatLocal, activeLanguage, shown, LOCAL_KINDS } from './locale.ts';
 export type { Loader } from './modules.ts';
 export * from './scheduler.ts';
 

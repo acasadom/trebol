@@ -25,6 +25,9 @@ native('apply-theme', '[spec [object!]]', (_t, f) => {
   return value(themed);
 });
 
+let repaints = 0;
+native('repaint', '[]', () => { repaints++; return value(blockOf(K.Block, [])); });
+
 // the page's link, as the browser host keeps it in location.hash
 let link: string[] = [];
 let links: string[] = [];
@@ -504,6 +507,21 @@ describe('theme', () => {
     assert.ok(css.includes('@media (prefers-color-scheme: dark)'));
     assert.ok(!themeCss({ ...DEFAULT_THEME, mode: 'light' }).includes('prefers-color-scheme'));
   });
+});
+
+test('localize formats dates, times, numbers, percents and money in the active language', async () => {
+  repaints = 0;
+  const r = await ev(`
+    vals: [2-Nov-2026 2-Nov-2026/16:05 16:05 1234567 1234.5 15.5% EUR$1234.5 USD$-3 "x" none]
+    set-language 'es
+    es: collect [foreach v vals [keep localize v]]
+    set-language "en"
+    en: collect [foreach v vals [keep localize v]]
+    reduce [es en i18n/language]`);
+  // Intl puts no-break spaces before units and day periods
+  assert.equal(r.replace(/[\u00a0\u202f]/g, ' '), '[["2/11/2026" "2/11/2026, 16:05" "16:05" "1.234.567" "1234,5" "15,5 %" "1234,50 €" "-3,00 US$" "x" "none"] '
+    + '["11/2/2026" "11/2/2026, 4:05 PM" "4:05 PM" "1,234,567" "1,234.5" "15.5%" "€1,234.50" "-$3.00" "x" "none"] en]');
+  assert.equal(repaints, 2);
 });
 
 test('texts show in the active language and fall back to the main one', async () => {

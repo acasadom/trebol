@@ -17,7 +17,7 @@ import {
   K, NONE, TRUE, FALSE, native, value, string, form, ctxFind, intern, spell, text, canon, blockOf, wordOf, char,
   type Cell, type ObjectCell, type BlockCell, type WordCell, type StringCell, type Ctx, type Sym,
 } from '../core/index.ts';
-import { startHost, startUi, runSource, report, type Host } from './index.ts';
+import { startHost, startUi, runSource, report, shown, activeLanguage, LOCAL_KINDS, type Host } from './index.ts';
 import { spawn, taskResult } from './scheduler.ts';
 import { themeCss, DEFAULT_THEME, type ThemeParams } from './theme.ts';
 import { iconNode } from './icons.ts';
@@ -32,6 +32,11 @@ function get(face: ObjectCell, name: string): Cell {
 function str(face: ObjectCell, name: string): string | null {
   const v = get(face, name);
   return v.t === K.None ? null : form(v);
+}
+
+/** A value as it shows on screen: dates, numbers and money in the active language. */
+function display(v: Cell): string {
+  return LOCAL_KINDS.has(v.t) ? shown(v, activeLanguage(host.rt)) : form(v);
 }
 
 function flag(face: ObjectCell, name: string): boolean {
@@ -1067,7 +1072,7 @@ function sameRow(a: Cell, b: Cell): boolean {
 function cellText(v: Cell): string {
   if (v.t === K.None) return '';
   if (v.t === K.Logic) return v.v ? 'Yes' : 'No';
-  return form(v);
+  return display(v);
 }
 
 const NUMERIC: ReadonlySet<number> = new Set([K.Integer, K.Decimal, K.Money, K.Percent]);
@@ -1755,9 +1760,11 @@ function sync(m: Mounted): void {
     return;
   }
   switch (style) {
-    case 'title': case 'heading': case 'text':
-      m.el.textContent = t ?? '';
+    case 'title': case 'heading': case 'text': {
+      const tv = get(f, 'text');
+      m.el.textContent = tv.t === K.None ? '' : display(tv);
       break;
+    }
     case 'button': case 'link': {
       (m.label ?? m.el).textContent = t ?? '';
       const named = iconLabel(f);
@@ -1909,12 +1916,23 @@ function enteredScreen(box: HTMLElement): void {
 
 // --- natives -----------------------------------------------------------------------
 
+native('repaint', '[]', () => {
+  // after a change of language: every mounted face shows its values again
+  document.documentElement.lang = activeLanguage(host.rt);
+  for (const e of Array.from(document.querySelectorAll('*'))) {
+    const m = byNode.get(e);
+    if (m !== undefined && m.el === e) sync(m);
+  }
+  return value(NONE);
+});
+
 let root: HTMLElement | null = null;
 
 native('show', '[face [object!]]', (_t, f) => {
   const face = f.args[0] as ObjectCell;
   viewKeys = null;
   screensFace = null;
+  document.documentElement.lang = activeLanguage(host.rt);
   const node = build(face);
   if (root !== null) root.replaceWith(node);
   else document.body.append(node);

@@ -3,7 +3,7 @@ Trebol [
     exports: [
         face styles stylize layout view theme open close toast
         validate-face form-values set-values ui-pane ui-input ui-blur ui-click ui-select ui-close ui-event ui-menu ui-drop ui-reorder ui-crumb ui-expand
-        go ui-route
+        go ui-route set-language
     ]
 ]
 
@@ -440,6 +440,14 @@ toast: func [
         kind [word!]
 ] [
     show-toast message either role [kind] [none]
+]
+
+set-language: func [
+    "Changes the active language and shows every face again in it."
+    language [word! string!]
+] [
+    i18n/language: either string? language [to word! language] [language]
+    repaint
 ]
 
 theme: func [

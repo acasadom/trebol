@@ -1,6 +1,6 @@
 Trebol [
     title: "Languages: the active language, texts per language and a dictionary"
-    exports: [i18n tr translated]
+    exports: [i18n tr translated localize]
 ]
 
 ; A text per language is a map: #(es: "Guardar" en: "Save"). `tr` picks the
@@ -45,4 +45,11 @@ tr: function [
         ]
         true [form :text]
     ]
+]
+
+localize: func [
+    "A value as a string in the format of the active language: dates, times, numbers, percents and money."
+    value [any-type!]
+] [
+    format-local :value i18n/language
 ]
