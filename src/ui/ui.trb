@@ -2,7 +2,7 @@ Trebol [
     title: "UI dialect: faces, styles, layout and validation"
     exports: [
         face styles stylize layout view theme open close toast
-        validate-face form-values set-values set-content ui-input ui-blur ui-click ui-select ui-close ui-event ui-menu ui-drop ui-reorder
+        validate-face form-values set-values ui-pane ui-input ui-blur ui-click ui-select ui-close ui-event ui-menu ui-drop ui-reorder
     ]
 ]
 
@@ -41,9 +41,9 @@ face: make object! [
     action: none        ; the block after the face: click, change
     events: none        ; [on-change [...] on-select [...]]
     shortcut: none      ; a key that activates a button or link: "Ctrl+S"
-    menu: none          ; context menu (or the menu a button opens): a block of menu items
+    menu: none          ; context menu (or the menu a button opens): a block of menu items; on-menu runs
     options: none       ; choices of a choice or radio
-    children: none
+    pane: none
     columns: none       ; table and list: [field "Label" ...]
     data: none          ; table and list: a block of map! or object! rows
     key: 'id            ; the row field that identifies a row
@@ -116,10 +116,19 @@ event-word?: func [w [word!]] [
 ]
 
 layout: function [
-    "Turns a block of the UI dialect into a block of faces."
+    "Turns a block of the UI dialect into a view face; /only gives the block of faces."
     spec [block!]
+    /only "Return the faces, not a view holding them"
     /local label style-word f proto n s b w a i v ev
 ] [
+    unless only [
+        ; on-xxx handlers before the first face belong to the view itself
+        events: copy []
+        parse spec [any [set ev word! if (event-word? ev) set b block! (append events reduce [ev b])] spec:]
+        root: make select styles 'view [pane: layout/only spec]
+        unless empty? events [root/events: events]
+        return root
+    ]
     out: copy []
     modifier: [
         set s string! (either f/text [f/hint: s] [f/text: s])
@@ -130,13 +139,13 @@ layout: function [
         | set b block! (
             case [
                 find container-styles f/style [
-                    f/children: layout b
-                    if all [f/style = 'split  2 <> length? f/children] [
+                    f/pane: layout/only b
+                    if all [f/style = 'split  2 <> length? f/pane] [
                         do make error! "layout: split takes two faces, one per pane"
                     ]
                 ]
                 find data-styles f/style [f/columns: columns-of b]
-                f/style = 'tabs [f/children: tabs-of b]
+                f/style = 'tabs [f/pane: tabs-of b]
                 find [choice radio] f/style [f/options: reduce b]
                 true [f/action: b]
             ]
@@ -202,7 +211,7 @@ columns-of: function [spec [block!]] [
 tabs-of: function [spec [block!]] [
     out: copy []
     unless parse spec [any [set label string! set b block! (
-        append out make select styles 'tab [text: label children: layout b]
+        append out make select styles 'tab [text: label pane: layout/only b]
     )]] [
         do make error! "layout: tabs take a label and a block per tab"
     ]
@@ -212,22 +221,22 @@ tabs-of: function [spec [block!]] [
 menu-item: make object! [
     text: none
     icon: none
-    action: none        ; the block run when the item is chosen
+    id: none            ; the word on-menu gets in event/picked
     items: none         ; a submenu
     divider: false
 ]
 
-; ["Edit" [...] #trash "Delete" [...] divider "Move to" menu [...]] -> menu items
-menu-of: function [spec [block!] /local i label b] [
+; As in Red: ["Edit" edit #trash "Delete" delete --- "Move to" ["Top" top]] -> menu items
+menu-of: function [spec [block!] /local i label w b] [
     out: copy []
     unless parse spec [any [
-        'divider (append out make menu-item [divider: true])
+        '--- (append out make menu-item [divider: true])
         | (i: none) opt [set i issue!] set label string! [
-            'menu set b block! (append out make menu-item [text: label icon: i items: menu-of b])
-            | set b block! (append out make menu-item [text: label icon: i action: b])
+            set b block! (append out make menu-item [text: label icon: i items: menu-of b])
+            | set w word! (append out make menu-item [text: label icon: i id: w])
         ]
     ]] [
-        do make error! "layout: a menu takes a label and a block per item, or divider"
+        do make error! "layout: a menu takes a label and a word per item, a block for a submenu, or ---"
     ]
     out
 ]
@@ -236,41 +245,29 @@ menu-of: function [spec [block!] /local i label b] [
 attach: function [f root form] [
     f/root: root
     f/form: form
-    if f/children [
+    if f/pane [
         inner: either f/style = 'form [f] [form]
-        foreach c f/children [attach c root inner]
+        foreach c f/pane [attach c root inner]
     ]
 ]
 
 view: function [
-    "Shows a layout as the page."
-    spec [block!]
-    /local ev b
+    "Shows a layout (a block of the dialect, or a face from layout) as the page."
+    spec [block! object!]
 ] [
-    ; on-xxx handlers before the first face belong to the view itself
-    events: copy []
-    parse spec [any [set ev word! if (event-word? ev) set b block! (append events reduce [ev b])] spec:]
-    root: make select styles 'view [children: layout spec]
-    unless empty? events [root/events: events]
+    root: either block? spec [layout spec] [spec]
     attach root root none
     foreach f all-faces root [refresh-form f]
     show root
 ]
 
-set-content: function [
-    "Replaces the faces inside a container with a new layout; the host rebuilds that part of the page."
-    container [object!]
-    spec [block!]
+ui-pane: function [
+    "Called by the host when code gave a face a new pane: links the new faces to their view and form."
+    f
 ] [
-    kids: layout spec
-    inner: either container/style = 'form [container] [container/form]
-    foreach c kids [attach c container/root inner]
-    if all [container/style = 'split  2 <> length? kids] [
-        do make error! "set-content: split takes two faces, one per pane"
-    ]
-    container/children: kids
-    if container/root [refresh-form any [inner container/root]]
-    container
+    inner: either f/style = 'form [f] [f/form]
+    foreach c any [f/pane []] [attach c f/root inner]
+    if f/root [refresh-form any [inner f/root]]
 ]
 
 open: func [
@@ -313,19 +310,19 @@ all-faces: function [f] [
 
 collect-faces: function [f out] [
     append out f
-    if f/children [foreach c f/children [collect-faces c out]]
+    if f/pane [foreach c f/pane [collect-faces c out]]
 ]
 
 ; Faces that belong to a scope: nested forms keep their own fields and submits.
 own-faces: function [scope] [
     out: reduce [scope]
-    if scope/children [foreach c scope/children [collect-own c out]]
+    if scope/pane [foreach c scope/pane [collect-own c out]]
     out
 ]
 
 collect-own: function [f out] [
     append out f
-    if all [f/children  f/style <> 'form] [foreach c f/children [collect-own c out]]
+    if all [f/pane  f/style <> 'form] [foreach c f/pane [collect-own c out]]
 ]
 
 named-faces: function [scope] [
@@ -477,9 +474,9 @@ refresh-form: function [scope] [
 ;
 ; The host calls these from DOM events, each in its own task.
 
-; A handler block runs with face, value, values and every named field bound,
-; plus the event's own words given as [word: value ...] with /with.
-run-handler: function [f body [block!] /with extra [block!]] [
+; A handler block runs with face, value, values, every named field and, as in
+; Red, event bound; event is an object (event/key, event/away? ...) or none.
+run-handler: function [f body [block!] /with ev [object!]] [
     scope: any [f/form f/root]
     words: compose [
         face: (f)
@@ -487,10 +484,10 @@ run-handler: function [f body [block!] /with extra [block!]] [
         values: (form-values any [scope f])
     ]
     if find data-styles f/style [append words compose [row: (f/selected)]]
-    if with [append words extra]
     if scope [
         foreach g named-faces scope [append words reduce [to set-word! g/name g]]
     ]
+    append words compose [event: (either with [ev] [none])]
     ctx: make object! words
     do bind copy/deep body ctx
 ]
@@ -560,11 +557,20 @@ ui-close: function [
     if h: handler-for f 'on-close [run-handler f h]
 ]
 
+; Runs the on-xxx handler of an event with event bound to an object made of
+; type (the event name without on-) and the given [word: value ...] fields.
+fire-event: function [f name [word!] fields [block!]] [
+    if h: handler-for f name [
+        type: to word! skip form name 3
+        run-handler/with f h make object! append reduce [quote type: to lit-word! type] fields
+    ]
+]
+
 ui-event: function [
-    "Called by the host for on-focus, on-blur, on-hover, on-double-click and on-key."
-    f name [word!] extra [block!]
+    "Called by the host for on-focus, on-unfocus, on-over, on-dbl-click and on-key."
+    f name [word!] fields [block!]
 ] [
-    if h: handler-for f name [run-handler/with f h extra]
+    fire-event f name fields
 ]
 
 ui-menu: function [
@@ -572,24 +578,22 @@ ui-menu: function [
     f item row
 ] [
     if row [f/selected: row]
-    if item/action [run-handler f item/action]
+    fire-event f 'on-menu reduce [quote picked: quoted item/id]
 ]
 
 ui-drop: function [
     "Called by the host when something is dropped on a face; index is where it goes (1-based)."
     f dropped source index [integer!]
 ] [
-    if h: handler-for f 'on-drop [
-        run-handler/with f h reduce [quote dropped: quoted :dropped  quote source: source  quote index: index]
-    ]
+    fire-event f 'on-drop reduce [quote dropped: quoted :dropped  quote source: source  quote index: index]
 ]
 
 ui-reorder: function [
     "Called by the host when the user moves a child or row of a face from one position to another."
     f from [integer!] to [integer!]
 ] [
-    either find data-styles f/style [f/data: move-item f/data from to] [f/children: move-item f/children from to]
-    if h: handler-for f 'on-reorder [run-handler/with f h reduce [quote from: from  quote to: to]]
+    either find data-styles f/style [f/data: move-item f/data from to] [f/pane: move-item f/pane from to]
+    fire-event f 'on-reorder reduce [quote from: from  quote to: to]
 ]
 
 move-item: function [items [block!] from [integer!] to [integer!]] [

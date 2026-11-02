@@ -53,17 +53,17 @@ const SIGNUP = `
       submit "Create account" [saved: values]
     ]
   ]
-  frm: second root/children
-  get-face: func [n] [foreach f frm/children [if f/name = n [return f]] none]
-  btn: last frm/children
+  frm: second root/pane
+  get-face: func [n] [foreach f frm/pane [if f/name = n [return f]] none]
+  btn: last frm/pane
 `;
 
 describe('layout', () => {
   test('styles, names, labels, rules and roles', async () => {
     await ev(`root: view [title "Hi" row [field search "Search" "Type here" fill button primary "Go" [x: 1]]]`);
     const r = await ev(`
-      r: second root/children
-      f: first r/children b: second r/children
+      r: second root/pane
+      f: first r/pane b: second r/pane
       reduce [r/style f/style f/name f/text f/hint f/fill b/role b/text block? b/action]`);
     assert.equal(r, '[row field search "Search" "Type here" true primary "Go" true]');
   });
@@ -77,7 +77,7 @@ describe('layout', () => {
         number min 1 "D"
         field email "E" email
       ]]
-      collect [foreach f select first root/children 'children [keep f/name keep length? any [f/rules []]]]`);
+      collect [foreach f select first root/pane 'pane [keep f/name keep length? any [f/rules []]]]`);
     assert.equal(r, '[none 1 none 0 none 0 none 1 email 1]');
   });
 
@@ -85,13 +85,13 @@ describe('layout', () => {
     const r = await ev(`
       stylize [risky: button [role: 'danger]]
       root: view [total: text "0" risky "Delete"]
-      reduce [total/text select last root/children 'role]`);
+      reduce [total/text select last root/pane 'role]`);
     assert.equal(r, '["0" danger]');
   });
 
   test('grids take a column count; choices take options', async () => {
     const r = await ev(`root: view [grid 3 [text "a"] choice kind "Kind" ["Person" "Company"]]
-      reduce [select first root/children 'cols select second root/children 'options]`);
+      reduce [select first root/pane 'cols select second root/pane 'options]`);
     assert.equal(r, '[3 ["Person" "Company"]]');
   });
 
@@ -123,7 +123,7 @@ describe('validation', () => {
         field note "Note"
         go: submit "Go" [y: 1]
       ]
-      reduce [select last f/children 'disabled go/disabled]`);
+      reduce [select last f/pane 'disabled go/disabled]`);
     assert.equal(r, '[true false]');
   });
 
@@ -148,8 +148,8 @@ describe('validation', () => {
         field user "User" required check-async [wait 0.01 either find taken value ["That name is taken"] [true]]
         field code "Code" check [either value = "42" [true] ["Wrong code"]]
       ]]
-      fm: first root/children
-      u: first fm/children c: second fm/children
+      fm: first root/pane
+      u: first fm/pane c: second fm/pane
       ui-input u "admin" ui-blur u
       ui-input c "41" ui-blur c
       reduce [u/error c/error]`);
@@ -165,10 +165,10 @@ describe('handlers', () => {
         field first-name "First" on-change [got: reduce [face/name value]]
         button "Go" [got: reduce [values/first-name first-name/value]]
       ]]
-      fm: first root/children
-      ui-input first fm/children "Eva"
+      fm: first root/pane
+      ui-input first fm/pane "Eva"
       a: got
-      ui-click second fm/children
+      ui-click second fm/pane
       reduce [a got]`);
     assert.equal(r, '[[first-name "Eva"] ["Eva" "Eva"]]');
   });
@@ -184,7 +184,7 @@ describe('components', () => {
     const r = await ev(`
       root: view [table clients [name "Name" email] key code on-select [x: 1]]
       clients/text: "seen"
-      reduce [select first root/children 'text clients/style clients/columns clients/key clients/data]`);
+      reduce [select first root/pane 'text clients/style clients/columns clients/key clients/data]`);
     assert.equal(r, '["seen" table [name "Name" email "email"] code none]');
   });
 
@@ -204,7 +204,7 @@ describe('components', () => {
       root: view [edit: dialog "Edit" [form [field name "Name"]] on-close [closed: closed + 1]]
       a: edit/hidden open edit b: edit/hidden close edit c: edit/hidden
       open edit ui-close edit
-      reduce [a b c edit/hidden closed edit/text length? edit/children]`);
+      reduce [a b c edit/hidden closed edit/text length? edit/pane]`);
     assert.equal(r, '[true false true true 1 "Edit" 1]');
   });
 
@@ -222,8 +222,8 @@ describe('components', () => {
   test('tabs hold a face per tab and select the first one', async () => {
     const r = await ev(`
       root: view [tabs ["General" [field name "Name"] "Advanced" [check debug "Debug"]]]
-      t: first root/children
-      reduce [t/value collect [foreach c t/children [keep c/style keep c/text keep length? c/children]]
+      t: first root/pane
+      reduce [t/value collect [foreach c t/pane [keep c/style keep c/text keep length? c/pane]]
         form-values root]`);
     assert.equal(r, '[1 [tab "General" 1 tab "Advanced" 1] #(name: none debug: none)]');
   });
@@ -231,11 +231,11 @@ describe('components', () => {
   test('set-values fills a form and forgets that it was touched', async () => {
     const r = await ev(`
       root: view [f: form [field name "Name" required check ok "OK" submit "Save" [x: 1]]]
-      n: first f/children
+      n: first f/pane
       ui-blur n
       a: n/error
       set-values f make map! reduce ['name "Ada" 'ok true 'extra 1]
-      b: reduce [n/value n/touched n/error select second f/children 'value select third f/children 'disabled]
+      b: reduce [n/value n/touched n/error select second f/pane 'value select third f/pane 'disabled]
       set-values f none
       reduce [a b n/value]`);
     assert.equal(r, '["This field is required" ["Ada" false none true false] none]');
@@ -251,12 +251,12 @@ describe('components', () => {
         icon #search primary
         button #plus "New"
       ]]
-      f: first root/children
-      t: first f/children r: second f/children
+      f: first root/pane
+      t: first f/pane r: second f/pane
       a: reduce [validate-face t validate-face r]
       ui-input t true ui-input r "M"
       reduce [a t/value r/value r/options form-values f
-        collect [foreach g skip f/children 2 [keep g/style keep g/value keep g/icon]]]`);
+        collect [foreach g skip f/pane 2 [keep g/style keep g/value keep g/icon]]]`);
     assert.equal(r, '[["This field is required" "This field is required"] true "M" ["S" "M" "L"] '
       + '#(dark: true size: "M") [progress 40% none image %logo.png none icon none #search button none #plus]]');
   });
@@ -265,9 +265,9 @@ describe('components', () => {
     const r = await ev(`
       root: view [f: form [toggle on "On"]]
       set-values f make map! [on: 1]
-      a: select first f/children 'value
+      a: select first f/pane 'value
       set-values f none
-      reduce [a select first f/children 'value]`);
+      reduce [a select first f/pane 'value]`);
     assert.equal(r, '[false false]');
   });
 
@@ -278,9 +278,9 @@ describe('components', () => {
         row gap wide narrow-only [text "x"]
         text "wide" wide-only
       ]
-      r: second root/children
-      reduce [s/style s/size s/pad s/gap length? s/children r/gap r/narrow-only
-        select third root/children 'wide-only]`);
+      r: second root/pane
+      reduce [s/style s/size s/pad s/gap length? s/pane r/gap r/narrow-only
+        select third root/pane 'wide-only]`);
     assert.equal(r, '[scroll small 2 0 2 6 true true]');
     await assert.rejects(runSource(host, 'view [column pad 8 []]'));
   });
@@ -288,60 +288,65 @@ describe('components', () => {
   test('split holds two panes and starts on the first', async () => {
     const r = await ev(`
       root: view [s: split [list people [name] column [text "Detail"]]]
-      reduce [s/value collect [foreach c s/children [keep c/style]]]`);
+      reduce [s/value collect [foreach c s/pane [keep c/style]]]`);
     assert.equal(r, '[1 [list column]]');
     await assert.rejects(runSource(host, 'view [split [text "only one"]]'));
   });
 
-  test('set-content replaces the faces of a container and links them to its form', async () => {
+  test('assigning a pane and calling ui-pane links the new faces to their form', async () => {
     const r = await ev(`
       sent: none
       root: view [frm: form [field a "A"] box: column [text "old"]]
-      set-content frm [field b "B" required  submit "Go" [sent: values]]
-      set-content box [text "new" text "more"]
-      b-face: first frm/children
-      go: last frm/children
+      frm/pane: layout/only [field b "B" required  submit "Go" [sent: values]]
+      ui-pane frm
+      box/pane: layout/only [text "new" text "more"]
+      ui-pane box
+      b-face: first frm/pane
+      go: last frm/pane
       x: reduce [b-face/form = frm  b-face/root = root  go/disabled]
       ui-input b-face "hi"
       ui-click go
-      first-text: first box/children
-      reduce [x sent/b  length? box/children  first-text/text]`);
-    assert.equal(r, '[[true true true] "hi" 2 "new"]');
-    await assert.rejects(runSource(host, 'r: view [s: split [text "a" text "b"]] set-content s [text "c"]'));
+      first-text: first box/pane
+      lay: layout [on-key [x] text "t"]
+      reduce [x sent/b  length? box/pane  first-text/text  lay/style  length? lay/pane  lay/events/1]`);
+    assert.equal(r, '[[true true true] "hi" 2 "new" view 1 on-key]');
   });
 
-  test('general events run their handler with the event words bound', async () => {
+  test('general events run their handler with event bound, as in Red', async () => {
     const r = await ev(`
       log: copy []
       root: view [
-        field name "Name" on-focus [append log 'focus] on-blur [append log value]
-        card: panel [] on-hover [append log over]
-        list people [name] on-double-click [append log row/name]
-        button "Save" key "Ctrl+S" on-key [append log reduce [key ctrl]]
+        field name "Name" on-focus [append log event/type] on-unfocus [append log value]
+        card: panel [] on-over [append log event/away?]
+        list people [name] on-dbl-click [append log row/name]
+        button "Save" key "Ctrl+S" on-key [append/only log reduce [event/key event/ctrl?]]
       ]
-      nm: first root/children
-      btn: last root/children
+      nm: first root/pane
+      btn: last root/pane
       ui-event nm 'on-focus []
       ui-input nm "Ada"
-      ui-event nm 'on-blur []
-      ui-event card 'on-hover [over: true]
+      ui-event nm 'on-unfocus []
+      ui-event card 'on-over [away?: true]
       people/data: reduce [make map! [id 1 name "Ada"]]
       ui-select people first people/data
-      ui-event people 'on-double-click []
-      ui-event btn 'on-key [key: 'enter ctrl: false]
-      ui-event btn 'on-focus []
-      v: view [on-key [append log key] text "x"]
-      ui-event v 'on-key [key: "z"]
-      reduce [log btn/shortcut people/key length? v/children]`);
-    assert.equal(r, '[[focus "Ada" true "Ada" enter false "z"] "Ctrl+S" id 1]');
+      ui-event people 'on-dbl-click []
+      ui-event btn 'on-key [key: #"^M" ctrl?: false shift?: false]
+      ui-event btn 'on-key [key: 'left ctrl?: true shift?: false]
+      v: view [on-key [append log event/key] text "x"]
+      ui-event v 'on-key [key: #"z"]
+      plain: none
+      w: view [button "b" [plain: event]]
+      ui-click first w/pane
+      reduce [log btn/shortcut length? v/pane plain]`);
+    assert.equal(r, '[[focus "Ada" true "Ada" [#"^(0D)" false] [left true] #"z"] "Ctrl+S" 1 none]');
   });
 
-  test('menus hold items, dividers and submenus; choosing one runs it with the row bound', async () => {
+  test('menus follow Red: label and word, --- and submenus; on-menu gets event/picked and the row', async () => {
     const r = await ev(`
       got: none
       root: view [
-        list people [name] menu [#edit "Edit" [got: row/name] divider "Move to" menu ["Top" [got: 'top]]]
-        button "File" menu ["New" [got: 'new]]
+        list people [name] menu [#edit "Edit" edit --- "Move to" ["Top" top]] on-menu [got: reduce [event/picked row/name]]
+        button "File" menu ["New" new]
       ]
       m: people/menu
       people/data: reduce [make map! [id 1 name "Ada"] make map! [id 2 name "Alan"]]
@@ -350,7 +355,7 @@ describe('components', () => {
       sub: third m
       ui-menu people first sub/items none
       reduce [a got length? m m/2/divider m/1/icon sub/text people/selected/id]`);
-    assert.equal(r, '["Alan" top 3 true #edit "Move to" 2]');
+    assert.equal(r, '[[edit "Alan"] [top "Alan"] 3 true #edit "Move to" 2]');
     await assert.rejects(runSource(host, 'view [text "x" menu ["A"]]'));
   });
 
@@ -360,8 +365,8 @@ describe('components', () => {
       root: view [
         list palette [label] drag
         canvas: column [text "a" text "b" text "c"] drop reorder
-          on-drop [append/only log reduce [dropped/label source/style index]]
-          on-reorder [append/only log reduce [from to]]
+          on-drop [append/only log reduce [event/type event/dropped/label event/source/style event/index]]
+          on-reorder [append/only log reduce [event/from event/to]]
         list items [name] reorder
       ]
       palette/data: reduce [make map! [id 1 label "Field"]]
@@ -369,9 +374,9 @@ describe('components', () => {
       ui-reorder canvas 1 3
       items/data: reduce [make map! [id 1 name "x"] make map! [id 2 name "y"]]
       ui-reorder items 2 1
-      t: collect [foreach c canvas/children [keep c/text]]
+      t: collect [foreach c canvas/pane [keep c/text]]
       reduce [log t collect [foreach row items/data [keep row/name]] palette/drag canvas/drop]`);
-    assert.equal(r, '[[["Field" list 2] [1 3]] ["b" "c" "a"] ["y" "x"] true true]');
+    assert.equal(r, '[[[drop "Field" list 2] [1 3]] ["b" "c" "a"] ["y" "x"] true true]');
   });
 
   test('tables need words for columns; tabs need label and block pairs', async () => {

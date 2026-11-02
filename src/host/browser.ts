@@ -14,7 +14,7 @@
 // set the field again to repaint it.
 
 import {
-  K, NONE, TRUE, FALSE, native, value, string, form, ctxFind, intern, spell, text, canon, blockOf, wordOf,
+  K, NONE, TRUE, FALSE, native, value, string, form, ctxFind, intern, spell, text, canon, blockOf, wordOf, char,
   type Cell, type ObjectCell, type BlockCell, type WordCell, type StringCell, type Ctx, type Sym,
 } from '../core/index.ts';
 import { startHost, startUi, runSource, report, type Host } from './index.ts';
@@ -45,7 +45,7 @@ function word(face: ObjectCell, name: string): string | null {
 }
 
 function children(face: ObjectCell): ObjectCell[] {
-  const c = get(face, 'children');
+  const c = get(face, 'pane');
   if (c.t !== K.Block) return [];
   return c.s.data.slice(c.i).filter(x => x.t === K.Object) as ObjectCell[];
 }
@@ -120,7 +120,7 @@ const INPUTS = new Set(['field', 'password', 'number', 'area', 'choice']);
 function build(face: ObjectCell): HTMLElement {
   const style = word(face, 'style') ?? 'face';
   const m: Mounted = {
-    face, el: null!, input: null, label: null, error: null, kids: get(face, 'children'),
+    face, el: null!, input: null, label: null, error: null, kids: get(face, 'pane'),
     box: null, rows: null, empty: null, button: null, radios: null,
   };
   let node: HTMLElement;
@@ -237,12 +237,13 @@ function listen(m: Mounted, style: string): void {
   const node = m.el;
   const left = (ev: FocusEvent): boolean => !node.contains(ev.relatedTarget as Node | null);
   if (handlerFor(f, 'on-focus')) node.addEventListener('focusin', ev => { if (left(ev)) fireEvent(f, 'on-focus'); });
-  if (handlerFor(f, 'on-blur')) node.addEventListener('focusout', ev => { if (left(ev)) fireEvent(f, 'on-blur'); });
-  if (handlerFor(f, 'on-hover')) {
-    node.addEventListener('pointerenter', () => fireEvent(f, 'on-hover', [['over', TRUE]]));
-    node.addEventListener('pointerleave', () => fireEvent(f, 'on-hover', [['over', FALSE]]));
+  if (handlerFor(f, 'on-unfocus')) node.addEventListener('focusout', ev => { if (left(ev)) fireEvent(f, 'on-unfocus'); });
+  if (handlerFor(f, 'on-over')) {
+    // as in Red, event/away? is true when the pointer leaves
+    node.addEventListener('pointerenter', () => fireEvent(f, 'on-over', [['away?', FALSE]]));
+    node.addEventListener('pointerleave', () => fireEvent(f, 'on-over', [['away?', TRUE]]));
   }
-  if (handlerFor(f, 'on-double-click')) node.addEventListener('dblclick', () => fireEvent(f, 'on-double-click'));
+  if (handlerFor(f, 'on-dbl-click')) node.addEventListener('dblclick', () => fireEvent(f, 'on-dbl-click'));
   if (handlerFor(f, 'on-key')) {
     if (style === 'view') viewKeys = f;
     else node.addEventListener('keydown', ev => {
@@ -664,17 +665,28 @@ function openMenu(entries: MenuEntry[], x: number, y: number, opener: HTMLElemen
 
 const MODIFIER_KEYS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'AltGraph', 'CapsLock', 'Dead', 'Unidentified']);
 
-/** A character key as a string ("a"), any other key as a word ('enter, 'arrow-down, 'space). */
+/** Keys that are characters in Red's event/key. */
+const KEY_CHARS: Record<string, number> = { Enter: 13, Escape: 27, Tab: 9, Backspace: 8 };
+/** Keys that are words in Red's event/key. */
+const KEY_WORDS: Record<string, string> = {
+  ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down', Home: 'home', End: 'end',
+  PageUp: 'page-up', PageDown: 'page-down', Insert: 'insert', Delete: 'delete',
+};
+
+/** A key as Red gives it in event/key: a char! (#"a", #"^M" for Enter) or a word ('left, 'F2). */
 function keyCell(ev: KeyboardEvent): Cell | null {
   if (MODIFIER_KEYS.has(ev.key)) return null;
-  if (ev.key === ' ') return wordOf(K.LitWord, 'space');
-  if ([...ev.key].length === 1) return string(ev.key);
-  return wordOf(K.LitWord, ev.key.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase());
+  const c = KEY_CHARS[ev.key];
+  if (c !== undefined) return char(c);
+  const cps = [...ev.key];
+  if (cps.length === 1) return char(cps[0]!.codePointAt(0)!);
+  if (/^F\d+$/.test(ev.key)) return wordOf(K.LitWord, ev.key);
+  return wordOf(K.LitWord, KEY_WORDS[ev.key] ?? ev.key.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase());
 }
 
 function keyWords(ev: KeyboardEvent): [string, Cell][] {
   const b = (x: boolean): Cell => x ? TRUE : FALSE;
-  return [['key', keyCell(ev)!], ['ctrl', b(ev.ctrlKey)], ['shift', b(ev.shiftKey)], ['alt', b(ev.altKey)], ['meta', b(ev.metaKey)]];
+  return [['key', keyCell(ev)!], ['ctrl?', b(ev.ctrlKey)], ['shift?', b(ev.shiftKey)]];
 }
 
 const APPLE = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
@@ -1431,13 +1443,15 @@ function sync(m: Mounted): void {
     else m.el.disabled = flag(f, 'disabled');
   }
   // children replaced by code: rebuild this container
-  const kids = get(f, 'children');
+  const kids = get(f, 'pane');
   if (kids.t === K.Block && (m.kids as BlockCell | undefined)?.s !== kids.s) {
     m.kids = kids;
     const box = m.box ?? m.el;
     const keep = box.querySelector(':scope > .tb-panel-title');
     box.replaceChildren(...(keep ? [keep] : []));
     appendChildren(box, f, style);
+    // let the dialect link the new faces to their view and form
+    void fire('ui-pane', f);
   }
 }
 

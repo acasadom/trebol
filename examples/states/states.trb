@@ -28,8 +28,8 @@ view [
 ]
 
 ; Drive the form from code to show validation states.
-frm: first sign-up/children
-fields: frm/children
+frm: first sign-up/pane
+fields: frm/pane
 ui-input fields/1 "Ada Lovelace"  ui-blur fields/1
 ui-input fields/2 "ada@"          ui-blur fields/2
 ui-input fields/3 "admin"         ui-blur fields/3
