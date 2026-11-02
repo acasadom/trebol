@@ -319,7 +319,7 @@ describe('components', () => {
         field name "Name" on-focus [append log event/type] on-unfocus [append log value]
         card: panel [] on-over [append log event/away?]
         list people [name] on-dbl-click [append log row/name]
-        button "Save" key "Ctrl+S" on-key [append/only log reduce [event/key event/ctrl?]]
+        button "Save" key "Ctrl+S" on-key [append/only log reduce [event/key event/ctrl? event/alt?]]
       ]
       nm: first root/pane
       btn: last root/pane
@@ -330,15 +330,15 @@ describe('components', () => {
       people/data: reduce [make map! [id 1 name "Ada"]]
       ui-select people first people/data
       ui-event people 'on-dbl-click []
-      ui-event btn 'on-key [key: #"^M" ctrl?: false shift?: false]
-      ui-event btn 'on-key [key: 'left ctrl?: true shift?: false]
+      ui-event btn 'on-key [key: #"^M" ctrl?: false shift?: false alt?: true meta?: false]
+      ui-event btn 'on-key [key: 'left ctrl?: true shift?: false alt?: false meta?: false]
       v: view [on-key [append log event/key] text "x"]
       ui-event v 'on-key [key: #"z"]
       plain: none
       w: view [button "b" [plain: event]]
       ui-click first w/pane
       reduce [log btn/shortcut length? v/pane plain]`);
-    assert.equal(r, '[[focus "Ada" true "Ada" [#"^(0D)" false] [left true] #"z"] "Ctrl+S" 1 none]');
+    assert.equal(r, '[[focus "Ada" true "Ada" [#"^(0D)" false true] [left true false] #"z"] "Ctrl+S" 1 none]');
   });
 
   test('menus follow Red: label and word, --- and submenus; on-menu gets event/picked and the row', async () => {

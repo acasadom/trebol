@@ -686,7 +686,7 @@ function keyCell(ev: KeyboardEvent): Cell | null {
 
 function keyWords(ev: KeyboardEvent): [string, Cell][] {
   const b = (x: boolean): Cell => x ? TRUE : FALSE;
-  return [['key', keyCell(ev)!], ['ctrl?', b(ev.ctrlKey)], ['shift?', b(ev.shiftKey)]];
+  return [['key', keyCell(ev)!], ['ctrl?', b(ev.ctrlKey)], ['shift?', b(ev.shiftKey)], ['alt?', b(ev.altKey)], ['meta?', b(ev.metaKey)]];
 }
 
 const APPLE = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
