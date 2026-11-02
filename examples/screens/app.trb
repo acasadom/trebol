@@ -1,0 +1,50 @@
+Trebol [title: "Screens"]
+
+; Screens inside the page, each with its own link: #/clients, #/client/2.
+; Back and forward move between them, and a link opens the screen it names.
+
+people: reduce [
+    make map! [id 1 name "Ada Lovelace" email "ada@example.com" city "London"]
+    make map! [id 2 name "Grace Hopper" email "grace@example.com" city "New York"]
+    make map! [id 3 name "Alan Turing" email "alan@example.com" city "Wilmslow"]
+]
+
+person: func [id [string!]] [
+    foreach p people [if id = form p/id [return p]]
+    none
+]
+
+view [
+    screens [
+        home "Home" [
+            title "Screens"
+            text "Each screen has its own link. Try back and forward, or open a link in a new tab."
+            row [
+                link "See the clients" 'clients
+                link "Grace Hopper" 'client/2
+            ]
+        ]
+        clients "Clients" [
+            on-enter [everyone/data: people]
+            breadcrumb ["Home" home "Clients"] [go value]
+            title "Clients"
+            list everyone [name email] on-select [go [client row/id]]
+        ]
+        client "Client" [id] [
+            on-enter [
+                p: person id
+                either p [
+                    crumbs/data: reduce ["Home" 'home "Clients" 'clients p/name]
+                    who/text: p/name
+                    where/text: rejoin [p/email " · " p/city]
+                ] [
+                    who/text: "No such client"
+                ]
+            ]
+            crumbs: breadcrumb ["Home" home "Clients" clients "…"] [go value]
+            who: title
+            where: text
+            row [button "Back to the list" [go 'clients]]
+        ]
+    ]
+]

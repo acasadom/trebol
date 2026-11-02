@@ -171,7 +171,7 @@ function build(face: ObjectCell): HTMLElement {
       case 'divider': node = el('hr', 'tb-divider'); break;
       case 'link': {
         const a = el('a', 'tb-link');
-        a.href = str(face, 'value') ?? '#';
+        a.href = screenHref(get(face, 'value')) ?? str(face, 'value') ?? '#';
         withIcon(a, face, m);
         a.addEventListener('click', ev => {
           if (get(face, 'action').t === K.Block) {
@@ -203,6 +203,20 @@ function build(face: ObjectCell): HTMLElement {
       case 'dialog': node = buildDialog(face, m); break;
       case 'tabs': node = buildTabs(face, m); break;
       case 'split': node = buildSplit(face, m); break;
+      case 'screens': {
+        node = el('div', 'tb-screens');
+        screensFace = face;
+        break;
+      }
+      case 'screen': {
+        node = el('section', 'tb-screen');
+        const t = str(face, 'text');
+        if (t !== null) {
+          node.setAttribute('aria-label', t);
+          document.title = t;
+        }
+        break;
+      }
       case 'tab': {
         node = el('div', 'tb-tab-panel');
         node.setAttribute('role', 'tabpanel');
@@ -1806,6 +1820,7 @@ function sync(m: Mounted): void {
     appendChildren(box, f, style);
     // let the dialect link the new faces to their view and form
     void fire('ui-pane', f);
+    if (style === 'screens') enteredScreen(box);
   }
 }
 
@@ -1832,6 +1847,66 @@ function syncDirty(): void {
   dirty.length = 0;
 }
 
+// --- screens ---------------------------------------------------------------------
+//
+// The page's link is `#/name/arg...`, each part URI-encoded. `go` pushes a
+// history entry; back, forward and links to a screen change the hash, and the
+// host passes the new route to `ui-route`.
+
+/** The screens face of the page. */
+let screensFace: ObjectCell | null = null;
+/** Where a change of screen is announced. */
+let screenNews: HTMLElement | null = null;
+
+function routeParts(): string[] {
+  const h = location.hash.replace(/^#\/?/, '');
+  if (h === '') return [];
+  return h.split('/').map(p => {
+    try { return decodeURIComponent(p); } catch { return p; }
+  });
+}
+
+function routeBlock(): BlockCell {
+  return blockOf(K.Block, routeParts().map(p => string(p)));
+}
+
+/** `#/client/42` for the word `client` or the path `client/42`; null for anything else. */
+function screenHref(v: Cell): string | null {
+  const part = (c: Cell): string => encodeURIComponent(c.t === K.String ? text(c as StringCell) : c.t === K.Word ? spell((c as WordCell).sym) : form(c));
+  if (v.t === K.Word) return '#/' + part(v);
+  if (v.t === K.Path) return '#/' + v.s.data.slice(v.i).map(part).join('/');
+  return null;
+}
+
+native('route', '[]', () => value(routeBlock()));
+
+native('set-route', '[route [block!] replace [logic!]]', (_t, f) => {
+  const href = screenHref({ ...(f.args[0] as BlockCell), t: K.Path } as Cell) ?? '#/';
+  const replace = f.args[1]!.t === K.Logic && f.args[1]!.v;
+  if (replace) history.replaceState(null, '', href);
+  else history.pushState(null, '', href);
+  return value(f.args[0]!);
+});
+
+/** After code showed another screen: focus it and announce its title. */
+function enteredScreen(box: HTMLElement): void {
+  const screen = box.firstElementChild as HTMLElement | null;
+  if (screen === null) return;
+  const heading = screen.querySelector<HTMLElement>('h1, h2');
+  const target = heading ?? screen;
+  if (target.tabIndex < 0) target.tabIndex = -1;
+  target.focus({ preventScroll: true });
+  window.scrollTo(0, 0);
+  if (screenNews === null) {
+    screenNews = el('div', 'tb-sr-only');
+    screenNews.setAttribute('aria-live', 'polite');
+    document.body.append(screenNews);
+  }
+  const news = screenNews;
+  news.textContent = '';
+  setTimeout(() => { news.textContent = screen.getAttribute('aria-label') ?? ''; }, 50);
+}
+
 // --- natives -----------------------------------------------------------------------
 
 let root: HTMLElement | null = null;
@@ -1839,12 +1914,14 @@ let root: HTMLElement | null = null;
 native('show', '[face [object!]]', (_t, f) => {
   const face = f.args[0] as ObjectCell;
   viewKeys = null;
+  screensFace = null;
   const node = build(face);
   if (root !== null) root.replaceWith(node);
   else document.body.append(node);
   root = node;
   const title = children(face).find(c => word(c, 'style') === 'title');
-  if (title !== undefined) document.title = str(title, 'text') ?? document.title;
+  // a screen names the page itself
+  if (title !== undefined && screensFace === null) document.title = str(title, 'text') ?? document.title;
   return value(face);
 });
 
@@ -1905,6 +1982,9 @@ async function boot(): Promise<void> {
   // a touch drag must not scroll the page
   document.addEventListener('touchmove', ev => { if (dragging?.on) ev.preventDefault(); }, { passive: false });
   document.addEventListener('keydown', onViewKey);
+  window.addEventListener('hashchange', () => {
+    if (screensFace !== null) void fire('ui-route', screensFace, routeBlock());
+  });
   await startUi(host);
   for (const s of Array.from(document.querySelectorAll<HTMLScriptElement>('script[type="text/trebol"]'))) {
     const src = s.getAttribute('src');

@@ -3,6 +3,7 @@ Trebol [
     exports: [
         face styles stylize layout view theme open close toast
         validate-face form-values set-values ui-pane ui-input ui-blur ui-click ui-select ui-close ui-event ui-menu ui-drop ui-reorder ui-crumb ui-expand
+        go ui-route
     ]
 ]
 
@@ -67,7 +68,7 @@ foreach [name base] [
     field field  password password  number number  area area  check check  choice choice
     toggle toggle  radio radio  progress progress  image image  icon icon
     button button  link link  table table  list list  tabs tabs  tab tab
-    toolbar toolbar  breadcrumb breadcrumb  tree tree
+    toolbar toolbar  breadcrumb breadcrumb  tree tree  screens screens  screen screen
 ] [
     poke styles name make face [style: base]
 ]
@@ -151,12 +152,16 @@ layout: function [
                 ; the first block holds the items, the second is the action
                 all [f/style = 'breadcrumb  none? f/data] [f/data: crumbs-of b]
                 f/style = 'tabs [f/pane: tabs-of b]
+                f/style = 'screens [f/data: screens-of b]
                 find [choice radio] f/style [f/options: reduce b]
                 true [f/action: b]
             ]
         )
         | set i issue! (f/icon: i)
         | set v [file! | url! | percent!] (f/value: v)
+        ; a link to a screen: link "Clients" 'clients, link "Ada" 'client/42
+        | set v lit-word! (f/value: to word! v)
+        | set v lit-path! (f/value: to path! v)
         | set n integer! (f/cols: n)
         | 'min set n number! (add-rule f reduce ['min n])
         | 'max set n number! (add-rule f reduce ['max n])
@@ -223,6 +228,20 @@ tabs-of: function [spec [block!]] [
     out
 ]
 
+; [home "Home" [...] client "Client" [id] [...]] -> [name title args body ...]
+screens-of: function [spec [block!] /local n t a b] [
+    out: copy []
+    unless parse spec [some [
+        set n word! set t string! (a: copy []) opt [ahead [block! block!] set a block!] set b block! (
+            foreach w a [unless word? w [do make error! "layout: the arguments of a screen are words"]]
+            append out reduce [n t a b]
+        )
+    ]] [
+        do make error! "layout: screens take a name, a title, an optional block of arguments and a block per screen"
+    ]
+    out
+]
+
 menu-item: make object! [
     text: none
     icon: none
@@ -270,8 +289,89 @@ view: function [
 ] [
     root: either block? spec [layout spec] [spec]
     attach root root none
+    entered: copy []
+    foreach f all-faces root [
+        if f/style = 'screens [
+            set 'router f
+            append entered follow-link f route
+        ]
+    ]
     foreach f all-faces root [refresh-form f]
     show root
+    foreach s entered [run-enter s]
+    root
+]
+
+; --- screens -------------------------------------------------------------------
+;
+; A screens face shows one screen at a time and keeps the page's link in step:
+; the screen `client [id]` showing id "42" is #/client/42. A route is a block
+; of the screen name and its arguments as strings, as they come in the link.
+
+router: none        ; the screens face of the page
+
+; The [name title args body] of the screen a route names, or none.
+find-screen: function [f route [block!] /local n t a b] [
+    if any [empty? route  not word? first route] [return none]
+    foreach [n t a b] f/data [
+        if all [n = first route  (length? a) = ((length? route) - 1)] [return reduce [n t a b]]
+    ]
+    none
+]
+
+; Builds the screen a route names as the only child of f; returns the screen face.
+enter-screen: function [f route [block!] /local ev b] [
+    def: find-screen f route
+    words: copy []
+    repeat i length? def/3 [append words reduce [to set-word! pick def/3 i  pick route i + 1]]
+    body: bind copy/deep def/4 make object! words
+    ; on-xxx handlers before the first face belong to the screen
+    events: copy []
+    parse body [any [set ev word! if (event-word? ev) set b block! (append events reduce [ev b])] body:]
+    s: make select styles 'screen [text: def/2  pane: layout/only body]
+    unless empty? events [s/events: events]
+    f/value: copy route
+    f/pane: reduce [s]
+    ui-pane f
+    s
+]
+
+run-enter: function [s] [
+    if h: handler-for s 'on-enter [run-handler s h]
+]
+
+; Shows the screen of a link given as a block of strings; a link that names no
+; screen shows the first one and is replaced by its link.
+follow-link: function [f parts [block!]] [
+    route: copy parts
+    unless empty? route [route/1: attempt [to word! route/1]]
+    unless find-screen f route [
+        route: reduce [first f/data]
+        set-route route true
+    ]
+    enter-screen f route
+]
+
+go: function [
+    "Shows a screen and gives the page its link: go 'clients, go [client row/id] (the name is not evaluated, the arguments are)."
+    target [word! block!]
+] [
+    unless router [do make error! "go: the view has no screens"]
+    route: reduce [either word? target [target] [first target]]
+    if block? target [foreach a reduce next target [append route form a]]
+    unless find-screen router route [do make error! rejoin ["go: no screen for " mold route]]
+    set-route route false
+    run-enter enter-screen router route
+]
+
+ui-route: function [
+    "Called by the host when the page's link changes: back, forward or a link."
+    f parts [block!]
+] [
+    route: copy parts
+    unless empty? route [route/1: attempt [to word! route/1]]
+    if route = f/value [exit]
+    run-enter follow-link f parts
 ]
 
 ui-pane: function [

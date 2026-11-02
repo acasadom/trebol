@@ -5,7 +5,7 @@ import { test, describe, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { native, value, mold, form, errorField, type Cell, type ObjectCell } from '../src/core/index.ts';
+import { K, native, value, mold, form, string, text, blockOf, errorField, type Cell, type ObjectCell, type StringCell } from '../src/core/index.ts';
 import { startHost, startUi, runSource, type Host } from '../src/host/index.ts';
 import { themeCss, DEFAULT_THEME, palette, contrast, CONTRAST_PAIRS } from '../src/host/theme.ts';
 
@@ -23,6 +23,16 @@ native('show-toast', '[message [string!] kind [word! none!]]', (_t, f) => {
 native('apply-theme', '[spec [object!]]', (_t, f) => {
   themed = f.args[0]!;
   return value(themed);
+});
+
+// the page's link, as the browser host keeps it in location.hash
+let link: string[] = [];
+let links: string[] = [];
+native('route', '[]', () => value(blockOf(K.Block, link.map(p => string(p)))));
+native('set-route', '[route [block!] replace [logic!]]', (_t, f) => {
+  link = (f.args[0] as { s: { data: Cell[] } }).s.data.map(c => (c.t === K.String ? text(c as StringCell) : form(c)));
+  links.push((f.args[1]!.t === K.Logic && f.args[1]!.v ? 'replace ' : 'push ') + link.join('/'));
+  return value(f.args[0]!);
 });
 
 let host: Host;
@@ -121,9 +131,9 @@ describe('validation', () => {
       root: view [
         f: form [field name "Name" required submit "Save" [x: 1]]
         field note "Note"
-        go: submit "Go" [y: 1]
+        go-btn: submit "Go" [y: 1]
       ]
-      reduce [select last f/pane 'disabled go/disabled]`);
+      reduce [select last f/pane 'disabled go-btn/disabled]`);
     assert.equal(r, '[true false]');
   });
 
@@ -302,10 +312,10 @@ describe('components', () => {
       box/pane: layout/only [text "new" text "more"]
       ui-pane box
       b-face: first frm/pane
-      go: last frm/pane
-      x: reduce [b-face/form = frm  b-face/root = root  go/disabled]
+      go-btn: last frm/pane
+      x: reduce [b-face/form = frm  b-face/root = root  go-btn/disabled]
       ui-input b-face "hi"
-      ui-click go
+      ui-click go-btn
       first-text: first box/pane
       lay: layout [on-key [x] text "t"]
       reduce [x sent/b  length? box/pane  first-text/text  lay/style  length? lay/pane  lay/events/1]`);
@@ -418,6 +428,32 @@ describe('components', () => {
       ui-drop folders "x" none 1 docs
       reduce [log collect [foreach n docs/children [keep n/name]] folders/data/1/name lazy/children/1/name folders/selected/id]`);
     assert.equal(r, '[["Lazy" "open Lazy" [2 1 "Docs"] [2 1 none] ["x" 1 "Docs"]] ["B" "A"] "Lazy" "Late" 4]');
+  });
+
+  test('screens show one screen per link; go and the link change it, and on-enter runs', async () => {
+    link = ['nowhere'];
+    links = [];
+    const r = await ev(`
+      log: copy []
+      root: view [
+        main: screens [
+          home "Home" [on-enter [append log 'home] title "Welcome" link "Clients" 'clients]
+          clients "Clients" [list people [name] on-select [go [client row/id]]]
+          client "Client" [id] [on-enter [append log join "client " id  shown/text: id] shown: text]
+        ]
+      ]
+      first-screen: main/pane/1
+      ui-route main ["clients"]
+      people/data: reduce [make map! [id 42 name "Ada"]]
+      ui-select people first people/data
+      at-client: reduce [main/value main/pane/1/text shown/text shown/root = root]
+      ui-route main ["client" "x" "extra"]
+      go 'clients
+      reduce [log first-screen/text first-screen/pane/2/value at-client main/value]`);
+    assert.equal(r, `[[home "client 42" home] "Home" clients [[client "42"] "Client" "42" true] [clients]]`);
+    assert.deepEqual(links, ['replace home', 'push client/42', 'replace home', 'push clients']);
+    await assert.rejects(runSource(host, 'go [nowhere 1]'));
+    await assert.rejects(runSource(host, 'view [screens [home "Home" [1] []]]'));
   });
 
   test('tables need words for columns; tabs need label and block pairs', async () => {
