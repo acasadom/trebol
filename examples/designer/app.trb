@@ -18,7 +18,12 @@ i18n/texts: make map! [
     properties #(en: "Properties" es: "Propiedades")
     nothing-chosen #(en: "Choose a piece of the canvas to see its properties." es: "Elige una pieza del lienzo para ver sus propiedades.")
     drop-here #(en: "Drag pieces from the palette here, or choose one to add it." es: "Arrastra aquí piezas de la paleta, o elige una para añadirla.")
-    empty-section #(en: "Drag pieces into this section." es: "Arrastra piezas a esta sección.")
+    empty-section #(en: "Drag pieces here." es: "Arrastra piezas aquí.")
+    fields #(en: "Fields" es: "Campos")
+    arrange #(en: "Layout" es: "Disposición")
+    columns #(en: "Columns" es: "Columnas")
+    tab-titles #(en: "Tabs, one per line" es: "Pestañas, una por línea")
+    tab #(en: "Tab" es: "Pestaña")
     label #(en: "Label" es: "Etiqueta")
     field-name #(en: "Field name" es: "Nombre del campo")
     required #(en: "Required" es: "Obligatorio")
@@ -39,28 +44,41 @@ i18n/texts: make map! [
     send #(en: "Send" es: "Enviar")
 ]
 
-; What the palette offers: the kind of each piece and its name
-kinds: [
-    text #(en: "Text" es: "Texto")
-    email #(en: "Email" es: "Email")
-    number #(en: "Number" es: "Número")
-    money #(en: "Amount" es: "Importe")
-    date #(en: "Date" es: "Fecha")
-    check #(en: "Checkbox" es: "Casilla")
-    toggle #(en: "Switch" es: "Interruptor")
-    radio #(en: "Options" es: "Opciones")
-    choice #(en: "Drop-down list" es: "Lista desplegable")
-    upload #(en: "File upload" es: "Subida de archivos")
-    section #(en: "Section" es: "Sección")
-    button #(en: "Button" es: "Botón")
+; What the palette offers: the kind of each piece, its icon and its name
+field-kinds: [
+    text #type #(en: "Text" es: "Texto")
+    email #mail #(en: "Email" es: "Email")
+    number #hash #(en: "Number" es: "Número")
+    money #banknote #(en: "Amount" es: "Importe")
+    date #calendar #(en: "Date" es: "Fecha")
+    check #check-square #(en: "Checkbox" es: "Casilla")
+    toggle #toggle #(en: "Switch" es: "Interruptor")
+    radio #radio #(en: "Options" es: "Opciones")
+    choice #dropdown #(en: "Drop-down list" es: "Lista desplegable")
+    upload #upload #(en: "File upload" es: "Subida de archivos")
+    button #pointer #(en: "Button" es: "Botón")
 ]
+layout-kinds: [
+    section #panel #(en: "Section" es: "Sección")
+    row #columns #(en: "Row" es: "Fila")
+    grid #grid #(en: "Grid" es: "Rejilla")
+    tabs #tabs #(en: "Tabs" es: "Pestañas")
+]
+; a tab is a piece too, but only inside tabs
+kinds: compose [(field-kinds) (layout-kinds) tab #panel #(en: "Tab" es: "Pestaña")]
 
-kind-name: func [kind [word!]] [tr select kinds kind]
+kind-name: func [kind [word!]] [tr pick find kinds kind 3]
+kind-icon: func [kind [word!]] [pick find kinds kind 2]
+
+; Pieces that hold others
+containers: [section row grid tabs tab]
+
 
 ; --- the design ----------------------------------------------------------------
 ;
 ; A piece is a map: id kind label name required multiple min max options
-; currency, and children for a section.
+; currency cols, and children for the ones that hold others. The children of
+; tabs are its tabs.
 
 design: copy []
 form-name: none
@@ -77,7 +95,15 @@ new-piece: function [kind [word!]] [
         p/options: collect [repeat i 3 [keep rejoin [tr 'option " " i]]]
     ]
     if kind = 'money [p/currency: 'EUR]
-    if kind = 'section [p/children: copy []]
+    if find containers kind [p/children: copy []]
+    if kind = 'grid [p/cols: 2]
+    if kind = 'tabs [
+        repeat i 2 [
+            t: new-piece 'tab
+            t/label: rejoin [tr 'tab " " i]
+            append p/children t
+        ]
+    ]
     if kind = 'button [p/label: tr 'send]
     p
 ]
@@ -108,7 +134,14 @@ inside?: function [id parent] [
     to logic! all [p/children  locate parent p/children id]
 ]
 
+; Only tabs hold tabs, and tabs hold nothing else.
+fits?: function [kind [word!] parent] [
+    holder: all [parent  select piece-of parent 'kind]
+    either kind = 'tab [holder = 'tabs] [holder <> 'tabs]
+]
+
 add-piece: function [kind [word!] parent index [integer!]] [
+    unless fits? kind parent [exit]
     p: new-piece kind
     insert at children-of parent index p
     refresh
@@ -120,6 +153,7 @@ move-piece: function [id parent index [integer!]] [
     found: locate id design none
     pos: first found
     p: first pos
+    unless fits? p/kind parent [exit]
     ; leaving its place shifts the ones after it
     if all [(second found) = parent  index > index? pos] [index: index - 1]
     remove pos
@@ -178,8 +212,10 @@ duplicate-piece: function [id] [
     choose c/id
 ]
 
-; Clicked in the palette: goes after the chosen piece, or at the end.
+; Clicked in the palette: goes after the chosen piece (into a chosen tab), or at the end.
 add-chosen: function [kind [word!]] [
+    t: piece-of chosen
+    if all [t  t/kind = 'tab] [return add-piece kind chosen 1 + length? t/children]
     either found: locate chosen design none [
         add-piece kind second found 1 + index? first found
     ] [
@@ -236,15 +272,28 @@ gen-piece: function [p live [logic!]] [
         radio choice [compose [(p/kind) (n) (l) (reduce [copy p/options]) (req)]]
         upload [compose [upload (n) (l) (either p/multiple [[multiple]] [[]]) (req)]]
         section [compose/deep [panel (l) [(gen-list p/children live)]]]
+        row [compose/deep [row [(gen-list/row p/children live)]]]
+        grid [compose/deep [grid (p/cols) [(gen-list p/children live)]]]
+        tabs [
+            b: copy []
+            foreach t p/children [
+                append b t/label
+                append/only b gen-list t/children live
+            ]
+            compose/only [tabs (b)]
+        ]
         button [
             either live [compose/deep [submit (l) [toast/role 'valid 'success]]] [compose [submit (l)]]
         ]
     ]
 ]
 
-gen-list: function [list [block!] live [logic!]] [
+gen-list: function [list [block!] live [logic!] /row "In a row: the pieces share its width"] [
     out: copy []
-    foreach p list [append out gen-piece p live]
+    foreach p list [
+        append out gen-piece p live
+        if row [append out 'fill]
+    ]
     out
 ]
 
@@ -253,13 +302,28 @@ form-block: function [live [logic!]] [
 ]
 
 ; The same, as text laid out to read.
-code-lines: function [list [block!] indent [string!]] [
+code-lines: function [list [block!] indent [string!] /row "In a row: the pieces share its width"] [
     out: copy ""
+    more: join indent "    "
     foreach p list [
-        append out either p/kind = 'section [
-            rejoin [indent "panel " mold p/label " [^/" code-lines p/children join indent "    " indent "]^/"]
-        ] [
-            rejoin [indent mold/only gen-piece p false "^/"]
+        append out case [
+            p/kind = 'tabs [
+                inner: copy ""
+                foreach t p/children [
+                    append inner rejoin [more mold t/label " [^/" code-lines t/children join more "    " more "]^/"]
+                ]
+                rejoin [indent "tabs [^/" inner indent "]^/"]
+            ]
+            find containers p/kind [
+                start: switch p/kind [
+                    section [join "panel " mold p/label]
+                    row ["row"]
+                    grid [join "grid " p/cols]
+                ]
+                inner: either p/kind = 'row [code-lines/row p/children more] [code-lines p/children more]
+                rejoin [indent start " [^/" inner indent "]^/"]
+            ]
+            true [rejoin [indent mold/only gen-piece p false either row [" fill"] [""] "^/"]]
         ]
     ]
     out
@@ -272,8 +336,9 @@ code-of: does [
 ; --- the canvas ----------------------------------------------------------------------
 ;
 ; Each piece shows as it will be, inert inside a panel you can choose, drag
-; and delete. A section is a panel holding a head (to choose and drag it)
-; and a column its pieces drop into.
+; and delete. A piece that holds others is a panel with a head (to choose
+; and drag it) and a zone its pieces drop into: a column for a section, a
+; row, a grid, or a column in each tab.
 
 wrappers: make map! []      ; id -> the panel that shows a piece, to mark the chosen one
 
@@ -285,6 +350,44 @@ look: function [p] [
     either p/kind = 'button [compose [button primary (p/label)]] [b]
 ]
 
+; The zone where the pieces of a holder drop: on-drop and on-reorder, with its name for "Move to".
+zone-events: function [id name] [
+    compose/deep [
+        (name) drop reorder gap 3
+        on-drop [dropped (id) event/dropped event/index]
+        on-reorder [reorder-piece (id) event/from event/to]
+    ]
+]
+
+zone-block: function [p] [
+    switch p/kind [
+        section [compose [column (zone-events p/id p/label) []]]
+        row [compose [row (zone-events p/id kind-name 'row) []]]
+        grid [compose [grid (p/cols) (zone-events p/id kind-name 'grid) []]]
+        tabs [
+            b: copy []
+            foreach t p/children [
+                append b t/label
+                append/only b compose [column (zone-events t/id t/label) []]
+            ]
+            compose/only [tabs (b)]
+        ]
+    ]
+]
+
+fill-zone: function [p zone] [
+    zone/pane: either empty? p/children [
+        layout/only [text muted 'empty-section]
+    ] [
+        map-each c p/children [
+            f: piece-face c
+            ; in a row, the pieces share the width
+            if p/kind = 'row [f/fill: true]
+            f
+        ]
+    ]
+]
+
 piece-face: function [p] [
     id: p/id
     handlers: compose/deep [
@@ -293,22 +396,23 @@ piece-face: function [p] [
         on-key [if find reduce ['delete #"^H"] event/key [delete-piece (id)]]
         on-menu [piece-picked (id) event/picked]
     ]
-    either p/kind = 'section [
+    either find containers p/kind [
+        title: either p/kind = 'section [p/label] [kind-name p/kind]
         f: first layout/only compose/deep [
             panel pad 3 gap 3 [
-                row (handlers) [heading (p/label) inert]
-                column (p/label) drop reorder gap 3
-                    on-drop [dropped (id) event/dropped event/index]
-                    on-reorder [reorder-piece (id) event/from event/to]
-                    []
+                row (handlers) [icon (kind-icon p/kind) muted  heading (title) inert]
+                (zone-block p)
             ]
         ]
         f/pane/1/value: id
-        kids: f/pane/2
-        kids/pane: either empty? p/children [
-            layout/only [text muted 'empty-section]
+        zone: f/pane/2
+        either p/kind = 'tabs [
+            repeat i length? p/children [
+                t: pick zone/pane i
+                fill-zone pick p/children i  first t/pane
+            ]
         ] [
-            map-each c p/children [piece-face c]
+            fill-zone p zone
         ]
     ] [
         f: first layout/only compose/deep [panel pad 3 (handlers) [(look p) inert]]
@@ -336,7 +440,9 @@ canvas-faces: does [
 
 tree-nodes: function [list [block!]] [
     map-each p list [
-        n: make map! reduce ['id p/id 'name rejoin [p/label " (" kind-name p/kind ")"]]
+        name: either find [row grid tabs] p/kind [kind-name p/kind] [rejoin [p/label " (" kind-name p/kind ")"]]
+        if p/kind = 'tab [name: p/label]
+        n: make map! reduce ['id p/id 'name name]
         if p/children [
             n/children: tree-nodes p/children
             n/expanded: true
@@ -357,10 +463,10 @@ node-of: function [id list [block!]] [
 node-id: func [node] [either node [node/id] [none]]
 
 ; A button per kind: click it to add the piece, or drag it where it goes.
-palette-faces: function [] [
+palette-faces: function [group [block!]] [
     collect [
-        foreach [k t] kinds [
-            f: first layout/only compose/deep [button (t) drag [add-chosen (to lit-word! k)]]
+        foreach [k i t] group [
+            f: first layout/only compose/deep [button small (i) (t) drag [add-chosen (to lit-word! k)]]
             f/value: k
             keep f
         ]
@@ -388,6 +494,9 @@ show-props: function [] [
     props/hidden: not p
     unless p [exit]
     k: p/kind
+    label-f/hidden: to logic! find [row grid tabs] k
+    cols-f/hidden: k <> 'grid
+    tabs-f/hidden: k <> 'tabs
     numeric: to logic! find [number money] k
     name-f/hidden: none? p/name
     required-f/hidden: not find named-kinds k
@@ -404,7 +513,29 @@ show-props: function [] [
         'low-date either k = 'date [p/min] [none]  'high-date either k = 'date [p/max] [none]
         'opts either p/options [lines-of p/options] [none]
         'cur either p/currency [form p/currency] [none]
+        'cols-p either p/cols [form p/cols] [none]
+        'tab-titles either k = 'tabs [lines-of map-each t p/children [t/label]] [none]
     ]
+]
+
+; One tab per line: renames the tabs in order, adds new ones and drops the ones left over.
+set-tabs: function [value] [
+    p: piece-of chosen
+    lines: either value [split value "^/"] [copy []]
+    remove-each s lines [empty? trim s]
+    if empty? lines [exit]
+    repeat i length? lines [
+        either i <= length? p/children [
+            t: pick p/children i
+            t/label: pick lines i
+        ] [
+            t: new-piece 'tab
+            t/label: pick lines i
+            append p/children t
+        ]
+    ]
+    clear at p/children 1 + length? lines
+    refresh
 ]
 
 lines-of: function [items [block!]] [
@@ -429,7 +560,8 @@ new-design: does [
 
 show-design: does [
     form-name-f/value: form-name
-    palette/pane: palette-faces
+    palette/pane: palette-faces field-kinds
+    arrange/pane: palette-faces layout-kinds
     refresh
     show-props
 ]
@@ -440,7 +572,7 @@ show-code: does [
 ]
 
 ; A design to start with
-use [s] [
+use [s r] [
     form-name: "Contact"
     s: new-piece 'section
     s/label: "About you"
@@ -449,6 +581,13 @@ use [s] [
     s/children/1/name: "name"
     s/children/1/required: true
     s/children/2/name: "email"
+    r: new-piece 'row
+    append r/children reduce [new-piece 'text new-piece 'text]
+    r/children/1/label: "City"
+    r/children/1/name: "city"
+    r/children/2/label: "Postcode"
+    r/children/2/name: "postcode"
+    append s/children r
     append design s
     append design new-piece 'choice
     design/2/label: "Topic"
@@ -457,7 +596,7 @@ use [s] [
 ]
 
 view [
-    width large
+    width fill
     screens [
         design 'designer [
             on-enter [show-design]
@@ -472,12 +611,15 @@ view [
                 ]
             ]
             global form-name-f: field 'form-name [form-name: value]
-            grid 3 [
+            grid [1 4 1] [
                 column [
-                    panel 'palette [
+                    panel 'palette pad 4 gap 3 [
+                        text muted 'fields
                         global palette: grid 2 gap 2 []
+                        text muted 'arrange
+                        global arrange: grid 2 gap 2 []
                     ]
-                    panel 'structure [
+                    panel 'structure pad 4 [
                         global structure: tree [name] reorder drop
                             on-select [choose row/id]
                             on-reorder [reorder-piece node-id event/parent event/from event/to]
@@ -490,10 +632,10 @@ view [
                         on-reorder [reorder-piece none event/from event/to]
                         []
                 ]
-                panel 'properties [
+                panel 'properties pad 4 [
                     global nothing-chosen: text muted 'nothing-chosen
                     global props: column [
-                        field label 'label [set-prop 'label value]
+                        global label-f: field label 'label [set-prop 'label value]
                         global name-f: field name 'field-name required pattern [name-start any name-char] [set-name value]
                         global required-f: check req 'required [set-prop 'required value]
                         global multiple-f: check many 'multiple [set-prop 'multiple value]
@@ -502,6 +644,10 @@ view [
                         global low-d: date low-date 'minimum [set-prop 'min value]
                         global high-d: date high-date 'maximum [set-prop 'max value]
                         global options-f: area opts 'options [set-options value]
+                        global cols-f: choice cols-p 'columns ["2" "3" "4"] on-change [
+                            if value [set-prop 'cols to integer! value]
+                        ]
+                        global tabs-f: area tab-titles 'tab-titles [set-tabs value]
                         global currency-f: choice cur 'currency ["EUR" "USD" "GBP"] on-change [
                             set-prop 'currency all [value  to word! value]
                         ]
