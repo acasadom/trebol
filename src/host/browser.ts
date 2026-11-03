@@ -17,7 +17,7 @@ import {
   K, NONE, TRUE, FALSE, native, value, string, form, ctxFind, intern, spell, text, canon, blockOf, wordOf, char,
   type Cell, type ObjectCell, type BlockCell, type WordCell, type StringCell, type Ctx, type Sym,
 } from '../core/index.ts';
-import { startHost, startUi, runSource, report, shown, activeLanguage, editLocal, readLocal, LOCAL_KINDS, type Host } from './index.ts';
+import { startHost, startUi, runSource, report, shown, activeLanguage, editLocal, readLocal, readDate, weekStart, LOCAL_KINDS, type Host } from './index.ts';
 import { spawn, taskResult } from './scheduler.ts';
 import { themeCss, DEFAULT_THEME, type ThemeParams } from './theme.ts';
 import { iconNode } from './icons.ts';
@@ -122,7 +122,7 @@ function el<T extends keyof HTMLElementTagNameMap>(tag: T, cls?: string): HTMLEl
   return e;
 }
 
-const INPUTS = new Set(['field', 'password', 'number', 'money', 'area', 'choice']);
+const INPUTS = new Set(['field', 'password', 'number', 'money', 'date', 'area', 'choice']);
 
 function build(face: ObjectCell): HTMLElement {
   const style = word(face, 'style') ?? 'face';
@@ -708,6 +708,209 @@ function openMenu(entries: MenuEntry[], x: number, y: number, opener: HTMLElemen
   menuItems(mn)[0]?.focus();
 }
 
+// --- calendar ------------------------------------------------------------------------
+//
+// The calendar of a date field: a grid of days, as in the WAI-ARIA date picker
+// pattern. Arrows move by days and weeks, Page Up/Down by months, Home/End to
+// the ends of the week, Enter or Space picks, Esc closes. Days are UTC dates.
+
+interface Calendar { face: ObjectCell; opener: HTMLButtonElement; box: HTMLElement; month: HTMLElement; at: Date }
+let calendar: Calendar | null = null;
+
+const DAY_MS = 86400000;
+
+/** A date! cell as a UTC date at midnight, or null. */
+function utcDate(v: Cell): Date | null {
+  return v.t === K.Date ? new Date(Date.UTC(v.v.y, v.v.m - 1, v.v.d)) : null;
+}
+
+function isoDay(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+/** The date argument of a min or max rule of a face, or null. */
+function dateRule(face: ObjectCell, rule: string): Date | null {
+  const rules = get(face, 'rules');
+  if (rules.t !== K.Block) return null;
+  for (const r of rules.s.data) {
+    if (r.t !== K.Block || r.s.data[0]?.t !== K.Word || spell((r.s.data[0] as WordCell).sym) !== rule) continue;
+    return utcDate(r.s.data[1] ?? NONE);
+  }
+  return null;
+}
+
+function openCalendar(face: ObjectCell, opener: HTMLButtonElement): void {
+  closeCalendar(false);
+  const today = new Date(Date.UTC(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()));
+  const box = el('div', 'tb-calendar');
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-label', opener.getAttribute('aria-label') ?? 'Choose date');
+  box.setAttribute('popover', 'manual');
+  const month = el('h2', 'tb-calendar-month');
+  month.id = `tb-${nextId++}`;
+  month.setAttribute('aria-live', 'polite');
+  const step = (name: string, label: string, by: number): HTMLButtonElement => {
+    const b = el('button', 'tb-calendar-step');
+    b.type = 'button';
+    b.setAttribute('aria-label', label);
+    const svg = icon(name);
+    if (svg !== null) b.append(svg);
+    b.addEventListener('click', () => {
+      if (calendar === null) return;
+      calendar.at = addMonths(calendar.at, by);
+      renderCalendar();
+    });
+    return b;
+  };
+  const head = el('div', 'tb-calendar-head');
+  head.append(step('chevron-left', 'Previous month', -1), month, step('chevron-right', 'Next month', 1));
+  box.append(head);
+  calendar = { face, opener, box, month, at: utcDate(get(face, 'value')) ?? today };
+  opener.setAttribute('aria-expanded', 'true');
+  box.addEventListener('keydown', calendarKey);
+  box.addEventListener('focusout', ev => {
+    if (calendar?.box === box && !box.contains(ev.relatedTarget as Node | null) && ev.relatedTarget !== null) closeCalendar(false);
+  });
+  document.addEventListener('pointerdown', outsideCalendar, true);
+  document.body.append(box);
+  box.showPopover?.();
+  renderCalendar();
+  const r = opener.closest('.tb-date')!.getBoundingClientRect();
+  const c = box.getBoundingClientRect();
+  box.style.left = `${Math.max(8, Math.min(r.right - c.width, innerWidth - c.width - 8))}px`;
+  box.style.top = `${r.bottom + 4 + c.height > innerHeight - 8 ? Math.max(8, r.top - 4 - c.height) : r.bottom + 4}px`;
+  focusDay();
+}
+
+function closeCalendar(refocus = true): void {
+  if (calendar === null) return;
+  const { box, opener } = calendar;
+  calendar = null;
+  box.hidePopover?.();
+  box.remove();
+  opener.setAttribute('aria-expanded', 'false');
+  document.removeEventListener('pointerdown', outsideCalendar, true);
+  if (refocus) opener.focus();
+}
+
+function outsideCalendar(ev: PointerEvent): void {
+  if (calendar !== null && !calendar.box.contains(ev.target as Node) && !calendar.opener.contains(ev.target as Node)) closeCalendar(false);
+}
+
+/** Draws the month of the focused day; the head stays. */
+function renderCalendar(): void {
+  const cal = calendar!;
+  const lang = activeLanguage(host.rt);
+  const at = cal.at;
+  const min = dateRule(cal.face, 'min');
+  const max = dateRule(cal.face, 'max');
+  const chosen = utcDate(get(cal.face, 'value'));
+  const now = new Date();
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const fmt = (opts: Intl.DateTimeFormatOptions): Intl.DateTimeFormat => new Intl.DateTimeFormat(lang, { timeZone: 'UTC', ...opts });
+
+  cal.month.textContent = fmt({ month: 'long', year: 'numeric' }).format(at);
+  const grid = el('table', 'tb-calendar-grid');
+  grid.setAttribute('role', 'grid');
+  grid.setAttribute('aria-labelledby', cal.month.id);
+  const first = weekStart(lang) % 7;
+  const names = el('tr');
+  for (let i = 0; i < 7; i++) {
+    // 4-Jan-1970 was a Sunday
+    const day = new Date(Date.UTC(1970, 0, 4 + ((first + i) % 7)));
+    const th = el('th');
+    th.scope = 'col';
+    th.abbr = fmt({ weekday: 'long' }).format(day);
+    th.textContent = fmt({ weekday: 'narrow' }).format(day);
+    names.append(th);
+  }
+  const thead = el('thead');
+  thead.append(names);
+  const body = el('tbody');
+  const start = Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), 1);
+  let ms = start - ((new Date(start).getUTCDay() - first + 7) % 7) * DAY_MS;
+  const label = fmt({ dateStyle: 'full' });
+  do {
+    const row = el('tr');
+    for (let i = 0; i < 7; i++, ms += DAY_MS) {
+      const d = new Date(ms);
+      const td = el('td', 'tb-calendar-day');
+      td.setAttribute('role', 'gridcell');
+      td.textContent = String(d.getUTCDate());
+      td.setAttribute('aria-label', label.format(d));
+      td.dataset.day = isoDay(d);
+      td.tabIndex = ms === at.getTime() ? 0 : -1;
+      if (d.getUTCMonth() !== at.getUTCMonth()) td.classList.add('tb-calendar-other');
+      if (ms === today) td.setAttribute('aria-current', 'date');
+      td.setAttribute('aria-selected', chosen !== null && ms === chosen.getTime() ? 'true' : 'false');
+      if ((min !== null && d < min) || (max !== null && d > max)) td.setAttribute('aria-disabled', 'true');
+      td.addEventListener('click', () => pickDay(d));
+      row.append(td);
+    }
+    body.append(row);
+  } while (new Date(ms).getUTCMonth() === at.getUTCMonth());
+  grid.append(thead, body);
+  cal.box.querySelector('table')?.remove();
+  cal.box.append(grid);
+}
+
+function addMonths(d: Date, n: number): Date {
+  const y = d.getUTCFullYear(), m = d.getUTCMonth() + n;
+  // the same day, or the last one of a shorter month
+  const last = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  return new Date(Date.UTC(y, m, Math.min(d.getUTCDate(), last)));
+}
+
+function focusDay(): void {
+  calendar?.box.querySelector<HTMLElement>('td[tabindex="0"]')?.focus();
+}
+
+function pickDay(d: Date): void {
+  const cal = calendar;
+  if (cal === null) return;
+  if (cal.box.querySelector(`td[data-day="${isoDay(d)}"]`)?.getAttribute('aria-disabled') === 'true') return;
+  const face = cal.face;
+  closeCalendar();
+  void fire('ui-input', face, string(isoDay(d))).then(() => fire('ui-blur', face));
+}
+
+function calendarKey(ev: KeyboardEvent): void {
+  const cal = calendar;
+  if (cal === null) return;
+  seenKeys.add(ev);
+  if (ev.key === 'Escape') {
+    ev.preventDefault();
+    ev.stopPropagation();
+    closeCalendar();
+    return;
+  }
+  if (!(ev.target instanceof HTMLTableCellElement)) return;
+  const at = cal.at;
+  const first = weekStart(activeLanguage(host.rt)) % 7;
+  const back = (at.getUTCDay() - first + 7) % 7;
+  const days: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7, Home: -back, End: 6 - back };
+  let to: Date | null = null;
+  if (ev.key in days) to = new Date(at.getTime() + days[ev.key]! * DAY_MS);
+  else if (ev.key === 'PageUp' || ev.key === 'PageDown') to = addMonths(at, (ev.key === 'PageUp' ? -1 : 1) * (ev.shiftKey ? 12 : 1));
+  else if (ev.key === 'Enter' || ev.key === ' ') {
+    ev.preventDefault();
+    pickDay(at);
+    return;
+  }
+  if (to === null) return;
+  ev.preventDefault();
+  cal.at = to;
+  if (to.getUTCMonth() === at.getUTCMonth()) {
+    cal.box.querySelectorAll<HTMLElement>('td[tabindex="0"]').forEach(td => { td.tabIndex = -1; });
+    const td = cal.box.querySelector<HTMLElement>(`td[data-day="${isoDay(to)}"]`)!;
+    td.tabIndex = 0;
+    td.focus();
+  } else {
+    renderCalendar();
+    focusDay();
+  }
+}
+
 const MODIFIER_KEYS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'AltGraph', 'CapsLock', 'Dead', 'Unidentified']);
 
 /** Keys that are characters in Red's event/key. */
@@ -881,8 +1084,10 @@ function buildInput(face: ObjectCell, style: string, m: Mounted): HTMLElement {
   const name = word(face, 'name');
   if (name !== null) input.name = name;
   input.addEventListener(style === 'choice' ? 'change' : 'input', () => {
-    // an amount goes to Trebol as 1234.5; what is not one goes as typed and reads as none
-    const typed = style === 'money' ? readLocal(input.value, activeLanguage(host.rt)) ?? input.value : input.value;
+    // an amount goes to Trebol as 1234.5 and a date as 2026-11-03; what is not one goes as typed
+    const lang = activeLanguage(host.rt);
+    const typed = style === 'money' ? readLocal(input.value, lang) ?? input.value
+      : style === 'date' ? readDate(input.value, lang) ?? input.value : input.value;
     void fire('ui-input', face, typed === '' ? NONE : string(typed));
   });
   // an amount shows formatted, and is edited as a plain number of the active language
@@ -890,7 +1095,18 @@ function buildInput(face: ObjectCell, style: string, m: Mounted): HTMLElement {
   input.addEventListener('blur', () => void fire('ui-blur', face));
   const iconWord = style === 'area' || style === 'choice' ? null : iconName(face);
   const svg = iconWord !== null ? icon(iconWord) : null;
-  if (svg !== null) {
+  if (style === 'date') {
+    const box = el('div', 'tb-date');
+    const pick = el('button', 'tb-date-button');
+    pick.type = 'button';
+    pick.setAttribute('aria-haspopup', 'dialog');
+    pick.setAttribute('aria-expanded', 'false');
+    const cal = icon('calendar');
+    if (cal !== null) pick.append(cal);
+    pick.addEventListener('click', () => (calendar?.opener === pick ? closeCalendar() : openCalendar(face, pick)));
+    box.append(input, pick);
+    control.append(box, error);
+  } else if (svg !== null) {
     const box = el('div', 'tb-input-icon');
     box.append(svg, input);
     control.append(box, error);
@@ -1751,13 +1967,18 @@ function sync(m: Mounted): void {
     if (m.input instanceof HTMLInputElement && m.input.type === 'checkbox') {
       m.input.checked = v.t === K.Logic && v.v;
     } else {
-      const want = v.t === K.None ? '' : style === 'money' ? display(v) : form(v);
+      const want = v.t === K.None ? str(f, 'typed') ?? '' : style === 'money' || style === 'date' ? display(v) : form(v);
       // never fight the user's typing: only push values that differ from what code set
       if (document.activeElement !== m.input && m.input.value !== want) m.input.value = want;
       const hint = str(f, 'hint');
       if (hint !== null && !(m.input instanceof HTMLSelectElement)) m.input.placeholder = hint;
     }
     m.input.disabled = flag(f, 'disabled');
+    if (style === 'date') {
+      const pick = m.input.nextElementSibling as HTMLButtonElement;
+      pick.disabled = m.input.disabled;
+      pick.setAttribute('aria-label', `Choose ${t ?? 'date'}`);
+    }
     m.input.setAttribute('aria-required', hasRule(f, 'required') ? 'true' : 'false');
     m.input.setAttribute('aria-invalid', err !== null ? 'true' : 'false');
     if (m.error !== null) m.error.textContent = err ?? '';

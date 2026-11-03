@@ -45,6 +45,7 @@ face: make object! [
     menu: none          ; context menu (or the menu a button opens): a block of menu items; on-menu runs
     options: none       ; choices of a choice or radio
     currency: none      ; a money field's currency code: EUR
+    typed: none         ; what the user typed in a number, money or date field when it is not one
     pane: none
     columns: none       ; table, list and tree: [field "Label" ...]
     data: none          ; table, list and tree: a block of map! or object! rows (a tree's
@@ -60,13 +61,13 @@ face: make object! [
 styles: make map! []
 
 container-styles: [view column row form panel grid dialog scroll split toolbar]
-input-styles: [field password number money area check toggle choice radio]
+input-styles: [field password number money date area check toggle choice radio]
 data-styles: [table list tree]
 
 foreach [name base] [
     view column  column column  row row  form form  panel panel  grid grid  scroll scroll
     title title  heading heading  text text  divider divider
-    field field  password password  number number  money money  area area  check check  choice choice
+    field field  password password  number number  money money  date date  area area  check check  choice choice
     toggle toggle  radio radio  progress progress  image image  icon icon
     button button  link link  table table  list list  tabs tabs  tab tab
     toolbar toolbar  breadcrumb breadcrumb  tree tree  screens screens  screen screen
@@ -98,11 +99,11 @@ roles: [primary accent danger success warning muted]
 sizes: [small medium large]
 aligns: [left center right spread]
 flags: [fill hidden disabled narrow-only wide-only drag drop reorder]
-simple-rules: [required email url integer date]
+simple-rules: [required email url integer]
 letter: charset [#"a" - #"z" #"A" - #"Z"]
 rule-words: [min max length pattern match check check-async width pad gap menu]
 
-; Words that never name a field. email, url, integer and date are rules too,
+; Words that never name a field. email, url and integer are rules too,
 ; but also common field names, so the first word after an input style names it.
 field-name?: func [w [word!]] [
     not any [
@@ -197,8 +198,8 @@ build-faces: function [
         | set v lit-word! (f/value: to word! v)
         | set v lit-path! (f/value: to path! v)
         | set n integer! (f/cols: n)
-        | 'min set n [number! | money!] (add-rule f reduce ['min n])
-        | 'max set n [number! | money!] (add-rule f reduce ['max n])
+        | 'min set n [number! | money! | date!] (add-rule f reduce ['min n])
+        | 'max set n [number! | money! | date!] (add-rule f reduce ['max n])
         | 'length set a integer! set n integer! (add-rule f reduce ['length a n])
         | 'pattern set b block! (add-rule f reduce ['pattern b])
         | 'match set w word! (add-rule f reduce ['match w])
@@ -509,6 +510,7 @@ set-values: function [
         v: either data [select data f/name] [none]
         f/value: either logic-face? f [true = v] [v]
         f/touched: false
+        f/typed: none
         f/async-error: none
     ]
     refresh-form scope
@@ -521,6 +523,8 @@ messages: make map! [
     email "Enter a valid email address"
     url "Enter a valid web address"
     integer "Enter a whole number"
+    number "Enter a number"
+    amount "Enter an amount"
     date "Enter a valid date"
     min "Must be at least #1"
     max "Must be at most #1"
@@ -560,6 +564,7 @@ validate-face: function [
 ] [
     v: f/value
     rules: any [f/rules []]
+    if f/typed [return message select [number number money amount date date] f/style []]
     if blank? :v [
         return either find/only rules [required] [message 'required []] [none]
     ]
@@ -569,9 +574,8 @@ validate-face: function [
             email [unless parse v email-rule [message 'email []]]
             url [unless parse v url-rule [message 'url []]]
             integer [unless parse form v [opt "-" some digit] [message 'integer []]]
-            date [unless date? attempt [to date! v] [message 'date []]]
-            min [if all [any [number? v  money? v]  v < r/2] [message 'min reduce [r/2]]]
-            max [if all [any [number? v  money? v]  v > r/2] [message 'max reduce [r/2]]]
+            min [if all [any [number? v  money? v  date? v]  v < r/2] [message 'min reduce [r/2]]]
+            max [if all [any [number? v  money? v  date? v]  v > r/2] [message 'max reduce [r/2]]]
             length [
                 n: length? form v
                 if any [n < r/2  n > r/3] [
@@ -666,12 +670,16 @@ ui-input: function [
         number [any [attempt [to decimal! new]  none]]
         ; the host gives the amount as 1234.5, whatever the language
         money [all [new  attempt [to money! rejoin [any [f/currency ""] "$" new]]]]
+        ; and a date as 2026-11-03
+        date [all [new  attempt [to date! new]]]
         check [to logic! new]
         toggle [to logic! new]
     ] [new]
     if f/style = 'number [
         if all [decimal? f/value  f/value = to integer! f/value] [f/value: to integer! f/value]
     ]
+    ; text that is not a number, amount or date stays on screen, with its message
+    f/typed: all [find [number money date] f/style  new  none? f/value  new]
     f/async-error: none
     refresh-form any [f/form f/root]
     if f/action [run-handler f f/action]

@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { K, NONE, native, value, mold, form, string, text, money, blockOf, errorField, type Cell, type ObjectCell, type StringCell } from '../src/core/index.ts';
-import { startHost, startUi, runSource, readLocal, editLocal, type Host } from '../src/host/index.ts';
+import { startHost, startUi, runSource, readLocal, editLocal, readDate, weekStart, type Host } from '../src/host/index.ts';
 import { themeCss, DEFAULT_THEME, palette, contrast, CONTRAST_PAIRS } from '../src/host/theme.ts';
 
 let shown: Cell | null = null;
@@ -538,6 +538,43 @@ test('money fields keep an exact amount in their currency, with min and max', as
     ui-input t "-3"
     reduce [p/style p/name p/currency big small ok bad t/value t/currency]`);
   assert.equal(r.replace(/[\u00a0\u202f]/g, ' '), '[money price EUR [EUR$1234.50 none] [EUR$0.10 "Must be at least 1,00 €"] [EUR$12.50 none] none -$3.00 none]');
+});
+
+test('date fields keep a date!, with min, max and required', async () => {
+  const r = await ev(`
+    set-language 'es
+    root: view [form [date due "Due date" required min 1-Jan-2026 max 31-Dec-2026]]
+    d: first select first root/pane 'pane
+    ui-input d "2026-11-03"  ok: reduce [d/value validate-face d]
+    ui-input d "2025-12-31"  early: validate-face d
+    ui-input d "2027-01-01"  late: validate-face d
+    ui-input d none  empty: validate-face d
+    reduce [d/style d/name ok early late empty]`);
+  assert.equal(r, '[date due [3-Nov-2026 none] "Must be at least 1/1/2026" "Must be at most 31/12/2026" "This field is required"]');
+});
+
+test('text that is not a number, amount or date stays, with its message', async () => {
+  const r = await ev(`
+    root: view [form [number n "N"  money m "M"  date d "D"  field email "E" date]]
+    fs: select first root/pane 'pane
+    foreach f copy/part fs 3 [ui-input f "abc"]
+    out: collect [foreach f copy/part fs 3 [keep/only reduce [f/value f/typed validate-face f]]]
+    ui-input first fs "12"
+    append out reduce [fs/1/value fs/1/typed  fs/4/name  fs/4/rules]
+    set-values first root/pane none
+    append out fs/2/typed
+    out`);
+  assert.equal(r, '[[none "abc" "Enter a number"] [none "abc" "Enter an amount"] [none "abc" "Enter a valid date"] 12 none email none none]');
+});
+
+test('dates are read in the order of the language', () => {
+  const cases: [string, string, string | null][] = [
+    ['3/11/2026', 'es', '2026-11-03'], ['11/3/2026', 'en', '2026-11-03'], ['3-11-26', 'es', '2026-11-03'],
+    ['2026-11-03', 'en', '2026-11-03'], ['23.11.2026', 'de', '2026-11-23'], ['31/2/2026', 'es', null],
+    ['3/11', 'es', null], ['x', 'es', null],
+  ];
+  for (const [typed, lang, want] of cases) assert.equal(readDate(typed, lang), want, `${lang} ${typed}`);
+  assert.deepEqual(['es', 'en', 'en-GB'].map(weekStart), [1, 7, 1]);
 });
 
 test('amounts are read and edited in the format of the language', () => {

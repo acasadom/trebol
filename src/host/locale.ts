@@ -95,6 +95,45 @@ function grouped(whole: string, group: string): string {
   return whole.split(group).join('');
 }
 
+/** The order of day, month and year in the dates of a language: `dmy` in `es`, `mdy` in `en`. */
+function dateOrder(lang: string): string {
+  let parts: Intl.DateTimeFormatPart[] = [];
+  try { parts = new Intl.DateTimeFormat(lang, { timeZone: 'UTC' }).formatToParts(Date.UTC(2026, 10, 23)); } catch { /* unknown language tag */ }
+  const order = parts.map(p => p.type[0]).filter(c => c === 'd' || c === 'm' || c === 'y').join('');
+  return order.length === 3 ? order : 'dmy';
+}
+
+/**
+ * A date typed in a language as Trebol reads it (`2026-11-03`), or null when it is not one.
+ * Day, month and year go in the order of the language with any separator; `2026-11-03`
+ * reads in every language, and a two-digit year is in this century.
+ */
+export function readDate(s: string, lang: string): string | null {
+  const nums = s.trim().split(/[^0-9]+/).filter(n => n !== '');
+  if (nums.length !== 3) return null;
+  const order = nums[0]!.length === 4 ? 'ymd' : dateOrder(lang);
+  const at = (c: string): number => Number(nums[order.indexOf(c)]);
+  let y = at('y');
+  const m = at('m'), d = at('d');
+  if (nums[order.indexOf('y')]!.length <= 2) y += 2000;
+  const t = new Date(Date.UTC(y, m - 1, d));
+  if (y < 100 || t.getUTCFullYear() !== y || t.getUTCMonth() !== m - 1 || t.getUTCDate() !== d) return null;
+  return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+/** The first day of the week in a language, 1 for Monday to 7 for Sunday. */
+export function weekStart(lang: string): number {
+  try {
+    const loc = new Intl.Locale(lang) as Intl.Locale & { getWeekInfo?: () => { firstDay: number }; weekInfo?: { firstDay: number } };
+    const first = (loc.getWeekInfo?.() ?? loc.weekInfo)?.firstDay;
+    if (first !== undefined) return first;
+    // without week data, only regions known to start on Sunday
+    return ['US', 'CA', 'MX', 'BR', 'JP', 'IL', 'PH'].includes(loc.maximize().region ?? '') ? 7 : 1;
+  } catch {
+    return 1;
+  }
+}
+
 /** The active language: `i18n/language` of the user context, `en` if there is none. */
 export function activeLanguage(rt: Runtime): string {
   const i = ctxFind(rt.user, intern('i18n'));

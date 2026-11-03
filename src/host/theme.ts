@@ -346,6 +346,13 @@ select.tb-input { appearance: none; background-image: linear-gradient(45deg, tra
 .tb-input-icon { position: relative; display: flex; }
 .tb-input-icon > .tb-icon { position: absolute; left: var(--tb-space-3); top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--tb-muted); pointer-events: none; }
 .tb-input-icon > .tb-input { padding-left: calc(var(--tb-space-3) + 26px); }
+.tb-date { position: relative; display: flex; }
+.tb-date > .tb-input { padding-right: calc(var(--tb-control) + var(--tb-space-1)); }
+.tb-date-button { position: absolute; right: 1px; top: 1px; bottom: 1px; width: var(--tb-control); display: grid; place-items: center; padding: 0; border: 0; border-radius: var(--tb-radius); background: transparent; color: var(--tb-muted); cursor: pointer; }
+.tb-date-button:hover:not(:disabled) { color: var(--tb-text); }
+.tb-date-button:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-focus-ring); }
+.tb-date-button:disabled { cursor: default; opacity: 0.5; }
+.tb-date-button .tb-icon { width: 18px; height: 18px; }
 .tb-tree-wrap { min-width: 0; }
 .tb-tree, .tb-tree ul { list-style: none; margin: 0; padding: 0; }
 .tb-tree li { outline: none; }
@@ -578,6 +585,36 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
 .tb-split-handle:focus-visible { outline: none; }
 .tb-split-handle:focus-visible::before { width: 3px; background: var(--tb-focus); }
 .tb-split-back { display: none; }
+
+/* the calendar of a date field: in the top layer, placed by the host */
+.tb-calendar {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  padding: var(--tb-space-3);
+  background: var(--tb-raised);
+  color: var(--tb-text);
+  border: 1px solid var(--tb-border);
+  border-radius: var(--tb-radius-lg);
+  box-shadow: var(--tb-shadow-3);
+  animation: tb-pop 120ms var(--tb-ease);
+}
+.tb-calendar-head { display: flex; align-items: center; gap: var(--tb-space-2); margin-bottom: var(--tb-space-2); }
+.tb-calendar-month { flex: 1; margin: 0; font-size: 1em; font-weight: 600; text-align: center; }
+.tb-calendar-month::first-letter { text-transform: uppercase; }
+.tb-calendar-step { width: 32px; height: 32px; display: grid; place-items: center; padding: 0; border: 0; border-radius: var(--tb-radius); background: transparent; color: var(--tb-muted); cursor: pointer; }
+.tb-calendar-step:hover { background: var(--tb-bg); color: var(--tb-text); }
+.tb-calendar-step:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-focus-ring); }
+.tb-calendar-step .tb-icon { width: 18px; height: 18px; }
+.tb-calendar-grid { border-collapse: collapse; }
+.tb-calendar-grid th { width: 36px; height: 28px; font-size: 0.8em; font-weight: 500; color: var(--tb-muted); text-transform: uppercase; }
+.tb-calendar-day { width: 36px; height: 36px; padding: 0; text-align: center; border-radius: var(--tb-radius); cursor: pointer; font-variant-numeric: tabular-nums; transition: background var(--tb-fast) var(--tb-ease); }
+.tb-calendar-day:hover { background: var(--tb-bg); }
+.tb-calendar-day:focus { outline: none; box-shadow: inset 0 0 0 2px var(--tb-focus); }
+.tb-calendar-other { color: var(--tb-muted); }
+.tb-calendar-day[aria-current="date"] { font-weight: 700; color: var(--tb-primary); }
+.tb-calendar-day[aria-selected="true"] { background: var(--tb-primary); color: var(--tb-on-primary); }
+.tb-calendar-day[aria-disabled="true"] { color: var(--tb-border-strong); background: transparent; cursor: default; text-decoration: line-through; }
 
 /* menus: in the top layer, placed by the host */
 .tb-menu {
