@@ -34,6 +34,18 @@ const PATHS: Record<string, string> = {
   calendar: 'M4 6h16v15H4zM4 10h16M8 3v4M16 3v4',
   star: 'M12 3l2.8 5.8 6.2.9-4.5 4.4 1 6.3L12 17.5l-5.5 2.9 1-6.3L3 9.7l6.2-.9L12 3z',
   heart: 'M12 20s-8-5-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 9c0 6-8 11-8 11z',
+  type: 'M5 7V4h14v3M12 4v16M9 20h6',
+  hash: 'M5 9h14M5 15h14M10 4L8 20M16 4l-2 16',
+  banknote: 'M3 7h18v10H3zM12 9.5a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5zM6.5 10v4M17.5 10v4',
+  'check-square': 'M4 4h16v16H4zM8 12l3 3 5-6',
+  toggle: 'M8 7h8a5 5 0 0 1 0 10H8A5 5 0 0 1 8 7zM16 9.5a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5z',
+  radio: 'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18zM12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6z',
+  dropdown: 'M3 7h18v10H3zM14 11l2 2 2-2',
+  panel: 'M4 4h16v16H4zM4 9h16',
+  columns: 'M3 5h7v14H3zM14 5h7v14h-7z',
+  grid: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
+  tabs: 'M3 9h18v11H3zM3 9V5h7v4M10 5h6v4',
+  pointer: 'M6 4l13 6-5.5 2L11 18z',
 };
 
 export const ICONS: readonly string[] = Object.keys(PATHS);

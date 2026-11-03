@@ -22,7 +22,7 @@ face: make object! [
     role: none          ; primary accent danger success warning muted
     size: none          ; small medium large
     align: none         ; left center right spread
-    cols: none          ; columns of a grid
+    cols: none          ; columns of a grid: a number, or the weight of each [1 4 1]
     icon: none
     fill: false
     pad: none           ; inner and between-children spacing, a step of the spacing scale (0-7)
@@ -193,6 +193,8 @@ build-faces: function [
         )
         | set b block! (
             case [
+                ; grid [1 4 1] [...]: the weight of each column, then the children
+                all [f/style = 'grid  none? f/pane  not empty? b  parse b [some integer!]] [f/cols: b]
                 find container-styles f/style [
                     ; --- in a toolbar is a separator
                     f/pane: build-faces either f/style = 'toolbar [replace/all copy b '--- 'divider] [b] labels

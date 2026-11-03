@@ -659,6 +659,8 @@ test('a view takes its width at the head; inert faces; screen titles per languag
   assert.equal(await ev('v: layout [on-key [x: 1] width large text "a"]  reduce [v/size length? v/pane v/events/1]'), '[large 1 on-key]');
   assert.equal(await ev('v: layout [text "a"]  v/size'), 'none');
   assert.equal(await ev('f: first layout/only [panel drag inert [field "Name"]]  reduce [f/inert f/drag]'), '[true true]');
+  assert.equal(await ev('f: first layout/only [grid [1 4 1] [text "a" text "b" text "c"]]  reduce [f/cols length? f/pane]'), '[[1 4 1] 3]');
+  assert.equal(await ev('f: first layout/only [grid 3 []]  reduce [f/cols f/pane]'), '[3 []]');
   link = [];
   const r = await ev(`v: view [screens [home #(en: "Home" es: "Inicio") [text "x"] about 'about [text "y"]]]
     sc: v/pane/1  reduce [tr sc/pane/1/text  pick sc/data 6]`);

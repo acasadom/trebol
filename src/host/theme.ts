@@ -209,7 +209,7 @@ body {
 .tb-row.tb-right { justify-content: flex-end; }
 .tb-row.tb-spread { justify-content: space-between; }
 .tb-fill { flex: 1 1 0; min-width: 0; }
-.tb-grid { display: grid; gap: var(--tb-space-4); grid-template-columns: repeat(var(--tb-cols, 2), minmax(0, 1fr)); }
+.tb-grid { --tb-tracks: initial; --tb-cols: 2; display: grid; gap: var(--tb-space-4); grid-template-columns: var(--tb-tracks, repeat(var(--tb-cols), minmax(0, 1fr))); }
 .tb-panel {
   background: var(--tb-raised);
   border: 1px solid var(--tb-border);
@@ -333,6 +333,7 @@ select.tb-input { appearance: none; background-image: linear-gradient(45deg, tra
   gap: var(--tb-space-2);
   transition: background var(--tb-fast) var(--tb-ease), border-color var(--tb-fast) var(--tb-ease), box-shadow var(--tb-fast) var(--tb-ease), opacity var(--tb-fast) var(--tb-ease);
 }
+.tb-button.tb-small { font-size: 13px; padding: 0 var(--tb-space-3); gap: var(--tb-space-1); }
 .tb-button:hover { background: var(--tb-bg); border-color: var(--tb-muted); }
 .tb-button:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-focus-ring); }
 .tb-button.tb-primary { background: var(--tb-primary); border-color: var(--tb-primary); color: var(--tb-on-primary); box-shadow: var(--tb-shadow-1); }

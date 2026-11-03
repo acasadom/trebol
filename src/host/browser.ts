@@ -2215,6 +2215,10 @@ function sync(m: Mounted): void {
     case 'grid': {
       const cols = get(f, 'cols');
       m.el.style.setProperty('--tb-cols', cols.t === K.Integer ? String(cols.v) : '2');
+      // [1 4 1]: a column per weight, never narrower than what it holds
+      const weights = cols.t === K.Block ? cols.s.data.slice(cols.i).filter(c => c.t === K.Integer) : [];
+      if (weights.length > 0) m.el.style.setProperty('--tb-tracks', weights.map(w => `minmax(min-content, ${form(w)}fr)`).join(' '));
+      else m.el.style.removeProperty('--tb-tracks');
       break;
     }
   }
