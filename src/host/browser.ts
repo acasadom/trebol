@@ -131,9 +131,13 @@ const byCtx = new WeakMap<Ctx, Mounted>();
 const dirty: Ctx[] = [];
 let nextId = 1;
 
+const ACTIVE: ReadonlySet<number> = new Set([K.Word, K.SetWord, K.GetWord, K.Paren, K.Path, K.SetPath, K.GetPath, K.Function, K.Native]);
+
 /** Runs a UI event function (ui-input, ui-blur, ui-click) as a new task. */
 function fire(fn: string, face: ObjectCell, ...args: Cell[]): Promise<Cell> {
-  const call: Cell[] = [{ t: K.Word, sym: intern(fn), bind: host.rt.user }, face, ...args];
+  // a word, path or paren given as data (a dropped `date`) is quoted, so it is passed, not evaluated
+  const quote: Cell = { t: K.Word, sym: intern('quote'), bind: host.rt.lib };
+  const call: Cell[] = [{ t: K.Word, sym: intern(fn), bind: host.rt.user }, face, ...args.flatMap(a => ACTIVE.has(a.t) ? [quote, a] : [a])];
   const t = taskResult(spawn(host.sch, { data: call }, 0));
   t.catch(e => console.error(report(e as ObjectCell)));
   return t;
@@ -177,16 +181,7 @@ function build(face: ObjectCell): HTMLElement {
         node.setAttribute('role', 'region');
         break;
       }
-      case 'panel': {
-        node = el('section', 'tb-panel');
-        const t = str(face, 'text');
-        if (t !== null) {
-          const h = el('h2', 'tb-panel-title');
-          h.textContent = t;
-          node.append(h);
-        }
-        break;
-      }
+      case 'panel': node = el('section', 'tb-panel'); break;
       case 'form': {
         const f = el('form', 'tb-form');
         f.noValidate = true;
@@ -2123,6 +2118,10 @@ function sync(m: Mounted): void {
   if (err !== null) cls.push('tb-invalid');
   if (flag(f, 'pending')) cls.push('tb-pending');
   setExtra(m.el, cls);
+  // shown as it is, but it and its children cannot be used
+  m.el.inert = flag(f, 'inert');
+  // a face you can drag takes the focus, so the keyboard reaches its menu and moves it
+  if (flag(f, 'drag') && !isData(m) && m.el.tabIndex < 0) m.el.tabIndex = 0;
   space(m.el, 'padding', get(f, 'pad'));
   space(m.el, 'gap', get(f, 'gap'));
 
@@ -2196,6 +2195,18 @@ function sync(m: Mounted): void {
     case 'tabs': syncTabs(m); return;
     case 'split': syncSplit(m); return;
     case 'tab': if (m.button !== null) m.button.textContent = t ?? ''; break;
+    case 'panel': {
+      let h = m.el.querySelector<HTMLElement>(':scope > .tb-panel-title');
+      if (t === null) h?.remove();
+      else {
+        if (h === null) {
+          h = el('h2', 'tb-panel-title');
+          m.el.prepend(h);
+        }
+        h.textContent = t;
+      }
+      break;
+    }
     case 'scroll': {
       if (t !== null) m.el.setAttribute('aria-label', t);
       else m.el.removeAttribute('aria-label');

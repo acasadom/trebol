@@ -197,6 +197,9 @@ body {
   gap: var(--tb-space-5);
 }
 .tb-view:has(> .tb-split) { max-width: 1120px; }
+.tb-view.tb-small { max-width: 480px; font-size: inherit; }
+.tb-view.tb-large { max-width: 1120px; }
+.tb-view.tb-fill { max-width: none; }
 .tb-column { display: flex; flex-direction: column; gap: var(--tb-space-4); min-width: 0; }
 .tb-screens, .tb-screen { display: flex; flex-direction: column; gap: var(--tb-space-4); min-width: 0; }
 .tb-screen:focus { outline: none; }
@@ -217,6 +220,13 @@ body {
   flex-direction: column;
   gap: var(--tb-space-5);
 }
+.tb-panel.tb-primary { border-color: var(--tb-primary); box-shadow: inset 0 0 0 1px var(--tb-primary), var(--tb-shadow-1); }
+.tb-panel.tb-accent { border-color: var(--tb-accent); }
+.tb-panel.tb-danger { border-color: var(--tb-danger); }
+.tb-panel.tb-success { border-color: var(--tb-success); }
+.tb-panel.tb-warning { border-color: var(--tb-warning); }
+.tb-panel:focus-visible, .tb-column:focus-visible, .tb-row:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-focus-ring); }
+.tb-panel.tb-primary:focus-visible { box-shadow: inset 0 0 0 1px var(--tb-primary), 0 0 0 3px var(--tb-focus-ring); }
 .tb-panel > .tb-panel-title { margin: 0; font-size: 17px; line-height: 1.35; font-weight: 600; letter-spacing: -0.01em; }
 .tb-divider { border: 0; border-top: 1px solid var(--tb-border); margin: var(--tb-space-2) 0; width: 100%; }
 
@@ -237,11 +247,13 @@ body {
   row-gap: var(--tb-space-4);
   align-items: start;
 }
-.tb-form > * { grid-column: 1 / -1; }
-.tb-form > .tb-field { display: contents; }
-.tb-form > .tb-field > .tb-label { grid-column: 1; padding-top: calc((var(--tb-control) - 1.5em) / 2); }
-.tb-form > .tb-field > .tb-control { grid-column: 2; }
-.tb-form > .tb-actions, .tb-form > .tb-check-row { grid-column: 2; }
+/* a panel in a form (a section) keeps the form's two columns */
+.tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel { display: grid; grid-template-columns: subgrid; row-gap: var(--tb-space-4); align-items: start; }
+:is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > * { grid-column: 1 / -1; }
+:is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > .tb-field { display: contents; }
+:is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > .tb-field > .tb-label { grid-column: 1; padding-top: calc((var(--tb-control) - 1.5em) / 2); }
+:is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > .tb-field > .tb-control { grid-column: 2; }
+:is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > .tb-actions, :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > .tb-check-row { grid-column: 2; }
 .tb-field { display: flex; flex-direction: column; gap: var(--tb-space-2); min-width: 0; }
 .tb-control { display: flex; flex-direction: column; gap: var(--tb-space-1); min-width: 0; }
 .tb-label { font-weight: 550; font-size: 14px; color: var(--tb-text); }
@@ -754,9 +766,9 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
   .tb-split-back { display: inline-flex; align-self: flex-start; padding: 0 var(--tb-space-3); border: 0; background: transparent; color: var(--tb-primary); }
   .tb-view { padding: var(--tb-space-5) var(--tb-space-4); }
   .tb-form { grid-template-columns: minmax(0, 1fr); }
-  .tb-form > .tb-field { display: flex; }
-  .tb-form > .tb-field > .tb-label, .tb-form > .tb-field > .tb-control,
-  .tb-form > .tb-actions, .tb-form > .tb-check-row { grid-column: 1; padding-top: 0; }
+  :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > .tb-field { display: flex; }
+  :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > .tb-field > .tb-label, :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > .tb-field > .tb-control,
+  :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > .tb-actions, :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > .tb-check-row { grid-column: 1; padding-top: 0; }
   .tb-row:has(> .tb-field) { flex-direction: column; align-items: stretch; }
   .tb-grid { grid-template-columns: minmax(0, 1fr); }
   .tb-actions > .tb-button { flex: 1 1 auto; }

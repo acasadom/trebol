@@ -654,3 +654,14 @@ test('interface texts per language or from the dictionary follow the active lang
   await ev(`i18n/language: 'fr  i18n/ui/back/fr: "Retour"  i18n/ui/close: #(en: "Done")`);
   assert.deepEqual([uiText(host.rt, 'back'), uiText(host.rt, 'close'), uiText(host.rt, 'nothing-here')], ['Retour', 'Done', 'nothing-here']);
 });
+
+test('a view takes its width at the head; inert faces; screen titles per language', async () => {
+  assert.equal(await ev('v: layout [on-key [x: 1] width large text "a"]  reduce [v/size length? v/pane v/events/1]'), '[large 1 on-key]');
+  assert.equal(await ev('v: layout [text "a"]  v/size'), 'none');
+  assert.equal(await ev('f: first layout/only [panel drag inert [field "Name"]]  reduce [f/inert f/drag]'), '[true true]');
+  link = [];
+  const r = await ev(`v: view [screens [home #(en: "Home" es: "Inicio") [text "x"] about 'about [text "y"]]]
+    sc: v/pane/1  reduce [tr sc/pane/1/text  pick sc/data 6]`);
+  assert.equal(r, '["Home" about]');
+});
+

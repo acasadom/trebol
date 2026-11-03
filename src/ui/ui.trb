@@ -31,6 +31,7 @@ face: make object! [
     wide-only: false    ; hidden on narrow screens
     hidden: false
     disabled: false
+    inert: false        ; shown as it is, but neither it nor its children can be used
     drag: false         ; can be dragged: carries its value, or the row in a table, list or tree
     drop: false         ; accepts drops (on-drop)
     reorder: false      ; its children or rows can be moved around (on-reorder)
@@ -101,7 +102,7 @@ stylize: function [
 roles: [primary accent danger success warning muted]
 sizes: [small medium large]
 aligns: [left center right spread]
-flags: [fill hidden disabled narrow-only wide-only drag drop reorder multiple]
+flags: [fill hidden disabled inert narrow-only wide-only drag drop reorder multiple]
 simple-rules: [required email url integer]
 letter: charset [#"a" - #"z" #"A" - #"Z"]
 rule-words: [min max length pattern match check check-async width pad gap menu accept]
@@ -133,7 +134,7 @@ layout: function [
     "Turns a block of the UI dialect into a view face; /only gives the block of faces."
     spec [block!]
     /only "Return the faces, not a view holding them"
-    /local ev b
+    /local ev b w
 ] [
     ; a copy, so laying out the same block twice never shares bindings
     spec: copy/deep spec
@@ -141,11 +142,16 @@ layout: function [
     either only [
         out: build-faces spec labels
     ] [
-        ; on-xxx handlers before the first face belong to the view itself
+        ; on-xxx handlers and its width before the first face belong to the view itself
         events: copy []
-        parse spec [any [set ev word! if (event-word? ev) set b block! (append events reduce [ev b])] body:]
+        width: none
+        parse spec [any [
+            set ev word! if (event-word? ev) set b block! (append events reduce [ev b])
+            | 'width set w ['small | 'medium | 'large | 'fill] (width: w)
+        ] body:]
         out: make select styles 'view [pane: build-faces body labels]
         unless empty? events [out/events: events]
+        out/size: width
     ]
     bind-labels spec labels copy []
     out
@@ -283,9 +289,9 @@ tabs-of: function [spec [block!] labels [block!]] [
 screens-of: function [spec [block!] /local n t a b] [
     out: copy []
     unless parse spec [some [
-        set n word! set t string! (a: copy []) opt [ahead [block! block!] set a block!] set b block! (
+        set n word! set t text-rule (a: copy []) opt [ahead [block! block!] set a block!] set b block! (
             foreach w a [unless word? w [do make error! "layout: the arguments of a screen are words"]]
-            append out reduce [n t a b]
+            append out reduce [n text-of t a b]
         )
     ]] [
         do make error! "layout: screens take a name, a title, an optional block of arguments and a block per screen"
