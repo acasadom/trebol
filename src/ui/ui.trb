@@ -165,6 +165,12 @@ label-face: function [label labels [block!] global? [logic!] f] [
     ]
 ]
 
+; A text of the interface: a string, a text per language (a map), or a word of
+; the dictionary written as a lit-word ('save). Faces keep it as given and the
+; host shows it in the active language, so set-language translates them.
+text-rule: [string! | map! | lit-word!]
+text-of: func [t] [either lit-word? :t [to word! t] [t]]
+
 ; The faces of a block of the dialect; labels collects [word face ...].
 build-faces: function [
     spec [block!] labels [block!]
@@ -172,7 +178,9 @@ build-faces: function [
 ] [
     out: copy []
     modifier: [
-        set s string! (either f/text [f/hint: s] [f/text: s])
+        set s [string! | map!] (either f/text [f/hint: s] [f/text: s])
+        ; a word of the dictionary: button 'save (in a link, a lit-word is the screen)
+        | if (f/style <> 'link) set v lit-word! (v: to word! v  either f/text [f/hint: v] [f/text: v])
         | set ev word! if (event-word? ev) set b block! (
             unless f/events [f/events: copy []]
             append f/events reduce [ev b]
@@ -253,7 +261,7 @@ spacing: func [n [integer!]] [
 ; [name "Name" email] -> [name "Name" email "email"]
 columns-of: function [spec [block!]] [
     out: copy []
-    unless parse spec [any [set w word! (label: form w) opt [set label string!] (append out reduce [w label])]] [
+    unless parse spec [any [set w word! (label: form w) opt [set label text-rule] (append out reduce [w text-of label])]] [
         do make error! "layout: table columns are words, each with an optional label"
     ]
     out
@@ -262,7 +270,8 @@ columns-of: function [spec [block!]] [
 ; ["General" [...] "Advanced" [...]] -> a tab face per pair
 tabs-of: function [spec [block!] labels [block!]] [
     out: copy []
-    unless parse spec [any [set label string! set b block! (
+    unless parse spec [any [set label text-rule set b block! (
+        label: text-of label
         append out make select styles 'tab [text: label pane: build-faces b labels]
     )]] [
         do make error! "layout: tabs take a label and a block per tab"
@@ -297,7 +306,7 @@ menu-of: function [spec [block!] /local i label w b] [
     out: copy []
     unless parse spec [any [
         '--- (append out make menu-item [divider: true])
-        | (i: none) opt [set i issue!] set label string! [
+        | (i: none) opt [set i issue!] set label text-rule (label: text-of label) [
             set b block! (append out make menu-item [text: label icon: i items: menu-of b])
             | set w word! (append out make menu-item [text: label icon: i id: w])
         ]
@@ -309,7 +318,7 @@ menu-of: function [spec [block!] /local i label w b] [
 
 ; ["Home" home "Clients" clients "Ada"]: a label and a word per item; the last one may have no word
 crumbs-of: function [spec [block!] /local label w] [
-    unless parse spec [any [set label string! set w word!] opt string!] [
+    unless parse spec [any [set label [string! | map!] set w word!] opt [string! | map!]] [
         do make error! "layout: a breadcrumb takes a label and a word per item; only the last may have no word"
     ]
     copy spec
@@ -444,11 +453,11 @@ close: func [
 
 toast: func [
     "Shows a short notice that goes away by itself."
-    message [string!]
+    message [string! map! word!] "A text, a text per language, or a word of the dictionary"
     /role "primary, success, warning or danger"
         kind [word!]
 ] [
-    show-toast message either role [kind] [none]
+    show-toast tr message either role [kind] [none]
 ]
 
 set-language: func [
@@ -541,7 +550,7 @@ messages: make map! [
 ]
 
 message: function [key args [block!]] [
-    out: copy select messages key
+    out: copy tr select messages key
     repeat i length? args [replace out rejoin ["#" i] localize pick args i]
     out
 ]
@@ -559,7 +568,7 @@ blank?: func [v] [
     any [none? :v  all [string? :v  empty? trim copy v]]
 ]
 
-label-of: func [f] [any [f/text  form f/name]]
+label-of: func [f] [either f/text [tr f/text] [form f/name]]
 
 list-of: function [items [block!]] [
     out: copy ""

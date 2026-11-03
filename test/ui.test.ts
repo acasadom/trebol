@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { K, NONE, native, value, mold, form, string, text, money, blockOf, errorField, type Cell, type ObjectCell, type StringCell } from '../src/core/index.ts';
-import { startHost, startUi, runSource, readLocal, editLocal, readDate, weekStart, type Host } from '../src/host/index.ts';
+import { startHost, startUi, runSource, readLocal, editLocal, readDate, weekStart, translate, type Host } from '../src/host/index.ts';
 import { fileHandle } from '../src/host/net.ts';
 import { themeCss, DEFAULT_THEME, palette, contrast, CONTRAST_PAIRS } from '../src/host/theme.ts';
 
@@ -622,4 +622,30 @@ test('texts show in the active language and fall back to the main one', async ()
   assert.equal(await ev('i18n/language: \'es  tr \'save'), '"Guardar"');
   assert.equal(await ev('tr \'unknown-word'), '"unknown-word"');
   assert.equal(await ev('tr none'), '""');
+});
+
+test('interface texts per language or from the dictionary follow the active language', async () => {
+  await ev(`
+    i18n/texts/save: #(en: "Save" es: "Guardar")
+    i18n/texts/name: #(en: "Name" es: "Nombre")
+    root: view [
+      t: title #(en: "Designer" es: "Diseñador")
+      b: button 'save
+      l: link #(en: "Home" es: "Inicio") 'home
+      tabs ['name [text "x"] "Plain" [text "y"]]
+      list people [name 'name]
+      form [field who 'name required]
+    ]
+  `);
+  const shown = async (src: string): Promise<string> => translate(await runSource(host, src), host.rt);
+  await ev("i18n/language: 'en");
+  assert.deepEqual(
+    [await shown('root/pane/1/text'), await shown('root/pane/2/text'), await shown('root/pane/3/text'), await shown('root/pane/4/pane/1/text')],
+    ['Designer', 'Save', 'Home', 'Name'],
+  );
+  assert.equal(await ev('root/pane/3/value'), 'home');
+  assert.equal(await ev('root/pane/5/columns'), "[name name]");
+  await ev("i18n/language: 'es");
+  assert.deepEqual([await shown('root/pane/1/text'), await shown('root/pane/2/text'), await shown('root/pane/4/pane/2/text')], ['Diseñador', 'Guardar', 'Plain']);
+  assert.equal(await ev('f: root/pane/6/pane/1  ui-blur f  f/error'), '"This field is required"');
 });

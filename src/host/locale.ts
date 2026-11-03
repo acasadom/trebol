@@ -4,7 +4,7 @@
 
 import {
   K, native, value, string, form, text, formatDec, spell, ctxFind, intern,
-  type Cell, type ObjectCell, type StringCell, type WordCell, type Runtime,
+  type Cell, type ObjectCell, type StringCell, type WordCell, type MapCell, type Runtime,
 } from '../core/index.ts';
 
 /** The kinds `localize` formats; anything else shows as `form` gives it. */
@@ -145,6 +145,50 @@ export function activeLanguage(rt: Runtime): string {
   if (lang?.t === K.Word || lang?.t === K.LitWord) return spell((lang as WordCell).sym);
   if (lang?.t === K.String) return text(lang as StringCell);
   return 'en';
+}
+
+/** A field of the user's `i18n` object, or null. */
+function i18nField(rt: Runtime, name: string): Cell | null {
+  const i = ctxFind(rt.user, intern('i18n'));
+  const obj = i < 0 ? null : rt.user.vals[i]!;
+  if (obj === null || obj.t !== K.Object) return null;
+  const j = ctxFind((obj as ObjectCell).ctx, intern(name));
+  return j < 0 ? null : (obj as ObjectCell).ctx.vals[j]!;
+}
+
+/** The value under a key of a map (a word or a string key, any case), or null. */
+function mapAt(m: MapCell, key: string): Cell | null {
+  const d = m.s.data;
+  const k = key.toLowerCase();
+  for (let i = 0; i + 1 < d.length; i += 2) {
+    const c = d[i]!;
+    const name = c.t === K.String ? text(c as StringCell) : 'sym' in c ? spell((c as WordCell).sym) : null;
+    if (name !== null && name.toLowerCase() === k) return d[i + 1]!;
+  }
+  return null;
+}
+
+/**
+ * A text of the interface in the active language, as `tr` gives it: a string
+ * as is, a text per language (a map) in the active language, then the main
+ * one, then any, and a word through the dictionary `i18n/texts`.
+ */
+export function translate(c: Cell, rt: Runtime): string {
+  if (c.t === K.String) return text(c as StringCell);
+  if (c.t === K.Map) {
+    const main = i18nField(rt, 'main');
+    const t = mapAt(c as MapCell, activeLanguage(rt))
+      ?? (main !== null && 'sym' in main ? mapAt(c as MapCell, spell((main as WordCell).sym)) : null)
+      ?? (c as MapCell).s.data.find((v, i) => i % 2 === 1 && v.t === K.String)
+      ?? null;
+    return t === null ? '' : translate(t, rt);
+  }
+  if (c.t === K.Word || c.t === K.LitWord) {
+    const texts = i18nField(rt, 'texts');
+    const t = texts?.t === K.Map ? mapAt(texts as MapCell, spell((c as WordCell).sym)) : null;
+    return t === null ? spell((c as WordCell).sym) : translate(t, rt);
+  }
+  return form(c);
 }
 
 /** A value as it shows on screen in a language: local format, or `form`. */

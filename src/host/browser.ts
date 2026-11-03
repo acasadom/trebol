@@ -19,7 +19,7 @@ import {
   K, NONE, TRUE, FALSE, native, value, string, form, ctxFind, intern, spell, text, canon, blockOf, wordOf, char,
   type Cell, type ObjectCell, type BlockCell, type WordCell, type StringCell, type Ctx, type Sym,
 } from '../core/index.ts';
-import { startHost, startUi, runSource, report, shown, activeLanguage, editLocal, readLocal, readDate, weekStart, LOCAL_KINDS, type Host } from './index.ts';
+import { startHost, startUi, runSource, report, shown, translate, activeLanguage, editLocal, readLocal, readDate, weekStart, LOCAL_KINDS, type Host } from './index.ts';
 import { spawn, taskResult } from './scheduler.ts';
 import { themeCss, DEFAULT_THEME, type ThemeParams } from './theme.ts';
 import { iconNode } from './icons.ts';
@@ -34,7 +34,10 @@ function get(face: ObjectCell, name: string): Cell {
 
 function str(face: ObjectCell, name: string): string | null {
   const v = get(face, name);
-  return v.t === K.None ? null : form(v);
+  if (v.t === K.None) return null;
+  // a text per language, or a word of the dictionary: in the active language
+  if (v.t === K.Map || ((name === 'text' || name === 'hint') && v.t === K.Word)) return translate(v, host.rt);
+  return form(v);
 }
 
 /** A value as it shows on screen: dates, numbers and money in the active language. */
@@ -224,6 +227,7 @@ function build(face: ObjectCell): HTMLElement {
         if (t !== null) {
           node.setAttribute('aria-label', t);
           document.title = t;
+          titleFace = face;
         }
         break;
       }
@@ -1401,7 +1405,7 @@ function columns(face: ObjectCell): Column[] {
   const d = c.s.data;
   for (let i = c.i; i + 1 < d.length; i += 2) {
     const w = d[i]!;
-    if (w.t === K.Word) out.push({ sym: (w as WordCell).sym, label: form(d[i + 1]!) });
+    if (w.t === K.Word) out.push({ sym: (w as WordCell).sym, label: translate(d[i + 1]!, host.rt) });
   }
   return out;
 }
@@ -1492,6 +1496,11 @@ function syncRows(m: Mounted): void {
   const box = m.box!;
   const table = box.tagName === 'TBODY';
   const cols = columns(f);
+  // headers may be texts per language: show them in the active one
+  if (table) {
+    const ths = box.parentElement!.querySelectorAll('thead th');
+    cols.forEach((c, i) => { if (ths[i] !== undefined && ths[i]!.textContent !== c.label) ths[i]!.textContent = c.label; });
+  }
   const data = get(f, 'data');
   const rows = data.t === K.Block ? data.s.data.slice(data.i) : [];
   const keyWord = get(f, 'key');
@@ -1824,11 +1833,11 @@ function crumbs(face: ObjectCell): Crumb[] {
   const cells = d.s.data.slice(d.i);
   for (let i = 0; i < cells.length; i++) {
     const c = cells[i]!;
-    if (c.t !== K.String) continue;
+    if (c.t !== K.String && c.t !== K.Map) continue;
     const next = cells[i + 1];
     const id = next !== undefined && next.t === K.Word ? next : NONE;
     if (id !== NONE) i++;
-    out.push({ text: text(c as StringCell), id });
+    out.push({ text: translate(c, host.rt), id });
   }
   return out;
 }
@@ -2132,7 +2141,7 @@ function sync(m: Mounted): void {
   switch (style) {
     case 'title': case 'heading': case 'text': {
       const tv = get(f, 'text');
-      m.el.textContent = tv.t === K.None ? '' : display(tv);
+      m.el.textContent = tv.t === K.None ? '' : tv.t === K.Map || tv.t === K.Word ? translate(tv, host.rt) : display(tv);
       break;
     }
     case 'button': case 'link': {
@@ -2289,6 +2298,7 @@ function enteredScreen(box: HTMLElement): void {
 native('repaint', '[]', () => {
   // after a change of language: every mounted face shows its values again
   document.documentElement.lang = activeLanguage(host.rt);
+  if (titleFace !== null) document.title = str(titleFace, 'text') ?? document.title;
   for (const e of Array.from(document.querySelectorAll('*'))) {
     const m = byNode.get(e);
     if (m !== undefined && m.el === e) sync(m);
@@ -2297,6 +2307,8 @@ native('repaint', '[]', () => {
 });
 
 let root: HTMLElement | null = null;
+/** The face whose text is the page title: the view's title, or the screen shown. */
+let titleFace: ObjectCell | null = null;
 
 native('show', '[face [object!]]', (_t, f) => {
   const face = f.args[0] as ObjectCell;
@@ -2309,7 +2321,10 @@ native('show', '[face [object!]]', (_t, f) => {
   root = node;
   const title = children(face).find(c => word(c, 'style') === 'title');
   // a screen names the page itself
-  if (title !== undefined && screensFace === null) document.title = str(title, 'text') ?? document.title;
+  if (title !== undefined && screensFace === null) {
+    document.title = str(title, 'text') ?? document.title;
+    titleFace = title;
+  }
   return value(face);
 });
 
