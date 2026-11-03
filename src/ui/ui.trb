@@ -2,7 +2,7 @@ Trebol [
     title: "UI dialect: faces, styles, layout and validation"
     exports: [
         face styles stylize layout view theme open close toast
-        validate-face form-values set-values ui-pane ui-input ui-blur ui-click ui-select ui-close ui-event ui-menu ui-drop ui-reorder ui-crumb ui-expand
+        validate-face form-values set-values ui-pane ui-input ui-files ui-remove-file ui-blur ui-click ui-select ui-close ui-event ui-menu ui-drop ui-reorder ui-crumb ui-expand
         go ui-route set-language
     ]
 ]
@@ -45,7 +45,10 @@ face: make object! [
     menu: none          ; context menu (or the menu a button opens): a block of menu items; on-menu runs
     options: none       ; choices of a choice or radio
     currency: none      ; a money field's currency code: EUR
-    typed: none         ; what the user typed in a number, money or date field when it is not one
+    typed: none         ; what the user typed in a number, money or date field when it is not one;
+                        ; in an upload, the names of the files it refused
+    multiple: false     ; an upload takes more than one file
+    accept: none        ; the files an upload takes: ["pdf" "image/*"]
     pane: none
     columns: none       ; table, list and tree: [field "Label" ...]
     data: none          ; table, list and tree: a block of map! or object! rows (a tree's
@@ -61,14 +64,14 @@ face: make object! [
 styles: make map! []
 
 container-styles: [view column row form panel grid dialog scroll split toolbar]
-input-styles: [field password number money date area check toggle choice radio]
+input-styles: [field password number money date area check toggle choice radio upload]
 data-styles: [table list tree]
 
 foreach [name base] [
     view column  column column  row row  form form  panel panel  grid grid  scroll scroll
     title title  heading heading  text text  divider divider
     field field  password password  number number  money money  date date  area area  check check  choice choice
-    toggle toggle  radio radio  progress progress  image image  icon icon
+    toggle toggle  radio radio  upload upload  progress progress  image image  icon icon
     button button  link link  table table  list list  tabs tabs  tab tab
     toolbar toolbar  breadcrumb breadcrumb  tree tree  screens screens  screen screen
 ] [
@@ -98,10 +101,10 @@ stylize: function [
 roles: [primary accent danger success warning muted]
 sizes: [small medium large]
 aligns: [left center right spread]
-flags: [fill hidden disabled narrow-only wide-only drag drop reorder]
+flags: [fill hidden disabled narrow-only wide-only drag drop reorder multiple]
 simple-rules: [required email url integer]
 letter: charset [#"a" - #"z" #"A" - #"Z"]
-rule-words: [min max length pattern match check check-async width pad gap menu]
+rule-words: [min max length pattern match check check-async width pad gap menu accept]
 
 ; Words that never name a field. email, url and integer are rules too,
 ; but also common field names, so the first word after an input style names it.
@@ -202,6 +205,7 @@ build-faces: function [
         | 'max set n [number! | money! | date!] (add-rule f reduce ['max n])
         | 'length set a integer! set n integer! (add-rule f reduce ['length a n])
         | 'pattern set b block! (add-rule f reduce ['pattern b])
+        | 'accept set b block! (f/accept: b)
         | 'match set w word! (add-rule f reduce ['match w])
         | 'check set b block! (add-rule f reduce ['check b])
         | 'check-async set b block! (add-rule f reduce ['check-async b])
@@ -526,6 +530,7 @@ messages: make map! [
     number "Enter a number"
     amount "Enter an amount"
     date "Enter a valid date"
+    accept "Only #1 files"
     min "Must be at least #1"
     max "Must be at most #1"
     length "Must be between #1 and #2 characters"
@@ -556,6 +561,12 @@ blank?: func [v] [
 
 label-of: func [f] [any [f/text  form f/name]]
 
+list-of: function [items [block!]] [
+    out: copy ""
+    foreach x items [unless empty? out [append out ", "] append out form x]
+    out
+]
+
 ; The message for the first rule a face breaks, or none. Asynchronous checks
 ; are skipped here: their last result is kept in async-error.
 validate-face: function [
@@ -564,7 +575,10 @@ validate-face: function [
 ] [
     v: f/value
     rules: any [f/rules []]
-    if f/typed [return message select [number number money amount date date] f/style []]
+    if f/typed [
+        if f/style = 'upload [return message 'accept reduce [list-of f/accept]]
+        return message select [number number money amount date date] f/style []
+    ]
     if blank? :v [
         return either find/only rules [required] [message 'required []] [none]
     ]
@@ -626,7 +640,7 @@ refresh-form: function [scope] [
     ok: true
     faces: own-faces scope
     foreach f faces [
-        if f/rules [
+        if any [f/rules  f/typed  f/error] [
             problem: validate-face f
             f/error: either f/touched [problem] [none]
             if problem [ok: false]
@@ -680,10 +694,41 @@ ui-input: function [
     ]
     ; text that is not a number, amount or date stays on screen, with its message
     f/typed: all [find [number money date] f/style  new  none? f/value  new]
+    changed f
+]
+
+changed: function [f] [
     f/async-error: none
     refresh-form any [f/form f/root]
     if f/action [run-handler f f/action]
     if h: handler-for f 'on-change [run-handler f h]
+]
+
+; An upload's value is none or a block of objects [name size type file];
+; file is a handle the host keeps, read with read-file or sent with multipart.
+ui-files: function [
+    "Called by the host when the user chooses or drops files: name size type file for each, and the names it refused."
+    f files [block!] refused [block!]
+] [
+    chosen: collect [
+        foreach [n s t h] files [keep make object! [name: n size: s type: t file: h]]
+    ]
+    unless empty? chosen [
+        f/value: either f/multiple [append copy any [f/value []] chosen] [copy/part chosen 1]
+    ]
+    f/typed: either empty? refused [none] [refused]
+    f/touched: true
+    changed f
+]
+
+ui-remove-file: function [
+    "Called by the host when the user removes the file at a position of an upload."
+    f index [integer!]
+] [
+    files: remove at copy f/value index
+    f/value: either empty? head files [none] [head files]
+    f/typed: none
+    changed f
 ]
 
 ui-blur: function [

@@ -7,6 +7,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { K, NONE, native, value, mold, form, string, text, money, blockOf, errorField, type Cell, type ObjectCell, type StringCell } from '../src/core/index.ts';
 import { startHost, startUi, runSource, readLocal, editLocal, readDate, weekStart, type Host } from '../src/host/index.ts';
+import { fileHandle } from '../src/host/net.ts';
 import { themeCss, DEFAULT_THEME, palette, contrast, CONTRAST_PAIRS } from '../src/host/theme.ts';
 
 let shown: Cell | null = null;
@@ -37,6 +38,10 @@ native('set-route', '[route [block!] replace [logic!]]', (_t, f) => {
   links.push((f.args[1]!.t === K.Logic && f.args[1]!.v ? 'replace ' : 'push ') + link.join('/'));
   return value(f.args[0]!);
 });
+
+// two files as an upload's host gives them: name size type file
+native('test-files', '[]', () => value(blockOf(K.Block, ['a.pdf', 'b.png'].flatMap((n, i) =>
+  [string(n), { t: K.Integer, v: 1000 * (i + 1) } as Cell, string('application/pdf'), fileHandle(new File(['x'], n))]))));
 
 let host: Host;
 // every test gets a fresh user context, so words one test sets never leak into the next
@@ -561,10 +566,31 @@ test('text that is not a number, amount or date stays, with its message', async 
     out: collect [foreach f copy/part fs 3 [keep/only reduce [f/value f/typed validate-face f]]]
     ui-input first fs "12"
     append out reduce [fs/1/value fs/1/typed  fs/4/name  fs/4/rules]
+    ui-blur fs/2
+    append out fs/2/error
     set-values first root/pane none
-    append out fs/2/typed
+    append out reduce [fs/2/typed fs/2/error]
     out`);
-  assert.equal(r, '[[none "abc" "Enter a number"] [none "abc" "Enter an amount"] [none "abc" "Enter a valid date"] 12 none email none none]');
+  assert.equal(r, '[[none "abc" "Enter a number"] [none "abc" "Enter an amount"] [none "abc" "Enter a valid date"] 12 none email none "Enter an amount" none none]');
+});
+
+test('upload fields keep a block of chosen files; refused ones give a message', async () => {
+  const r = await ev(`
+    root: view [form [upload docs "Attachments" multiple required accept ["pdf" "png"]  upload one "One"]]
+    fs: select first root/pane 'pane
+    d: fs/1  o: fs/2
+    out: reduce [d/name d/multiple d/accept validate-face d]
+    ui-files d test-files []
+    ui-files d copy/part test-files 4 ["c.exe"]
+    append out reduce [length? d/value d/value/1/name d/value/2/size handle? d/value/3/file validate-face d]
+    ui-remove-file d 1
+    append out reduce [length? d/value d/value/1/name validate-face d]
+    ui-remove-file d 1  ui-remove-file d 1
+    append out reduce [d/value validate-face d]
+    ui-files o test-files []
+    append out reduce [length? o/value o/value/1/name  (select form-values first root/pane 'one) = o/value]
+    out`);
+  assert.equal(r, '[docs true ["pdf" "png"] "This field is required" 3 "a.pdf" 2000 true "Only pdf, png files" 2 "b.png" none none "This field is required" 1 "a.pdf" true]');
 });
 
 test('dates are read in the order of the language', () => {

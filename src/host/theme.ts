@@ -346,6 +346,18 @@ select.tb-input { appearance: none; background-image: linear-gradient(45deg, tra
 .tb-input-icon { position: relative; display: flex; }
 .tb-input-icon > .tb-icon { position: absolute; left: var(--tb-space-3); top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--tb-muted); pointer-events: none; }
 .tb-input-icon > .tb-input { padding-left: calc(var(--tb-space-3) + 26px); }
+.tb-upload { display: flex; flex-wrap: wrap; align-items: center; gap: var(--tb-space-3); padding: var(--tb-space-3); border: 1px dashed var(--tb-border-strong); border-radius: var(--tb-radius); background: var(--tb-surface); transition: border-color var(--tb-fast) var(--tb-ease), background var(--tb-fast) var(--tb-ease); }
+.tb-upload.tb-drop-over { border-color: var(--tb-primary); background: var(--tb-primary-soft); }
+.tb-invalid .tb-upload { border-color: var(--tb-danger); }
+.tb-upload-hint { color: var(--tb-muted); font-size: 0.9em; }
+.tb-upload-list { list-style: none; margin: var(--tb-space-2) 0 0; padding: 0; display: grid; gap: var(--tb-space-1); }
+.tb-upload-list li { display: flex; align-items: center; gap: var(--tb-space-2); min-height: 36px; padding: 0 var(--tb-space-1) 0 var(--tb-space-3); border: 1px solid var(--tb-border); border-radius: var(--tb-radius); background: var(--tb-surface); }
+.tb-upload-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-upload-size { color: var(--tb-muted); font-size: 0.9em; font-variant-numeric: tabular-nums; }
+.tb-upload-remove { width: 28px; height: 28px; display: grid; place-items: center; padding: 0; border: 0; border-radius: var(--tb-radius); background: transparent; color: var(--tb-muted); cursor: pointer; }
+.tb-upload-remove:hover:not(:disabled) { background: var(--tb-danger-soft); color: var(--tb-danger); }
+.tb-upload-remove:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-focus-ring); }
+.tb-upload-remove .tb-icon { width: 16px; height: 16px; }
 .tb-date { position: relative; display: flex; }
 .tb-date > .tb-input { padding-right: calc(var(--tb-control) + var(--tb-space-1)); }
 .tb-date-button { position: absolute; right: 1px; top: 1px; bottom: 1px; width: var(--tb-control); display: grid; place-items: center; padding: 0; border: 0; border-radius: var(--tb-radius); background: transparent; color: var(--tb-muted); cursor: pointer; }

@@ -21,6 +21,7 @@ import { startHost, startUi, runSource, report, shown, activeLanguage, editLocal
 import { spawn, taskResult } from './scheduler.ts';
 import { themeCss, DEFAULT_THEME, type ThemeParams } from './theme.ts';
 import { iconNode } from './icons.ts';
+import { fileHandle } from './net.ts';
 
 // --- reading faces -----------------------------------------------------------------
 
@@ -137,6 +138,8 @@ function build(face: ObjectCell): HTMLElement {
     node = buildCheck(face, m, style === 'toggle');
   } else if (style === 'radio') {
     node = buildRadio(face, m);
+  } else if (style === 'upload') {
+    node = buildUpload(face, m);
   } else {
     switch (style) {
       case 'view': node = el('main', 'tb-view'); break;
@@ -1179,6 +1182,145 @@ function buildRadio(face: ObjectCell, m: Mounted): HTMLElement {
   return wrap;
 }
 
+// An upload: a button that is also a place to drop files, and the list of the
+// chosen ones. Files go to Trebol as handles; their bytes stay in the browser.
+
+function buildUpload(face: ObjectCell, m: Mounted): HTMLElement {
+  const id = `tb-${nextId++}`;
+  const wrap = el('div', 'tb-field');
+  const label = el('label', 'tb-label');
+  label.htmlFor = id;
+  const control = el('div', 'tb-control');
+  const zone = el('div', 'tb-upload');
+  const picker = el('input');
+  picker.type = 'file';
+  picker.hidden = true;
+  picker.tabIndex = -1;
+  const choose = el('button', 'tb-button');
+  choose.type = 'button';
+  choose.id = id;
+  const svg = icon('upload');
+  if (svg !== null) choose.append(svg);
+  choose.append(el('span'));
+  const hint = el('span', 'tb-upload-hint');
+  const error = el('div', 'tb-error');
+  error.id = `${id}-error`;
+  error.setAttribute('aria-live', 'polite');
+  choose.setAttribute('aria-describedby', error.id);
+  const list = el('ul', 'tb-upload-list');
+  choose.addEventListener('click', () => picker.click());
+  picker.addEventListener('change', () => {
+    const files = [...(picker.files ?? [])];
+    picker.value = '';
+    if (files.length > 0) chooseFiles(face, files);
+  });
+  const hasFiles = (ev: DragEvent): boolean => ev.dataTransfer?.types.includes('Files') === true;
+  zone.addEventListener('dragover', ev => {
+    if (!hasFiles(ev) || choose.disabled) return;
+    ev.preventDefault();
+    ev.dataTransfer!.dropEffect = 'copy';
+    zone.classList.add('tb-drop-over');
+  });
+  zone.addEventListener('dragleave', ev => {
+    if (!zone.contains(ev.relatedTarget as Node | null)) zone.classList.remove('tb-drop-over');
+  });
+  zone.addEventListener('drop', ev => {
+    zone.classList.remove('tb-drop-over');
+    if (!hasFiles(ev) || choose.disabled) return;
+    ev.preventDefault();
+    chooseFiles(face, [...ev.dataTransfer!.files]);
+  });
+  zone.append(choose, hint, picker);
+  control.append(zone, list, error);
+  wrap.append(label, control);
+  m.label = label;
+  m.error = error;
+  m.button = choose;
+  m.box = list;
+  return wrap;
+}
+
+/** The accept list of an upload: extensions ("pdf") and types ("image/*"). */
+function acceptList(face: ObjectCell): string[] {
+  const a = get(face, 'accept');
+  return a.t === K.Block ? a.s.data.slice(a.i).map(x => form(x).trim().toLowerCase()).filter(x => x !== '') : [];
+}
+
+function accepts(file: File, list: string[]): boolean {
+  if (list.length === 0) return true;
+  const name = file.name.toLowerCase();
+  const type = file.type.toLowerCase();
+  return list.some(x => x.includes('/')
+    ? (x.endsWith('/*') ? type.startsWith(x.slice(0, -1)) : type === x)
+    : name.endsWith(x.startsWith('.') ? x : `.${x}`));
+}
+
+function chooseFiles(face: ObjectCell, files: File[]): void {
+  const list = acceptList(face);
+  const ok = files.filter(f => accepts(f, list));
+  const taken = flag(face, 'multiple') ? ok : ok.slice(0, 1);
+  const cells: Cell[] = [];
+  for (const f of taken) cells.push(string(f.name), int(f.size), string(f.type), fileHandle(f));
+  const refused = files.filter(f => !accepts(f, list)).map(f => string(f.name));
+  void fire('ui-files', face, blockOf(K.Block, cells), blockOf(K.Block, refused));
+}
+
+/** A size in bytes as it reads in a language: 12 kB, 3.4 MB. */
+function fileSize(bytes: number, lang: string): string {
+  const units = ['byte', 'kilobyte', 'megabyte', 'gigabyte'];
+  let n = bytes;
+  let u = 0;
+  while (n >= 1000 && u < units.length - 1) { n /= 1000; u++; }
+  try {
+    return new Intl.NumberFormat(lang, { style: 'unit', unit: units[u], unitDisplay: 'short', maximumFractionDigits: u === 0 ? 0 : 1 }).format(n);
+  } catch {
+    return `${bytes} B`;
+  }
+}
+
+function syncUpload(m: Mounted, err: string | null): void {
+  const f = m.face;
+  const label = m.label!;
+  label.textContent = str(f, 'text') ?? '';
+  label.classList.toggle('tb-required', hasRule(f, 'required'));
+  const many = flag(f, 'multiple');
+  const choose = m.button!;
+  (choose.lastChild as HTMLElement).textContent = many ? 'Choose files' : 'Choose file';
+  choose.disabled = flag(f, 'disabled');
+  choose.setAttribute('aria-invalid', err !== null ? 'true' : 'false');
+  const zone = choose.parentElement!;
+  (zone.querySelector('.tb-upload-hint') as HTMLElement).textContent = many ? 'or drop them here' : 'or drop it here';
+  const picker = zone.querySelector('input') as HTMLInputElement;
+  picker.multiple = many;
+  picker.accept = acceptList(f).map(x => (x.includes('/') || x.startsWith('.') ? x : `.${x}`)).join(',');
+  m.error!.textContent = err ?? '';
+  const v = get(f, 'value');
+  const files = v.t === K.Block ? v.s.data.slice(v.i).filter(x => x.t === K.Object) as ObjectCell[] : [];
+  const lang = activeLanguage(host.rt);
+  const items = files.map((file, i) => {
+    const li = el('li');
+    const name = el('span', 'tb-upload-name');
+    name.textContent = str(file, 'name') ?? '';
+    const size = el('span', 'tb-upload-size');
+    const n = get(file, 'size');
+    size.textContent = n.t === K.Integer ? fileSize(Number(n.v), lang) : '';
+    const remove = el('button', 'tb-upload-remove');
+    remove.type = 'button';
+    remove.disabled = choose.disabled;
+    remove.setAttribute('aria-label', `Remove ${name.textContent}`);
+    const x = icon('close');
+    if (x !== null) remove.append(x);
+    remove.addEventListener('click', () => {
+      choose.focus();
+      void fire('ui-remove-file', f, int(i + 1));
+    });
+    li.append(name, size, remove);
+    return li;
+  });
+  m.box!.replaceChildren(...items);
+  m.box!.hidden = items.length === 0;
+}
+
 function buildProgress(m: Mounted): HTMLElement {
   const wrap = el('div', 'tb-progress-wrap');
   const label = el('span', 'tb-progress-label');
@@ -1958,6 +2100,7 @@ function sync(m: Mounted): void {
   space(m.el, 'gap', get(f, 'gap'));
 
   if (style === 'radio') return syncRadio(m, err);
+  if (style === 'upload') return syncUpload(m, err);
   if (m.input !== null) {
     if (m.label !== null) {
       m.label.textContent = t ?? '';

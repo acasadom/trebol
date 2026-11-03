@@ -43,6 +43,7 @@ view [
             choice kind "Kind" ["Person" "Company"]
             money price "Price" EUR min 0
             date due "Due date" min 1-Nov-2026
+            upload docs "Attachments" multiple accept ["pdf" "png"]
             radio size "Size" ["Small" "Medium" "Large"] required
             toggle alerts "Email alerts"
             check terms "I accept the terms" required

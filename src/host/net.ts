@@ -6,12 +6,34 @@
 // `try` can catch. `cancel` on the task aborts the request in flight.
 
 import {
-  K, NONE, I64, native, value, string, text, makeError, throwError, form, spell, ctxFind, intern,
+  K, NONE, I64, native, value, string, text, binary, makeError, throwError, form, spell, ctxFind, intern,
   parseJson, toJson,
   type Cell, type BlockCell, type StringCell, type ObjectCell, type WordCell, type Step, type NativeFn,
 } from '../core/index.ts';
 import { schedulerOf, spawnHandler, makeHandle, handleOf, type Scheduler } from './scheduler.ts';
 import { cancellers } from './natives.ts';
+
+// --- files -----------------------------------------------------------------------
+//
+// A file the user chose (an upload field) is a handle of kind 'file' over a
+// Blob: Trebol never holds its bytes until it asks with read-file.
+
+/** A handle for a file the user chose. */
+export function fileHandle(file: Blob): Cell {
+  return makeHandle('file', file);
+}
+
+native('read-file', '[file [handle!]]', (_t, f, v) => {
+  if (f.phase === 1) return value(v!);
+  f.phase = 1;
+  const file = handleOf<Blob>(f.args[0]!, 'file');
+  if (file === null) return throwError('script', 'bad-handle', 'read-file needs a file from an upload field');
+  const p = file.arrayBuffer().then(
+    buf => binary([...new Uint8Array(buf)]) as Cell,
+    (e: Error) => { throw makeError('access', 'read', `cannot read ${file instanceof File ? file.name : 'the file'}: ${e.message}`); },
+  );
+  return { k: 'await', p };
+});
 
 // --- HTTP ------------------------------------------------------------------------
 
@@ -79,7 +101,9 @@ native('http-request', '[url [url! string!] options [object! none!]]', (t, f, v)
       const k = d[i]!;
       const val = d[i + 1]!;
       const key = k.t >= K.Word && k.t <= K.Issue ? spell((k as WordCell).sym) : form(k);
+      const file = handleOf<Blob>(val, 'file');
       if (val.t === K.Binary) fd.append(key, new Blob([new Uint8Array(val.s.data.slice(val.i))]), key);
+      else if (file !== null) fd.append(key, file, file instanceof File ? file.name : key);
       else fd.append(key, form(val));
     }
     body = fd;

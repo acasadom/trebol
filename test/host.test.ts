@@ -6,7 +6,8 @@ import assert from 'node:assert/strict';
 import { createServer, type Server } from 'node:http';
 import { createHash } from 'node:crypto';
 import type { Duplex } from 'node:stream';
-import { mold, form, errorField, type ObjectCell } from '../src/core/index.ts';
+import { mold, form, errorField, native, value, type ObjectCell } from '../src/core/index.ts';
+import { fileHandle } from '../src/host/net.ts';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
@@ -144,6 +145,15 @@ describe('http', () => {
       headers: reduce ["Authorization" rejoin ["Bearer " "t0k"]]
     ] reduce [r/method r/type r/body r/auth]`);
     assert.equal(r, '["POST" "application/json" {{"name":"Ana"}} "Bearer t0k"]');
+  });
+
+  test('files the user chose: read-file and multipart', async () => {
+    native('test-file', '[]', () => value(fileHandle(new File(['hello'], 'note.txt', { type: 'text/plain' }))));
+    assert.equal(await ev('to string! read-file test-file'), '"hello"');
+    const r = await ev(`f: test-file  r: fetch/with base/echo [multipart: reduce ['doc f 'title "Notes"]] reduce [r/type r/body]`);
+    assert.match(r, /multipart\/form-data/);
+    assert.match(r, /name="doc"; filename="note.txt"[^]*hello[^]*name="title"[^]*Notes/);
+    assert.equal(await evErr('read-file none'), 'expect-arg');
   });
 
   test('form posts', async () => {
