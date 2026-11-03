@@ -1,0 +1,523 @@
+Trebol [title: "Form designer"]
+
+; A form designer made only with Trebol. Drag pieces from the palette to the
+; canvas, nest them in sections, set their properties and try the form.
+; The design is a block of pieces (maps); the canvas, the structure tree and
+; the code are made again from it after every change.
+
+i18n/texts: make map! [
+    designer #(en: "Form designer" es: "Diseñador de formularios")
+    preview #(en: "Preview" es: "Vista previa")
+    code #(en: "Code" es: "Código")
+    new #(en: "New" es: "Nuevo")
+    language #(en: "Language" es: "Idioma")
+    form-name #(en: "Form name" es: "Nombre del formulario")
+    palette #(en: "Palette" es: "Paleta")
+    canvas #(en: "Canvas" es: "Lienzo")
+    structure #(en: "Structure" es: "Estructura")
+    properties #(en: "Properties" es: "Propiedades")
+    nothing-chosen #(en: "Choose a piece of the canvas to see its properties." es: "Elige una pieza del lienzo para ver sus propiedades.")
+    drop-here #(en: "Drag pieces from the palette here, or choose one to add it." es: "Arrastra aquí piezas de la paleta, o elige una para añadirla.")
+    empty-section #(en: "Drag pieces into this section." es: "Arrastra piezas a esta sección.")
+    label #(en: "Label" es: "Etiqueta")
+    field-name #(en: "Field name" es: "Nombre del campo")
+    required #(en: "Required" es: "Obligatorio")
+    multiple #(en: "Several files" es: "Varios archivos")
+    minimum #(en: "Minimum" es: "Mínimo")
+    maximum #(en: "Maximum" es: "Máximo")
+    options #(en: "Options, one per line" es: "Opciones, una por línea")
+    currency #(en: "Currency" es: "Moneda")
+    duplicate #(en: "Duplicate" es: "Duplicar")
+    move-up #(en: "Move up" es: "Subir")
+    move-down #(en: "Move down" es: "Bajar")
+    delete #(en: "Delete" es: "Borrar")
+    back-to-design #(en: "Back to the design" es: "Volver al diseño")
+    generated #(en: "Generated code" es: "Código generado")
+    valid #(en: "The form is valid" es: "El formulario es válido")
+    untitled #(en: "Untitled form" es: "Formulario sin título")
+    option #(en: "Option" es: "Opción")
+    send #(en: "Send" es: "Enviar")
+]
+
+; What the palette offers: the kind of each piece and its name
+kinds: [
+    text #(en: "Text" es: "Texto")
+    email #(en: "Email" es: "Email")
+    number #(en: "Number" es: "Número")
+    money #(en: "Amount" es: "Importe")
+    date #(en: "Date" es: "Fecha")
+    check #(en: "Checkbox" es: "Casilla")
+    toggle #(en: "Switch" es: "Interruptor")
+    radio #(en: "Options" es: "Opciones")
+    choice #(en: "Drop-down list" es: "Lista desplegable")
+    upload #(en: "File upload" es: "Subida de archivos")
+    section #(en: "Section" es: "Sección")
+    button #(en: "Button" es: "Botón")
+]
+
+kind-name: func [kind [word!]] [tr select kinds kind]
+
+; --- the design ----------------------------------------------------------------
+;
+; A piece is a map: id kind label name required multiple min max options
+; currency, and children for a section.
+
+design: copy []
+form-name: none
+chosen: none        ; the id of the chosen piece
+last-id: 0
+
+named-kinds: [text email number money date check toggle radio choice upload]
+
+new-piece: function [kind [word!]] [
+    set 'last-id last-id + 1
+    p: make map! reduce ['id last-id 'kind kind 'label kind-name kind 'required false 'multiple false]
+    if find named-kinds kind [p/name: rejoin [form kind last-id]]
+    if find [radio choice] kind [
+        p/options: collect [repeat i 3 [keep rejoin [tr 'option " " i]]]
+    ]
+    if kind = 'money [p/currency: 'EUR]
+    if kind = 'section [p/children: copy []]
+    if kind = 'button [p/label: tr 'send]
+    p
+]
+
+; [position owner] of a piece: where it is in its block, and the id of its section (none at the top).
+locate: function [id list [block!] owner] [
+    forall list [
+        p: first list
+        if p/id = id [return reduce [list owner]]
+        if p/children [if found: locate id p/children p/id [return found]]
+    ]
+    none
+]
+
+piece-of: function [id] [
+    all [id  found: locate id design none  first first found]
+]
+
+children-of: function [parent] [
+    either parent [select piece-of parent 'children] [design]
+]
+
+; Is parent the piece id, or inside it? A section never goes into itself.
+inside?: function [id parent] [
+    if none? parent [return false]
+    if parent = id [return true]
+    p: piece-of id
+    to logic! all [p/children  locate parent p/children id]
+]
+
+add-piece: function [kind [word!] parent index [integer!]] [
+    p: new-piece kind
+    insert at children-of parent index p
+    refresh
+    choose p/id
+]
+
+move-piece: function [id parent index [integer!]] [
+    if inside? id parent [exit]
+    found: locate id design none
+    pos: first found
+    p: first pos
+    ; leaving its place shifts the ones after it
+    if all [(second found) = parent  index > index? pos] [index: index - 1]
+    remove pos
+    insert at children-of parent index p
+    refresh
+    choose id
+]
+
+; A move inside a block, as the canvas or the tree already show it.
+reorder-piece: function [parent from [integer!] to [integer!]] [
+    list: children-of parent
+    p: pick list from
+    remove at list from
+    insert at list to p
+    refresh
+    choose p/id
+]
+
+step-piece: function [id delta [integer!]] [
+    pos: first locate id design none
+    list: head pos
+    i: (index? pos) + delta
+    if any [i < 1  i > length? list] [exit]
+    p: first pos
+    remove pos
+    insert at list i p
+    refresh
+    choose id
+]
+
+delete-piece: function [id] [
+    if found: locate id design none [
+        remove first found
+        unless piece-of chosen [set 'chosen none]
+        refresh
+        show-props
+    ]
+]
+
+; A copy with new ids (and names) all the way down.
+clone: function [p] [
+    c: copy p
+    set 'last-id last-id + 1
+    c/id: last-id
+    if p/name [c/name: rejoin [form p/kind last-id]]
+    if p/options [c/options: copy p/options]
+    if p/children [c/children: map-each k p/children [clone k]]
+    c
+]
+
+duplicate-piece: function [id] [
+    pos: first locate id design none
+    c: clone first pos
+    insert next pos c
+    refresh
+    choose c/id
+]
+
+; Clicked in the palette: goes after the chosen piece, or at the end.
+add-chosen: function [kind [word!]] [
+    either found: locate chosen design none [
+        add-piece kind second found 1 + index? first found
+    ] [
+        add-piece kind none 1 + length? design
+    ]
+]
+
+; What was dropped: a kind from the palette, a piece of the canvas or a row of the tree.
+dropped: function [parent payload index [integer!]] [
+    id: either map? :payload [payload/id] [:payload]
+    either word? id [add-piece id parent index] [move-piece id parent index]
+]
+
+set-prop: function [key [word!] value] [
+    if p: piece-of chosen [
+        poke p key :value
+        refresh
+    ]
+]
+
+name-start: charset [#"a" - #"z" #"A" - #"Z"]
+name-char: charset [#"a" - #"z" #"A" - #"Z" #"0" - #"9" "-"]
+
+set-name: function [value] [
+    if all [string? value  parse value [name-start any name-char]] [set-prop 'name value]
+]
+
+set-options: function [value] [
+    lines: either value [split value "^/"] [copy []]
+    remove-each s lines [empty? trim s]
+    set-prop 'options lines
+]
+
+; --- making the form ---------------------------------------------------------------
+;
+; A piece as a block of the UI dialect; `live` gives a button an action, for the preview.
+
+gen-piece: function [p live [logic!]] [
+    n: all [p/name  to word! p/name]
+    l: p/label
+    req: either p/required [[required]] [[]]
+    limits: collect [
+        if p/min [keep 'min keep p/min]
+        if p/max [keep 'max keep p/max]
+    ]
+    switch p/kind [
+        text [compose [field (n) (l) (req)]]
+        email [compose [field (n) (l) email (req)]]
+        number [compose [number (n) (l) (limits) (req)]]
+        money [compose [money (n) (l) (p/currency) (limits) (req)]]
+        date [compose [date (n) (l) (limits) (req)]]
+        check [compose [check (n) (l) (req)]]
+        toggle [compose [toggle (n) (l)]]
+        radio choice [compose [(p/kind) (n) (l) (reduce [copy p/options]) (req)]]
+        upload [compose [upload (n) (l) (either p/multiple [[multiple]] [[]]) (req)]]
+        section [compose/deep [panel (l) [(gen-list p/children live)]]]
+        button [
+            either live [compose/deep [submit (l) [toast/role 'valid 'success]]] [compose [submit (l)]]
+        ]
+    ]
+]
+
+gen-list: function [list [block!] live [logic!]] [
+    out: copy []
+    foreach p list [append out gen-piece p live]
+    out
+]
+
+form-block: function [live [logic!]] [
+    compose/deep [title (form-name) form [(gen-list design live)]]
+]
+
+; The same, as text laid out to read.
+code-lines: function [list [block!] indent [string!]] [
+    out: copy ""
+    foreach p list [
+        append out either p/kind = 'section [
+            rejoin [indent "panel " mold p/label " [^/" code-lines p/children join indent "    " indent "]^/"]
+        ] [
+            rejoin [indent mold/only gen-piece p false "^/"]
+        ]
+    ]
+    out
+]
+
+code-of: does [
+    rejoin ["title " mold form-name "^/form [^/" code-lines design "    " "]^/"]
+]
+
+; --- the canvas ----------------------------------------------------------------------
+;
+; Each piece shows as it will be, inert inside a panel you can choose, drag
+; and delete. A section is a panel holding a head (to choose and drag it)
+; and a column its pieces drop into.
+
+wrappers: make map! []      ; id -> the panel that shows a piece, to mark the chosen one
+
+piece-items: ['duplicate duplicate 'move-up move-up 'move-down move-down --- #trash 'delete delete]
+
+; What a piece looks like on the canvas: the real face, but a button that submits nothing.
+look: function [p] [
+    b: gen-piece p false
+    either p/kind = 'button [compose [button primary (p/label)]] [b]
+]
+
+piece-face: function [p] [
+    id: p/id
+    handlers: compose/deep [
+        drag menu [(piece-items)]
+        on-focus [choose (id)]
+        on-key [if find reduce ['delete #"^H"] event/key [delete-piece (id)]]
+        on-menu [piece-picked (id) event/picked]
+    ]
+    either p/kind = 'section [
+        f: first layout/only compose/deep [
+            panel pad 3 gap 3 [
+                row (handlers) [heading (p/label) inert]
+                column (p/label) drop reorder gap 3
+                    on-drop [dropped (id) event/dropped event/index]
+                    on-reorder [reorder-piece (id) event/from event/to]
+                    []
+            ]
+        ]
+        f/pane/1/value: id
+        kids: f/pane/2
+        kids/pane: either empty? p/children [
+            layout/only [text muted 'empty-section]
+        ] [
+            map-each c p/children [piece-face c]
+        ]
+    ] [
+        f: first layout/only compose/deep [panel pad 3 (handlers) [(look p) inert]]
+    ]
+    f/value: id
+    if id = chosen [f/role: 'primary]
+    poke wrappers id f
+    f
+]
+
+piece-picked: function [id what [word!]] [
+    switch what [
+        duplicate [duplicate-piece id]
+        move-up [step-piece id -1]
+        move-down [step-piece id 1]
+        delete [delete-piece id]
+    ]
+]
+
+canvas-faces: does [
+    either empty? design [layout/only [text muted 'drop-here]] [map-each p design [piece-face p]]
+]
+
+; --- structure, properties and the rest of the page -------------------------------------------
+
+tree-nodes: function [list [block!]] [
+    map-each p list [
+        n: make map! reduce ['id p/id 'name rejoin [p/label " (" kind-name p/kind ")"]]
+        if p/children [
+            n/children: tree-nodes p/children
+            n/expanded: true
+        ]
+        n
+    ]
+]
+
+node-of: function [id list [block!]] [
+    unless id [return none]
+    foreach n list [
+        if n/id = id [return n]
+        if n/children [if found: node-of id n/children [return found]]
+    ]
+    none
+]
+
+node-id: func [node] [either node [node/id] [none]]
+
+; A button per kind: click it to add the piece, or drag it where it goes.
+palette-faces: function [] [
+    collect [
+        foreach [k t] kinds [
+            f: first layout/only compose/deep [button (t) drag [add-chosen (to lit-word! k)]]
+            f/value: k
+            keep f
+        ]
+    ]
+]
+
+refresh: does [
+    wrappers: make map! []
+    canvas/pane: canvas-faces
+    structure/data: tree-nodes design
+    structure/selected: node-of chosen structure/data
+]
+
+choose: function [id] [
+    if old: select wrappers chosen [old/role: none]
+    set 'chosen id
+    if new: select wrappers id [new/role: 'primary]
+    structure/selected: node-of id structure/data
+    show-props
+]
+
+show-props: function [] [
+    p: piece-of chosen
+    nothing-chosen/hidden: to logic! p
+    props/hidden: not p
+    unless p [exit]
+    k: p/kind
+    numeric: to logic! find [number money] k
+    name-f/hidden: none? p/name
+    required-f/hidden: not find named-kinds k
+    multiple-f/hidden: k <> 'upload
+    low-n/hidden: not numeric
+    high-n/hidden: not numeric
+    low-d/hidden: k <> 'date
+    high-d/hidden: k <> 'date
+    options-f/hidden: not find [radio choice] k
+    currency-f/hidden: k <> 'money
+    set-values props make map! reduce [
+        'label p/label  'name p/name  'req p/required  'many p/multiple
+        'low either numeric [p/min] [none]  'high either numeric [p/max] [none]
+        'low-date either k = 'date [p/min] [none]  'high-date either k = 'date [p/max] [none]
+        'opts either p/options [lines-of p/options] [none]
+        'cur either p/currency [form p/currency] [none]
+    ]
+]
+
+lines-of: function [items [block!]] [
+    out: copy ""
+    foreach s items [unless empty? out [append out "^/"] append out s]
+    out
+]
+
+change-language: function [lang [word!]] [
+    set-language lang
+    refresh
+]
+
+new-design: does [
+    design: copy []
+    chosen: none
+    form-name: tr 'untitled
+    form-name-f/value: form-name
+    refresh
+    show-props
+]
+
+show-design: does [
+    form-name-f/value: form-name
+    palette/pane: palette-faces
+    refresh
+    show-props
+]
+
+show-code: does [
+    code-text/value: code-of
+    open code-dialog
+]
+
+; A design to start with
+use [s] [
+    form-name: "Contact"
+    s: new-piece 'section
+    s/label: "About you"
+    append s/children reduce [new-piece 'text new-piece 'email]
+    s/children/1/label: "Name"
+    s/children/1/name: "name"
+    s/children/1/required: true
+    s/children/2/name: "email"
+    append design s
+    append design new-piece 'choice
+    design/2/label: "Topic"
+    design/2/name: "topic"
+    append design new-piece 'button
+]
+
+view [
+    width large
+    screens [
+        design 'designer [
+            on-enter [show-design]
+            row spread [
+                title 'designer
+                toolbar 'designer [
+                    button #eye 'preview [go 'preview]
+                    button 'code [show-code]
+                    ---
+                    button #settings 'language menu ["English" en "Español" es] on-menu [change-language event/picked]
+                    button #plus 'new [new-design]
+                ]
+            ]
+            global form-name-f: field 'form-name [form-name: value]
+            grid 3 [
+                column [
+                    panel 'palette [
+                        global palette: grid 2 gap 2 []
+                    ]
+                    panel 'structure [
+                        global structure: tree [name] reorder drop
+                            on-select [choose row/id]
+                            on-reorder [reorder-piece node-id event/parent event/from event/to]
+                            on-drop [dropped node-id event/parent event/dropped event/index]
+                    ]
+                ]
+                panel 'canvas [
+                    global canvas: column 'canvas drop reorder gap 3
+                        on-drop [dropped none event/dropped event/index]
+                        on-reorder [reorder-piece none event/from event/to]
+                        []
+                ]
+                panel 'properties [
+                    global nothing-chosen: text muted 'nothing-chosen
+                    global props: column [
+                        field label 'label [set-prop 'label value]
+                        global name-f: field name 'field-name required pattern [name-start any name-char] [set-name value]
+                        global required-f: check req 'required [set-prop 'required value]
+                        global multiple-f: check many 'multiple [set-prop 'multiple value]
+                        global low-n: number low 'minimum [set-prop 'min value]
+                        global high-n: number high 'maximum [set-prop 'max value]
+                        global low-d: date low-date 'minimum [set-prop 'min value]
+                        global high-d: date high-date 'maximum [set-prop 'max value]
+                        global options-f: area opts 'options [set-options value]
+                        global currency-f: choice cur 'currency ["EUR" "USD" "GBP"] on-change [
+                            set-prop 'currency all [value  to word! value]
+                        ]
+                    ]
+                ]
+            ]
+            global code-dialog: dialog 'generated [
+                global code-text: area code 'code
+            ]
+        ]
+        preview 'preview [
+            on-enter [
+                preview-box/pane: layout/only form-block true
+            ]
+            toolbar [button #arrow-left 'back-to-design [go 'design]]
+            preview-box: column []
+        ]
+    ]
+]
