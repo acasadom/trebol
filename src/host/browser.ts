@@ -17,7 +17,7 @@ import {
   K, NONE, TRUE, FALSE, native, value, string, form, ctxFind, intern, spell, text, canon, blockOf, wordOf, char,
   type Cell, type ObjectCell, type BlockCell, type WordCell, type StringCell, type Ctx, type Sym,
 } from '../core/index.ts';
-import { startHost, startUi, runSource, report, shown, activeLanguage, LOCAL_KINDS, type Host } from './index.ts';
+import { startHost, startUi, runSource, report, shown, activeLanguage, editLocal, readLocal, LOCAL_KINDS, type Host } from './index.ts';
 import { spawn, taskResult } from './scheduler.ts';
 import { themeCss, DEFAULT_THEME, type ThemeParams } from './theme.ts';
 import { iconNode } from './icons.ts';
@@ -122,7 +122,7 @@ function el<T extends keyof HTMLElementTagNameMap>(tag: T, cls?: string): HTMLEl
   return e;
 }
 
-const INPUTS = new Set(['field', 'password', 'number', 'area', 'choice']);
+const INPUTS = new Set(['field', 'password', 'number', 'money', 'area', 'choice']);
 
 function build(face: ObjectCell): HTMLElement {
   const style = word(face, 'style') ?? 'face';
@@ -869,7 +869,7 @@ function buildInput(face: ObjectCell, style: string, m: Mounted): HTMLElement {
   } else {
     const i = el('input', 'tb-input');
     i.type = style === 'password' ? 'password' : hasRule(face, 'email') ? 'email' : hasRule(face, 'url') ? 'url' : 'text';
-    if (style === 'number' || hasRule(face, 'integer')) i.inputMode = hasRule(face, 'integer') ? 'numeric' : 'decimal';
+    if (style === 'number' || style === 'money' || hasRule(face, 'integer')) i.inputMode = hasRule(face, 'integer') ? 'numeric' : 'decimal';
     if (style === 'password') i.autocomplete = 'new-password';
     input = i;
   }
@@ -881,8 +881,12 @@ function buildInput(face: ObjectCell, style: string, m: Mounted): HTMLElement {
   const name = word(face, 'name');
   if (name !== null) input.name = name;
   input.addEventListener(style === 'choice' ? 'change' : 'input', () => {
-    void fire('ui-input', face, input.value === '' ? NONE : string(input.value));
+    // an amount goes to Trebol as 1234.5; what is not one goes as typed and reads as none
+    const typed = style === 'money' ? readLocal(input.value, activeLanguage(host.rt)) ?? input.value : input.value;
+    void fire('ui-input', face, typed === '' ? NONE : string(typed));
   });
+  // an amount shows formatted, and is edited as a plain number of the active language
+  if (style === 'money') input.addEventListener('focus', () => { input.value = editLocal(get(face, 'value'), activeLanguage(host.rt)); });
   input.addEventListener('blur', () => void fire('ui-blur', face));
   const iconWord = style === 'area' || style === 'choice' ? null : iconName(face);
   const svg = iconWord !== null ? icon(iconWord) : null;
@@ -1747,7 +1751,7 @@ function sync(m: Mounted): void {
     if (m.input instanceof HTMLInputElement && m.input.type === 'checkbox') {
       m.input.checked = v.t === K.Logic && v.v;
     } else {
-      const want = v.t === K.None ? '' : form(v);
+      const want = v.t === K.None ? '' : style === 'money' ? display(v) : form(v);
       // never fight the user's typing: only push values that differ from what code set
       if (document.activeElement !== m.input && m.input.value !== want) m.input.value = want;
       const hint = str(f, 'hint');

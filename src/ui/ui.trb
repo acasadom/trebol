@@ -44,6 +44,7 @@ face: make object! [
     shortcut: none      ; a key that activates a button or link: "Ctrl+S"
     menu: none          ; context menu (or the menu a button opens): a block of menu items; on-menu runs
     options: none       ; choices of a choice or radio
+    currency: none      ; a money field's currency code: EUR
     pane: none
     columns: none       ; table, list and tree: [field "Label" ...]
     data: none          ; table, list and tree: a block of map! or object! rows (a tree's
@@ -59,13 +60,13 @@ face: make object! [
 styles: make map! []
 
 container-styles: [view column row form panel grid dialog scroll split toolbar]
-input-styles: [field password number area check toggle choice radio]
+input-styles: [field password number money area check toggle choice radio]
 data-styles: [table list tree]
 
 foreach [name base] [
     view column  column column  row row  form form  panel panel  grid grid  scroll scroll
     title title  heading heading  text text  divider divider
-    field field  password password  number number  area area  check check  choice choice
+    field field  password password  number number  money money  area area  check check  choice choice
     toggle toggle  radio radio  progress progress  image image  icon icon
     button button  link link  table table  list list  tabs tabs  tab tab
     toolbar toolbar  breadcrumb breadcrumb  tree tree  screens screens  screen screen
@@ -98,6 +99,7 @@ sizes: [small medium large]
 aligns: [left center right spread]
 flags: [fill hidden disabled narrow-only wide-only drag drop reorder]
 simple-rules: [required email url integer date]
+letter: charset [#"a" - #"z" #"A" - #"Z"]
 rule-words: [min max length pattern match check check-async width pad gap menu]
 
 ; Words that never name a field. email, url, integer and date are rules too,
@@ -195,8 +197,8 @@ build-faces: function [
         | set v lit-word! (f/value: to word! v)
         | set v lit-path! (f/value: to path! v)
         | set n integer! (f/cols: n)
-        | 'min set n number! (add-rule f reduce ['min n])
-        | 'max set n number! (add-rule f reduce ['max n])
+        | 'min set n [number! | money!] (add-rule f reduce ['min n])
+        | 'max set n [number! | money!] (add-rule f reduce ['max n])
         | 'length set a integer! set n integer! (add-rule f reduce ['length a n])
         | 'pattern set b block! (add-rule f reduce ['pattern b])
         | 'match set w word! (add-rule f reduce ['match w])
@@ -212,6 +214,8 @@ build-faces: function [
         | set w word! if (find aligns w) (f/align: w)
         | set w word! if (find flags w) (poke f w true)
         | set w word! if (find simple-rules w) (add-rule f reduce [w])
+        ; money price "Price" EUR
+        | set w word! if (all [f/style = 'money  parse form w [3 letter]]) (f/currency: to word! uppercase form w)
     ]
     unless parse spec [
         any [
@@ -529,7 +533,7 @@ messages: make map! [
 
 message: function [key args [block!]] [
     out: copy select messages key
-    repeat i length? args [replace out rejoin ["#" i] form pick args i]
+    repeat i length? args [replace out rejoin ["#" i] localize pick args i]
     out
 ]
 
@@ -566,8 +570,8 @@ validate-face: function [
             url [unless parse v url-rule [message 'url []]]
             integer [unless parse form v [opt "-" some digit] [message 'integer []]]
             date [unless date? attempt [to date! v] [message 'date []]]
-            min [if all [number? v  v < r/2] [message 'min reduce [r/2]]]
-            max [if all [number? v  v > r/2] [message 'max reduce [r/2]]]
+            min [if all [any [number? v  money? v]  v < r/2] [message 'min reduce [r/2]]]
+            max [if all [any [number? v  money? v]  v > r/2] [message 'max reduce [r/2]]]
             length [
                 n: length? form v
                 if any [n < r/2  n > r/3] [
@@ -660,6 +664,8 @@ ui-input: function [
 ] [
     f/value: switch/default f/style [
         number [any [attempt [to decimal! new]  none]]
+        ; the host gives the amount as 1234.5, whatever the language
+        money [all [new  attempt [to money! rejoin [any [f/currency ""] "$" new]]]]
         check [to logic! new]
         toggle [to logic! new]
     ] [new]

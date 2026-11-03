@@ -5,8 +5,8 @@ import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { K, native, value, mold, form, string, text, blockOf, errorField, type Cell, type ObjectCell, type StringCell } from '../src/core/index.ts';
-import { startHost, startUi, runSource, type Host } from '../src/host/index.ts';
+import { K, NONE, native, value, mold, form, string, text, money, blockOf, errorField, type Cell, type ObjectCell, type StringCell } from '../src/core/index.ts';
+import { startHost, startUi, runSource, readLocal, editLocal, type Host } from '../src/host/index.ts';
 import { themeCss, DEFAULT_THEME, palette, contrast, CONTRAST_PAIRS } from '../src/host/theme.ts';
 
 let shown: Cell | null = null;
@@ -522,6 +522,34 @@ test('localize formats dates, times, numbers, percents and money in the active l
   assert.equal(r.replace(/[\u00a0\u202f]/g, ' '), '[["2/11/2026" "2/11/2026, 16:05" "16:05" "1.234.567" "1234,5" "15,5 %" "1234,50 €" "-3,00 US$" "x" "none"] '
     + '["11/2/2026" "11/2/2026, 4:05 PM" "4:05 PM" "1,234,567" "1,234.5" "15.5%" "€1,234.50" "-$3.00" "x" "none"] en]');
   assert.equal(repaints, 2);
+});
+
+test('money fields keep an exact amount in their currency, with min and max', async () => {
+  const r = await ev(`
+    set-language 'es
+    root: view [form [money price "Price" eur min EUR$1 max 1000  money tip "Tip"]]
+    p: first select first root/pane 'pane
+    t: second select first root/pane 'pane
+    ui-input p "1234.5"  big: reduce [p/value p/error]
+    ui-blur p
+    ui-input p "0.10"  small: reduce [p/value p/error]
+    ui-input p "12.5"  ok: reduce [p/value p/error]
+    ui-input p "abc"  bad: p/value
+    ui-input t "-3"
+    reduce [p/style p/name p/currency big small ok bad t/value t/currency]`);
+  assert.equal(r.replace(/[\u00a0\u202f]/g, ' '), '[money price EUR [EUR$1234.50 none] [EUR$0.10 "Must be at least 1,00 €"] [EUR$12.50 none] none -$3.00 none]');
+});
+
+test('amounts are read and edited in the format of the language', () => {
+  const cases: [string, string, string | null][] = [
+    ['1234,56', 'es', '1234.56'], ['1.234,56 €', 'es', '1234.56'], ['12.5', 'es', '12.5'],
+    ['1.234', 'es', '1234'], ['1.234.567', 'es', '1234567'], ['1,234.5', 'en', '1234.5'],
+    ['€1,234', 'en', '1234'], ['1,5', 'en', '1.5'], ['-3', 'es', '-3'],
+    ['abc', 'es', null], ['1,2,3', 'es', null], ['', 'en', null],
+  ];
+  for (const [typed, lang, want] of cases) assert.equal(readLocal(typed, lang), want, `${lang} ${typed}`);
+  const eur = money({ d: 123450n, e: 2 }, 'EUR');
+  assert.deepEqual([editLocal(eur, 'es'), editLocal(eur, 'en'), editLocal(NONE, 'es')], ['1234,50', '1234.50', '']);
 });
 
 test('texts show in the active language and fall back to the main one', async () => {

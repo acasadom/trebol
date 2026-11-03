@@ -53,6 +53,48 @@ export function formatLocal(c: Cell, lang: string): string | null {
   return null;
 }
 
+/** The decimal and group separators of a language: `,` and `.` in `es`. */
+function separators(lang: string): { decimal: string; group: string } {
+  let parts: Intl.NumberFormatPart[] = [];
+  try { parts = new Intl.NumberFormat(lang).formatToParts(12345.6); } catch { /* unknown language tag */ }
+  const find = (type: string): string | undefined => parts.find(p => p.type === type)?.value;
+  return { decimal: find('decimal') ?? '.', group: find('group') ?? ',' };
+}
+
+/** An amount as it is edited in a language: no thousands, the local decimal separator (`1234,50`). */
+export function editLocal(c: Cell, lang: string): string {
+  if (c.t !== K.Money) return c.t === K.None ? '' : form(c);
+  const amount = formatDec(c.v) as unknown as number;
+  const opts = { useGrouping: false, minimumFractionDigits: 2, maximumFractionDigits: Math.max(2, c.v.e) };
+  return safe(() => new Intl.NumberFormat(lang, opts).format(amount)) ?? formatDec(c.v);
+}
+
+/**
+ * An amount typed in a language as Trebol reads it (`1234.5`), or null when it is not one.
+ * Currency signs and spaces are dropped. Thousands only count in groups of three; a single
+ * other separator is the decimal one, so `12.5` is twelve and a half in `es` too.
+ */
+export function readLocal(s: string, lang: string): string | null {
+  const { decimal, group } = separators(lang);
+  const sep = (ch: string): boolean => ch === decimal || ch === group || ch === '.' || ch === ',';
+  let t = [...s].filter(ch => /[0-9+-]/.test(ch) || sep(ch)).join('');
+  if (t.includes(decimal)) {
+    const [whole, ...rest] = t.split(decimal);
+    if (rest.length > 1) return null;
+    t = `${grouped(whole!, group)}.${rest[0]}`;
+  } else if (/^[+-]?\d{1,3}([.,]\d{3})+$/.test(t) && [...t].filter(sep).every(ch => ch === group)) {
+    t = grouped(t, group);
+  } else if ([...t].filter(sep).length === 1) {
+    t = t.replace(/[.,]/, '.');
+  }
+  return /^[+-]?(\d+\.?\d*|\.\d+)$/.test(t) ? t : null;
+}
+
+/** The whole part of an amount without its thousands separators. */
+function grouped(whole: string, group: string): string {
+  return whole.split(group).join('');
+}
+
 /** The active language: `i18n/language` of the user context, `en` if there is none. */
 export function activeLanguage(rt: Runtime): string {
   const i = ctxFind(rt.user, intern('i18n'));
