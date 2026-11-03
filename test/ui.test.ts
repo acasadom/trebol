@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { K, NONE, native, value, mold, form, string, text, money, blockOf, errorField, type Cell, type ObjectCell, type StringCell } from '../src/core/index.ts';
-import { startHost, startUi, runSource, readLocal, editLocal, readDate, weekStart, translate, type Host } from '../src/host/index.ts';
+import { startHost, startUi, runSource, readLocal, editLocal, readDate, weekStart, translate, uiText, type Host } from '../src/host/index.ts';
 import { fileHandle } from '../src/host/net.ts';
 import { themeCss, DEFAULT_THEME, palette, contrast, CONTRAST_PAIRS } from '../src/host/theme.ts';
 
@@ -542,7 +542,7 @@ test('money fields keep an exact amount in their currency, with min and max', as
     ui-input p "abc"  bad: p/value
     ui-input t "-3"
     reduce [p/style p/name p/currency big small ok bad t/value t/currency]`);
-  assert.equal(r.replace(/[\u00a0\u202f]/g, ' '), '[money price EUR [EUR$1234.50 none] [EUR$0.10 "Must be at least 1,00 €"] [EUR$12.50 none] none -$3.00 none]');
+  assert.equal(r.replace(/[\u00a0\u202f]/g, ' '), '[money price EUR [EUR$1234.50 none] [EUR$0.10 "Debe ser como mínimo 1,00 €"] [EUR$12.50 none] none -$3.00 none]');
 });
 
 test('date fields keep a date!, with min, max and required', async () => {
@@ -555,7 +555,7 @@ test('date fields keep a date!, with min, max and required', async () => {
     ui-input d "2027-01-01"  late: validate-face d
     ui-input d none  empty: validate-face d
     reduce [d/style d/name ok early late empty]`);
-  assert.equal(r, '[date due [3-Nov-2026 none] "Must be at least 1/1/2026" "Must be at most 31/12/2026" "This field is required"]');
+  assert.equal(r, '[date due [3-Nov-2026 none] "Debe ser como mínimo 1/1/2026" "Debe ser como máximo 31/12/2026" "Este campo es obligatorio"]');
 });
 
 test('text that is not a number, amount or date stays, with its message', async () => {
@@ -647,5 +647,10 @@ test('interface texts per language or from the dictionary follow the active lang
   assert.equal(await ev('root/pane/5/columns'), "[name name]");
   await ev("i18n/language: 'es");
   assert.deepEqual([await shown('root/pane/1/text'), await shown('root/pane/2/text'), await shown('root/pane/4/pane/2/text')], ['Diseñador', 'Guardar', 'Plain']);
-  assert.equal(await ev('f: root/pane/6/pane/1  ui-blur f  f/error'), '"This field is required"');
+  assert.equal(await ev('f: root/pane/6/pane/1  ui-blur f  f/error'), '"Este campo es obligatorio"');
+  // Trebol's own texts: in the active language, and an app may change them or add a language
+  assert.equal(uiText(host.rt, 'back'), 'Atrás');
+  assert.equal(uiText(host.rt, 'remove-file', 'a.pdf'), 'Quitar a.pdf');
+  await ev(`i18n/language: 'fr  i18n/ui/back/fr: "Retour"  i18n/ui/close: #(en: "Done")`);
+  assert.deepEqual([uiText(host.rt, 'back'), uiText(host.rt, 'close'), uiText(host.rt, 'nothing-here')], ['Retour', 'Done', 'nothing-here']);
 });

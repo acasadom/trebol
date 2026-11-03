@@ -531,26 +531,8 @@ set-values: function [
 
 ; --- validation ------------------------------------------------------------------
 
-messages: make map! [
-    required "This field is required"
-    email "Enter a valid email address"
-    url "Enter a valid web address"
-    integer "Enter a whole number"
-    number "Enter a number"
-    amount "Enter an amount"
-    date "Enter a valid date"
-    accept "Only #1 files"
-    min "Must be at least #1"
-    max "Must be at most #1"
-    length "Must be between #1 and #2 characters"
-    length-exact "Must be exactly #1 characters"
-    pattern "This value is not valid"
-    match "Must match #1"
-    check "This value is not valid"
-]
-
 message: function [key args [block!]] [
-    out: copy tr select messages key
+    out: copy tr select i18n/ui key
     repeat i length? args [replace out rejoin ["#" i] localize pick args i]
     out
 ]

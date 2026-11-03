@@ -8,10 +8,48 @@ Trebol [
 ; object, so code changes them with `i18n/language: 'en`.
 
 i18n: make object! [
-    language: 'es       ; the active language
-    main: 'es           ; what shows when a text is missing in the active one
-    languages: [es en]
+    language: 'en       ; the active language
+    main: 'en           ; what shows when a text is missing in the active one
+    languages: [en es]
     texts: make map! [] ; the application's dictionary: word -> text per language
+    ui: make map! [     ; Trebol's own texts; an app may change them or add a language
+        ; validation messages (#1 and #2 take the rule's values)
+        required #(en: "This field is required" es: "Este campo es obligatorio")
+        email #(en: "Enter a valid email address" es: "Introduce un email válido")
+        url #(en: "Enter a valid web address" es: "Introduce una dirección web válida")
+        integer #(en: "Enter a whole number" es: "Introduce un número entero")
+        number #(en: "Enter a number" es: "Introduce un número")
+        amount #(en: "Enter an amount" es: "Introduce un importe")
+        date #(en: "Enter a valid date" es: "Introduce una fecha válida")
+        accept #(en: "Only #1 files" es: "Solo archivos #1")
+        min #(en: "Must be at least #1" es: "Debe ser como mínimo #1")
+        max #(en: "Must be at most #1" es: "Debe ser como máximo #1")
+        length #(en: "Must be between #1 and #2 characters" es: "Debe tener entre #1 y #2 caracteres")
+        length-exact #(en: "Must be exactly #1 characters" es: "Debe tener exactamente #1 caracteres")
+        pattern #(en: "This value is not valid" es: "Este valor no es válido")
+        match #(en: "Must match #1" es: "Debe coincidir con #1")
+        check #(en: "This value is not valid" es: "Este valor no es válido")
+        ; what the components show by themselves
+        empty #(en: "Nothing to show yet" es: "Aún no hay nada que mostrar")
+        choose #(en: "Choose…" es: "Elegir…")
+        yes #(en: "Yes" es: "Sí")
+        no #(en: "No" es: "No")
+        back #(en: "Back" es: "Atrás")
+        close #(en: "Close" es: "Cerrar")
+        move-to #(en: "Move to" es: "Mover a")
+        resize-panes #(en: "Resize panes" es: "Cambiar el tamaño de los paneles")
+        breadcrumb #(en: "Breadcrumb" es: "Ruta de navegación")
+        more-levels #(en: "Show more levels" es: "Mostrar más niveles")
+        choose-date #(en: "Choose date" es: "Elegir fecha")
+        choose-date-of #(en: "#1: choose date" es: "#1: elegir fecha")
+        previous-month #(en: "Previous month" es: "Mes anterior")
+        next-month #(en: "Next month" es: "Mes siguiente")
+        choose-file #(en: "Choose file" es: "Elegir archivo")
+        choose-files #(en: "Choose files" es: "Elegir archivos")
+        drop-file #(en: "or drop it here" es: "o suéltalo aquí")
+        drop-files #(en: "or drop them here" es: "o suéltalos aquí")
+        remove-file #(en: "Remove #1" es: "Quitar #1")
+    ]
 ]
 
 translated: function [

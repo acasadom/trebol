@@ -19,7 +19,7 @@ import {
   K, NONE, TRUE, FALSE, native, value, string, form, ctxFind, intern, spell, text, canon, blockOf, wordOf, char,
   type Cell, type ObjectCell, type BlockCell, type WordCell, type StringCell, type Ctx, type Sym,
 } from '../core/index.ts';
-import { startHost, startUi, runSource, report, shown, translate, activeLanguage, editLocal, readLocal, readDate, weekStart, LOCAL_KINDS, type Host } from './index.ts';
+import { startHost, startUi, runSource, report, shown, translate, uiText, activeLanguage, editLocal, readLocal, readDate, weekStart, LOCAL_KINDS, type Host } from './index.ts';
 import { spawn, taskResult } from './scheduler.ts';
 import { themeCss, DEFAULT_THEME, type ThemeParams } from './theme.ts';
 import { iconNode } from './icons.ts';
@@ -38,6 +38,23 @@ function str(face: ObjectCell, name: string): string | null {
   // a text per language, or a word of the dictionary: in the active language
   if (v.t === K.Map || ((name === 'text' || name === 'hint') && v.t === K.Word)) return translate(v, host.rt);
   return form(v);
+}
+
+/** One of Trebol's own texts (`i18n/ui`) in the active language. */
+function own(key: string, ...args: string[]): string {
+  return uiText(host.rt, key, ...args);
+}
+
+/** Gives a node built once one of Trebol's own texts (its text or an attribute); `repaint` keeps it in the active language. */
+function keepOwn(node: HTMLElement, key: string, attr?: string): void {
+  node.dataset.tbOwn = attr === undefined ? key : `${attr} ${key}`;
+  showOwn(node);
+}
+
+function showOwn(node: HTMLElement): void {
+  const [a, k] = node.dataset.tbOwn!.split(' ');
+  if (k === undefined) node.textContent = own(a!);
+  else node.setAttribute(a!, own(k));
 }
 
 /** A value as it shows on screen: dates, numbers and money in the active language. */
@@ -310,7 +327,7 @@ function listen(m: Mounted, style: string): void {
         const zones = moveTargets(f, item !== null ? row : get(f, 'value'));
         if (zones.length > 0) {
           if (entries.length > 0) entries.push({ text: '', divider: true });
-          entries.push({ text: 'Move to', sub: zones });
+          entries.push({ text: own('move-to'), sub: zones });
         }
       }
       if (entries.length === 0) return;
@@ -753,7 +770,7 @@ function openCalendar(face: ObjectCell, opener: HTMLButtonElement): void {
   const today = new Date(Date.UTC(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()));
   const box = el('div', 'tb-calendar');
   box.setAttribute('role', 'dialog');
-  box.setAttribute('aria-label', opener.getAttribute('aria-label') ?? 'Choose date');
+  box.setAttribute('aria-label', opener.getAttribute('aria-label') ?? own('choose-date'));
   box.setAttribute('popover', 'manual');
   const month = el('h2', 'tb-calendar-month');
   month.id = `tb-${nextId++}`;
@@ -772,7 +789,7 @@ function openCalendar(face: ObjectCell, opener: HTMLButtonElement): void {
     return b;
   };
   const head = el('div', 'tb-calendar-head');
-  head.append(step('chevron-left', 'Previous month', -1), month, step('chevron-right', 'Next month', 1));
+  head.append(step('chevron-left', own('previous-month'), -1), month, step('chevron-right', own('next-month'), 1));
   box.append(head);
   calendar = { face, opener, box, month, at: utcDate(get(face, 'value')) ?? today };
   opener.setAttribute('aria-expanded', 'true');
@@ -1068,7 +1085,6 @@ function buildInput(face: ObjectCell, style: string, m: Mounted): HTMLElement {
     const opts = get(face, 'options');
     const first = el('option');
     first.value = '';
-    first.textContent = str(face, 'hint') ?? 'Choose…';
     sel.append(first);
     if (opts.t === K.Block) {
       for (const o of opts.s.data.slice(opts.i)) {
@@ -1291,11 +1307,11 @@ function syncUpload(m: Mounted, err: string | null): void {
   label.classList.toggle('tb-required', hasRule(f, 'required'));
   const many = flag(f, 'multiple');
   const choose = m.button!;
-  (choose.lastChild as HTMLElement).textContent = many ? 'Choose files' : 'Choose file';
+  (choose.lastChild as HTMLElement).textContent = own(many ? 'choose-files' : 'choose-file');
   choose.disabled = flag(f, 'disabled');
   choose.setAttribute('aria-invalid', err !== null ? 'true' : 'false');
   const zone = choose.parentElement!;
-  (zone.querySelector('.tb-upload-hint') as HTMLElement).textContent = many ? 'or drop them here' : 'or drop it here';
+  (zone.querySelector('.tb-upload-hint') as HTMLElement).textContent = own(many ? 'drop-files' : 'drop-file');
   const picker = zone.querySelector('input') as HTMLInputElement;
   picker.multiple = many;
   picker.accept = acceptList(f).map(x => (x.includes('/') || x.startsWith('.') ? x : `.${x}`)).join(',');
@@ -1313,7 +1329,7 @@ function syncUpload(m: Mounted, err: string | null): void {
     const remove = el('button', 'tb-upload-remove');
     remove.type = 'button';
     remove.disabled = choose.disabled;
-    remove.setAttribute('aria-label', `Remove ${name.textContent}`);
+    remove.setAttribute('aria-label', own('remove-file', name.textContent ?? ''));
     const x = icon('close');
     if (x !== null) remove.append(x);
     remove.addEventListener('click', () => {
@@ -1439,7 +1455,7 @@ function sameRow(a: Cell, b: Cell): boolean {
 
 function cellText(v: Cell): string {
   if (v.t === K.None) return '';
-  if (v.t === K.Logic) return v.v ? 'Yes' : 'No';
+  if (v.t === K.Logic) return own(v.v ? 'yes' : 'no');
   return display(v);
 }
 
@@ -1531,7 +1547,7 @@ function syncRows(m: Mounted): void {
   });
   for (const [k, item] of old) if (next.get(k) !== item) item.remove();
   m.rows = next;
-  m.empty!.textContent = str(f, 'text') ?? 'Nothing to show yet';
+  m.empty!.textContent = str(f, 'text') ?? own('empty');
   m.empty!.hidden = rows.length > 0;
 }
 
@@ -1690,7 +1706,7 @@ function syncTree(m: Mounted): void {
   const current = items.find(e => e.tabIndex === 0 && e.hasAttribute('tabindex'))
     ?? items.find(e => e.classList.contains('tb-selected')) ?? items[0];
   for (const e of items) e.tabIndex = e === current ? 0 : -1;
-  m.empty!.textContent = str(f, 'text') ?? 'Nothing to show yet';
+  m.empty!.textContent = str(f, 'text') ?? own('empty');
   m.empty!.hidden = items.length > 0;
 }
 
@@ -1844,7 +1860,7 @@ function crumbs(face: ObjectCell): Crumb[] {
 
 function buildBreadcrumb(m: Mounted): HTMLElement {
   const nav = el('nav', 'tb-breadcrumb');
-  nav.setAttribute('aria-label', 'Breadcrumb');
+  keepOwn(nav, 'breadcrumb', 'aria-label');
   m.box = el('ol');
   nav.append(m.box);
   return nav;
@@ -1882,7 +1898,7 @@ function syncBreadcrumb(m: Mounted): void {
     const b = el('button', 'tb-crumb');
     b.type = 'button';
     b.textContent = '…';
-    b.setAttribute('aria-label', 'Show more levels');
+    keepOwn(b, 'more-levels', 'aria-label');
     b.setAttribute('aria-haspopup', 'menu');
     b.setAttribute('aria-expanded', 'false');
     b.addEventListener('click', () => {
@@ -1905,7 +1921,7 @@ function buildDialog(face: ObjectCell, m: Mounted): HTMLElement {
   d.setAttribute('aria-labelledby', title.id);
   const x = el('button', 'tb-dialog-close');
   x.type = 'button';
-  x.setAttribute('aria-label', 'Close');
+  keepOwn(x, 'close', 'aria-label');
   x.textContent = '×';
   x.addEventListener('click', () => void fire('ui-close', face));
   head.append(title, x);
@@ -2002,7 +2018,7 @@ function buildSplit(face: ObjectCell, m: Mounted): HTMLElement {
   handle.tabIndex = 0;
   handle.setAttribute('role', 'separator');
   handle.setAttribute('aria-orientation', 'vertical');
-  handle.setAttribute('aria-label', 'Resize panes');
+  keepOwn(handle, 'resize-panes', 'aria-label');
   handle.setAttribute('aria-valuemin', '20');
   handle.setAttribute('aria-valuemax', '80');
   const resize = (pct: number): void => {
@@ -2032,7 +2048,7 @@ function buildSplit(face: ObjectCell, m: Mounted): HTMLElement {
   back.type = 'button';
   const arrow = iconNode('arrow-left');
   const caption = el('span');
-  caption.textContent = 'Back';
+  keepOwn(caption, 'back');
   back.append(...(arrow !== null ? [arrow] : []), caption);
   back.addEventListener('click', () => void fire('ui-input', face, { t: K.Integer, v: 1 }));
   if (a !== undefined) first.append(build(a));
@@ -2125,13 +2141,14 @@ function sync(m: Mounted): void {
       // never fight the user's typing: only push values that differ from what code set
       if (document.activeElement !== m.input && m.input.value !== want) m.input.value = want;
       const hint = str(f, 'hint');
-      if (hint !== null && !(m.input instanceof HTMLSelectElement)) m.input.placeholder = hint;
+      if (m.input instanceof HTMLSelectElement) m.input.options[0]!.textContent = hint ?? own('choose');
+      else if (hint !== null) m.input.placeholder = hint;
     }
     m.input.disabled = flag(f, 'disabled');
     if (style === 'date') {
       const pick = m.input.nextElementSibling as HTMLButtonElement;
       pick.disabled = m.input.disabled;
-      pick.setAttribute('aria-label', `Choose ${t ?? 'date'}`);
+      pick.setAttribute('aria-label', t !== null ? own('choose-date-of', t) : own('choose-date'));
     }
     m.input.setAttribute('aria-required', hasRule(f, 'required') ? 'true' : 'false');
     m.input.setAttribute('aria-invalid', err !== null ? 'true' : 'false');
@@ -2299,6 +2316,7 @@ native('repaint', '[]', () => {
   // after a change of language: every mounted face shows its values again
   document.documentElement.lang = activeLanguage(host.rt);
   if (titleFace !== null) document.title = str(titleFace, 'text') ?? document.title;
+  for (const e of Array.from(document.querySelectorAll<HTMLElement>('[data-tb-own]'))) showOwn(e);
   for (const e of Array.from(document.querySelectorAll('*'))) {
     const m = byNode.get(e);
     if (m !== undefined && m.el === e) sync(m);

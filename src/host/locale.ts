@@ -191,6 +191,18 @@ export function translate(c: Cell, rt: Runtime): string {
   return form(c);
 }
 
+/**
+ * One of Trebol's own texts (the map `i18n/ui`) in the active language, with
+ * `#1`, `#2`... replaced by the arguments. A key that is missing shows as is.
+ */
+export function uiText(rt: Runtime, key: string, ...args: string[]): string {
+  const ui = i18nField(rt, 'ui');
+  const t = ui?.t === K.Map ? mapAt(ui as MapCell, key) : null;
+  let out = t === null ? key : translate(t, rt);
+  args.forEach((a, i) => { out = out.replaceAll(`#${i + 1}`, a); });
+  return out;
+}
+
 /** A value as it shows on screen in a language: local format, or `form`. */
 export function shown(c: Cell, lang: string): string {
   return formatLocal(c, lang) ?? form(c);
