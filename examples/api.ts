@@ -1,4 +1,5 @@
-// A small in-memory REST API that `trebol dev` serves under /api, so the
+// A small in-memory REST API for the examples, served under /api by
+// `npm run dev` (`trebol dev --api examples/api.ts`), so the
 // examples can create, read, update and delete records end to end:
 //
 //   GET    /api/clients          the list

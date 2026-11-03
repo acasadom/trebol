@@ -5,7 +5,11 @@
   "type": "module",
   "exports": {
     "./core": "./src/core/index.ts",
-    "./host": "./src/host/index.ts"
+    "./host": "./src/host/index.ts",
+    "./browser": "./src/host/browser.ts"
+  },
+  "bin": {
+    "trebol": "./tools/cli.ts"
   },
   "license": "UNLICENSED",
   "private": true,
@@ -18,7 +22,7 @@
     "check": "npm run typecheck && npm test",
     "mold": "node tools/mold.ts",
     "trb": "node tools/run.ts",
-    "dev": "node tools/dev.ts"
+    "dev": "node tools/cli.ts dev --api examples/api.ts"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",

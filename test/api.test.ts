@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { handleApi } from '../tools/api.ts';
+import { handleApi } from '../examples/api.ts';
 
 test('clients can be listed, added, updated and deleted', async () => {
   const server = createServer((req, res) => {

@@ -3,8 +3,10 @@
 //
 // A page needs only:
 //
-//   <script type="module" src=".../src/host/browser.ts"></script>
+//   <script type="module">import 'trebol/browser';</script>
 //   <script type="text/trebol" src="app.trb"></script>
+//
+// (`trebol dev` resolves `trebol/browser` to this file.)
 //
 // There is one DOM node per face and no virtual DOM. Setting a field of a
 // mounted face marks it dirty (see `ctxSet` in the core); after every round
