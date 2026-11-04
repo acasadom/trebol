@@ -255,6 +255,35 @@ body {
 :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > .tb-field > .tb-control { grid-column: 2; }
 :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > .tb-actions, :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > .tb-check-row { grid-column: 2; }
 .tb-field { display: flex; flex-direction: column; gap: var(--tb-space-2); min-width: 0; }
+.tb-rows { display: flex; flex-direction: column; gap: var(--tb-space-3); align-items: stretch; }
+.tb-rows > .tb-button { align-self: flex-start; }
+.tb-entry { display: flex; gap: var(--tb-space-3); align-items: flex-start; }
+.tb-entry > * { flex: 1 1 0; min-width: 0; }
+.tb-entry > .tb-button { flex: none; }
+/* the labels of the first row are the headers of the others */
+.tb-entry:not(:first-child) .tb-field > .tb-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.tb-entry:first-child:has(.tb-label:not(:empty)) > .tb-button { margin-top: calc(14px * 1.5 + var(--tb-space-2)); }
+.tb-rich { display: flex; flex-direction: column; gap: var(--tb-space-1); }
+.tb-rich-tools { display: flex; flex-wrap: wrap; gap: var(--tb-space-1); }
+.tb-rich-tools[hidden], .tb-rich-link[hidden] { display: none; }
+.tb-rich-tool { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: var(--tb-radius); background: transparent; color: var(--tb-muted); cursor: pointer; }
+.tb-rich-tool:hover { background: var(--tb-primary-soft); color: var(--tb-text); }
+.tb-rich-tool:focus-visible { outline: 2px solid var(--tb-primary); outline-offset: 1px; }
+.tb-rich-tool .tb-icon { width: 18px; height: 18px; }
+.tb-rich-link { display: flex; gap: var(--tb-space-2); align-items: center; }
+.tb-input.tb-rich-box { padding: var(--tb-space-2) var(--tb-space-3); min-height: calc(var(--tb-control) * 2.5); overflow-wrap: anywhere; cursor: text; }
+.tb-input.tb-rich-box[aria-readonly="true"] { background: color-mix(in srgb, var(--tb-muted) 12%, transparent); border-color: transparent; cursor: default; }
+.tb-input.tb-rich-box[aria-disabled="true"] { opacity: 0.45; }
+.tb-rich-box:focus { outline: none; border-color: var(--tb-primary); box-shadow: 0 0 0 3px var(--tb-focus-ring); }
+.tb-rich-box > :first-child { margin-top: 0; }
+.tb-rich-box > :last-child { margin-bottom: 0; }
+.tb-rich-box p, .tb-rich-box ul, .tb-rich-box ol { margin: 0 0 var(--tb-space-2); }
+.tb-rich-box ul, .tb-rich-box ol { padding-left: var(--tb-space-5); }
+.tb-rich-box h1, .tb-rich-box h2, .tb-rich-box h3 { margin: var(--tb-space-3) 0 var(--tb-space-2); line-height: 1.3; font-weight: 600; }
+.tb-rich-box h1 { font-size: 22px; }
+.tb-rich-box h2 { font-size: 18px; }
+.tb-rich-box h3 { font-size: 16px; }
+.tb-rich-box a { color: var(--tb-primary); }
 .tb-control { display: flex; flex-direction: column; gap: var(--tb-space-1); min-width: 0; }
 .tb-label { font-weight: 550; font-size: 14px; color: var(--tb-text); }
 .tb-required::after { content: " *"; color: var(--tb-muted); font-weight: 400; }
@@ -773,6 +802,10 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
   :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > .tb-field > .tb-label, :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > .tb-field > .tb-control,
   :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > .tb-actions, :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > .tb-check-row { grid-column: 1; padding-top: 0; }
   .tb-row:has(> .tb-field) { flex-direction: column; align-items: stretch; }
+  .tb-entry { flex-direction: column; align-items: stretch; padding: var(--tb-space-3); border: 1px solid var(--tb-border); border-radius: var(--tb-radius); }
+  .tb-entry > * { flex: none; }
+  .tb-entry:not(:first-child) .tb-field > .tb-label { position: static; width: auto; height: auto; overflow: visible; clip-path: none; white-space: normal; }
+  .tb-entry > .tb-button, .tb-entry:first-child:has(.tb-label:not(:empty)) > .tb-button { align-self: flex-end; margin-top: 0; }
   .tb-grid { grid-template-columns: minmax(0, 1fr); }
   .tb-actions > .tb-button { flex: 1 1 auto; }
   .tb-table-wrap { overflow: visible; background: none; border: 0; box-shadow: none; }

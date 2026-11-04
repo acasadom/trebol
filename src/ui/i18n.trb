@@ -28,6 +28,8 @@ i18n: make object! [
         length-exact #(en: "Must be exactly #1 characters" es: "Debe tener exactamente #1 caracteres")
         pattern #(en: "This value is not valid" es: "Este valor no es válido")
         match #(en: "Must match #1" es: "Debe coincidir con #1")
+        rows-min #(en: "Must have at least #1 rows" es: "Debe tener como mínimo #1 filas")
+        rows-max #(en: "Must have at most #1 rows" es: "Debe tener como máximo #1 filas")
         check #(en: "This value is not valid" es: "Este valor no es válido")
         ; what the components show by themselves
         empty #(en: "Nothing to show yet" es: "Aún no hay nada que mostrar")
@@ -49,6 +51,16 @@ i18n: make object! [
         drop-file #(en: "or drop it here" es: "o suéltalo aquí")
         drop-files #(en: "or drop them here" es: "o suéltalos aquí")
         remove-file #(en: "Remove #1" es: "Quitar #1")
+        add-row #(en: "Add row" es: "Añadir fila")
+        remove-row #(en: "Remove row" es: "Quitar fila")
+        bold #(en: "Bold" es: "Negrita")
+        italic #(en: "Italic" es: "Cursiva")
+        heading #(en: "Heading" es: "Título")
+        bullet-list #(en: "Bulleted list" es: "Lista con viñetas")
+        number-list #(en: "Numbered list" es: "Lista numerada")
+        link #(en: "Link" es: "Enlace")
+        link-url #(en: "Web address" es: "Dirección web")
+        link-add #(en: "Add link" es: "Añadir enlace")
     ]
 ]
 

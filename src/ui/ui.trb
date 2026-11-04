@@ -3,7 +3,7 @@ Trebol [
     exports: [
         face styles stylize layout view theme open close toast
         validate-face form-values set-values ui-pane ui-input ui-files ui-remove-file ui-blur ui-click ui-select ui-close ui-event ui-menu ui-drop ui-reorder ui-crumb ui-expand
-        go ui-route set-language
+        go ui-route set-language ui-rows
     ]
 ]
 
@@ -47,6 +47,10 @@ face: make object! [
     menu: none          ; context menu (or the menu a button opens): a block of menu items; on-menu runs
     options: none       ; choices of a choice or radio
     currency: none      ; a money field's currency code: EUR
+    calc: none          ; a formula: the value comes from it and the user cannot change it
+    template: none      ; rows: the block of the fields of one row
+    built: none         ; rows: what its rows were last made from
+    owner: none         ; a row of rows: the rows face it belongs to
     typed: none         ; what the user typed in a number, money or date field when it is not one;
                         ; in an upload, the names of the files it refused
     multiple: false     ; an upload takes more than one file
@@ -66,16 +70,16 @@ face: make object! [
 styles: make map! []
 
 container-styles: [view column row form panel grid dialog scroll split toolbar]
-input-styles: [field password number money date area check toggle choice radio upload]
+input-styles: [field password number money date area rich check toggle choice radio upload rows]
 data-styles: [table list tree]
 
 foreach [name base] [
     view column  column column  row row  form form  panel panel  grid grid  scroll scroll
     title title  heading heading  text text  divider divider
-    field field  password password  number number  money money  date date  area area  check check  choice choice
+    field field  password password  number number  money money  date date  area area  rich rich  check check  choice choice
     toggle toggle  radio radio  upload upload  progress progress  image image  icon icon
     button button  link link  table table  list list  tabs tabs  tab tab
-    toolbar toolbar  breadcrumb breadcrumb  tree tree  screens screens  screen screen
+    toolbar toolbar  breadcrumb breadcrumb  tree tree  screens screens  screen screen  rows rows  entry entry
 ] [
     poke styles name make face [style: base]
 ]
@@ -106,7 +110,7 @@ aligns: [left center right spread]
 flags: [fill hidden disabled readonly inert narrow-only wide-only drag drop reorder multiple]
 simple-rules: [required email url integer]
 letter: charset [#"a" - #"z" #"A" - #"Z"]
-rule-words: [min max length pattern match check check-async width pad gap menu accept]
+rule-words: [min max length pattern match check check-async calc width pad gap menu accept]
 
 ; Words that never name a field. email, url and integer are rules too,
 ; but also common field names, so the first word after an input style names it.
@@ -196,6 +200,8 @@ build-faces: function [
             case [
                 ; grid [1 4 1] [...]: the weight of each column, then the children
                 all [f/style = 'grid  none? f/pane  not empty? b  parse b [some integer!]] [f/cols: b]
+                ; rows items [...]: the fields of a row; a second block is the action
+                all [f/style = 'rows  none? f/template] [f/template: b]
                 find container-styles f/style [
                     ; --- in a toolbar is a separator
                     f/pane: build-faces either f/style = 'toolbar [replace/all copy b '--- 'divider] [b] labels
@@ -226,6 +232,7 @@ build-faces: function [
         | 'match set w word! (add-rule f reduce ['match w])
         | 'check set b block! (add-rule f reduce ['check b])
         | 'check-async set b block! (add-rule f reduce ['check-async b])
+        | 'calc set b block! (f/calc: b  f/readonly: true)
         | 'width set w word! (f/size: w)
         | set w ['pad | 'gap] [set n integer! | 'none (n: 0) | 'wide (n: 6)] (poke f w spacing n)
         | 'menu set b block! (f/menu: menu-of b)
@@ -255,6 +262,7 @@ build-faces: function [
             ; table clients [...] is the same as clients: table [...]
             opt [if (find data-styles f/style) set n word! if (all [field-name? n  n <> 'key]) (label-face n labels global? f)]
             any modifier
+            (if f/style = 'rows [rows-fill f])
         ]
     ] [
         do make error! "layout: cannot read the layout"
@@ -338,7 +346,7 @@ attach: function [f root form] [
     f/root: root
     f/form: form
     if f/pane [
-        inner: either f/style = 'form [f] [form]
+        inner: either find [form entry] f/style [f] [form]
         foreach c f/pane [attach c root inner]
     ]
 ]
@@ -441,7 +449,7 @@ ui-pane: function [
     "Called by the host when code gave a face a new pane: links the new faces to their view and form."
     f
 ] [
-    inner: either f/style = 'form [f] [f/form]
+    inner: either find [form entry] f/style [f] [f/form]
     foreach c any [f/pane []] [attach c f/root inner]
     if f/root [refresh-form any [inner f/root]]
 ]
@@ -509,10 +517,16 @@ collect-own: function [f out] [
     if all [f/pane  f/style <> 'form] [foreach c f/pane [collect-own c out]]
 ]
 
+; The fields of a row are not fields of the form: rows holds their values.
 named-faces: function [scope] [
     out: copy []
-    foreach f all-faces scope [if f/name [append out f]]
+    collect-named scope out
     out
+]
+
+collect-named: function [f out] [
+    if f/name [append out f]
+    if all [f/pane  f/style <> 'rows] [foreach c f/pane [collect-named c out]]
 ]
 
 form-values: function [
@@ -534,8 +548,145 @@ set-values: function [
         f/touched: false
         f/typed: none
         f/async-error: none
+        if f/style = 'rows [
+            f/built: none
+            rows-fill f
+        ]
     ]
     refresh-form scope
+]
+
+; --- rows ------------------------------------------------------------------------
+;
+; A field made of rows the user adds and removes. Its pane is an entry per row
+; and the add button last; an entry holds the fields of the template and its
+; remove button. Each entry is a scope of its own, so `values` in a handler or
+; a formula of a row is that row. The value is a block with a map per row, or
+; none when there are no rows; code changes the rows by assigning it.
+
+last-entry: 0
+
+rule-of: function [f name [word!]] [
+    foreach r any [f/rules []] [if r/1 = name [return r/2]]
+    none
+]
+
+entries-of: function [f] [
+    collect [foreach c any [f/pane []] [if c/style = 'entry [keep c]]]
+]
+
+rows-entry: function [f data] [
+    spec: copy/deep f/template
+    labels: copy []
+    set 'last-entry last-entry + 1
+    e: make select styles 'entry [owner: f  value: last-entry]
+    e/pane: build-faces spec labels
+    bind-labels spec labels copy []
+    foreach g named-faces e [
+        if f/readonly [g/readonly: true]
+        if f/disabled [g/disabled: true]
+    ]
+    if data [set-values e data]
+    remove-button: make select styles 'button [icon: #trash]
+    remove-button/hint: select i18n/ui 'remove-row
+    remove-button/action: compose [rows-remove (f) (e/value)]
+    append e/pane remove-button
+    e
+]
+
+; Makes the rows again from the value, if it or the flags changed since they were made.
+rows-fill: function [f] [
+    state: reduce [f/value f/readonly f/disabled]
+    if all [f/pane  state = f/built] [exit]
+    entries: map-each d any [f/value []] [rows-entry f d]
+    ; `min 2` starts with two empty rows
+    while [(length? entries) < any [rule-of f 'min 0]] [append entries rows-entry f none]
+    add-button: either f/pane [last f/pane] [
+        make select styles 'button [icon: #plus]
+    ]
+    add-button/text: select i18n/ui 'add-row
+    add-button/action: compose [rows-add (f)]
+    f/pane: append entries add-button
+    if f/root [foreach e entries [attach e f/root f/form]]
+    rows-store f
+]
+
+; Takes the value from the rows and shows only the buttons that can be used.
+rows-store: function [f] [
+    entries: entries-of f
+    n: length? entries
+    f/value: either empty? entries [none] [map-each e entries [form-values e]]
+    f/built: reduce [f/value f/readonly f/disabled]
+    add-button: last f/pane
+    add-button/hidden: f/readonly
+    add-button/disabled: any [f/disabled  n >= any [rule-of f 'max n + 1]]
+    foreach e entries [
+        remove-button: last e/pane
+        remove-button/hidden: f/readonly
+        remove-button/disabled: any [f/disabled  n <= any [rule-of f 'min 0]]
+    ]
+]
+
+; A field of a row changed: so did the value of its rows, and of the rows those are in.
+store-around: function [f] [
+    e: f/form
+    if all [e  e/style = 'entry] [
+        rows-store e/owner
+        store-around e/owner
+    ]
+]
+
+rows-add: function [f] [
+    e: rows-entry f none
+    attach e f/root f/form
+    faces: copy f/pane
+    insert back tail faces e
+    f/pane: faces
+    rows-store f
+    f/touched: true
+    changed f
+]
+
+rows-remove: function [f id] [
+    faces: copy f/pane
+    ; faces compare by content, so a row is found by its number
+    forall faces [
+        if faces/1/value = id [
+            remove faces
+            break
+        ]
+    ]
+    f/pane: head faces
+    rows-store f
+    f/touched: true
+    changed f
+]
+
+ui-rows: function [
+    "Called by the host when code gave a rows face a new value or changed its flags."
+    f
+] [
+    rows-fill f
+    refresh-form any [f/form f/root]
+]
+
+; Gives calculated fields their value, again while one depends on another.
+recalc: function [scope] [
+    faces: own-faces scope
+    loop 5 [
+        again: false
+        foreach f faces [
+            if f/calc [
+                v: attempt [run-handler f f/calc]
+                unless :v = f/value [
+                    f/value: :v
+                    store-around f
+                    again: true
+                ]
+            ]
+        ]
+        unless again [break]
+    ]
 ]
 
 ; --- validation ------------------------------------------------------------------
@@ -576,6 +727,15 @@ validate-face: function [
     if f/readonly [return none]
     v: f/value
     rules: any [f/rules []]
+    if f/style = 'rows [
+        n: either v [length? v] [0]
+        return case [
+            all [n = 0  find/only rules [required]] [message 'required []]
+            n < any [rule-of f 'min 0] [message 'rows-min reduce [rule-of f 'min]]
+            n > any [rule-of f 'max n] [message 'rows-max reduce [rule-of f 'max]]
+            true [none]
+        ]
+    ]
     if f/typed [
         if f/style = 'upload [return message 'accept reduce [list-of f/accept]]
         return message select [number number money amount date date] f/style []
@@ -637,7 +797,10 @@ check-async: function [f] [
 ; Updates the errors of touched faces and enables submit buttons only when
 ; every field of the form is valid. A view checks only the faces outside its forms.
 refresh-form: function [scope] [
-    unless find [form view] scope/style [exit]
+    ; the fields of a row count for the form its rows are in
+    while [all [scope  scope/style = 'entry]] [scope: any [scope/form scope/root]]
+    unless all [scope  find [form view] scope/style] [exit]
+    recalc scope
     ok: true
     faces: own-faces scope
     foreach f faces [
@@ -700,9 +863,11 @@ ui-input: function [
 
 changed: function [f] [
     f/async-error: none
+    store-around f
     refresh-form any [f/form f/root]
     if f/action [run-handler f f/action]
     if h: handler-for f 'on-change [run-handler f h]
+    if all [f/form  f/form/style = 'entry] [changed f/form/owner]
 ]
 
 ; An upload's value is none or a block of objects [name size type file];

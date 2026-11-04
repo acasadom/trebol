@@ -668,3 +668,49 @@ test('a view takes its width at the head; inert faces; screen titles per languag
   assert.equal(r, '["Home" about]');
 });
 
+
+test('rows: a field made of rows the user adds and removes', async () => {
+  const start = `v: view [form [rows items "Lines" min 1 max 2 [field product "Product" required  number qty "Qty"] submit "Go"]]
+    f: v/pane/1  r: f/pane/1  e: first r/pane  add: last r/pane  `;
+  assert.equal(await ev(start + 'reduce [length? r/pane e/style r/value/1/product]'), '[2 entry none]');
+  // a required field of a row holds the form back
+  assert.equal(await ev(start + 'f/pane/2/disabled'), 'true');
+  // the fields of a row are not fields of the form, and each row is its own scope
+  assert.equal(await ev(start + `ui-input e/pane/1 "Pen"  ui-input e/pane/2 "2"
+    reduce [form-values f  e/pane/1/form/style  f/pane/2/disabled]`), '[#(items: [#(product: "Pen" qty: 2)]) entry false]');
+  // add up to max, remove down to min; equal rows are still different rows
+  assert.equal(await ev(start + `ui-click add  a: reduce [length? r/value add/disabled]
+    second-row: r/pane/2  ui-input second-row/pane/1 "x"
+    ui-click last e/pane  b: first r/pane
+    reduce [a length? r/value  b/pane/1/value  select last b/pane 'disabled]`), '[[2 true] 1 "x" true]');
+  // code assigns the value: the rows are made again
+  assert.equal(await ev(start + `r/value: reduce [#(product: "A" qty: 1) #(product: "B" qty: 2)]  ui-rows r
+    reduce [length? r/pane  r/pane/2/pane/1/value]`), '[3 "B"]');
+  assert.equal(await ev(start + `set-values f #(items: [#(product: "C" qty: 3)])  r/pane/1/pane/2/value`), '3');
+  // read-only: no buttons, no rules, nothing to change
+  assert.equal(await ev(`r: first layout/only [rows items readonly min 1 [field a required]]
+    e: first r/pane  reduce [e/pane/1/readonly  select last e/pane 'hidden  select last r/pane 'hidden]`), '[true true true]');
+  // the count is checked
+  assert.equal(await ev(`r: first layout/only [rows items required [field a]]  validate-face r`), '"This field is required"');
+  assert.equal(await ev(`r: first layout/only [rows items max 1 [field a]]  r/value: [#(a: 1) #(a: 2)]  validate-face r`), '"Must have at most 1 rows"');
+  // an action as a second block runs when a row is added or changes
+  assert.equal(await ev(`n: 0  v: view [rows items [field a] [n: n + 1]]  r: v/pane/1
+    ui-click last r/pane  e: first r/pane  ui-input e/pane/1 "x"  n`), '2');
+});
+
+test('calc: a field whose value comes from a formula', async () => {
+  const f = `v: view [form [number qty "Qty"  number price "Price"  number total "Total" calc [values/qty * values/price]  number twice calc [values/total * 2]]]
+    f: v/pane/1  q: f/pane/1  p: f/pane/2  t: f/pane/3  `;
+  assert.equal(await ev(f + 'reduce [t/readonly t/value]'), '[true none]');
+  assert.equal(await ev(f + 'ui-input q "2"  ui-input p "3"  reduce [t/value f/pane/4/value]'), '[6 12]');
+  assert.equal(await ev(f + 'ui-input q "2"  ui-input p "3"  ui-input q none  t/value'), 'none');
+  // in a row, values is the row, and the total of the rows follows
+  const r = `v: view [form [
+      rows items [number qty  number price  number total calc [values/qty * values/price]]
+      number sum calc [s: 0  foreach x any [values/items []] [s: s + any [x/total 0]]  s]
+    ]]
+    f: v/pane/1  r: f/pane/1  ui-click last r/pane  ui-click last r/pane  `;
+  assert.equal(await ev(r + `a: r/pane/1/pane  b: r/pane/2/pane
+    ui-input a/1 "2"  ui-input a/2 "3"  ui-input b/1 "4"  ui-input b/2 "5"
+    reduce [a/3/value b/3/value f/pane/2/value]`), '[6 20 26]');
+});
