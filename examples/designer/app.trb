@@ -33,6 +33,7 @@ i18n/texts: make map! [
     maximum #(en: "Maximum" es: "Máximo")
     options #(en: "Options, one per line" es: "Opciones, una por línea")
     currency #(en: "Currency" es: "Moneda")
+    formula #(en: "Formula" es: "Fórmula")
     duplicate #(en: "Duplicate" es: "Duplicar")
     move-up #(en: "Move up" es: "Subir")
     move-down #(en: "Move down" es: "Bajar")
@@ -51,6 +52,7 @@ field-kinds: [
     area #lines #(en: "Long text" es: "Texto largo")
     email #mail #(en: "Email" es: "Email")
     password #lock #(en: "Password" es: "Contraseña")
+    rich #bold #(en: "Rich text" es: "Texto enriquecido")
     number #hash #(en: "Number" es: "Número")
     money #banknote #(en: "Amount" es: "Importe")
     date #calendar #(en: "Date" es: "Fecha")
@@ -59,6 +61,7 @@ field-kinds: [
     radio #radio #(en: "Options" es: "Opciones")
     choice #dropdown #(en: "Drop-down list" es: "Lista desplegable")
     upload #upload #(en: "File upload" es: "Subida de archivos")
+    rows #rows #(en: "List of rows" es: "Lista de filas")
     button #pointer #(en: "Button" es: "Botón")
 ]
 layout-kinds: [
@@ -74,13 +77,13 @@ kind-name: func [kind [word!]] [tr pick find kinds kind 3]
 kind-icon: func [kind [word!]] [pick find kinds kind 2]
 
 ; Pieces that hold others
-containers: [section row grid tabs tab]
+containers: [section row grid tabs tab rows]
 
 
 ; --- the design ----------------------------------------------------------------
 ;
 ; A piece is a map: id kind label name required readonly multiple min max options
-; currency cols, and children for the ones that hold others. The children of
+; currency cols calc (a formula, as text), and children for the ones that hold others. The children of
 ; tabs are its tabs.
 
 design: copy []
@@ -88,7 +91,9 @@ form-name: none
 chosen: none        ; the id of the chosen piece
 last-id: 0
 
-named-kinds: [text area email password number money date check toggle radio choice upload]
+named-kinds: [text area email password rich number money date check toggle radio choice upload rows]
+; Pieces whose value can come from a formula
+calc-kinds: [text number money]
 
 new-piece: function [kind [word!]] [
     set 'last-id last-id + 1
@@ -100,6 +105,7 @@ new-piece: function [kind [word!]] [
     if kind = 'money [p/currency: 'EUR]
     if find containers kind [p/children: copy []]
     if kind = 'grid [p/cols: 2]
+    if kind = 'rows [append p/children new-piece 'text]
     if kind = 'tabs [
         repeat i 2 [
             t: new-piece 'tab
@@ -137,9 +143,10 @@ inside?: function [id parent] [
     to logic! all [p/children  locate parent p/children id]
 ]
 
-; Only tabs hold tabs, and tabs hold nothing else.
+; Only tabs hold tabs, and tabs hold nothing else; rows hold only plain fields.
 fits?: function [kind [word!] parent] [
     holder: all [parent  select piece-of parent 'kind]
+    if holder = 'rows [return to logic! all [find named-kinds kind  kind <> 'rows]]
     either kind = 'tab [holder = 'tabs] [holder <> 'tabs]
 ]
 
@@ -246,6 +253,16 @@ set-name: function [value] [
     if all [string? value  parse value [name-start any name-char]] [set-prop 'name value]
 ]
 
+; Only a formula that can be read is kept; none clears it.
+set-formula: function [value] [
+    case [
+        none? value [set-prop 'calc none]
+        formula? value [set-prop 'calc value]
+    ]
+]
+
+formula?: function [value] [to logic! attempt [load value]]
+
 set-options: function [value] [
     lines: either value [split value "^/"] [copy []]
     remove-each s lines [empty? trim s]
@@ -256,17 +273,38 @@ set-options: function [value] [
 ;
 ; A piece as a block of the UI dialect; `live` gives a button an action, for the preview.
 
-gen-piece: function [p live [logic!]] [
-    n: all [p/name  to word! p/name]
-    l: p/label
-    req: either p/required [[required]] [[]]
-    if p/readonly [req: append copy req 'readonly]
-    limits: collect [
+gen-limits: function [p] [
+    collect [
         if p/min [keep 'min keep p/min]
         if p/max [keep 'max keep p/max]
     ]
+]
+
+gen-flags: function [p] [
+    out: copy []
+    if p/required [append out 'required]
+    if p/readonly [append out 'readonly]
+    if p/calc [
+        append out 'calc
+        append/only out load p/calc
+    ]
+    out
+]
+
+; What comes before the block of the fields of a row
+rows-head: function [p] [
+    compose [rows (to word! p/name) (p/label) (gen-limits p) (gen-flags p)]
+]
+
+gen-piece: function [p live [logic!]] [
+    n: all [p/name  to word! p/name]
+    l: p/label
+    req: gen-flags p
+    limits: gen-limits p
     switch p/kind [
         text [compose [field (n) (l) (req)]]
+        rich [compose [rich (n) (l) (req)]]
+        rows [compose/deep [(rows-head p) [(gen-list p/children live)]]]
         area [compose [area (n) (l) (req)]]
         email [compose [field (n) (l) email (req)]]
         password [compose [password (n) (l) (req)]]
@@ -322,6 +360,7 @@ code-lines: function [list [block!] indent [string!] /row "In a row: the pieces 
             ]
             find containers p/kind [
                 start: switch p/kind [
+                    rows [mold/only rows-head p]
                     section [join "panel " mold p/label]
                     row ["row"]
                     grid [join "grid " p/cols]
@@ -369,6 +408,7 @@ zone-block: function [p] [
     switch p/kind [
         section [compose [column (zone-events p/id p/label) []]]
         row [compose [row (zone-events p/id kind-name 'row) []]]
+        rows [compose [row (zone-events p/id p/label) []]]
         grid [compose [grid (p/cols) (zone-events p/id kind-name 'grid) []]]
         tabs [
             b: copy []
@@ -388,7 +428,7 @@ fill-zone: function [p zone] [
         map-each c p/children [
             f: piece-face c
             ; in a row, the pieces share the width
-            if p/kind = 'row [f/fill: true]
+            if find [row rows] p/kind [f/fill: true]
             f
         ]
     ]
@@ -403,7 +443,7 @@ piece-face: function [p] [
         on-menu [piece-picked (id) event/picked]
     ]
     either find containers p/kind [
-        title: either p/kind = 'section [p/label] [kind-name p/kind]
+        title: either find [section rows] p/kind [p/label] [kind-name p/kind]
         f: first layout/only compose/deep [
             panel pad 3 gap 3 [
                 row (handlers) [icon (kind-icon p/kind) muted  heading (title) inert]
@@ -503,7 +543,7 @@ show-props: function [] [
     label-f/hidden: to logic! find [row grid tabs] k
     cols-f/hidden: k <> 'grid
     tabs-f/hidden: k <> 'tabs
-    numeric: to logic! find [number money] k
+    numeric: to logic! find [number money rows] k
     name-f/hidden: none? p/name
     required-f/hidden: not find named-kinds k
     readonly-f/hidden: not find named-kinds k
@@ -513,12 +553,14 @@ show-props: function [] [
     low-d/hidden: k <> 'date
     high-d/hidden: k <> 'date
     options-f/hidden: not find [radio choice] k
+    calc-f/hidden: not find calc-kinds k
     currency-f/hidden: k <> 'money
     set-values props make map! reduce [
         'label p/label  'name p/name  'req p/required  'ro p/readonly  'many p/multiple
         'low either numeric [p/min] [none]  'high either numeric [p/max] [none]
         'low-date either k = 'date [p/min] [none]  'high-date either k = 'date [p/max] [none]
         'opts either p/options [lines-of p/options] [none]
+        'formula-text p/calc
         'cur either p/currency [form p/currency] [none]
         'cols-p either p/cols [form p/cols] [none]
         'tab-titles either k = 'tabs [lines-of map-each t p/children [t/label]] [none]
@@ -652,6 +694,8 @@ view [
                         global low-d: date low-date 'minimum [set-prop 'min value]
                         global high-d: date high-date 'maximum [set-prop 'max value]
                         global options-f: area opts 'options [set-options value]
+                        global calc-f: area formula-text 'formula "values/qty * values/price"
+                            check [formula? value] [set-formula value]
                         global cols-f: choice cols-p 'columns ["2" "3" "4"] on-change [
                             if value [set-prop 'cols to integer! value]
                         ]
