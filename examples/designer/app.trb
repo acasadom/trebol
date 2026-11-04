@@ -27,6 +27,7 @@ i18n/texts: make map! [
     label #(en: "Label" es: "Etiqueta")
     field-name #(en: "Field name" es: "Nombre del campo")
     required #(en: "Required" es: "Obligatorio")
+    read-only #(en: "Read only" es: "Solo lectura")
     multiple #(en: "Several files" es: "Varios archivos")
     minimum #(en: "Minimum" es: "Mínimo")
     maximum #(en: "Maximum" es: "Máximo")
@@ -47,7 +48,9 @@ i18n/texts: make map! [
 ; What the palette offers: the kind of each piece, its icon and its name
 field-kinds: [
     text #type #(en: "Text" es: "Texto")
+    area #lines #(en: "Long text" es: "Texto largo")
     email #mail #(en: "Email" es: "Email")
+    password #lock #(en: "Password" es: "Contraseña")
     number #hash #(en: "Number" es: "Número")
     money #banknote #(en: "Amount" es: "Importe")
     date #calendar #(en: "Date" es: "Fecha")
@@ -76,7 +79,7 @@ containers: [section row grid tabs tab]
 
 ; --- the design ----------------------------------------------------------------
 ;
-; A piece is a map: id kind label name required multiple min max options
+; A piece is a map: id kind label name required readonly multiple min max options
 ; currency cols, and children for the ones that hold others. The children of
 ; tabs are its tabs.
 
@@ -85,11 +88,11 @@ form-name: none
 chosen: none        ; the id of the chosen piece
 last-id: 0
 
-named-kinds: [text email number money date check toggle radio choice upload]
+named-kinds: [text area email password number money date check toggle radio choice upload]
 
 new-piece: function [kind [word!]] [
     set 'last-id last-id + 1
-    p: make map! reduce ['id last-id 'kind kind 'label kind-name kind 'required false 'multiple false]
+    p: make map! reduce ['id last-id 'kind kind 'label kind-name kind 'required false 'readonly false 'multiple false]
     if find named-kinds kind [p/name: rejoin [form kind last-id]]
     if find [radio choice] kind [
         p/options: collect [repeat i 3 [keep rejoin [tr 'option " " i]]]
@@ -257,18 +260,21 @@ gen-piece: function [p live [logic!]] [
     n: all [p/name  to word! p/name]
     l: p/label
     req: either p/required [[required]] [[]]
+    if p/readonly [req: append copy req 'readonly]
     limits: collect [
         if p/min [keep 'min keep p/min]
         if p/max [keep 'max keep p/max]
     ]
     switch p/kind [
         text [compose [field (n) (l) (req)]]
+        area [compose [area (n) (l) (req)]]
         email [compose [field (n) (l) email (req)]]
+        password [compose [password (n) (l) (req)]]
         number [compose [number (n) (l) (limits) (req)]]
         money [compose [money (n) (l) (p/currency) (limits) (req)]]
         date [compose [date (n) (l) (limits) (req)]]
         check [compose [check (n) (l) (req)]]
-        toggle [compose [toggle (n) (l)]]
+        toggle [compose [toggle (n) (l) (req)]]
         radio choice [compose [(p/kind) (n) (l) (reduce [copy p/options]) (req)]]
         upload [compose [upload (n) (l) (either p/multiple [[multiple]] [[]]) (req)]]
         section [compose/deep [panel (l) [(gen-list p/children live)]]]
@@ -500,6 +506,7 @@ show-props: function [] [
     numeric: to logic! find [number money] k
     name-f/hidden: none? p/name
     required-f/hidden: not find named-kinds k
+    readonly-f/hidden: not find named-kinds k
     multiple-f/hidden: k <> 'upload
     low-n/hidden: not numeric
     high-n/hidden: not numeric
@@ -508,7 +515,7 @@ show-props: function [] [
     options-f/hidden: not find [radio choice] k
     currency-f/hidden: k <> 'money
     set-values props make map! reduce [
-        'label p/label  'name p/name  'req p/required  'many p/multiple
+        'label p/label  'name p/name  'req p/required  'ro p/readonly  'many p/multiple
         'low either numeric [p/min] [none]  'high either numeric [p/max] [none]
         'low-date either k = 'date [p/min] [none]  'high-date either k = 'date [p/max] [none]
         'opts either p/options [lines-of p/options] [none]
@@ -638,6 +645,7 @@ view [
                         global label-f: field label 'label [set-prop 'label value]
                         global name-f: field name 'field-name required pattern [name-start any name-char] [set-name value]
                         global required-f: check req 'required [set-prop 'required value]
+                        global readonly-f: check ro 'read-only [set-prop 'readonly value]
                         global multiple-f: check many 'multiple [set-prop 'multiple value]
                         global low-n: number low 'minimum [set-prop 'min value]
                         global high-n: number high 'maximum [set-prop 'max value]

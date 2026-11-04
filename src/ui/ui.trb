@@ -31,6 +31,7 @@ face: make object! [
     wide-only: false    ; hidden on narrow screens
     hidden: false
     disabled: false
+    readonly: false     ; shown and sent, but the user cannot change it, and no rule applies
     inert: false        ; shown as it is, but neither it nor its children can be used
     drag: false         ; can be dragged: carries its value, or the row in a table, list or tree
     drop: false         ; accepts drops (on-drop)
@@ -102,7 +103,7 @@ stylize: function [
 roles: [primary accent danger success warning muted]
 sizes: [small medium large]
 aligns: [left center right spread]
-flags: [fill hidden disabled inert narrow-only wide-only drag drop reorder multiple]
+flags: [fill hidden disabled readonly inert narrow-only wide-only drag drop reorder multiple]
 simple-rules: [required email url integer]
 letter: charset [#"a" - #"z" #"A" - #"Z"]
 rule-words: [min max length pattern match check check-async width pad gap menu accept]
@@ -572,6 +573,7 @@ validate-face: function [
     "Checks a face's rules; returns a message or none."
     f
 ] [
+    if f/readonly [return none]
     v: f/value
     rules: any [f/rules []]
     if f/typed [

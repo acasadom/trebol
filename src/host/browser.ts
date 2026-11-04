@@ -1303,7 +1303,7 @@ function syncUpload(m: Mounted, err: string | null): void {
   const many = flag(f, 'multiple');
   const choose = m.button!;
   (choose.lastChild as HTMLElement).textContent = own(many ? 'choose-files' : 'choose-file');
-  choose.disabled = flag(f, 'disabled');
+  choose.disabled = flag(f, 'disabled') || flag(f, 'readonly');
   choose.setAttribute('aria-invalid', err !== null ? 'true' : 'false');
   const zone = choose.parentElement!;
   (zone.querySelector('.tb-upload-hint') as HTMLElement).textContent = own(many ? 'drop-files' : 'drop-file');
@@ -1397,7 +1397,7 @@ function syncRadio(m: Mounted, err: string | null): void {
   const want = v.t === K.None ? null : form(v);
   for (const r of m.radios!) {
     r.checked = r.value === want;
-    r.disabled = flag(f, 'disabled');
+    r.disabled = flag(f, 'disabled') || flag(f, 'readonly');
   }
   const group = m.radios![0]?.parentElement!.parentElement;
   group?.setAttribute('aria-invalid', err !== null ? 'true' : 'false');
@@ -2143,10 +2143,14 @@ function sync(m: Mounted): void {
       if (m.input instanceof HTMLSelectElement) m.input.options[0]!.textContent = hint ?? own('choose');
       else if (hint !== null) m.input.placeholder = hint;
     }
-    m.input.disabled = flag(f, 'disabled');
+    const readonly = flag(f, 'readonly');
+    // text can be read-only; a choice or a checkbox can only be disabled
+    const typing = m.input instanceof HTMLTextAreaElement || (m.input instanceof HTMLInputElement && m.input.type !== 'checkbox');
+    if (typing) (m.input as HTMLInputElement | HTMLTextAreaElement).readOnly = readonly;
+    m.input.disabled = flag(f, 'disabled') || (readonly && !typing);
     if (style === 'date') {
       const pick = m.input.nextElementSibling as HTMLButtonElement;
-      pick.disabled = m.input.disabled;
+      pick.disabled = m.input.disabled || readonly;
       pick.setAttribute('aria-label', t !== null ? own('choose-date-of', t) : own('choose-date'));
     }
     m.input.setAttribute('aria-required', hasRule(f, 'required') ? 'true' : 'false');
