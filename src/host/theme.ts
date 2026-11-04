@@ -274,7 +274,7 @@ select.tb-input { appearance: none; background-image: linear-gradient(45deg, tra
 .tb-input::placeholder { color: var(--tb-muted); opacity: 0.8; }
 .tb-input:hover { border-color: var(--tb-muted); }
 .tb-input:focus { outline: none; border-color: var(--tb-primary); box-shadow: 0 0 0 3px var(--tb-focus-ring); }
-.tb-input[readonly] { background: var(--tb-surface); border-color: var(--tb-border); color: var(--tb-muted); cursor: default; }
+.tb-input[readonly] { background: color-mix(in srgb, var(--tb-muted) 12%, transparent); border-color: transparent; color: var(--tb-muted); cursor: default; }
 .tb-input[readonly]:focus { border-color: var(--tb-muted); box-shadow: none; }
 .tb-invalid .tb-input { border-color: var(--tb-danger); }
 .tb-invalid .tb-input:focus { box-shadow: 0 0 0 3px var(--tb-danger-soft); }

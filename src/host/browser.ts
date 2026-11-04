@@ -1299,7 +1299,7 @@ function syncUpload(m: Mounted, err: string | null): void {
   const f = m.face;
   const label = m.label!;
   label.textContent = str(f, 'text') ?? '';
-  label.classList.toggle('tb-required', hasRule(f, 'required'));
+  label.classList.toggle('tb-required', required(f));
   const many = flag(f, 'multiple');
   const choose = m.button!;
   (choose.lastChild as HTMLElement).textContent = own(many ? 'choose-files' : 'choose-file');
@@ -1389,10 +1389,15 @@ function syncIcon(m: Mounted): void {
   m.el.replaceChildren(...(svg !== null ? [svg] : []));
 }
 
+/** No rule applies to a read-only face, so it never asks for a value. */
+function required(f: ObjectCell): boolean {
+  return hasRule(f, 'required') && !flag(f, 'readonly');
+}
+
 function syncRadio(m: Mounted, err: string | null): void {
   const f = m.face;
   m.label!.textContent = str(f, 'text') ?? '';
-  m.label!.classList.toggle('tb-required', hasRule(f, 'required'));
+  m.label!.classList.toggle('tb-required', required(f));
   const v = get(f, 'value');
   const want = v.t === K.None ? null : form(v);
   for (const r of m.radios!) {
@@ -1401,7 +1406,7 @@ function syncRadio(m: Mounted, err: string | null): void {
   }
   const group = m.radios![0]?.parentElement!.parentElement;
   group?.setAttribute('aria-invalid', err !== null ? 'true' : 'false');
-  group?.setAttribute('aria-required', hasRule(f, 'required') ? 'true' : 'false');
+  group?.setAttribute('aria-required', required(f) ? 'true' : 'false');
   m.error!.textContent = err ?? '';
 }
 
@@ -2130,7 +2135,7 @@ function sync(m: Mounted): void {
   if (m.input !== null) {
     if (m.label !== null) {
       m.label.textContent = t ?? '';
-      m.label.classList.toggle('tb-required', hasRule(f, 'required') && style !== 'check');
+      m.label.classList.toggle('tb-required', required(f) && style !== 'check');
     }
     const v = get(f, 'value');
     if (m.input instanceof HTMLInputElement && m.input.type === 'checkbox') {
@@ -2153,7 +2158,7 @@ function sync(m: Mounted): void {
       pick.disabled = m.input.disabled || readonly;
       pick.setAttribute('aria-label', t !== null ? own('choose-date-of', t) : own('choose-date'));
     }
-    m.input.setAttribute('aria-required', hasRule(f, 'required') ? 'true' : 'false');
+    m.input.setAttribute('aria-required', required(f) ? 'true' : 'false');
     m.input.setAttribute('aria-invalid', err !== null ? 'true' : 'false');
     if (m.error !== null) m.error.textContent = err ?? '';
     return;
