@@ -430,7 +430,10 @@ describe('components', () => {
       reduce [went crumbs/value length? crumbs/data]`);
     assert.equal(r, '[clients clients 5]');
     await assert.rejects(runSource(host, 'view [breadcrumb ["Home" "Clients" clients]]'));
-    await ev('view [breadcrumb ["Home" home "Client" client/42 "Now"]]');
+    assert.equal(await ev(`
+      root: view [global crumbs2: breadcrumb ["Home" home "Client" client/42 "Now"] [went: value]]
+      ui-crumb crumbs2 'client/42
+      went`), 'client/42');
   });
 
   test('a tree selects nodes, expands them lazily, and reorders among siblings', async () => {

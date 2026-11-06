@@ -852,7 +852,13 @@ run-handler: function [f body [block!] /with ev [object!] /on node "row is this 
 ]
 
 ; A value as it must appear in a block given to make object!
-quoted: func [v] [either any [word? :v  path? :v] [to lit-word! :v] [:v]]
+quoted: func [v] [
+    case [
+        word? :v [to lit-word! :v]
+        path? :v [to lit-path! :v]
+        true [:v]
+    ]
+]
 
 handler-for: function [f name] [
     all [f/events  select f/events name]
