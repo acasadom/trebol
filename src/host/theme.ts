@@ -257,6 +257,7 @@ body {
   flex-direction: column;
   gap: var(--tb-space-5);
 }
+.tb-panel.tb-small { width: 100%; max-width: 420px; font-size: inherit; }
 .tb-panel.tb-primary { border-color: var(--tb-primary); box-shadow: inset 0 0 0 1px var(--tb-primary), var(--tb-shadow-1); }
 .tb-panel.tb-accent { border-color: var(--tb-accent); }
 .tb-panel.tb-danger { border-color: var(--tb-danger); }

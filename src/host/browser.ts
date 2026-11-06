@@ -2557,6 +2557,7 @@ function sync(m: Mounted): void {
       m.el.textContent = tv.t === K.None ? '' : tv.t === K.Map || tv.t === K.Word ? translate(tv, host.rt) : display(tv);
       break;
     }
+    case 'tile': (m.label ?? m.el).textContent = t ?? ''; break;
     case 'button': case 'link': {
       (m.label ?? m.el).textContent = t ?? '';
       const named = iconLabel(f);
