@@ -157,7 +157,7 @@ function i18nField(rt: Runtime, name: string): Cell | null {
 }
 
 /** The value under a key of a map (a word or a string key, any case), or null. */
-function mapAt(m: MapCell, key: string): Cell | null {
+export function mapAt(m: MapCell, key: string): Cell | null {
   const d = m.s.data;
   const k = key.toLowerCase();
   for (let i = 0; i + 1 < d.length; i += 2) {

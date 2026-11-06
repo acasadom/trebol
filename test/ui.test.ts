@@ -176,6 +176,23 @@ describe('validation', () => {
   });
 });
 
+describe('errors from a server', () => {
+  test('field-error shows on the field until the user changes it', async () => {
+    await ev(`view [
+      global f: form [
+        field code "Code"
+        submit "Save" []
+      ]
+    ]`);
+    assert.equal(await ev('field-error f \'code "Already taken"'), 'true');
+    assert.equal(await ev('c: first f/pane  c/error'), '"Already taken"');
+    assert.equal(await ev('b: second f/pane  b/disabled'), 'true');
+    assert.equal(await ev('ui-input c "other"  c/error'), 'none');
+    assert.equal(await ev('b/disabled'), 'false');
+    assert.equal(await ev('field-error f \'nope "x"'), 'false');
+  });
+});
+
 describe('handlers', () => {
   test('handlers see face, value, values and the labels of their layout, not field names', async () => {
     const r = await ev(`

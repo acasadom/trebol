@@ -17,9 +17,9 @@
 
 import {
   K, NONE, TRUE, FALSE, native, value, string, form, ctxFind, intern, spell, text, canon, blockOf, wordOf, char,
-  type Cell, type ObjectCell, type BlockCell, type WordCell, type StringCell, type Ctx, type Sym,
+  type Cell, type MapCell, type ObjectCell, type BlockCell, type WordCell, type StringCell, type Ctx, type Sym,
 } from '../core/index.ts';
-import { startHost, startUi, runSource, report, shown, translate, uiText, activeLanguage, editLocal, readLocal, readDate, weekStart, LOCAL_KINDS, type Host } from './index.ts';
+import { mapAt, startHost, startUi, runSource, report, shown, translate, uiText, activeLanguage, editLocal, readLocal, readDate, weekStart, LOCAL_KINDS, type Host } from './index.ts';
 import { spawn, taskResult } from './scheduler.ts';
 import { themeCss, DEFAULT_THEME, type ThemeParams } from './theme.ts';
 import { iconNode } from './icons.ts';
@@ -39,6 +39,24 @@ function str(face: ObjectCell, name: string): string | null {
   // a text per language, or a word of the dictionary: in the active language
   if (v.t === K.Map || ((name === 'text' || name === 'hint') && v.t === K.Word)) return translate(v, host.rt);
   return form(v);
+}
+
+/** What a choice or radio option is worth: itself, or the `value` of a map #(value: .. text: ..). */
+function optionValue(o: Cell): string {
+  const v = o.t === K.Map ? mapAt(o as MapCell, 'value') : null;
+  return form(v ?? o);
+}
+
+/** What a choice or radio option shows, in the active language. */
+function optionText(o: Cell): string {
+  const t = o.t === K.Map ? mapAt(o as MapCell, 'text') : null;
+  return t !== null ? translate(t, host.rt) : optionValue(o);
+}
+
+/** The options of a choice or radio. */
+function optionsOf(face: ObjectCell): Cell[] {
+  const opts = get(face, 'options');
+  return opts.t === K.Block ? opts.s.data.slice(opts.i) : [];
 }
 
 /** One of Trebol's own texts (`i18n/ui`) in the active language. */
@@ -1090,16 +1108,14 @@ function buildInput(face: ObjectCell, style: string, m: Mounted): HTMLElement {
     input = el('textarea', 'tb-input');
   } else if (style === 'choice') {
     const sel = el('select', 'tb-input');
-    const opts = get(face, 'options');
     const first = el('option');
     first.value = '';
     sel.append(first);
-    if (opts.t === K.Block) {
-      for (const o of opts.s.data.slice(opts.i)) {
-        const opt = el('option');
-        opt.value = opt.textContent = form(o);
-        sel.append(opt);
-      }
+    for (const o of optionsOf(face)) {
+      const opt = el('option');
+      opt.value = optionValue(o);
+      opt.textContent = optionText(o);
+      sel.append(opt);
     }
     input = sel;
   } else {
@@ -1188,19 +1204,18 @@ function buildRadio(face: ObjectCell, m: Mounted): HTMLElement {
   error.id = `${id}-error`;
   error.setAttribute('aria-live', 'polite');
   group.setAttribute('aria-describedby', error.id);
-  const opts = get(face, 'options');
   m.radios = [];
-  for (const o of opts.t === K.Block ? opts.s.data.slice(opts.i) : []) {
+  for (const o of optionsOf(face)) {
     const option = el('label', 'tb-check');
     const r = el('input');
     r.type = 'radio';
     r.name = id;
-    r.value = form(o);
+    r.value = optionValue(o);
     r.addEventListener('change', () => {
       if (r.checked) void fire('ui-input', face, string(r.value)).then(() => fire('ui-blur', face));
     });
     const caption = el('span');
-    caption.textContent = r.value;
+    caption.textContent = optionText(o);
     option.append(r, caption);
     group.append(option);
     m.radios.push(r);
@@ -2501,7 +2516,14 @@ function sync(m: Mounted): void {
       // never fight the user's typing: only push values that differ from what code set
       if (document.activeElement !== m.input && m.input.value !== want) m.input.value = want;
       const hint = str(f, 'hint');
-      if (m.input instanceof HTMLSelectElement) m.input.options[0]!.textContent = hint ?? own('choose');
+      if (m.input instanceof HTMLSelectElement) {
+        const select = m.input;
+        select.options[0]!.textContent = hint ?? own('choose');
+        optionsOf(f).forEach((o, i) => {
+          const opt = select.options[i + 1];
+          if (opt) opt.textContent = optionText(o);
+        });
+      }
       else if (hint !== null) m.input.placeholder = hint;
     }
     const readonly = flag(f, 'readonly');

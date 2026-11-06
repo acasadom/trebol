@@ -2,7 +2,7 @@ Trebol [
     title: "UI dialect: faces, styles, layout and validation"
     exports: [
         face styles stylize layout view theme open close toast
-        validate-face form-values set-values ui-pane ui-input ui-files ui-remove-file ui-blur ui-click ui-select ui-close ui-event ui-menu ui-drop ui-reorder ui-crumb ui-expand
+        validate-face field-error form-values set-values ui-pane ui-input ui-files ui-remove-file ui-blur ui-click ui-select ui-close ui-event ui-menu ui-drop ui-reorder ui-crumb ui-expand
         go ui-route set-language ui-rows
     ]
 ]
@@ -556,6 +556,23 @@ set-values: function [
     refresh-form scope
 ]
 
+field-error: function [
+    "Shows a message on a named field until the user changes it: what a server refused. False if there is no such field."
+    scope name [word! string!] text [string!]
+] [
+    name: to word! name
+    foreach f named-faces scope [
+        if f/name = name [
+            f/async-error: text
+            f/error: text
+            f/touched: true
+            refresh-form scope
+            return true
+        ]
+    ]
+    false
+]
+
 ; --- rows ------------------------------------------------------------------------
 ;
 ; A field made of rows the user adds and removes. Its pane is an entry per row
@@ -741,7 +758,7 @@ validate-face: function [
         return message select [number number money amount date date] f/style []
     ]
     if blank? :v [
-        return either find/only rules [required] [message 'required []] [none]
+        return either find/only rules [required] [message 'required []] [f/async-error]
     ]
     if all [logic-face? f  find/only rules [required]  not v] [return message 'required []]
     foreach r rules [
