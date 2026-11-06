@@ -430,6 +430,7 @@ describe('components', () => {
       reduce [went crumbs/value length? crumbs/data]`);
     assert.equal(r, '[clients clients 5]');
     await assert.rejects(runSource(host, 'view [breadcrumb ["Home" "Clients" clients]]'));
+    await ev('view [breadcrumb ["Home" home "Client" client/42 "Now"]]');
   });
 
   test('a tree selects nodes, expands them lazily, and reorders among siblings', async () => {
@@ -478,6 +479,9 @@ describe('components', () => {
       reduce [log first-screen/text first-screen/pane/2/value at-client main/value]`);
     assert.equal(r, `[[home "client 42" home] "Home" clients [[client "42"] "Client" "42" true] [clients]]`);
     assert.deepEqual(links, ['replace home', 'push client/42', 'replace home', 'push clients']);
+    links = [];
+    await ev("go to path! [client 7]");
+    assert.deepEqual(links, ['push client/7']);
     await assert.rejects(runSource(host, 'go [nowhere 1]'));
     await assert.rejects(runSource(host, 'view [screens [home "Home" [1] []]]'));
   });

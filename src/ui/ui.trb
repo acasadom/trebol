@@ -335,7 +335,7 @@ menu-of: function [spec [block!] /local i label w b] [
 
 ; ["Home" home "Clients" clients "Ada"]: a label and a word per item; the last one may have no word
 crumbs-of: function [spec [block!] /local label w] [
-    unless parse spec [any [set label [string! | map!] set w word!] opt [string! | map!]] [
+    unless parse spec [any [set label [string! | map!] set w [word! | path!]] opt [string! | map!]] [
         do make error! "layout: a breadcrumb takes a label and a word per item; only the last may have no word"
     ]
     copy spec
@@ -425,11 +425,12 @@ follow-link: function [f parts [block!]] [
 
 go: function [
     "Shows a screen and gives the page its link: go 'clients, go [client row/id] (the name is not evaluated, the arguments are)."
-    target [word! block!]
+    target [word! block! path!]
 ] [
     unless router [do make error! "go: the view has no screens"]
     route: reduce [either word? target [target] [first target]]
     if block? target [foreach a reduce next target [append route form a]]
+    if path? target [foreach a next to block! target [append route form a]]
     unless find-screen router route [do make error! rejoin ["go: no screen for " mold route]]
     set-route route false
     run-enter enter-screen router route
@@ -972,7 +973,7 @@ ui-event: function [
 
 ui-crumb: function [
     "Called by the host when the user chooses an item of a breadcrumb."
-    f item [word!]
+    f item [word! path!]
 ] [
     f/value: item
     if f/action [run-handler f f/action]

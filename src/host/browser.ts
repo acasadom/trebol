@@ -2211,7 +2211,7 @@ function syncToolbar(bar: HTMLElement): void {
 
 interface Crumb { text: string; id: Cell }
 
-/** The items of a breadcrumb: a label and a word each, the last one maybe without a word. */
+/** The items of a breadcrumb: a label and a word or path each, the last one maybe without. */
 function crumbs(face: ObjectCell): Crumb[] {
   const d = get(face, 'data');
   if (d.t !== K.Block) return [];
@@ -2221,7 +2221,7 @@ function crumbs(face: ObjectCell): Crumb[] {
     const c = cells[i]!;
     if (c.t !== K.String && c.t !== K.Map) continue;
     const next = cells[i + 1];
-    const id = next !== undefined && next.t === K.Word ? next : NONE;
+    const id = next !== undefined && (next.t === K.Word || next.t === K.Path) ? next : NONE;
     if (id !== NONE) i++;
     out.push({ text: translate(c, host.rt), id });
   }
@@ -2244,7 +2244,8 @@ function syncBreadcrumb(m: Mounted): void {
   const signature = items.map(c => `${c.text}\u0000${form(c.id)}`).join('\u0001');
   if (m.kids === signature) return;
   m.kids = signature;
-  const pick = (c: Crumb): void => void fire('ui-crumb', f, wordOf(K.LitWord, form(c.id)));
+  // a lit-word or lit-path, so that passing it on does not evaluate it
+  const pick = (c: Crumb): void => void fire('ui-crumb', f, c.id.t === K.Path ? ({ ...c.id, t: K.LitPath } as Cell) : wordOf(K.LitWord, form(c.id)));
   const middle = items.length > 3 ? items.slice(1, -2) : [];
   const nodes: HTMLElement[] = items.map((c, i) => {
     const li = el('li');
