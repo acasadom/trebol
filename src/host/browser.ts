@@ -203,6 +203,7 @@ function build(face: ObjectCell): HTMLElement {
         break;
       }
       case 'grid': node = el('div', 'tb-grid'); break;
+      case 'desktop': node = el('div', 'tb-desktop'); break;
       case 'scroll': {
         // focusable, so keyboard users can scroll it too
         node = el('div', 'tb-scroll');
@@ -245,6 +246,14 @@ function build(face: ObjectCell): HTMLElement {
           ev.preventDefault();
           clickSubmit(face, b.closest<HTMLElement>('form, .tb-view') ?? document.body);
         });
+        withIcon(b, face, m);
+        node = b;
+        break;
+      }
+      case 'tile': {
+        const b = el('button', 'tb-tile');
+        b.type = 'button';
+        b.addEventListener('click', () => void fire('ui-click', face));
         withIcon(b, face, m);
         node = b;
         break;
@@ -2578,6 +2587,11 @@ function sync(m: Mounted): void {
     case 'toolbar': {
       if (t !== null) m.el.setAttribute('aria-label', t);
       else m.el.removeAttribute('aria-label');
+      break;
+    }
+    case 'desktop': {
+      const src = str(f, 'value');
+      m.el.style.backgroundImage = src !== null ? `url(${JSON.stringify(src)})` : '';
       break;
     }
     case 'dialog': syncDialog(m); break;

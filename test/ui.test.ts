@@ -415,6 +415,19 @@ describe('components', () => {
     assert.equal(r, '[[[drop "Field" list 2] [1 3]] ["b" "c" "a"] ["y" "x"] true true]');
   });
 
+  test('a desktop is a container with an optional picture, and a tile acts and has its own menu', async () => {
+    const r = await ev(`
+      opened: none
+      root: view [
+        global mat: desktop %mat.png menu ["New" new] [
+          global t: tile #folder "Reports" [opened: true] menu ["Delete" delete]
+        ]
+      ]
+      ui-click t
+      reduce [mat/style mat/value mat/menu/1/id t/style t/icon t/text t/menu/1/id opened]`);
+    assert.equal(r, '[desktop %mat.png new tile #folder "Reports" delete true]');
+  });
+
   test('a toolbar is a container whose --- are separators', async () => {
     const r = await ev(`
       root: view [global bar: toolbar "Actions" [button #plus "New" --- button #trash "Delete"]]

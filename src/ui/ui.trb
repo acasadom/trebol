@@ -69,16 +69,16 @@ face: make object! [
 ; style name -> prototype face
 styles: make map! []
 
-container-styles: [view column row form panel grid dialog scroll split toolbar]
+container-styles: [view column row form panel grid dialog scroll split toolbar desktop]
 input-styles: [field password number money date area rich check toggle choice radio upload rows]
 data-styles: [table list tree]
 
 foreach [name base] [
-    view column  column column  row row  form form  panel panel  grid grid  scroll scroll
+    view column  column column  row row  form form  panel panel  grid grid  scroll scroll  desktop desktop
     title title  heading heading  text text  divider divider
     field field  password password  number number  money money  date date  area area  rich rich  check check  choice choice
     toggle toggle  radio radio  upload upload  progress progress  image image  icon icon
-    button button  link link  table table  list list  tabs tabs  tab tab
+    button button  link link  tile tile  table table  list list  tabs tabs  tab tab
     toolbar toolbar  breadcrumb breadcrumb  tree tree  screens screens  screen screen  rows rows  entry entry
 ] [
     poke styles name make face [style: base]
