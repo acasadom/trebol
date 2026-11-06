@@ -25,6 +25,7 @@ face: make object! [
     cols: none          ; columns of a grid: a number, or the weight of each [1 4 1]
     icon: none
     fill: false
+    fit: false          ; takes the height the window has left, and its children scroll inside
     pad: none           ; inner and between-children spacing, a step of the spacing scale (0-7)
     gap: none
     narrow-only: false  ; shown only on narrow screens
@@ -107,7 +108,7 @@ stylize: function [
 roles: [primary accent danger success warning muted]
 sizes: [small medium large]
 aligns: [left center right spread]
-flags: [fill hidden disabled readonly inert narrow-only wide-only drag drop reorder multiple]
+flags: [fill fit hidden disabled readonly inert narrow-only wide-only drag drop reorder multiple]
 simple-rules: [required email url integer]
 letter: charset [#"a" - #"z" #"A" - #"Z"]
 rule-words: [min max length pattern match check check-async calc width pad gap menu accept]

@@ -415,6 +415,10 @@ describe('components', () => {
     assert.equal(r, '[[[drop "Field" list 2] [1 3]] ["b" "c" "a"] ["y" "x"] true true]');
   });
 
+  test('fit is a flag of any container', async () => {
+    assert.equal(await ev(`root: view [global g: grid 2 fit []]  g/fit`), 'true');
+  });
+
   test('a desktop is a container with an optional picture, and a tile acts and has its own menu', async () => {
     const r = await ev(`
       opened: none
