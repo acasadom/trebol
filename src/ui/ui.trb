@@ -415,7 +415,7 @@ enter-screen: function [f route [block!] /local ev b] [
 ; half made. If on-enter went elsewhere, the screen it went to decides.
 run-enter: function [s] [
     r: none
-    if h: handler-for s 'on-enter [r: try [run-handler s h]]
+    if h: handler-for s 'on-enter [r: try [run-handler s h  none]]
     if same? s first router/pane [router/entering: false]
     if error? :r [do :r]
 ]

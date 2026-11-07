@@ -514,10 +514,11 @@ describe('components', () => {
     link = ['home'];
     const r = await ev(`
       seen: copy []
+      print-nothing: func [] [exit]
       view [
         global main: screens [
           home "Home" [text "x"]
-          slow "Slow" [on-enter [append seen main/entering]]
+          slow "Slow" [on-enter [append seen main/entering  print-nothing]]
           broken "Broken" [on-enter [do make error! "bad"]]
           away "Away" [on-enter [go 'slow  append seen main/entering]]
         ]
