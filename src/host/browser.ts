@@ -1342,6 +1342,16 @@ function fileSize(bytes: number, lang: string): string {
   }
 }
 
+/** A link as the page would follow it, relative ones too; null unless it is http or https. */
+function webHref(url: string): string | null {
+  try {
+    const u = new URL(url, location.href);
+    return u.protocol === 'http:' || u.protocol === 'https:' ? u.href : null;
+  } catch {
+    return null;
+  }
+}
+
 function syncUpload(m: Mounted, err: string | null): void {
   const f = m.face;
   const label = m.label!;
@@ -1350,9 +1360,12 @@ function syncUpload(m: Mounted, err: string | null): void {
   const many = flag(f, 'multiple');
   const choose = m.button!;
   (choose.lastChild as HTMLElement).textContent = own(many ? 'choose-files' : 'choose-file');
-  choose.disabled = flag(f, 'disabled') || flag(f, 'readonly');
+  const readonly = flag(f, 'readonly');
+  choose.disabled = flag(f, 'disabled') || readonly;
   choose.setAttribute('aria-invalid', err !== null ? 'true' : 'false');
   const zone = choose.parentElement!;
+  // read only, there is nothing to choose: only the files are left
+  zone.hidden = readonly;
   (zone.querySelector('.tb-upload-hint') as HTMLElement).textContent = own(many ? 'drop-files' : 'drop-file');
   const picker = zone.querySelector('input') as HTMLInputElement;
   picker.multiple = many;
@@ -1363,11 +1376,29 @@ function syncUpload(m: Mounted, err: string | null): void {
   const lang = activeLanguage(host.rt);
   const items = files.map((file, i) => {
     const li = el('li');
-    const name = el('span', 'tb-upload-name');
+    // a file kept elsewhere has a url: its name opens it, and an image shows itself small
+    const url = str(file, 'url');
+    const href = url !== null ? webHref(url) : null;
+    const name = el(href !== null ? 'a' : 'span', 'tb-upload-name');
     name.textContent = str(file, 'name') ?? '';
+    if (name instanceof HTMLAnchorElement && href !== null) {
+      name.href = href;
+      name.target = '_blank';
+      name.rel = 'noopener';
+    }
+    if (href !== null && (str(file, 'type') ?? '').startsWith('image/')) {
+      const thumb = el('img', 'tb-upload-thumb');
+      thumb.src = href;
+      thumb.alt = '';
+      li.append(thumb);
+    }
     const size = el('span', 'tb-upload-size');
     const n = get(file, 'size');
     size.textContent = n.t === K.Integer ? fileSize(Number(n.v), lang) : '';
+    if (readonly) {
+      li.append(name, size);
+      return li;
+    }
     const remove = el('button', 'tb-upload-remove');
     remove.type = 'button';
     remove.disabled = choose.disabled;

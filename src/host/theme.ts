@@ -489,9 +489,14 @@ select.tb-input { appearance: none; background-image: linear-gradient(45deg, tra
 .tb-upload.tb-drop-over { border-color: var(--tb-primary); background: var(--tb-primary-soft); }
 .tb-invalid .tb-upload { border-color: var(--tb-danger); }
 .tb-upload-hint { color: var(--tb-muted); font-size: 0.9em; }
+.tb-upload[hidden] { display: none; }
+.tb-upload[hidden] + .tb-upload-list { margin-top: 0; }
 .tb-upload-list { list-style: none; margin: var(--tb-space-2) 0 0; padding: 0; display: grid; gap: var(--tb-space-1); }
 .tb-upload-list li { display: flex; align-items: center; gap: var(--tb-space-2); min-height: 36px; padding: 0 var(--tb-space-1) 0 var(--tb-space-3); border: var(--tb-line) solid var(--tb-border); border-radius: var(--tb-radius); background: var(--tb-surface); }
 .tb-upload-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+a.tb-upload-name { color: var(--tb-primary); text-decoration: none; }
+a.tb-upload-name:hover { text-decoration: underline; }
+.tb-upload-thumb { width: 32px; height: 32px; margin: var(--tb-space-1) 0; object-fit: cover; border-radius: var(--tb-radius); flex: none; }
 .tb-upload-size { color: var(--tb-muted); font-size: 0.9em; font-variant-numeric: tabular-nums; }
 .tb-upload-remove { width: 28px; height: 28px; display: grid; place-items: center; padding: 0; border: 0; border-radius: var(--tb-radius); background: transparent; color: var(--tb-muted); cursor: pointer; }
 .tb-upload-remove:hover:not(:disabled) { background: var(--tb-danger-soft); color: var(--tb-danger); }

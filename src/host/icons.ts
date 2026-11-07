@@ -39,6 +39,7 @@ const PATHS: Record<string, string> = {
   truck: 'M2 6h12v11H2zM14 10h4l4 4v3h-8zM6.5 15a2 2 0 1 0 0 4a2 2 0 1 0 0-4zM17.5 15a2 2 0 1 0 0 4a2 2 0 1 0 0-4z',
   box: 'M12 3l8 4.5v9L12 21l-8-4.5v-9zM4 7.5l8 4.5 8-4.5M12 12v9',
   file: 'M6 3h8l4 4v14H6zM14 3v4h4M9 12h6M9 16h6',
+  image: 'M4 5h16v14H4zM4 16l5-5 4 4 2-2 5 5M15 8.5a1.5 1.5 0 1 0 0 3a1.5 1.5 0 1 0 0-3z',
   settings: 'M4 7h10M18 7h2M4 17h4M12 17h8M16 5v4M10 15v4',
   filter: 'M4 5h16l-6 8v6l-4-2v-4L4 5z',
   refresh: 'M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5',
