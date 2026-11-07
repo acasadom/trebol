@@ -1517,7 +1517,8 @@ function openLookup(m: Mounted, input: HTMLInputElement, query: string | null): 
   lookup = { m, list, shown: null, items: [], active: -1 };
   input.setAttribute('aria-expanded', 'true');
   input.setAttribute('aria-controls', list.id);
-  document.body.append(list);
+  // a modal dialog makes all outside it inert: there, a list in the body would take no clicks
+  (input.closest('dialog') ?? document.body).append(list);
   list.showPopover?.();
   placeLookup();
   if (query !== null) void fire('ui-lookup-search', m.face, string(query));
