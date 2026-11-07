@@ -2,7 +2,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startDev } from '../tools/dev.ts';
@@ -33,6 +33,42 @@ test('an app folder loads Trebol by name and brings its own API', async () => {
     assert.equal((await fetch(`${base}/..%2fsecret`)).status, 403);
     assert.equal((await fetch(`${base}/nope.trb`)).status, 404);
   } finally {
+    await dev.close();
+  }
+});
+
+test('a page reloads when a file it asked for changes, not for another one in the folder', async () => {
+  const app = realpathSync(mkdtempSync(join(tmpdir(), 'trebol-app-')));
+  writeFileSync(join(app, 'index.html'), '<html><head></head><body></body></html>');
+  writeFileSync(join(app, 'app.trb'), 'one');
+  mkdirSync(join(app, 'data'));
+  const dev = await startDev({ root: app, port: 0 });
+  const base = `http://localhost:${dev.port}`;
+  const stream = await fetch(`${base}/__reload`);
+  const reader = stream.body!.getReader();
+  let reloads = 0;
+  void (async () => {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) return;
+      if (new TextDecoder().decode(value).includes('reload')) reloads++;
+    }
+  })().catch(() => {});
+  const wait = (ms: number): Promise<void> => new Promise(r => setTimeout(r, ms));
+  try {
+    await (await fetch(`${base}/`)).text();
+    await (await fetch(`${base}/app.trb`)).text();
+    // the system may still report the files this test has just created
+    await wait(1500);
+    const before = reloads;
+    writeFileSync(join(app, 'data', 'store.mdb'), 'written by the app');
+    await wait(1000);
+    assert.equal(reloads, before);
+    writeFileSync(join(app, 'app.trb'), 'two');
+    await wait(1000);
+    assert.ok(reloads > before);
+  } finally {
+    await reader.cancel();
     await dev.close();
   }
 });

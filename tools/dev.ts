@@ -77,6 +77,8 @@ export async function startDev(options: DevOptions = {}): Promise<Dev> {
     : null;
   const map = importMap();
   const clients = new Set<ServerResponse>();
+  // only what a page asked for can change that page: a database in the folder cannot
+  const asked = new Set<string>();
 
   const server = createServer(async (req, res) => {
     const url = new URL(req.url ?? '/', 'http://x');
@@ -94,6 +96,7 @@ export async function startDev(options: DevOptions = {}): Promise<Dev> {
       res.writeHead(403).end();
       return;
     }
+    asked.add(path);
     try {
       if ((await stat(path)).isDirectory()) {
         // relative URLs in the page (src="app.trb") need the trailing slash
@@ -102,6 +105,7 @@ export async function startDev(options: DevOptions = {}): Promise<Dev> {
           return;
         }
         path = join(path, 'index.html');
+        asked.add(path);
       }
       let body: string | Buffer = await readFile(path);
       const ext = extname(path);
@@ -121,7 +125,7 @@ export async function startDev(options: DevOptions = {}): Promise<Dev> {
 
   let pending: NodeJS.Timeout | null = null;
   const reload = (file: string | null): void => {
-    if (file !== null && /(^|[\\/])(node_modules|\.git)([\\/]|$)/.test(file)) return;
+    if (file !== null && !asked.has(join(root, file))) return;
     if (pending) clearTimeout(pending);
     pending = setTimeout(() => {
       for (const c of clients) c.write('data: reload\n\n');
