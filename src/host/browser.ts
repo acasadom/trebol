@@ -538,6 +538,8 @@ function moveTargets(face: ObjectCell, payload: Cell): MenuEntry[] {
   for (const z of dropZones) {
     if (!z.el.isConnected) { dropZones.delete(z); continue; }
     if (z.face.ctx === face.ctx || z.el.getClientRects().length === 0) continue;
+    // a nameless zone around a named one is the same place
+    if (str(z.face, 'text') === null && z.el.querySelector('.tb-drop-zone') !== null) continue;
     out.push({
       text: str(z.face, 'text') ?? word(z.face, 'style') ?? '',
       run: () => void fire('ui-drop', z.face, payload, face, int(slots(z).length + 1), NONE),
