@@ -59,6 +59,19 @@ function optionsOf(face: ObjectCell): Cell[] {
   return opts.t === K.Block ? opts.s.data.slice(opts.i) : [];
 }
 
+/** Writes the options of a select: an empty one first, then those of the face. */
+function fillSelect(sel: HTMLSelectElement, face: ObjectCell): void {
+  const first = el('option');
+  first.value = '';
+  sel.replaceChildren(first);
+  for (const o of optionsOf(face)) {
+    const opt = el('option');
+    opt.value = optionValue(o);
+    opt.textContent = optionText(o);
+    sel.append(opt);
+  }
+}
+
 /** One of Trebol's own texts (`i18n/ui`) in the active language. */
 function own(key: string, ...args: string[]): string {
   return uiText(host.rt, key, ...args);
@@ -1120,15 +1133,7 @@ function buildInput(face: ObjectCell, style: string, m: Mounted): HTMLElement {
     input = el('textarea', 'tb-input');
   } else if (style === 'choice') {
     const sel = el('select', 'tb-input');
-    const first = el('option');
-    first.value = '';
-    sel.append(first);
-    for (const o of optionsOf(face)) {
-      const opt = el('option');
-      opt.value = optionValue(o);
-      opt.textContent = optionText(o);
-      sel.append(opt);
-    }
+    fillSelect(sel, face);
     input = sel;
   } else {
     const i = el('input', 'tb-input');
@@ -2526,6 +2531,12 @@ function sync(m: Mounted): void {
     if (m.input instanceof HTMLInputElement && m.input.type === 'checkbox') {
       m.input.checked = v.t === K.Logic && v.v;
     } else {
+      // options given by code after the face was made
+      if (m.input instanceof HTMLSelectElement) {
+        const values = optionsOf(f).map(optionValue);
+        const has = [...m.input.options].slice(1).map(o => o.value);
+        if (values.join('\0') !== has.join('\0')) fillSelect(m.input, f);
+      }
       const want = v.t === K.None ? str(f, 'typed') ?? '' : style === 'money' || style === 'date' ? display(v) : form(v);
       // never fight the user's typing: only push values that differ from what code set
       if (document.activeElement !== m.input && m.input.value !== want) m.input.value = want;

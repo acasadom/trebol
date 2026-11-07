@@ -217,6 +217,7 @@ body {
 .tb-view:has(.tb-fit) { height: 100dvh; box-sizing: border-box; }
 .tb-fit { flex: 1 1 auto; min-height: 0; }
 .tb-fit > * { min-height: 0; overflow: auto; }
+.tb-fit > * > * { flex-shrink: 0; }
 .tb-desktop {
   flex: 1 1 auto;
   min-height: 240px;
