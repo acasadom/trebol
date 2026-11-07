@@ -185,6 +185,7 @@ body {
   font-family: var(--tb-font);
   font-size: 15px;
   line-height: 1.5;
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -203,6 +204,7 @@ body {
 .tb-column { display: flex; flex-direction: column; gap: var(--tb-space-4); min-width: 0; }
 .tb-screens, .tb-screen { display: flex; flex-direction: column; gap: var(--tb-space-4); min-width: 0; }
 .tb-screen:focus { outline: none; }
+.tb-screens[aria-busy] { cursor: progress; }
 .tb-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--tb-space-3); }
 .tb-row:has(> .tb-field) { align-items: flex-end; }
 .tb-row.tb-center { justify-content: center; }

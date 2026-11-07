@@ -3,7 +3,7 @@ Trebol [
     exports: [
         face styles stylize layout view theme open close toast
         validate-face field-error form-values set-values ui-pane ui-input ui-files ui-remove-file ui-blur ui-click ui-select ui-close ui-event ui-menu ui-drop ui-reorder ui-crumb ui-expand
-        go ui-route set-language ui-rows
+        go go-back ui-route set-language ui-rows
     ]
 ]
 
@@ -88,6 +88,7 @@ poke styles 'view make face [style: 'view]
 poke styles 'submit make face [style: 'button role: 'primary submit: true]
 poke styles 'dialog make face [style: 'dialog hidden: true]
 poke styles 'tabs make face [style: 'tabs value: 1]
+poke styles 'screens make face [style: 'screens entering: false]   ; entering: the screen on show is still the old one
 poke styles 'split make face [style: 'split value: 1]   ; value: the pane shown on narrow screens
 
 stylize: function [
@@ -403,13 +404,20 @@ enter-screen: function [f route [block!] /local ev b] [
     repeat i length? def/3 [append words reduce [to set-word! pick def/3 i  pick route i + 1]]
     bind-labels spec labels words
     f/value: copy route
+    f/entering: true
     f/pane: reduce [s]
     ui-pane f
     s
 ]
 
+; Runs what a screen does on entering, and only then lets the host show it: the
+; page keeps the screen it had until the new one has its data, so nothing paints
+; half made. If on-enter went elsewhere, the screen it went to decides.
 run-enter: function [s] [
-    if h: handler-for s 'on-enter [run-handler s h]
+    r: none
+    if h: handler-for s 'on-enter [r: try [run-handler s h]]
+    if same? s first router/pane [router/entering: false]
+    if error? :r [do :r]
 ]
 
 ; Shows the screen of a link given as a block of strings; a link that names no
@@ -435,6 +443,13 @@ go: function [
     unless find-screen router route [do make error! rejoin ["go: no screen for " mold route]]
     set-route route false
     run-enter enter-screen router route
+]
+
+go-back: function [
+    "Returns to the screen the user came from; if they came from outside the page, goes to target."
+    target [word! block! path!]
+] [
+    unless route-back [go target]
 ]
 
 ui-route: function [

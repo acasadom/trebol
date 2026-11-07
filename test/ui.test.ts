@@ -5,7 +5,7 @@ import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { K, NONE, native, value, mold, form, string, text, money, blockOf, errorField, type Cell, type ObjectCell, type StringCell } from '../src/core/index.ts';
+import { K, NONE, TRUE, FALSE, native, value, mold, form, string, text, money, blockOf, errorField, type Cell, type ObjectCell, type StringCell } from '../src/core/index.ts';
 import { startHost, startUi, runSource, readLocal, editLocal, readDate, weekStart, translate, uiText, type Host } from '../src/host/index.ts';
 import { fileHandle } from '../src/host/net.ts';
 import { themeCss, DEFAULT_THEME, palette, contrast, CONTRAST_PAIRS } from '../src/host/theme.ts';
@@ -25,6 +25,10 @@ native('apply-theme', '[spec [object!]]', (_t, f) => {
   themed = f.args[0]!;
   return value(themed);
 });
+
+let backs = 0;
+let canBack = false;
+native('route-back', '[]', () => { backs++; return value(canBack ? TRUE : FALSE); });
 
 let repaints = 0;
 native('repaint', '[]', () => { repaints++; return value(blockOf(K.Block, [])); });
@@ -504,6 +508,44 @@ describe('components', () => {
     assert.deepEqual(links, ['push client/7']);
     await assert.rejects(runSource(host, 'go [nowhere 1]'));
     await assert.rejects(runSource(host, 'view [screens [home "Home" [1] []]]'));
+  });
+
+  test('a screen is not shown until its on-enter ends, also if it fails or goes elsewhere', async () => {
+    link = ['home'];
+    const r = await ev(`
+      seen: copy []
+      view [
+        global main: screens [
+          home "Home" [text "x"]
+          slow "Slow" [on-enter [append seen main/entering]]
+          broken "Broken" [on-enter [do make error! "bad"]]
+          away "Away" [on-enter [go 'slow  append seen main/entering]]
+        ]
+      ]
+      go 'slow
+      append seen main/entering
+      attempt [go 'broken]
+      append seen main/entering
+      go 'away
+      append seen reduce [main/entering main/value]
+      seen`);
+    assert.equal(r, '[true false false true false false [slow]]');
+  });
+
+  test('go-back asks the page to go back, or goes to the screen given when it came from outside', async () => {
+    link = ['home'];
+    backs = 0;
+    canBack = true;
+    const r = await ev(`
+      view [global main: screens [home "Home" [text "x"] other "Other" [text "y"]]]
+      go-back 'other
+      at-first: main/value
+      at-first`);
+    assert.equal(r, '[home]');
+    assert.equal(backs, 1);
+    canBack = false;
+    assert.equal(await ev(`go-back 'other  main/value`), '[other]');
+    assert.equal(backs, 2);
   });
 
   test('labels are local to their layout and seen by all its handlers; global makes them global', async () => {

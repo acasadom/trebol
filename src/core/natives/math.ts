@@ -235,6 +235,14 @@ native('odd?', '[value [integer!]]', (_t, f) => value(logic(!I64.isZero(I64.rem(
 native('equal?', '[a [any-type!] b [any-type!]]', (_t, f) => value(logic(isEqual(f.args[0]!, f.args[1]!))));
 native('not-equal?', '[a [any-type!] b [any-type!]]', (_t, f) => value(logic(!isEqual(f.args[0]!, f.args[1]!))));
 native('strict-equal?', '[a [any-type!] b [any-type!]]', (_t, f) => value(logic(strictEqual(f.args[0]!, f.args[1]!))));
+native('same?', '[a [any-type!] b [any-type!]]', (_t, f) => {
+  const a = f.args[0]! as Cell & { ctx?: unknown; s?: unknown; i?: number };
+  const b = f.args[1]! as Cell & { ctx?: unknown; s?: unknown; i?: number };
+  if (a.t !== b.t) return value(logic(false));
+  if (a.ctx !== undefined) return value(logic(a.ctx === b.ctx));
+  if (a.s !== undefined) return value(logic(a.s === b.s && a.i === b.i));
+  return value(logic(strictEqual(a, b)));
+});
 native('strict-not-equal?', '[a [any-type!] b [any-type!]]', (_t, f) => value(logic(!strictEqual(f.args[0]!, f.args[1]!))));
 
 function ordered(a: Cell, b: Cell, test: (c: number) => boolean): Step {

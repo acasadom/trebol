@@ -82,3 +82,12 @@ Trebol [
 [(quote (1 + 2)) = quote (1 + 2)]
 [c: 0 case/all [true [c: c + 1] true [c: c + 1]] c = 2]
 [(switch 'b [a [1] b [2]]) = 2]
+
+"same?"
+[a: [1 2]  same? a a]
+[not same? [1 2] [1 2]]
+[a: [1 2]  not same? a next a]
+[o: make object! [x: 1]  same? o o]
+[not same? make object! [x: 1] make object! [x: 1]]
+[same? 1 1]
+[not same? 1 2]

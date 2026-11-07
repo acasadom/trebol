@@ -15,7 +15,7 @@
 // Changing a series in place (`append f/text "x"`) does not mark the face:
 // set the field again to repaint it.
 
-import {
+import { logic,
   K, NONE, TRUE, FALSE, native, value, string, form, ctxFind, intern, spell, text, canon, blockOf, wordOf, char,
   type Cell, type MapCell, type ObjectCell, type BlockCell, type WordCell, type StringCell, type Ctx, type Sym,
 } from '../core/index.ts';
@@ -288,7 +288,8 @@ function build(face: ObjectCell): HTMLElement {
       }
       default: node = el('div');
     }
-    if (children(face).length > 0 && style !== 'tabs' && style !== 'split') appendChildren(m.box ?? node, face, style);
+    if (style === 'screens') placeScreen(m, node);
+    else if (children(face).length > 0 && style !== 'tabs' && style !== 'split') appendChildren(m.box ?? node, face, style);
   }
   m.el = node;
   byNode.set(node, m);
@@ -2645,13 +2646,32 @@ function sync(m: Mounted): void {
       return;
     }
     const box = m.box ?? m.el;
-    const keep = box.querySelector(':scope > .tb-panel-title');
-    box.replaceChildren(...(keep ? [keep] : []));
-    appendChildren(box, f, style);
+    if (style === 'screens') placeScreen(m, box);
+    else {
+      const keep = box.querySelector(':scope > .tb-panel-title');
+      box.replaceChildren(...(keep ? [keep] : []));
+      appendChildren(box, f, style);
+    }
     // let the dialect link the new faces to their view and form
     void fire('ui-pane', f);
-    if (style === 'screens') enteredScreen(box);
   }
+  if (style === 'screens') settleScreen(m.box ?? m.el, f);
+}
+
+/** A screen is made away from the page; the page keeps the one it has until `entering` ends. */
+function placeScreen(m: Mounted, box: HTMLElement): void {
+  comingScreen = el('div');
+  appendChildren(comingScreen, m.face, 'screens');
+  settleScreen(box, m.face);
+}
+
+function settleScreen(box: HTMLElement, f: ObjectCell): void {
+  const entering = flag(f, 'entering');
+  box.toggleAttribute('aria-busy', entering);
+  if (entering || comingScreen === null) return;
+  box.replaceChildren(...comingScreen.childNodes);
+  comingScreen = null;
+  enteredScreen(box);
 }
 
 /** Sets a spacing property to a step of the theme's scale, or back to the stylesheet's. */
@@ -2672,7 +2692,7 @@ function syncDirty(): void {
   for (const ctx of dirty) {
     ctx.dirty = false;
     const m = byCtx.get(ctx);
-    if (m !== undefined && m.el.isConnected) sync(m);
+    if (m !== undefined && (m.el.isConnected || comingScreen?.contains(m.el))) sync(m);
   }
   dirty.length = 0;
 }
@@ -2685,6 +2705,7 @@ function syncDirty(): void {
 
 /** The screens face of the page. */
 let screensFace: ObjectCell | null = null;
+let comingScreen: HTMLElement | null = null;   // the screen being made, not on the page yet
 /** Where a change of screen is announced. */
 let screenNews: HTMLElement | null = null;
 
@@ -2713,9 +2734,22 @@ native('route', '[]', () => value(routeBlock()));
 native('set-route', '[route [block!] replace [logic!]]', (_t, f) => {
   const href = screenHref({ ...(f.args[0] as BlockCell), t: K.Path } as Cell) ?? '#/';
   const replace = f.args[1]!.t === K.Logic && f.args[1]!.v;
-  if (replace) history.replaceState(null, '', href);
-  else history.pushState(null, '', href);
+  const depth = pageDepth();
+  if (replace) history.replaceState({ depth }, '', href);
+  else history.pushState({ depth: depth + 1 }, '', href);
   return value(f.args[0]!);
+});
+
+/** How many screens of this page lie behind the current one in the browser's history. */
+function pageDepth(): number {
+  const state = history.state as { depth?: number } | null;
+  return state?.depth ?? 0;
+}
+
+native('route-back', '[]', () => {
+  if (pageDepth() === 0) return value(logic(false));
+  history.back();
+  return value(logic(true));
 });
 
 /** After code showed another screen: focus it and announce its title. */
