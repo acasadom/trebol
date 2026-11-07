@@ -768,6 +768,28 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
 .tb-calendar-day[aria-disabled="true"] { color: var(--tb-border-strong); background: transparent; cursor: default; text-decoration: line-through; }
 
 /* menus: in the top layer, placed by the host */
+.tb-lookup { display: flex; flex-wrap: wrap; align-items: center; gap: var(--tb-space-1); }
+.tb-lookup .tb-input { flex: 1; min-width: 8em; width: auto; }
+.tb-lookup-chosen { list-style: none; margin: 0; padding: 0; display: contents; }
+.tb-lookup-chip { display: inline-flex; align-items: center; gap: var(--tb-space-1); min-height: 32px; padding: 0 var(--tb-space-1) 0 var(--tb-space-3); border: var(--tb-line) solid var(--tb-border); border-radius: var(--tb-radius); background: var(--tb-surface); }
+.tb-lookup-list {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  padding: var(--tb-space-1);
+  list-style: none;
+  max-height: 280px;
+  overflow-y: auto;
+  color: var(--tb-text);
+  background: var(--tb-raised);
+  border: var(--tb-line) solid var(--tb-border);
+  border-radius: var(--tb-radius-lg);
+  box-shadow: var(--tb-shadow-3);
+}
+.tb-lookup-option { padding: var(--tb-space-2) var(--tb-space-3); border-radius: var(--tb-radius); cursor: pointer; }
+.tb-lookup-option:hover, .tb-lookup-option[aria-selected="true"] { background: var(--tb-primary-soft); }
+.tb-lookup-none { padding: var(--tb-space-2) var(--tb-space-3); color: var(--tb-muted); }
+
 .tb-menu {
   position: fixed;
   inset: auto;

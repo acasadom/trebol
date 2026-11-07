@@ -46,6 +46,8 @@ i18n: make object! [
         choose-date-of #(en: "#1: choose date" es: "#1: elegir fecha")
         previous-month #(en: "Previous month" es: "Mes anterior")
         next-month #(en: "Next month" es: "Mes siguiente")
+        no-matches #(en: "Nothing found" es: "No se ha encontrado nada")
+        remove-value #(en: "Remove #1" es: "Quitar #1")
         choose-file #(en: "Choose file" es: "Elegir archivo")
         choose-files #(en: "Choose files" es: "Elegir archivos")
         drop-file #(en: "or drop it here" es: "o suéltalo aquí")

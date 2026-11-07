@@ -827,3 +827,45 @@ test('calc: a field whose value comes from a formula', async () => {
     ui-input a/1 "2"  ui-input a/2 "3"  ui-input b/1 "4"  ui-input b/2 "5"
     reduce [a/3/value b/3/value f/pane/2/value]`), '[6 20 26]');
 });
+
+test('a lookup keeps what was chosen, and only the answer to the last search', async () => {
+  const r = await ev(`
+    people: [#(value: "1" text: "Ana") #(value: "2" text: "Luis")]
+    found: []
+    root: view [form [
+        lookup one "One" required on-search [append found event/query  people]
+        lookup many "Many" multiple known #("7" "Eva") on-search [people]
+    ]]
+    fs: select first root/pane 'pane
+    o: fs/1  m: fs/2
+    out: reduce [o/name validate-face o]
+    ui-lookup-search o "a"
+    append out reduce [found length? o/options]
+    ui-lookup-pick o first people
+    append out reduce [o/value select o/known "1" validate-face o]
+    m/value: ["7"]
+    ui-lookup-pick m second people
+    ui-lookup-pick m second people
+    append/only out m/value
+    append out select m/known "2"
+    ui-lookup-remove m 1
+    append/only out m/value
+    ui-lookup-remove m 1
+    append out m/value
+    append/only out to block! form-values first root/pane
+    out`);
+  assert.equal(r, '[one "This field is required" ["a"] 2 "1" "Ana" none ["7" "2"] "Luis" ["2"] none [one "1" many none]]');
+});
+
+test('a lookup drops what a search answers once the user has typed on, and works with no on-search', async () => {
+  const r = await ev(`
+    root: view [form [
+        lookup late "Late" on-search [face/query: "typed on"  [#(value: "1" text: "Old")]]
+        lookup bare "Bare"
+    ]]
+    fs: select first root/pane 'pane
+    ui-lookup-search fs/1 "first"
+    ui-lookup-search fs/2 "x"
+    reduce [fs/1/options fs/2/options]`);
+  assert.equal(r, '[none []]');
+});
