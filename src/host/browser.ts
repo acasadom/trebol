@@ -1071,7 +1071,7 @@ function withIcon(node: HTMLElement, face: ObjectCell, m: Mounted): void {
 /** A face with an icon and no text is named after its icon: #arrow-left -> "Arrow left". */
 function iconLabel(face: ObjectCell): string | null {
   const name = iconName(face);
-  if (name === null || str(face, 'text') !== null) return null;
+  if (name === null || (str(face, 'text') ?? '') !== '') return null;
   const hint = str(face, 'hint');
   if (hint !== null) return hint;
   const words = name.replace(/-/g, ' ');
