@@ -1,7 +1,7 @@
 Trebol [
     title: "UI dialect: faces, styles, layout and validation"
     exports: [
-        face styles stylize layout view theme open close toast
+        face styles stylize layout view theme looks open close toast
         validate-face field-error form-values set-values ui-pane ui-input ui-files ui-remove-file ui-blur ui-click ui-select ui-close ui-event ui-menu ui-drop ui-reorder ui-crumb ui-expand
         go go-back ui-route set-language ui-rows
     ]
@@ -502,11 +502,21 @@ set-language: func [
     repaint
 ]
 
+; The looks of src/host/theme.ts, with their names: colors, shapes, fonts, shadows and
+; how the icons are drawn go together. As they are, they make the items of a menu.
+looks: [
+    #(en: "Minimal" es: "Minimalista") minimal
+    #(en: "Paper" es: "Papel") paper
+    #(en: "Civic" es: "Institucional") civic
+    #(en: "Soft" es: "Amable") soft
+    #(en: "Ink" es: "Tinta") ink
+]
+
 theme: func [
-    "Sets the theme from a few parameters."
-    spec [block!]
+    "Sets the theme: a look by name (theme 'civic), or parameters (theme [look: civic base: 200 mode: dark])."
+    spec [block! word!]
 ] [
-    apply-theme construct spec
+    apply-theme construct either word? spec [reduce [to set-word! 'look spec]] [spec]
 ]
 
 ; --- walking faces -------------------------------------------------------------

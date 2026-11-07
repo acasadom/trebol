@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { K, NONE, TRUE, FALSE, native, value, mold, form, string, text, money, blockOf, errorField, type Cell, type ObjectCell, type StringCell } from '../src/core/index.ts';
 import { startHost, startUi, runSource, readLocal, editLocal, readDate, weekStart, translate, uiText, type Host } from '../src/host/index.ts';
 import { fileHandle } from '../src/host/net.ts';
-import { themeCss, DEFAULT_THEME, palette, contrast, CONTRAST_PAIRS } from '../src/host/theme.ts';
+import { themeCss, DEFAULT_THEME, LOOKS, palette, contrast, CONTRAST_PAIRS } from '../src/host/theme.ts';
 
 let shown: Cell | null = null;
 let themed: Cell | null = null;
@@ -216,6 +216,13 @@ describe('handlers', () => {
   test('theme passes its parameters to the host', async () => {
     await ev('theme [base: 160 neutral: warm mode: dark]');
     assert.equal(mold(themed!).replace(/\s+/g, ' '), 'make object! [ base: 160 neutral: warm mode: dark ]');
+    await ev("theme 'civic");
+    assert.equal(mold(themed!).replace(/\s+/g, ' '), 'make object! [ look: civic ]');
+  });
+
+  test('the looks with a name are the looks the host has', async () => {
+    const names = await ev('collect [foreach [label name] looks [keep name]]');
+    assert.equal(names, `[${Object.keys(LOOKS).join(' ')}]`);
   });
 });
 
@@ -575,6 +582,21 @@ describe('components', () => {
 });
 
 describe('theme', () => {
+  test('every look meets WCAG AA in both modes, and draws its icons and lines its own way', () => {
+    for (const [name, look] of Object.entries(LOOKS)) {
+      for (const dark of [false, true]) {
+        const p = palette({ ...DEFAULT_THEME, ...look }, dark);
+        for (const [fg, bg] of CONTRAST_PAIRS) {
+          const c = contrast(p[fg], p[bg]);
+          assert.ok(c >= 4.5, `${fg} on ${bg}: ${c.toFixed(2)} (${name}, ${dark ? 'dark' : 'light'})`);
+        }
+      }
+    }
+    const css = themeCss({ ...DEFAULT_THEME, ...LOOKS['ink'] });
+    assert.ok(css.includes('--tb-icon-stroke: 2.75;') && css.includes('--tb-icon-join: miter;') && css.includes('--tb-line: 2px;'));
+    assert.ok(css.includes('--tb-shadow-1: none;'));
+  });
+
   test('every text color meets WCAG AA on its background, for every hue and mode', () => {
     for (const neutral of ['cool', 'neutral', 'warm'] as const) {
       for (let h = 0; h < 360; h += 5) {

@@ -21,7 +21,7 @@ import { logic,
 } from '../core/index.ts';
 import { mapAt, startHost, startUi, runSource, report, shown, translate, uiText, activeLanguage, editLocal, readLocal, readDate, weekStart, LOCAL_KINDS, type Host } from './index.ts';
 import { spawn, taskResult } from './scheduler.ts';
-import { themeCss, DEFAULT_THEME, type ThemeParams } from './theme.ts';
+import { themeCss, DEFAULT_THEME, LOOKS, type ThemeParams } from './theme.ts';
 import { iconNode } from './icons.ts';
 import { parseMd, printMd, safeHref, type Block, type Inline } from './markdown.ts';
 import { fileHandle } from './net.ts';
@@ -2823,17 +2823,23 @@ const THEME_WORDS: Record<string, readonly string[]> = {
   density: ['compact', 'normal', 'comfortable'],
   radius: ['sharp', 'soft', 'round'],
   mode: ['light', 'dark', 'auto'],
+  depth: ['flat', 'soft', 'lifted'],
+  icons: ['fine', 'round', 'sharp', 'bold'],
 };
 
 /** Theme parameters from a theme object, keeping defaults for anything missing or unknown. */
 export function themeParams(obj: ObjectCell): ThemeParams {
-  const p: ThemeParams = { ...DEFAULT_THEME };
+  const look = word(obj, 'look');
+  const p: ThemeParams = { ...DEFAULT_THEME, ...(look !== null ? LOOKS[look] : undefined) };
   const num = (n: string): number | null => {
     const v = get(obj, n);
     return v.t === K.Integer ? Number(v.v) : v.t === K.Decimal ? v.v : null;
   };
   p.base = num('base') ?? p.base;
-  p.accent = num('accent') ?? (p.base + 180) % 360;
+  const given = num('accent');
+  p.accent = given ?? (look !== null && num('base') === null && look in LOOKS ? p.accent : (p.base + 180) % 360);
+  p.color = Math.min(1, Math.max(0, num('color') ?? p.color));
+  if (num('line') === 2 || num('line') === 1) p.line = num('line') as 1 | 2;
   for (const [key, allowed] of Object.entries(THEME_WORDS)) {
     const w = word(obj, key);
     if (w !== null && allowed.includes(w)) (p as unknown as Record<string, string>)[key] = w;
@@ -2841,6 +2847,9 @@ export function themeParams(obj: ObjectCell): ThemeParams {
   const font = get(obj, 'font');
   if (font.t === K.Word) p.font = spell(font.sym).toLowerCase();
   else if (font.t === K.String) p.font = text(font as StringCell);
+  const headings = get(obj, 'headings');
+  if (headings.t === K.Word) p.headings = spell(headings.sym).toLowerCase();
+  else if (headings.t === K.String) p.headings = text(headings as StringCell);
   return p;
 }
 

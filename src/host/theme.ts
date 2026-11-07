@@ -15,11 +15,31 @@ export interface ThemeParams {
   density: 'compact' | 'normal' | 'comfortable';
   radius: 'sharp' | 'soft' | 'round';
   font: string;
+  /** Font of titles and headings; the same as `font` if it is not given. */
+  headings: string | null;
   mode: 'light' | 'dark' | 'auto';
+  /** How much color the primary and accent have, 0-1; 0 is black and white. */
+  color: number;
+  /** Thickness of borders, in px. */
+  line: 1 | 2;
+  /** Whether panels and buttons cast a shadow. */
+  depth: 'flat' | 'soft' | 'lifted';
+  /** How the same icons are drawn. */
+  icons: 'fine' | 'round' | 'sharp' | 'bold';
 }
 
 export const DEFAULT_THEME: ThemeParams = {
-  base: 250, accent: 30, neutral: 'neutral', density: 'normal', radius: 'soft', font: 'inter', mode: 'auto',
+  base: 250, accent: 30, neutral: 'neutral', density: 'normal', radius: 'soft', font: 'inter', headings: null, mode: 'auto',
+  color: 1, line: 1, depth: 'soft', icons: 'round',
+};
+
+/** The looks: complete sets of parameters with a name. `theme [look: civic base: 200]` starts from one. */
+export const LOOKS: Record<string, Partial<ThemeParams>> = {
+  minimal: {},
+  paper: { base: 40, accent: 150, neutral: 'warm', headings: 'serif', radius: 'sharp', depth: 'flat', icons: 'fine' },
+  civic: { base: 255, accent: 75, neutral: 'cool', font: 'system', radius: 'sharp', line: 2, depth: 'flat', icons: 'sharp' },
+  soft: { base: 175, accent: 30, density: 'comfortable', radius: 'round', depth: 'lifted', icons: 'round' },
+  ink: { color: 0, font: 'system', headings: 'mono', radius: 'sharp', line: 2, depth: 'flat', icons: 'bold' },
 };
 
 export interface Oklch { l: number; c: number; h: number }
@@ -46,9 +66,13 @@ const NEUTRAL_CHROMA = { cool: 0.012, neutral: 0, warm: 0.01 } as const;
 /** The palette for one mode. Lightness values are fixed; hues come from the theme. */
 export function palette(t: ThemeParams, dark: boolean): Record<Role, Oklch> {
   const nh = t.neutral === 'neutral' ? t.base : NEUTRAL_HUE[t.neutral];
-  const nc = t.neutral === 'neutral' ? 0.006 : NEUTRAL_CHROMA[t.neutral];
+  const nc = (t.neutral === 'neutral' ? 0.006 : NEUTRAL_CHROMA[t.neutral]) * t.color;
+  // with no color, what stands out does so by being as dark or as light as the text
+  const ink = t.color === 0;
   const n = (l: number, scale = 1): Oklch => ({ l, c: nc * scale, h: nh });
-  const hue = (l: number, c: number, h: number): Oklch => ({ l, c, h });
+  // what warns or confirms keeps its color in every look
+  const signal = (l: number, c: number, h: number): Oklch => ({ l, c, h });
+  const hue = (l: number, c: number, h: number): Oklch => ({ l, c: c * t.color, h });
   if (!dark) {
     return {
       bg: n(0.975, 1.2),
@@ -58,15 +82,15 @@ export function palette(t: ThemeParams, dark: boolean): Record<Role, Oklch> {
       'border-strong': n(0.8, 2),
       text: n(0.24, 3),
       muted: n(0.5, 3),
-      primary: hue(0.5, 0.16, t.base),
-      'primary-hover': hue(0.45, 0.15, t.base),
+      primary: hue(ink ? 0.24 : 0.5, 0.16, t.base),
+      'primary-hover': hue(ink ? 0.36 : 0.45, 0.15, t.base),
       'on-primary': n(1, 0),
       accent: hue(0.5, 0.15, t.accent),
       'on-accent': n(1, 0),
-      danger: hue(0.52, 0.18, 25),
+      danger: signal(0.52, 0.18, 25),
       'on-danger': n(1, 0),
-      success: hue(0.52, 0.13, 150),
-      warning: hue(0.78, 0.14, 75),
+      success: signal(0.52, 0.13, 150),
+      warning: signal(0.78, 0.14, 75),
       focus: hue(0.62, 0.17, t.base),
     };
   }
@@ -78,15 +102,15 @@ export function palette(t: ThemeParams, dark: boolean): Record<Role, Oklch> {
     'border-strong': n(0.42, 2),
     text: n(0.94, 1),
     muted: n(0.72, 2),
-    primary: hue(0.74, 0.13, t.base),
-    'primary-hover': hue(0.8, 0.11, t.base),
+    primary: hue(ink ? 0.94 : 0.74, 0.13, t.base),
+    'primary-hover': hue(ink ? 0.84 : 0.8, 0.11, t.base),
     'on-primary': n(0.18, 2),
     accent: hue(0.74, 0.13, t.accent),
     'on-accent': n(0.18, 2),
-    danger: hue(0.72, 0.15, 25),
+    danger: signal(0.72, 0.15, 25),
     'on-danger': n(0.18, 2),
-    success: hue(0.74, 0.13, 150),
-    warning: hue(0.8, 0.13, 75),
+    success: signal(0.74, 0.13, 150),
+    warning: signal(0.8, 0.13, 75),
     focus: hue(0.72, 0.15, t.base),
   };
 }
@@ -128,6 +152,12 @@ const css = (c: Oklch, alpha?: number): string =>
 const SPACE = [0, 4, 8, 12, 16, 24, 32, 48];
 const DENSITY = { compact: 0.85, normal: 1, comfortable: 1.2 } as const;
 const RADIUS = { sharp: 2, soft: 8, round: 16 } as const;
+const ICONS = {
+  fine: { stroke: 1.5, cap: 'round', join: 'round' },
+  round: { stroke: 2, cap: 'round', join: 'round' },
+  sharp: { stroke: 2, cap: 'square', join: 'miter' },
+  bold: { stroke: 2.75, cap: 'butt', join: 'miter' },
+} as const;
 const FONTS: Record<string, string> = {
   inter: 'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
   system: 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
@@ -143,9 +173,11 @@ function colorVars(t: ThemeParams, dark: boolean): string {
   lines.push(`  --tb-primary-soft: ${css(p.primary, dark ? 0.16 : 0.08)};`);
   lines.push(`  --tb-overlay: ${css(n0(p), dark ? 0.6 : 0.4)};`);
   const shadow = dark ? '0 0 0 1px oklch(100% 0 0 / 0.06)' : `0 1px 2px ${css(n0(p), 0.06)}`;
-  lines.push(`  --tb-shadow-1: ${shadow}, 0 1px 3px ${css(n0(p), dark ? 0.4 : 0.08)};`);
-  lines.push(`  --tb-shadow-2: ${shadow}, 0 4px 12px ${css(n0(p), dark ? 0.5 : 0.08)};`);
-  lines.push(`  --tb-shadow-3: ${shadow}, 0 12px 32px ${css(n0(p), dark ? 0.6 : 0.12)};`);
+  const k = t.depth === 'lifted' ? 2 : 1;
+  // a flat look has no shadows, but what floats over the page still needs one
+  lines.push(`  --tb-shadow-1: ${t.depth === 'flat' ? 'none' : `${shadow}, 0 ${k}px ${3 * k}px ${css(n0(p), dark ? 0.4 : 0.08)}`};`);
+  lines.push(`  --tb-shadow-2: ${t.depth === 'flat' ? 'none' : `${shadow}, 0 ${4 * k}px ${12 * k}px ${css(n0(p), dark ? 0.5 : 0.08)}`};`);
+  lines.push(`  --tb-shadow-3: ${shadow}, 0 ${12 * k}px ${32 * k}px ${css(n0(p), dark ? 0.6 : 0.12)};`);
   lines.push(`  color-scheme: ${dark ? 'dark' : 'light'};`);
   return lines.join('\n');
 }
@@ -159,7 +191,11 @@ function sizeVars(t: ThemeParams): string {
   lines.push(`  --tb-radius: ${r}px;`, `  --tb-radius-lg: ${Math.round(r * 1.5)}px;`);
   lines.push(`  --tb-control: ${Math.max(40, Math.round(44 * k))}px;`);
   lines.push(`  --tb-font: ${FONTS[t.font] ?? `"${t.font}", ${FONTS['system']}`};`);
+  lines.push(`  --tb-headings: ${t.headings === null ? 'var(--tb-font)' : FONTS[t.headings] ?? `"${t.headings}", ${FONTS['system']}`};`);
   lines.push(`  --tb-mono: ${FONTS['mono']};`);
+  lines.push(`  --tb-line: ${t.line}px;`);
+  const icon = ICONS[t.icons];
+  lines.push(`  --tb-icon-stroke: ${icon.stroke};`, `  --tb-icon-cap: ${icon.cap};`, `  --tb-icon-join: ${icon.join};`);
   lines.push('  --tb-ease: cubic-bezier(0.2, 0, 0, 1);', '  --tb-fast: 150ms;');
   return lines.join('\n');
 }
@@ -256,7 +292,7 @@ body {
 .tb-grid { --tb-tracks: initial; --tb-cols: 2; display: grid; gap: var(--tb-space-4); grid-template-columns: var(--tb-tracks, repeat(var(--tb-cols), minmax(0, 1fr))); }
 .tb-panel {
   background: var(--tb-raised);
-  border: 1px solid var(--tb-border);
+  border: var(--tb-line) solid var(--tb-border);
   border-radius: var(--tb-radius-lg);
   box-shadow: var(--tb-shadow-1);
   padding: var(--tb-space-6);
@@ -272,11 +308,11 @@ body {
 .tb-panel.tb-warning { border-color: var(--tb-warning); }
 .tb-panel:focus-visible, .tb-column:focus-visible, .tb-row:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-focus-ring); }
 .tb-panel.tb-primary:focus-visible { box-shadow: inset 0 0 0 1px var(--tb-primary), 0 0 0 3px var(--tb-focus-ring); }
-.tb-panel > .tb-panel-title { margin: 0; font-size: 17px; line-height: 1.35; font-weight: 600; letter-spacing: -0.01em; }
-.tb-divider { border: 0; border-top: 1px solid var(--tb-border); margin: var(--tb-space-2) 0; width: 100%; }
+.tb-panel > .tb-panel-title { margin: 0; font-family: var(--tb-headings); font-size: 17px; line-height: 1.35; font-weight: 600; letter-spacing: -0.01em; }
+.tb-divider { border: 0; border-top: var(--tb-line) solid var(--tb-border); margin: var(--tb-space-2) 0; width: 100%; }
 
-.tb-title { margin: 0; font-size: 28px; line-height: 1.2; font-weight: 650; letter-spacing: -0.02em; }
-.tb-heading { margin: 0; font-size: 20px; line-height: 1.3; font-weight: 600; letter-spacing: -0.01em; }
+.tb-title { margin: 0; font-family: var(--tb-headings); font-size: 28px; line-height: 1.2; font-weight: 650; letter-spacing: -0.02em; }
+.tb-heading { margin: 0; font-family: var(--tb-headings); font-size: 20px; line-height: 1.3; font-weight: 600; letter-spacing: -0.01em; }
 .tb-text { margin: 0; }
 .tb-small { font-size: 13px; }
 .tb-muted { color: var(--tb-muted); }
@@ -336,7 +372,7 @@ body {
   font: inherit;
   color: var(--tb-text);
   background: var(--tb-surface);
-  border: 1px solid var(--tb-border-strong);
+  border: var(--tb-line) solid var(--tb-border-strong);
   border-radius: var(--tb-radius);
   min-height: var(--tb-control);
   padding: 0 var(--tb-space-3);
@@ -399,7 +435,7 @@ select.tb-input { appearance: none; background-image: linear-gradient(45deg, tra
   min-height: var(--tb-control);
   padding: 0 var(--tb-space-5);
   border-radius: var(--tb-radius);
-  border: 1px solid var(--tb-border-strong);
+  border: var(--tb-line) solid var(--tb-border-strong);
   background: var(--tb-surface);
   color: var(--tb-text);
   cursor: pointer;
@@ -420,7 +456,7 @@ select.tb-input { appearance: none; background-image: linear-gradient(45deg, tra
 .tb-button.tb-primary[aria-disabled="true"]:hover { background: var(--tb-primary); border-color: var(--tb-primary); }
 .tb-button.tb-has-icon:not(:has(> span:not(:empty))) { padding: 0; width: var(--tb-control); }
 
-.tb-icon { width: 1.25em; height: 1.25em; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.tb-icon { width: 1.25em; height: 1.25em; flex: none; fill: none; stroke: currentColor; stroke-width: var(--tb-icon-stroke); stroke-linecap: var(--tb-icon-cap); stroke-linejoin: var(--tb-icon-join); }
 .tb-button .tb-icon { width: 18px; height: 18px; }
 .tb-icon-face { display: inline-flex; align-self: flex-start; color: var(--tb-text); }
 .tb-icon-face .tb-icon { width: 24px; height: 24px; }
@@ -440,7 +476,7 @@ select.tb-input { appearance: none; background-image: linear-gradient(45deg, tra
 .tb-invalid .tb-upload { border-color: var(--tb-danger); }
 .tb-upload-hint { color: var(--tb-muted); font-size: 0.9em; }
 .tb-upload-list { list-style: none; margin: var(--tb-space-2) 0 0; padding: 0; display: grid; gap: var(--tb-space-1); }
-.tb-upload-list li { display: flex; align-items: center; gap: var(--tb-space-2); min-height: 36px; padding: 0 var(--tb-space-1) 0 var(--tb-space-3); border: 1px solid var(--tb-border); border-radius: var(--tb-radius); background: var(--tb-surface); }
+.tb-upload-list li { display: flex; align-items: center; gap: var(--tb-space-2); min-height: 36px; padding: 0 var(--tb-space-1) 0 var(--tb-space-3); border: var(--tb-line) solid var(--tb-border); border-radius: var(--tb-radius); background: var(--tb-surface); }
 .tb-upload-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tb-upload-size { color: var(--tb-muted); font-size: 0.9em; font-variant-numeric: tabular-nums; }
 .tb-upload-remove { width: 28px; height: 28px; display: grid; place-items: center; padding: 0; border: 0; border-radius: var(--tb-radius); background: transparent; color: var(--tb-muted); cursor: pointer; }
@@ -485,13 +521,13 @@ select.tb-input { appearance: none; background-image: linear-gradient(45deg, tra
   gap: var(--tb-space-1);
   padding: var(--tb-space-1);
   background: var(--tb-surface);
-  border: 1px solid var(--tb-border);
+  border: var(--tb-line) solid var(--tb-border);
   border-radius: var(--tb-radius-lg);
 }
 .tb-toolbar > .tb-button:not(.tb-primary, .tb-accent, .tb-danger) { border-color: transparent; background: transparent; }
 .tb-toolbar > .tb-button:not(.tb-primary, .tb-accent, .tb-danger):hover { background: var(--tb-bg); }
 .tb-toolbar > .tb-button { padding: 0 var(--tb-space-3); }
-.tb-toolbar > .tb-divider { width: 0; height: calc(var(--tb-control) - 12px); margin: 0 var(--tb-space-1); border-top: 0; border-left: 1px solid var(--tb-border); }
+.tb-toolbar > .tb-divider { width: 0; height: calc(var(--tb-control) - 12px); margin: 0 var(--tb-space-1); border-top: 0; border-left: var(--tb-line) solid var(--tb-border); }
 
 .tb-breadcrumb ol { display: flex; flex-wrap: wrap; align-items: center; gap: var(--tb-space-1); margin: 0; padding: 0; list-style: none; font-size: 14px; }
 .tb-breadcrumb li { display: inline-flex; align-items: center; gap: var(--tb-space-1); min-width: 0; }
@@ -519,7 +555,7 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
   overflow: auto;
   overscroll-behavior: contain;
   padding: var(--tb-space-3);
-  border: 1px solid var(--tb-border);
+  border: var(--tb-line) solid var(--tb-border);
   border-radius: var(--tb-radius);
 }
 .tb-scroll.tb-small { max-height: 240px; font-size: inherit; }
@@ -549,7 +585,7 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
 .tb-table-wrap {
   overflow-x: auto;
   background: var(--tb-surface);
-  border: 1px solid var(--tb-border);
+  border: var(--tb-line) solid var(--tb-border);
   border-radius: var(--tb-radius-lg);
   box-shadow: var(--tb-shadow-1);
 }
@@ -562,9 +598,9 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
   white-space: nowrap;
   padding: var(--tb-space-3) var(--tb-space-4);
   background: var(--tb-bg);
-  border-bottom: 1px solid var(--tb-border);
+  border-bottom: var(--tb-line) solid var(--tb-border);
 }
-.tb-table td { padding: var(--tb-space-3) var(--tb-space-4); border-bottom: 1px solid var(--tb-border); height: var(--tb-control); }
+.tb-table td { padding: var(--tb-space-3) var(--tb-space-4); border-bottom: var(--tb-line) solid var(--tb-border); height: var(--tb-control); }
 .tb-table tbody tr:last-child td { border-bottom: 0; }
 .tb-table .tb-num { text-align: right; font-variant-numeric: tabular-nums; }
 .tb-table-wrap:has(tbody:empty) thead { display: none; }
@@ -580,7 +616,7 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
   margin: 0;
   padding: 0;
   background: var(--tb-surface);
-  border: 1px solid var(--tb-border);
+  border: var(--tb-line) solid var(--tb-border);
   border-radius: var(--tb-radius-lg);
   box-shadow: var(--tb-shadow-1);
   overflow: hidden;
@@ -593,7 +629,7 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
   gap: 2px;
   min-height: var(--tb-control);
   padding: var(--tb-space-3) var(--tb-space-4);
-  border-bottom: 1px solid var(--tb-border);
+  border-bottom: var(--tb-line) solid var(--tb-border);
 }
 .tb-list > li:last-child { border-bottom: 0; }
 .tb-list-primary { font-weight: 550; }
@@ -695,7 +731,7 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
   padding: var(--tb-space-3);
   background: var(--tb-raised);
   color: var(--tb-text);
-  border: 1px solid var(--tb-border);
+  border: var(--tb-line) solid var(--tb-border);
   border-radius: var(--tb-radius-lg);
   box-shadow: var(--tb-shadow-3);
   animation: tb-pop 120ms var(--tb-ease);
@@ -729,7 +765,7 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
   padding: var(--tb-space-1);
   background: var(--tb-raised);
   color: var(--tb-text);
-  border: 1px solid var(--tb-border);
+  border: var(--tb-line) solid var(--tb-border);
   border-radius: var(--tb-radius);
   box-shadow: var(--tb-shadow-3);
   animation: tb-pop 120ms var(--tb-ease);
@@ -783,7 +819,7 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
   padding: var(--tb-space-2) var(--tb-space-3);
   background: var(--tb-raised);
   color: var(--tb-text);
-  border: 1px solid var(--tb-border);
+  border: var(--tb-line) solid var(--tb-border);
   border-radius: var(--tb-radius);
   box-shadow: var(--tb-shadow-3);
   font-size: 14px;
@@ -849,7 +885,7 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
   :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > .tb-field > .tb-label, :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > .tb-field > .tb-control,
   :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > .tb-actions, :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > .tb-check-row { grid-column: 1; padding-top: 0; }
   .tb-row:has(> .tb-field) { flex-direction: column; align-items: stretch; }
-  .tb-entry { flex-direction: column; align-items: stretch; padding: var(--tb-space-3); border: 1px solid var(--tb-border); border-radius: var(--tb-radius); }
+  .tb-entry { flex-direction: column; align-items: stretch; padding: var(--tb-space-3); border: var(--tb-line) solid var(--tb-border); border-radius: var(--tb-radius); }
   .tb-entry > * { flex: none; }
   .tb-entry:not(:first-child) .tb-field > .tb-label { position: static; width: auto; height: auto; overflow: visible; clip-path: none; white-space: normal; }
   .tb-entry > .tb-button, .tb-entry:first-child:has(.tb-label:not(:empty)) > .tb-button { align-self: flex-end; margin-top: 0; }
@@ -862,7 +898,7 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
   .tb-table tr {
     padding: var(--tb-space-3) var(--tb-space-4);
     background: var(--tb-surface);
-    border: 1px solid var(--tb-border);
+    border: var(--tb-line) solid var(--tb-border);
     border-radius: var(--tb-radius-lg);
     box-shadow: var(--tb-shadow-1);
   }
