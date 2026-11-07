@@ -264,7 +264,7 @@ function build(face: ObjectCell): HTMLElement {
         break;
       }
       case 'tile': {
-        const b = el('button', 'tb-tile');
+        const b = el('button', flag(face, 'linked') ? 'tb-tile tb-tile-linked' : 'tb-tile');
         b.type = 'button';
         b.addEventListener('click', () => void fire('ui-click', face));
         withIcon(b, face, m);

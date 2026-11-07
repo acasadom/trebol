@@ -443,6 +443,13 @@ describe('components', () => {
     assert.equal(r, '[desktop %mat.png new tile #folder "Reports" delete true]');
   });
 
+  test('a tile can say it stands for something kept elsewhere', async () => {
+    const r = await ev(`
+      root: view [desktop [global a: tile #folder "Here" []  global b: tile #folder "Elsewhere" linked []]]
+      reduce [a/linked b/linked]`);
+    assert.equal(r, '[false true]');
+  });
+
   test('a toolbar is a container whose --- are separators', async () => {
     const r = await ev(`
       root: view [global bar: toolbar "Actions" [button #plus "New" --- button #trash "Delete"]]

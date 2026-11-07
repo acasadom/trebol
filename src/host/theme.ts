@@ -289,6 +289,20 @@ body {
 .tb-tile:hover { background: var(--tb-surface); border-color: var(--tb-border); }
 .tb-tile:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-focus-ring); }
 .tb-tile > svg { flex: none; width: 36px; height: 36px; color: var(--tb-primary); }
+.tb-tile-linked { position: relative; }
+.tb-tile-linked::after {
+  content: '';
+  position: absolute;
+  top: calc(var(--tb-space-3) + 21px);
+  left: calc(50% - 22px);
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  background: var(--tb-text);
+  outline: 2px solid var(--tb-bg);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M0 0h16v16H0z M6 4v2h2.6L4 10.6 5.4 12 10 7.4V10h2V4z' fill-rule='evenodd'/%3E%3C/svg%3E");
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M0 0h16v16H0z M6 4v2h2.6L4 10.6 5.4 12 10 7.4V10h2V4z' fill-rule='evenodd'/%3E%3C/svg%3E");
+}
 .tb-grid { --tb-tracks: initial; --tb-cols: 2; display: grid; gap: var(--tb-space-4); grid-template-columns: var(--tb-tracks, repeat(var(--tb-cols), minmax(0, 1fr))); }
 .tb-panel {
   background: var(--tb-raised);
