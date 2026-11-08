@@ -65,6 +65,7 @@ language/05-functions
 language/06-objects-and-maps
 language/07-errors
 language/08-series
+language/09-text
 ```
 
 The second tutorial gives the shop its screens; the reference and the technical guides follow it.
