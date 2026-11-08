@@ -42,11 +42,34 @@ foreach type [
     any-type! any-value! number! scalar! any-string! series! any-word! any-block!
     any-path! any-object! any-function!
 ] [
-    name: form type
-    set bind/new to word! append copy/part name (length? name) - 1 "?" 'type? func [value [any-type!]] compose [
+    set bind/new to word! append copy/part form type (length? form type) - 1 "?" 'type? func [value [any-type!]] compose [
         find (make typeset! reduce [get type]) type? :value
     ]
 ]
+
+; Converters: to-integer to-string ... for every datatype that to makes.
+foreach type [
+    logic! integer! decimal! percent! money! char! pair! tuple! date! time!
+    string! file! email! url! tag! binary! bitset! word! set-word! get-word! lit-word!
+    refinement! issue! block! paren! path! set-path! get-path! lit-path! map!
+] [
+    set bind/new to word! append copy "to-" copy/part form type (length? form type) - 1 'type? func [value] compose [
+        to (get type) :value
+    ]
+]
+
+; Characters with a name, as in Rebol 3.
+space: sp: #" "
+tab: #"^-"
+newline: lf: #"^/"
+cr: #"^M"
+crlf: "^M^/"
+escape: #"^["
+comma: #","
+dot: #"."
+slash: #"/"
+backslash: #"\"
+dbl-quote: #"^""
 
 first: func [series] [pick series 1]
 second: func [series] [pick series 2]
@@ -100,6 +123,68 @@ replace: function [
         unless all [break]
     ]
     target
+]
+
+reword: function [
+    "Makes a copy of a template with each keyword, marked by an escape ($ by default), replaced by its value."
+    source [any-string!]
+    values [block! map! object!] "Keywords and their values; a function value is called with the keyword"
+    /case "Keywords are case-sensitive"
+    /only "Uses the values of a block as they are, without reducing it"
+    /escape "Marks keywords another way"
+    char [char! any-string! block! none!] "A prefix, a [prefix suffix] block, or none for no mark"
+] [
+    prefix: "$"
+    suffix: none
+    if escape [either block? char [set [prefix suffix] char] [prefix: char]]
+    if char? prefix [prefix: to string! prefix]
+    if char? suffix [suffix: to string! suffix]
+    keys: make block! 0
+    either all [block? values not only] [
+        while [not tail? values] [
+            key: form first values
+            value: do/next next values 'values
+            append/only keys reduce [key :value]
+        ]
+    ] [
+        foreach [key value] to block! values [append/only keys reduce [form key :value]]
+    ]
+    out: copy/part source 0
+    pos: source
+    while [not tail? pos] [
+        mark: either prefix [find pos prefix] [pos]
+        unless mark [append out pos break]
+        append out copy/part pos mark
+        after: either prefix [skip mark length? prefix] [mark]
+        hit: none
+        foreach entry keys [
+            rest: either case [find/match/case after entry/1] [find/match after entry/1]
+            if all [rest suffix] [
+                rest: either case [find/match/case rest suffix] [find/match rest suffix]
+            ]
+            if all [rest any [none? hit (length? entry/1) > length? hit/1]] [hit: entry stop: rest]
+        ]
+        either hit [
+            value: second hit
+            append out either any-function? :value [value first hit] [:value]
+            pos: stop
+        ] [
+            append out first mark
+            pos: next mark
+        ]
+    ]
+    out
+]
+
+pad: func [
+    "Pads a string with spaces on the right (with /left, on the left) up to a length. Modifies it."
+    str [string!] n [integer!]
+    /left "Pads on the left, which aligns to the right"
+    /with "Pads with another character" c [char!]
+] [
+    c: any [c #" "]
+    loop n - length? str [either left [insert str c] [append str c]]
+    str
 ]
 
 take: function [

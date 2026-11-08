@@ -4,10 +4,11 @@
 // call with the arguments; later phases receive the value of the block or
 // expression the native asked the evaluator for.
 
-import { K } from '../kinds.ts';
+import { K, kindName } from '../kinds.ts';
 import * as I64 from '../int64.ts';
-import { NONE, UNSET, block, context, type Cell, type BlockCell, type Ctx, type WordCell } from '../values.ts';
-import { bindSeries, copyDeep } from '../ctx.ts';
+import { NONE, UNSET, TRUE, block, context, type Cell, type BlockCell, type Ctx, type WordCell } from '../values.ts';
+import { bindSeries, copyDeep, setWord } from '../ctx.ts';
+import { at } from '../series.ts';
 import { T, type Feed, type NativeFrame, type Thrown } from '../eval.ts';
 import { isEqual } from '../compare.ts';
 import { native, value, fail, truthy, doBlock } from './define.ts';
@@ -27,9 +28,25 @@ function caught(f: NativeFrame): Thrown | null {
 
 // --- evaluation ------------------------------------------------------------------
 
-native('do', '[value [any-type!]]', (t, f, v) => {
+native('do', '[value [any-type!] /next "Evaluates only the first expression of a block" position [word!] "Set to the block after it"]', (t, f, v) => {
   if (f.phase === 1) return value(v!);
   const x = f.args[0]!;
+  if (f.args[1] === TRUE) {
+    if (x.t !== K.Block && x.t !== K.Paren) return fail('script', 'expect-arg', `do/next does not allow ${kindName(x.t)} for its value argument`);
+    const b = x as BlockCell;
+    if (f.phase === 2) {
+      const feed = f.data as Feed;
+      setWord(f.args[2] as WordCell, at(b, feed.i));
+      return value(v!);
+    }
+    if (b.i >= b.s.data.length) {
+      setWord(f.args[2] as WordCell, b);
+      return value(UNSET);
+    }
+    f.phase = 2;
+    f.data = { s: b.s, i: b.i };
+    return { k: 'expr', feed: f.data as Feed };
+  }
   switch (x.t) {
     case K.Block: case K.Paren:
       f.phase = 1;

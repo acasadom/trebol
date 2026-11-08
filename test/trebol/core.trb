@@ -136,6 +136,9 @@ Trebol [
 [(quote (1 + 2)) = quote (1 + 2)]
 [c: 0 case/all [true [c: c + 1] true [c: c + 1]] c = 2]
 [(switch 'b [a [1] b [2]]) = 2]
+[b: [1 + 1 2 * 3]  all [2 = do/next b 'b  b = [2 * 3]  6 = do/next b 'b  tail? b]]
+[b: []  all [unset? do/next b 'r  same? b r]]
+[error? try [do/next 1 'r]]
 
 "same?"
 [a: [1 2]  same? a a]
