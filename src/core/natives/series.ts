@@ -265,12 +265,15 @@ function sortRun(st: SortState, before: (a: Item[], b: Item[]) => boolean | null
   }
 }
 
-native('sort', '[series [series!] /case /skip size [integer!] /compare comparator [any-function!] /reverse]', (_t, f, v) => {
+// As in R3 and Red, /compare takes a function or, with /skip, the position of the field to sort by.
+native('sort', '[series [series!] /case /skip size [integer!] /compare comparator [any-function! integer!] /reverse]', (_t, f, v) => {
   const s = f.args[0] as SeriesCell;
   const a = f.args;
   const cased = used(a[1]!);
   const size = used(a[2]!) ? Math.max(1, num(a[3]!)) : 1;
-  const custom = used(a[4]!) ? a[5]! : null;
+  const by = used(a[4]!) && a[5]!.t === K.Integer ? num(a[5]!) : null;
+  if (by !== null && (by < 1 || by > size)) return fail('script', 'out-of-range', `sort cannot compare field ${by} of records of ${size}`);
+  const custom = used(a[4]!) && by === null ? a[5]! : null;
   const rev = used(a[6]!);
   if (f.phase === 0) {
     const d = s.s.data as Item[];
@@ -285,11 +288,12 @@ native('sort', '[series [series!] /case /skip size [integer!] /compare comparato
     answer = v.t === K.Integer ? num(v) < 0 : truthy(v);
     if (rev) answer = !answer;
   }
-  const cellOf = (r: Item[]): Cell => cellAt({ ...s, s: { data: r }, i: 0 } as SeriesCell, 0);
+  const cellOf = (r: Item[], at = 0): Cell => cellAt({ ...s, s: { data: r }, i: 0 } as SeriesCell, at);
   let bad = false;
   const before = (x: Item[], y: Item[]): boolean | null => {
     if (custom !== null) return null;
-    const c = sortCompare(cellOf(x), cellOf(y), cased);
+    const at = by === null ? 0 : by - 1;
+    const c = sortCompare(cellOf(x, at), cellOf(y, at), cased);
     if (c === null) bad = true;
     return rev ? (c ?? 0) > 0 : (c ?? 0) < 0;
   };
