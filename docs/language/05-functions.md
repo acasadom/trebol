@@ -263,5 +263,5 @@ made of them.
 ## What's next
 
 The shop has a price list in a block and functions to work on it. A repair order, though, is more than a
-list: it has a customer, a bike, a due date, a set of parts. The next step gives each order a shape of its
-own, with objects.
+list: it has a customer, a bike, a due date, a set of parts. [The next step](06-objects-and-maps) gives
+each order a shape of its own, with objects.

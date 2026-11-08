@@ -62,6 +62,7 @@ language/02-values
 language/03-words-and-blocks
 language/04-deciding-and-repeating
 language/05-functions
+language/06-objects-and-maps
 ```
 
 The second tutorial gives the shop its screens; the reference and the technical guides follow it.
