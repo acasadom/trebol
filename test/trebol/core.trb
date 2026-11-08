@@ -64,6 +64,7 @@ Trebol [
 ["func [a] [a + 1]" = mold func [a] [a + 1]]
 ["#[function!]" = mold/all func [a] [a]]
 ["func [a /local b] [b: a]" = mold function [a] [b: a]]
+["func [a] [a + 1]" = mold function [a] [a + 1]]
 
 "comparison"
 [1 = 1.0]

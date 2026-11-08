@@ -29,7 +29,7 @@ function: func [
 ][
     words: collect-words/deep/set/ignore body spec
     spec: copy spec
-    unless find spec /local [append spec /local]
+    unless any [empty? words find spec /local] [append spec /local]
     make function! reduce [append spec words body]
 ]
 
