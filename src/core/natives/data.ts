@@ -43,7 +43,7 @@ native('form', '[value [any-type!]]', (_t, f) => value(string(form(f.args[0]!)))
 /**
  * A new object from an optional prototype and a body. The prototype's
  * blocks and function bodies are copied and rebound to the new context, so
- * methods see the new object's fields.
+ * methods see the new object's fields; its strings are copied too.
  */
 function makeObject(proto: Ctx | null, spec: BlockCell, kind: typeof K.Object | typeof K.Error): { obj: ObjectCell; body: Series<Cell> } {
   const ctx = context();
@@ -69,6 +69,11 @@ function rebindValue(v: Cell, from: Ctx, to: Ctx): Cell {
   if (v.t === K.Function) {
     const def = v.p as FuncDef;
     return { t: K.Function, p: { ...def, body: copyDeep(def.body, 0, from, to) } satisfies FuncDef };
+  }
+  // as R3: strings and binaries are copied too, so no two objects share one
+  if (isAnyString(v.t) || v.t === K.Binary) {
+    const s = v as StringCell;
+    return { t: s.t, s: { data: s.s.data.slice() }, i: s.i } as Cell;
   }
   return v;
 }
