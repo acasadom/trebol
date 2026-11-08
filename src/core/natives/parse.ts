@@ -8,6 +8,9 @@
 //
 // Rules are ordered choice (`a | b`), greedy repetition and no
 // backtracking into an item that already matched, as in PEG.
+//
+// `remove`, `insert` and `change` edit the input in place, as in R3 and Red;
+// a failing alternative does not undo an edit it made.
 
 import { K, isAnyBlock, isAnyString, kindBit } from '../kinds.ts';
 import { intern, canon } from '../symbols.ts';
@@ -19,13 +22,14 @@ import {
 import { getWord, setWord } from '../ctx.ts';
 import { isEqual, foldCase } from '../compare.ts';
 import { bitHas, bitsFrom } from '../bitset.ts';
-import { itemsFor, type SeriesCell, type Item } from '../series.ts';
+import { itemsFor, splice, type SeriesCell, type Item } from '../series.ts';
 import type { Step } from '../eval.ts';
 import { native, value, fail, truthy } from './define.ts';
 
 const KW = {
   Some: 0, Any: 1, Opt: 2, While: 3, Not: 4, Ahead: 5, To: 6, Thru: 7, Set: 8, Copy: 9,
   Into: 10, If: 11, Collect: 12, Keep: 13, End: 14, Skip: 15, None: 16, Fail: 17, Break: 18, Quote: 19, Bar: 20,
+  Remove: 21, Insert: 22, Change: 23, Only: 24,
 } as const;
 
 const KEYWORDS = new Map<number, number>([
@@ -33,6 +37,7 @@ const KEYWORDS = new Map<number, number>([
   ['ahead', KW.Ahead], ['to', KW.To], ['thru', KW.Thru], ['set', KW.Set], ['copy', KW.Copy],
   ['into', KW.Into], ['if', KW.If], ['collect', KW.Collect], ['keep', KW.Keep], ['end', KW.End],
   ['skip', KW.Skip], ['none', KW.None], ['fail', KW.Fail], ['break', KW.Break], ['quote', KW.Quote],
+  ['remove', KW.Remove], ['insert', KW.Insert], ['change', KW.Change], ['only', KW.Only],
   ['|', KW.Bar],
 ].map(([name, k]) => [canon(intern(name as string)), k as number]));
 
@@ -51,9 +56,17 @@ function itemEnd(d: readonly Cell[], ip: number): number {
     }
     switch (kw(c)) {
       case KW.Some: case KW.Any: case KW.Opt: case KW.While: case KW.Not: case KW.Ahead:
-      case KW.To: case KW.Thru: case KW.Into: case KW.Keep:
+      case KW.To: case KW.Thru: case KW.Into: case KW.Keep: case KW.Remove:
         ip += 1;
         continue;
+      case KW.Insert: {
+        const v = ip + (kw(d[ip + 1]) === KW.Only ? 2 : 1);
+        return v < d.length ? v + 1 : -1;
+      }
+      case KW.Change: {
+        const end = itemEnd(d, ip + (kw(d[ip + 1]) === KW.Only ? 2 : 1));
+        return end >= 0 && end < d.length ? end + 1 : -1;
+      }
       case KW.Set: case KW.Copy:
         ip += 2;
         continue;
@@ -71,12 +84,12 @@ function itemEnd(d: readonly Cell[], ip: number): number {
 
 // --- frames --------------------------------------------------------------------
 
-const PF = { Block: 0, Rep: 1, Look: 2, Scan: 3, Cap: 4, Into: 5, Coll: 6, Act: 7 } as const;
+const PF = { Block: 0, Rep: 1, Look: 2, Scan: 3, Cap: 4, Into: 5, Coll: 6, Act: 7, Edit: 8 } as const;
 
 /** A rule block: alternatives of sequences. */
 interface BlockF { k: typeof PF.Block; rules: Series<Cell>; ip: number; next: number; alt: number; mark: Cell[] | null; markLen: number; started: boolean }
 /** some, any, opt, while, N and N M. */
-interface RepF { k: typeof PF.Rep; rules: Series<Cell>; sub: number; min: number; max: number; n: number; from: number }
+interface RepF { k: typeof PF.Rep; rules: Series<Cell>; sub: number; min: number; max: number; n: number; from: number; edits: number }
 /** not and ahead: match without advancing. */
 interface LookF { k: typeof PF.Look; rules: Series<Cell>; sub: number; not: boolean; from: number }
 /** to and thru: try the rule at each position from here. */
@@ -87,10 +100,14 @@ interface CapF { k: typeof PF.Cap; rules: Series<Cell>; sub: number; how: 'set' 
 interface IntoF { k: typeof PF.Into; outer: SeriesCell; outerPos: number }
 /** collect: gather keeps into a new block. */
 interface CollF { k: typeof PF.Coll; rules: Series<Cell>; sub: number; word: WordCell | null }
-/** A paren being evaluated: an action, an `if` condition or a `keep` value. */
-interface ActF { k: typeof PF.Act; how: 'action' | 'if' | 'keep' }
+/** remove and change of a matched rule; `val` is the index of change's value. */
+interface EditF { k: typeof PF.Edit; rules: Series<Cell>; sub: number; val: number; only: boolean; from: number }
+/** A paren being evaluated: an action, an `if` condition, a `keep` value or the value an edit puts in. */
+type ActF =
+  | { k: typeof PF.Act; how: 'action' | 'if' | 'keep' }
+  | { k: typeof PF.Act; how: 'put'; from: number; to: number; only: boolean };
 
-type Frame = BlockF | RepF | LookF | ScanF | CapF | IntoF | CollF | ActF;
+type Frame = BlockF | RepF | LookF | ScanF | CapF | IntoF | CollF | ActF | EditF;
 
 interface PState {
   input: SeriesCell;
@@ -103,6 +120,8 @@ interface PState {
   cased: boolean;
   /** Set when a rule is malformed; stops the parse. */
   err: string | null;
+  /** Counts edits of the input, so a repetition that edits without moving goes on. */
+  edits: number;
 }
 
 /** Records a malformed-rule error; the native turns it into a Trebol error. */
@@ -157,6 +176,30 @@ function term(st: PState, v: Cell): number {
   return -1;
 }
 
+/** Replaces the input from `from` to `to` with `v` and moves past it. */
+function put(st: PState, from: number, to: number, v: Cell, only: boolean): null {
+  const { add, nl } = itemsFor(st.input.t, v, only);
+  splice(st.input.s as Series<Item>, from, to - from, add, nl);
+  st.pos = from + add.length;
+  st.edits++;
+  return done(st, true);
+}
+
+/** The value an insert or change puts in: a paren is evaluated, a word gives its value. */
+function putValue(st: PState, rules: Series<Cell>, ip: number, from: number, to: number, only: boolean): Step | null {
+  const c = rules.data[ip]!;
+  if (c.t === K.Paren) {
+    st.stack.push({ k: PF.Act, how: 'put', from, to, only });
+    return { k: 'do', s: c.s, i: c.i };
+  }
+  if (c.t === K.Word) {
+    const v = getWord(c);
+    if (v === null || v.t === K.Unset) return ruleErr(st, 'the value to put in has no value');
+    return put(st, from, to, v, only);
+  }
+  return put(st, from, to, c, only);
+}
+
 /** Sets the result register. */
 function done(st: PState, ok: boolean): null {
   st.res = ok;
@@ -187,7 +230,7 @@ function startItem(st: PState, rules: Series<Cell>, ip: number): Step | null {
       const min = I64.toNumber(c.v);
       const second = d[ip + 1];
       const two = second?.t === K.Integer;
-      st.stack.push({ k: PF.Rep, rules, sub: ip + (two ? 2 : 1), min, max: two ? I64.toNumber((second as { v: I64.I64 }).v) : min, n: 0, from: st.pos });
+      st.stack.push({ k: PF.Rep, rules, sub: ip + (two ? 2 : 1), min, max: two ? I64.toNumber((second as { v: I64.I64 }).v) : min, n: 0, from: st.pos, edits: st.edits });
       return null;
     }
     case K.SetWord:
@@ -217,9 +260,9 @@ function startItem(st: PState, rules: Series<Cell>, ip: number): Step | null {
   }
   const w = c as WordCell;
   switch (kw(w)) {
-    case KW.Some: st.stack.push({ k: PF.Rep, rules, sub: ip + 1, min: 1, max: Infinity, n: 0, from: st.pos }); return null;
-    case KW.Any: case KW.While: st.stack.push({ k: PF.Rep, rules, sub: ip + 1, min: 0, max: Infinity, n: 0, from: st.pos }); return null;
-    case KW.Opt: st.stack.push({ k: PF.Rep, rules, sub: ip + 1, min: 0, max: 1, n: 0, from: st.pos }); return null;
+    case KW.Some: st.stack.push({ k: PF.Rep, rules, sub: ip + 1, min: 1, max: Infinity, n: 0, from: st.pos, edits: st.edits }); return null;
+    case KW.Any: case KW.While: st.stack.push({ k: PF.Rep, rules, sub: ip + 1, min: 0, max: Infinity, n: 0, from: st.pos, edits: st.edits }); return null;
+    case KW.Opt: st.stack.push({ k: PF.Rep, rules, sub: ip + 1, min: 0, max: 1, n: 0, from: st.pos, edits: st.edits }); return null;
     case KW.Not: case KW.Ahead:
       st.stack.push({ k: PF.Look, rules, sub: ip + 1, not: kw(w) === KW.Not, from: st.pos });
       return null;
@@ -288,6 +331,21 @@ function startItem(st: PState, rules: Series<Cell>, ip: number): Step | null {
       st.pos = to;
       return done(st, true);
     }
+    case KW.Remove:
+      st.stack.push({ k: PF.Edit, rules, sub: ip + 1, val: -1, only: false, from: st.pos });
+      return null;
+    case KW.Insert: {
+      const only = kw(d[ip + 1]) === KW.Only;
+      return putValue(st, rules, ip + (only ? 2 : 1), st.pos, st.pos, only);
+    }
+    case KW.Change: {
+      const only = kw(d[ip + 1]) === KW.Only;
+      const sub = ip + (only ? 2 : 1);
+      st.stack.push({ k: PF.Edit, rules, sub, val: itemEnd(d, sub), only, from: st.pos });
+      return null;
+    }
+    case KW.Only:
+      return ruleErr(st, 'only goes after insert or change');
     case KW.Bar:
       return ruleErr(st, 'misplaced |');
   }
@@ -314,6 +372,10 @@ function runParse(st: PState, actionValue: Cell | null): Step | null {
         st.res = true;
         break;
       }
+      case 'put':
+        if (actionValue.t === K.Unset) return ruleErr(st, 'the value to put in has no value');
+        put(st, f.from, f.to, actionValue, f.only);
+        break;
     }
   }
   for (;;) {
@@ -364,9 +426,10 @@ function frame(st: PState, f: Frame, r: boolean | null): Step | null {
         return pop(f.n >= f.min);
       }
       f.n++;
-      // a match that did not advance would repeat forever: stop here
-      if (st.pos === f.from || f.n >= f.max) return pop(true);
+      // a match that did not advance (nor edit) would repeat forever: stop here
+      if ((st.pos === f.from && st.edits === f.edits) || f.n >= f.max) return pop(true);
       f.from = st.pos;
+      f.edits = st.edits;
       return startItem(st, f.rules, f.sub);
     }
     case PF.Look: {
@@ -430,6 +493,21 @@ function frame(st: PState, f: Frame, r: boolean | null): Step | null {
       }
       return pop(r);
     }
+    case PF.Edit: {
+      if (r === null) {
+        f.from = st.pos;
+        return startItem(st, f.rules, f.sub);
+      }
+      if (r === false) return pop(false);
+      st.stack.pop();
+      if (f.val < 0) {
+        splice(st.input.s as Series<Item>, f.from, st.pos - f.from, []);
+        st.pos = f.from;
+        st.edits++;
+        return done(st, true);
+      }
+      return putValue(st, f.rules, f.val, f.from, st.pos, f.only);
+    }
     case PF.Act:
       return ruleErr(st, 'internal: action frame without a value');
   }
@@ -439,7 +517,7 @@ native('parse', '[input [series!] rules [block!] /case]', (_t, f, v) => {
   if (f.phase === 0) {
     f.phase = 1;
     const input = f.args[0] as SeriesCell;
-    const st: PState = { input, pos: input.i, stack: [], res: null, colls: [], out: null, cased: f.args[2] === TRUE, err: null };
+    const st: PState = { input, pos: input.i, stack: [], res: null, colls: [], out: null, cased: f.args[2] === TRUE, err: null, edits: 0 };
     pushBlock(st, f.args[1] as BlockCell);
     f.data = st;
   }
