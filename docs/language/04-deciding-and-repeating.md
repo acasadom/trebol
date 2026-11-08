@@ -199,4 +199,4 @@ is left; a later step says more about moving through blocks.
 
 `if`, `either`, `foreach` and `while` look like the keywords of other languages, but they are functions that
 take blocks, as `print` takes a string. Nothing stops you from writing your own — a `twice` that runs a block
-two times, or an `unless-closed` that checks the shop's opening hours. That is the next step.
+two times, or an `unless-closed` that checks the shop's opening hours. That is [the next step](05-functions).
