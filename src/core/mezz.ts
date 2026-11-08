@@ -21,6 +21,9 @@ has: func ["A function with only local words." locals [block!] body [block!]] [
 ; Each call already gets its own frame, so closures and functions are the same.
 closure: :func
 
+; Rebol 3 calls context? bound?.
+bound?: :context?
+
 context: func ["Makes an object." spec [block!]] [make object! spec]
 
 function: func [

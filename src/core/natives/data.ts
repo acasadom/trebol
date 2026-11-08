@@ -5,7 +5,7 @@ import { K, isAnyBlock, isAnyString, isAnyWord, kindName, type Kind } from '../k
 import { spell } from '../symbols.ts';
 import * as I64 from '../int64.ts';
 import {
-  NONE, TRUE, FALSE, string, codePoints, text, datatype, typeset, context, blockOf, wordOf,
+  NONE, UNSET, TRUE, FALSE, string, codePoints, text, datatype, typeset, context, object, blockOf, wordOf,
   type Cell, type BlockCell, type StringCell, type WordCell, type Ctx, type ObjectCell, type OpaqueCell, type Series,
 } from '../values.ts';
 import { bindSeries, bindSelf, collectSetWords, copyDeep, ctxFind, getWord, setWord } from '../ctx.ts';
@@ -216,8 +216,8 @@ native('values-of', '[value [any-object! map!]]', (_t, f) => {
   return value(blockOf(K.Block, (c as ObjectCell).ctx.vals.slice()));
 });
 
-native('bind', '[words [block! any-word!] context [any-word! any-object!] /new]', (_t, f) => {
-  const x = f.args[0]!;
+native('bind', '[words [block! any-word!] context [any-word! any-object!] /new /copy "Binds a deep copy and leaves the block as it was"]', (_t, f) => {
+  let x = f.args[0]!;
   const c = f.args[1]!;
   const ctx = c.t === K.Object || c.t === K.Error ? c.ctx : (c as WordCell).bind;
   if (ctx === null) return fail('script', 'not-bound', `${mold(c)} is not bound to a context`);
@@ -227,8 +227,24 @@ native('bind', '[words [block! any-word!] context [any-word! any-object!] /new]'
     if (!all && ctxFind(ctx, w.sym) < 0) return value(w);
     return value({ t: w.t, sym: w.sym, bind: ctx });
   }
+  if (f.args[3] === TRUE) x = { t: x.t, s: copyDeep(x.s, x.i), i: 0 };
   bindSeries(x.s, ctx, all);
   return value(x);
+});
+
+native('context?', '[word [any-word!]]', (_t, f) => {
+  const ctx = (f.args[0] as WordCell).bind;
+  return value(ctx === null ? NONE : object(ctx));
+});
+
+native('unset', '[word [any-word! block!]]', (_t, f) => {
+  const target = f.args[0]!;
+  const words = target.t === K.Block ? target.s.data.slice(target.i) : [target];
+  for (const w of words) {
+    if (!isAnyWord(w.t)) return fail('script', 'bad-set', `cannot unset ${mold(w)}`);
+    if (!setWord(w as WordCell, UNSET)) return fail('script', 'not-bound', `${spell((w as WordCell).sym)} is not bound to a context`);
+  }
+  return value(UNSET);
 });
 
 native('in', '[object [any-object!] word [any-word!]]', (_t, f) => {

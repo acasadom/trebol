@@ -140,6 +140,16 @@ Trebol [
 [b: []  all [unset? do/next b 'r  same? b r]]
 [error? try [do/next 1 'r]]
 
+"binding"
+[o: make object! [t: 2]  r: [t * 3]  all [6 = do bind r o  r = [t * 3]]]
+[o: make object! [t: 2]  r: [t]  c: bind/copy r o  all [2 = do c  not same? r c  error? try [do r]]]
+[o: make object! [t: 2]  same? o context? in o 't]
+[none? context? to word! "t"]
+[o: make object! [t: 2]  same? o bound? in o 't]
+[f: func [n] [context? 'n]  2 = get in f 2 'n]
+[u: 1  unset 'u  not value? 'u]
+[u: 1 v: 2  unset [u v]  not any [value? 'u value? 'v]]
+
 "same?"
 [a: [1 2]  same? a a]
 [not same? [1 2] [1 2]]
