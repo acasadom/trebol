@@ -327,8 +327,11 @@ class Molder {
     this.out += prefix === null ? '#[object! [' : prefix + ' [';
     const indent = INDENT.repeat(depth + 1);
     ctx.keys.forEach((k, i) => {
+      const v = ctx.vals[i]!;
       this.out += '\n' + indent + spell(k) + ': ';
-      this.value(ctx.vals[i]!, depth + 1);
+      // `make object! [...]` evaluates its block, so a word or path must be quoted to stay itself
+      if (prefix !== null && (v.t === K.Word || v.t === K.Path)) this.out += "'";
+      this.value(v, depth + 1);
     });
     if (ctx.keys.length > 0) this.out += '\n' + INDENT.repeat(depth);
     this.out += prefix === null ? ']]' : ']';

@@ -65,6 +65,8 @@ Trebol [
 ["#[function!]" = mold/all func [a] [a]]
 ["func [a /local b] [b: a]" = mold function [a] [b: a]]
 ["func [a] [a + 1]" = mold function [a] [a + 1]]
+[o: make object! [w: 'red p: 'a/b n: none b: [x y]]  (mold o) = "make object! [^/    w: 'red^/    p: 'a/b^/    n: none^/    b: [x y]^/]"]
+[o: make object! [w: 'red p: 'a/b]  o2: do mold o  all [o2/w = 'red  o2/p = 'a/b]]
 
 "comparison"
 [1 = 1.0]

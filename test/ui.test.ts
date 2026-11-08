@@ -215,9 +215,9 @@ describe('handlers', () => {
 
   test('theme passes its parameters to the host', async () => {
     await ev('theme [base: 160 neutral: warm mode: dark]');
-    assert.equal(mold(themed!).replace(/\s+/g, ' '), 'make object! [ base: 160 neutral: warm mode: dark ]');
+    assert.equal(mold(themed!).replace(/\s+/g, ' '), "make object! [ base: 160 neutral: 'warm mode: 'dark ]");
     await ev("theme 'civic");
-    assert.equal(mold(themed!).replace(/\s+/g, ' '), 'make object! [ look: civic ]');
+    assert.equal(mold(themed!).replace(/\s+/g, ' '), "make object! [ look: 'civic ]");
   });
 
   test('the looks with a name are the looks the host has', async () => {
