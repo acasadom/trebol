@@ -22,7 +22,8 @@
     "check": "npm run typecheck && npm test",
     "mold": "node tools/mold.ts",
     "trb": "node --disable-warning=ExperimentalWarning tools/cli.ts",
-    "dev": "node tools/cli.ts dev --api examples/api.ts"
+    "dev": "node tools/cli.ts dev --api examples/api.ts",
+    "docs": "uv run --quiet --no-project --with-requirements docs/requirements.txt sphinx-build -q -b html docs docs/_build/html"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",

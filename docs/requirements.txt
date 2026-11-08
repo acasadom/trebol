@@ -1,0 +1,5 @@
+# Docs build dependencies. The site is Sphinx + MyST (Markdown); `npm run docs`
+# runs it through uv, so nothing needs installing by hand.
+sphinx
+myst-parser
+furo
