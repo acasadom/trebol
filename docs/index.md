@@ -27,7 +27,7 @@ Trebol tries never to be worse than Rebol 3 or Red at what they already do. Wher
 
 ## Why learn it
 
-Almost nobody knows Rebol, and that is a pity. A Rebol program reads like a description of what it does,
+Rebol has never had the attention, or the admiration, it deserves. A Rebol program reads like a description of what it does,
 and the same few rules carry you from a calculation to a network client to a full application window.
 Its secret is that **code is data**: a block of words is something you can store, pass around, inspect
 and change before you run it — or never run, and read as a little language of your own. Trebol uses
