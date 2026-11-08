@@ -29,6 +29,10 @@ native('apply-theme', '[spec [object!]]', (_t, f) => {
 let backs = 0;
 let canBack = false;
 native('route-back', '[]', () => { backs++; return value(canBack ? TRUE : FALSE); });
+let steps = [0, 0];
+let forwards = 0;
+native('route-steps', '[]', () => value(blockOf(K.Block, steps.map(n => ({ t: K.Integer, v: n }) as Cell))));
+native('route-forward', '[]', () => { forwards++; return value(steps[1]! > 0 ? TRUE : FALSE); });
 
 let repaints = 0;
 native('repaint', '[]', () => { repaints++; return value(blockOf(K.Block, [])); });
@@ -561,6 +565,31 @@ describe('components', () => {
     canBack = false;
     assert.equal(await ev(`go-back 'other  main/value`), '[other]');
     assert.equal(backs, 2);
+  });
+
+  test('go-forward asks the page to go forward; can-go-back? and can-go-forward? read where it stands', async () => {
+    link = ['home'];
+    forwards = 0;
+    steps = [0, 0];
+    assert.equal(await ev(`reduce [can-go-back? can-go-forward? go-forward]`), '[false false false]');
+    steps = [2, 1];
+    assert.equal(await ev(`reduce [can-go-back? can-go-forward? go-forward]`), '[true true true]');
+    assert.equal(forwards, 2);
+  });
+
+  test('screens run on-change after each screen is entered, the first too', async () => {
+    link = ['home'];
+    const r = await ev(`
+      seen: copy []
+      view [global main: screens on-change [append/only seen copy value] [
+          home "Home" [text "x"]
+          away "Away" [on-enter [go 'other]]
+          other "Other" [text "y"]
+      ]]
+      go 'away
+      ui-route main ["home"]
+      seen`);
+    assert.equal(r, '[[home] [other] [home]]');
   });
 
   test('labels are local to their layout and seen by all its handlers; global makes them global', async () => {

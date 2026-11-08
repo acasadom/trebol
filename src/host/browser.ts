@@ -3030,24 +3030,50 @@ function screenHref(v: Cell): string | null {
 
 native('route', '[]', () => value(routeBlock()));
 
+// Where the page stands in the browser's history: how many of its screens lie behind the
+// current one (depth) and how far forward it has been (top). Each entry keeps both in
+// history.state, so back, forward and a reload find them again.
+let here = { depth: 0, top: 0 };
+
+/** At start: an entry with no state is the first of the page. */
+function startHistory(): void {
+  const state = history.state as { depth?: number; top?: number } | null;
+  if (typeof state?.depth === 'number') here = { depth: state.depth, top: state.top ?? state.depth };
+  history.replaceState({ ...here }, '');
+}
+
+/** The link changed: back or forward lands on an entry the page made; a link or a typed address makes a new one, a step ahead. */
+function landHistory(): void {
+  const state = history.state as { depth?: number } | null;
+  if (typeof state?.depth === 'number') here = { depth: state.depth, top: here.top };
+  else here = { depth: here.depth + 1, top: here.depth + 1 };
+  history.replaceState({ ...here }, '');
+}
+
 native('set-route', '[route [block!] replace [logic!]]', (_t, f) => {
   const href = screenHref({ ...(f.args[0] as BlockCell), t: K.Path } as Cell) ?? '#/';
   const replace = f.args[1]!.t === K.Logic && f.args[1]!.v;
-  const depth = pageDepth();
-  if (replace) history.replaceState({ depth }, '', href);
-  else history.pushState({ depth: depth + 1 }, '', href);
+  if (replace) {
+    history.replaceState({ ...here }, '', href);
+    return value(f.args[0]!);
+  }
+  // a new screen after going back drops the ones ahead, as the browser does
+  here = { depth: here.depth + 1, top: here.depth + 1 };
+  history.pushState({ ...here }, '', href);
   return value(f.args[0]!);
 });
 
-/** How many screens of this page lie behind the current one in the browser's history. */
-function pageDepth(): number {
-  const state = history.state as { depth?: number } | null;
-  return state?.depth ?? 0;
-}
+native('route-steps', '[]', () => value(blockOf(K.Block, [int(here.depth), int(here.top - here.depth)])));
 
 native('route-back', '[]', () => {
-  if (pageDepth() === 0) return value(logic(false));
+  if (here.depth === 0) return value(logic(false));
   history.back();
+  return value(logic(true));
+});
+
+native('route-forward', '[]', () => {
+  if (here.depth >= here.top) return value(logic(false));
+  history.forward();
   return value(logic(true));
 });
 
@@ -3172,7 +3198,9 @@ async function boot(): Promise<void> {
   // a touch drag must not scroll the page
   document.addEventListener('touchmove', ev => { if (dragging?.on) ev.preventDefault(); }, { passive: false });
   document.addEventListener('keydown', onViewKey);
+  startHistory();
   window.addEventListener('hashchange', () => {
+    landHistory();
     if (screensFace !== null) void fire('ui-route', screensFace, routeBlock());
   });
   await startUi(host);

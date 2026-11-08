@@ -3,7 +3,7 @@ Trebol [
     exports: [
         face styles stylize layout view theme looks open close toast
         validate-face field-error form-values set-values ui-pane ui-input ui-files ui-remove-file ui-lookup-search ui-lookup-pick ui-lookup-remove ui-blur ui-click ui-select ui-close ui-event ui-menu ui-drop ui-reorder ui-crumb ui-expand
-        go go-back ui-route set-language ui-rows
+        go go-back go-forward can-go-back? can-go-forward? ui-route set-language ui-rows
     ]
 ]
 
@@ -422,7 +422,11 @@ enter-screen: function [f route [block!] /local ev b] [
 run-enter: function [s] [
     r: none
     if h: handler-for s 'on-enter [r: try [run-handler s h  none]]
-    if same? s first router/pane [router/entering: false]
+    if same? s first router/pane [
+        router/entering: false
+        ; the screen on show changed, and so may whether back and forward can be used
+        if h: handler-for router 'on-change [run-handler router h]
+    ]
     if error? :r [do :r]
 ]
 
@@ -456,6 +460,24 @@ go-back: function [
     target [word! block! path!]
 ] [
     unless route-back [go target]
+]
+
+go-forward: function [
+    "Goes to the screen the user came back from, if there is one; true if it went."
+] [
+    route-forward
+]
+
+can-go-back?: function [
+    "True if a screen of this page lies behind the current one in the browser's history."
+] [
+    0 < first route-steps
+]
+
+can-go-forward?: function [
+    "True if a screen of this page lies ahead of the current one: the user went back and has not gone elsewhere since."
+] [
+    0 < second route-steps
 ]
 
 ui-route: function [
@@ -872,7 +894,8 @@ refresh-form: function [scope] [
 ; not bound: their values are in values, their faces reached through labels.
 run-handler: function [f body [block!] /with ev [object!] /on node "row is this node, not the selected one"] [
     scope: any [f/form f/root]
-    words: compose [
+    ; /only: a value that is a block stays one block
+    words: compose/only [
         face: (f)
         value: (quoted f/value)
         values: (form-values any [scope f])
