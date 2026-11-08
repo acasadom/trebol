@@ -129,6 +129,25 @@ describe('tasks and timers', () => {
     assert.equal(await ev('d: now/date none? d/time'), 'true');
   });
 
+  test('help explains a function from its spec; ?? and source print a word', async () => {
+    lines.length = 0;
+    await ev('tax: func ["Adds the tax." amount [money!] "Before tax" /rate pct [percent!] return: [money!]] [amount] help tax');
+    assert.deepEqual(lines, [
+      'USAGE:', '    TAX amount', '',
+      'DESCRIPTION:', '    Adds the tax.', '    TAX is a function! value.', '',
+      'ARGUMENTS:', '    amount -- Before tax (money!)', '',
+      'REFINEMENTS:', '    /rate', '        pct (percent!)', '',
+      'RETURNS:', '    money!',
+    ]);
+    lines.length = 0;
+    await ev('help +  b: [1 2] help b  help nothing-here  ?? b  f: func [x] [x * 2] source f  source add');
+    assert.deepEqual(lines.slice(0, 2), ['USAGE:', '    a + b']);
+    assert.deepEqual(lines.slice(-5), [
+      'B is a block! of value: [1 2]', 'NOTHING-HERE has no value.', 'b: [1 2]',
+      'f: func [x] [x * 2]', 'add: native [a [number! money! time! pair! date!] b [number! money! time! pair! date!]]',
+    ]);
+  });
+
   test('print goes to the host output', async () => {
     lines.length = 0;
     await ev('print ["a" 1 + 1]');

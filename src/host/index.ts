@@ -31,6 +31,103 @@ fetch: func [
 ][
     http-request url either with [either block? options [make object! options] [options]] [none]
 ]
+
+help: func [
+    "Shows how to call a function, or what a word holds."
+    'word [any-type!] "The word to explain"
+    /local value name about entry args refs ret target usage describe kind
+][
+    unless word? :word [
+        print "Type help and a word: help print, help round"
+        exit
+    ]
+    name: uppercase form word
+    unless value? word [
+        print [name "has no value."]
+        exit
+    ]
+    value: get word
+    ; "a block!", "an object!"
+    kind: mold type? :value
+    kind: rejoin [either find "aeiou" first kind ["an "] ["a "] kind]
+    unless any-function? :value [
+        about: mold :value
+        if 60 < length? about [about: append copy/part about 57 "..."]
+        print rejoin [name " is " kind " of value: " about]
+        exit
+    ]
+    ; read the spec: a description, then arguments, refinements and their
+    ; arguments, each with its types and its own description
+    about: none  args: copy []  refs: copy []  ret: none  target: args  entry: none
+    foreach item spec-of :value [
+        case [
+            item = /local [break]
+            string? item [either entry [entry/doc: item] [about: item]]
+            block? item [if entry [entry/types: item]]
+            refinement? item [
+                append refs entry: make object! [name: item doc: none types: none args: copy []]
+                target: entry/args
+            ]
+            set-word? item [entry: ret: make object! [name: item doc: none types: none]]
+            any [word? item lit-word? item get-word? item] [
+                append target entry: make object! [name: item doc: none types: none]
+            ]
+        ]
+    ]
+    describe: func [e] [
+        rejoin [
+            mold e/name
+            either e/doc [rejoin [" -- " e/doc]] [""]
+            either e/types [rejoin [" (" form e/types ")"]] [""]
+        ]
+    ]
+    usage: copy name
+    foreach a args [append append usage " " mold a/name]
+    ; an operator goes between its arguments
+    if op? :value [usage: rejoin [mold args/1/name " " name " " mold args/2/name]]
+    print "USAGE:"
+    print rejoin ["    " usage]
+    print ""
+    print "DESCRIPTION:"
+    if about [print rejoin ["    " about]]
+    print rejoin ["    " name " is " kind " value."]
+    unless empty? args [
+        print ""
+        print "ARGUMENTS:"
+        foreach a args [print rejoin ["    " describe a]]
+    ]
+    unless empty? refs [
+        print ""
+        print "REFINEMENTS:"
+        foreach r refs [
+            print rejoin ["    " describe r]
+            foreach a r/args [print rejoin ["        " describe a]]
+        ]
+    ]
+    if all [ret ret/types] [
+        print ""
+        print "RETURNS:"
+        print rejoin ["    " form ret/types]
+    ]
+    exit
+]
+
+?: :help
+
+??: func ["Prints a word and its value." 'word [any-word!]] [
+    print rejoin [form word ": " mold get word]
+]
+
+source: func ["Prints the source of a function." 'word [any-word!] /local value] [
+    value: get word
+    print rejoin [
+        form word ": " case [
+            function? :value [rejoin ["func " mold spec-of :value " " mold body-of :value]]
+            any-function? :value [rejoin ["native " mold spec-of :value]]
+            true [mold :value]
+        ]
+    ]
+]
 `;
 
 export interface Host {

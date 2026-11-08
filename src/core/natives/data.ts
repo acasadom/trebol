@@ -5,12 +5,12 @@ import { K, isAnyBlock, isAnyString, isAnyWord, kindName, type Kind } from '../k
 import { spell } from '../symbols.ts';
 import * as I64 from '../int64.ts';
 import {
-  NONE, TRUE, FALSE, string, codePoints, text, datatype, typeset, context,
-  type Cell, type BlockCell, type StringCell, type WordCell, type Ctx, type ObjectCell, type Series,
+  NONE, TRUE, FALSE, string, codePoints, text, datatype, typeset, context, blockOf, wordOf,
+  type Cell, type BlockCell, type StringCell, type WordCell, type Ctx, type ObjectCell, type OpaqueCell, type Series,
 } from '../values.ts';
 import { bindSeries, bindSelf, collectSetWords, copyDeep, ctxFind, getWord, setWord } from '../ctx.ts';
 import { makeError } from '../errors.ts';
-import { makeFunc, typesOf, type FuncDef } from '../func.ts';
+import { makeFunc, typesOf, P, type FuncDef, type NativeDef, type OpDef } from '../func.ts';
 import { load, LoadError } from '../lexer.ts';
 import { mold, form } from '../mold.ts';
 import { pick, poke } from '../access.ts';
@@ -170,6 +170,40 @@ native('value?', '[word [any-word!]]', (_t, f) => {
 });
 
 native('type?', '[value [any-type!]]', (_t, f) => value(datatype(f.args[0]!.t)));
+
+// --- reflection: what help and source are written with ---------------------
+
+/** The function an op! calls, or the value itself. */
+const underOp = (c: Cell): Cell => (c.t === K.Op ? ((c as OpaqueCell).p as OpDef).fn : c);
+
+native('spec-of', '[value [any-function!]]', (_t, f) => {
+  const c = underOp(f.args[0]!);
+  const p = (c as OpaqueCell).p;
+  const spec = c.t === K.Function ? (p as FuncDef).specBlock : (p as NativeDef).specBlock;
+  return value({ t: K.Block, s: copyDeep(spec.s, spec.i), i: 0 });
+});
+
+native('body-of', '[value [any-function!]]', (_t, f) => {
+  const c = underOp(f.args[0]!);
+  return value(c.t === K.Function ? { t: K.Block, s: copyDeep(((c as OpaqueCell).p as FuncDef).body), i: 0 } : NONE);
+});
+
+native('words-of', '[value [any-object! map! any-function!]]', (_t, f) => {
+  const c = underOp(f.args[0]!);
+  if (c.t === K.Object || c.t === K.Error) return value(blockOf(K.Block, c.ctx.keys.map(k => wordOf(K.Word, k))));
+  if (c.t === K.Map) return value(blockOf(K.Block, c.s.data.filter((_v, i) => i % 2 === 0)));
+  // a function's arguments and refinements, as its spec names them
+  const p = (c as OpaqueCell).p;
+  const spec = c.t === K.Function ? (p as FuncDef).spec : (p as NativeDef).spec;
+  return value(blockOf(K.Block, spec.params.filter(p => p.kind !== P.Local)
+    .map(p => wordOf(p.kind === P.Ref ? K.Refinement : K.Word, p.sym))));
+});
+
+native('values-of', '[value [any-object! map!]]', (_t, f) => {
+  const c = f.args[0]!;
+  if (c.t === K.Map) return value(blockOf(K.Block, c.s.data.filter((_v, i) => i % 2 === 1)));
+  return value(blockOf(K.Block, (c as ObjectCell).ctx.vals.slice()));
+});
 
 native('bind', '[words [block! any-word!] context [any-word! any-object!] /new]', (_t, f) => {
   const x = f.args[0]!;

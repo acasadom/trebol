@@ -13,10 +13,11 @@ import { registerNative, throwError, type NativeFn, type Step } from '../eval.ts
 import type { Cell, BlockCell } from '../values.ts';
 
 export function native(name: string, spec: string, fn: NativeFn): void {
-  const parsed = parseSpec(load(spec).s.data[0] as BlockCell);
+  const specBlock = load(spec).s.data[0] as BlockCell;
+  const parsed = parseSpec(specBlock);
   // A malformed spec here is a bug in Trebol itself, found at startup.
   if (typeof parsed === 'string') throw new Error(`bad spec for native ${name}: ${parsed}`);
-  registerNative({ name, spec: parsed }, fn);
+  registerNative({ name, spec: parsed, specBlock }, fn);
 }
 
 /** Infix operators: the op's name and the two-argument native it calls. */

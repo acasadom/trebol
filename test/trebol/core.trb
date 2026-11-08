@@ -49,6 +49,19 @@ Trebol [
 [d: 9-Nov-2026 1 = d/weekday]
 [d: 15-Nov-2026 7 = d/weekday]
 
+"reflection"
+[f: func ["Doc." a [integer!] /r b] [a] ["Doc." a [integer!] /r b] = spec-of :f]
+[f: func [a] [a + 1] [a + 1] = body-of :f]
+[f: func [a /r b /local c] [a] [a /r b] = words-of :f]
+[none? body-of :append]
+[block? spec-of :append]
+[(spec-of :+) = spec-of :add]
+[[a b] = words-of make object! [a: 1 b: 2]]
+[[1 2] = values-of make object! [a: 1 b: 2]]
+[[a b] = words-of #(a: 1 b: 2)]
+[[1 2] = values-of #(a: 1 b: 2)]
+[f: func [a] [a] s: spec-of :f append s 'x [a] = spec-of :f]
+
 "comparison"
 [1 = 1.0]
 [not 1 == 1.0]

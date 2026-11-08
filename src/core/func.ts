@@ -63,6 +63,8 @@ export interface FuncDef {
 /** The payload of a native! cell: an index into the native table. */
 export interface NativeDef {
   readonly spec: Spec;
+  /** The spec as written, for help. */
+  readonly specBlock: BlockCell;
   readonly id: number;
   readonly name: string;
 }
