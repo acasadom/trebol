@@ -13,7 +13,8 @@ import {
 import { bindSeries, copyDeep } from '../ctx.ts';
 import { isEqual, compare, foldCase } from '../compare.ts';
 import { pick } from '../access.ts';
-import { context } from '../values.ts';
+import { context, time } from '../values.ts';
+import { dateDiff } from './math.ts';
 import {
   splice, itemsFor, lengthOf, at, clampIndex,
   type SeriesCell, type Item,
@@ -425,7 +426,14 @@ native('unique', '[set [series!] /case]', (_t, f) => setOp(f, false, (a, _b, eq)
 native('union', '[a [series!] b [series!] /case]', (_t, f) => setOp(f, true, (a, b, eq) => distinct([...a, ...b], eq)));
 native('intersect', '[a [series!] b [series!] /case]', (_t, f) =>
   setOp(f, true, (a, b, eq) => distinct(a.filter(x => b.some(y => eq(x, y))), eq)));
-native('difference', '[a [series!] b [series!] /case]', (_t, f) =>
-  setOp(f, true, (a, b, eq) => distinct([...a.filter(x => !b.some(y => eq(x, y))), ...b.filter(y => !a.some(x => eq(x, y)))], eq)));
+// Of two dates, the time between them (R3).
+native('difference', '[a [series! date!] b [series! date!] /case]', (_t, f) => {
+  const [a, b] = f.args as [Cell, Cell];
+  if (a.t === K.Date || b.t === K.Date) {
+    if (a.t !== K.Date || b.t !== K.Date) return fail('script', 'bad-set', 'difference takes two dates or two series');
+    return value(time(dateDiff(a.v, b.v)));
+  }
+  return setOp(f, true, (xs, ys, eq) => distinct([...xs.filter(x => !ys.some(y => eq(x, y))), ...ys.filter(y => !xs.some(x => eq(x, y)))], eq));
+});
 native('exclude', '[a [series!] b [series!] /case]', (_t, f) =>
   setOp(f, true, (a, b, eq) => distinct(a.filter(x => !b.some(y => eq(x, y))), eq)));

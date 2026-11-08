@@ -168,11 +168,15 @@ function dateArith(op: Arith, a: DateCell, b: Cell): Step | null {
     return value(fromDayNumber(dayNumber(d) + days, total - days * DAY_NS, d.zone));
   }
   if (b.t === K.Date && op === A.Sub) {
-    const e = b.v;
-    const ns = (dayNumber(d) - dayNumber(e)) * DAY_NS + ((d.time ?? 0) - (d.zone ?? 0) * 60e9) - ((e.time ?? 0) - (e.zone ?? 0) * 60e9);
-    return value(d.time === null && e.time === null ? integer(Math.round(ns / DAY_NS)) : time(ns));
+    const ns = dateDiff(d, b.v);
+    return value(d.time === null && b.v.time === null ? integer(Math.round(ns / DAY_NS)) : time(ns));
   }
   return null;
+}
+
+/** Nanoseconds from date `e` to date `d`, zones taken into account. */
+export function dateDiff(d: DateVal, e: DateVal): number {
+  return (dayNumber(d) - dayNumber(e)) * DAY_NS + ((d.time ?? 0) - (d.zone ?? 0) * 60e9) - ((e.time ?? 0) - (e.zone ?? 0) * 60e9);
 }
 
 const NUMERIC = '[number! money! time! pair! date!]';
