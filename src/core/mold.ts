@@ -13,6 +13,7 @@ import { spell } from './symbols.ts';
 import * as I64 from './int64.ts';
 import { formatDec } from './dec.ts';
 import { encodeChar } from './escapes.ts';
+import type { FuncDef } from './func.ts';
 import {
   fromCodePoints, unpackPos,
   type Cell, type Series, type DateVal, type StringCell, type BlockCell, type Ctx,
@@ -227,9 +228,19 @@ class Molder {
         this.out += all ? `#[typeset! [${names.join(' ')}]]` : `make typeset! [${names.join(' ')}]`;
         return;
       }
-      default:
-        this.out += `#[${kindName(c.t)}]`;
+      case K.Function: {
+        // as Red: the source that makes it. No construction syntax loads a
+        // function back, so mold/all keeps the opaque form.
+        if (all) break;
+        const def = c.p as FuncDef;
+        this.out += 'func ';
+        this.blockLike(def.specBlock, '[', ']', depth);
+        this.out += ' ';
+        this.blockLike({ t: K.Block, s: def.body, i: 0 }, '[', ']', depth);
+        return;
+      }
     }
+    this.out += `#[${kindName(c.t)}]`;
   }
 
   /** A series not at its head molds as #[kind! value index] with `all`. */

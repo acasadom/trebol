@@ -61,6 +61,9 @@ Trebol [
 [[a b] = words-of #(a: 1 b: 2)]
 [[1 2] = values-of #(a: 1 b: 2)]
 [f: func [a] [a] s: spec-of :f append s 'x [a] = spec-of :f]
+["func [a] [a + 1]" = mold func [a] [a + 1]]
+["#[function!]" = mold/all func [a] [a]]
+["func [a /local b] [b: a]" = mold function [a] [b: a]]
 
 "comparison"
 [1 = 1.0]
