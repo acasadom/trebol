@@ -7,13 +7,13 @@
 //   == [1 2]
 //
 // As in Rebol: an expression's value is shown after `==` with mold, an unset
-// value shows nothing, errors show as `** ...` and the session goes on. A line
+// value shows nothing, errors (raised, or the value) show as `** ...` and the session goes on. A line
 // that leaves a block, paren or multi-line string open asks for more with `[`.
 
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline';
-import { K, LoadError, load, mold, type ObjectCell } from '../src/core/index.ts';
+import { K, LoadError, form, load, mold, type ObjectCell } from '../src/core/index.ts';
 import { startHost, runSource, report, type Host } from '../src/host/index.ts';
 
 /** A host for Node: console output, timers, tasks, network; `import` reads files relative to `dir`. */
@@ -83,7 +83,8 @@ export class Repl {
     this.pending = '';
     try {
       const v = await runSource(this.host, src);
-      return v.t === K.Unset ? [] : [`== ${mold(v)}`];
+      // an error that is the value is shown as one, as in R3 and Red
+      return v.t === K.Unset ? [] : v.t === K.Error ? [form(v)] : [`== ${mold(v)}`];
     } catch (e) {
       return [errorText(e)];
     }

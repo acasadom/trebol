@@ -63,3 +63,12 @@ test('trebol runs a script from a file or from stdin', () => {
   assert.match(failed.stderr, /\*\* Math error/);
   assert.equal(failed.status, 1);
 });
+
+test('an error that is the value shows as an error, and form gives the same text', async () => {
+  assert.deepEqual(await session(['e: try [1 / 0]', 'error? e', 'e/id', 'print e']), [
+    '** Math error: attempt to divide by zero\n** Where: /\n** Near: [1 / 0]\n** At: 1:9',
+    '== true',
+    '== zero-divide',
+    '** Math error: attempt to divide by zero\n** Where: /\n** Near: [1 / 0]\n** At: 1:9',
+  ]);
+});

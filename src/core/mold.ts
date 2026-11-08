@@ -6,7 +6,7 @@
 // use construction syntax #[...] so the round trip is exact.
 //
 // form produces human-readable text: strings without quotes, blocks without
-// brackets. It is what `print` shows.
+// brackets, an error as its report. It is what `print` shows.
 
 import { K, kindName } from './kinds.ts';
 import { spell } from './symbols.ts';
@@ -14,9 +14,10 @@ import * as I64 from './int64.ts';
 import { formatDec } from './dec.ts';
 import { encodeChar } from './escapes.ts';
 import type { FuncDef } from './func.ts';
+import { errorField, errorMessage } from './errors.ts';
 import {
   fromCodePoints, unpackPos,
-  type Cell, type Series, type DateVal, type StringCell, type BlockCell, type Ctx,
+  type Cell, type Series, type DateVal, type StringCell, type BlockCell, type Ctx, type ObjectCell,
 } from './values.ts';
 
 export interface MoldOptions {
@@ -48,14 +49,28 @@ export function form(c: Cell): string {
       return spell(c.sym);
     case K.Block: case K.Paren:
       return c.s.data.slice(c.i).map(form).join(' ');
-    case K.Object: case K.Error:
+    case K.Object:
       return c.ctx.keys.map((k, i) => `${spell(k)}: ${form(c.ctx.vals[i]!)}`).join('\n');
+    case K.Error:
+      return report(c);
     default:
       return mold(c);
   }
 }
 
 // --- scalar formatting ---------------------------------------------------------
+
+/** An error as the console shows it, as in R3 and Red: "** Math error: ...", then where, near and at. */
+function report(e: ObjectCell): string {
+  const lines = [`** ${errorMessage(e)}`];
+  const where = errorField(e, 'where');
+  const near = errorField(e, 'near');
+  const at = errorField(e, 'at');
+  if (where.t !== K.None) lines.push(`** Where: ${form(where)}`);
+  if (near.t !== K.None) lines.push(`** Near: ${mold(near)}`);
+  if (at.t !== K.None) lines.push(`** At: ${form(at)}`);
+  return lines.join('\n');
+}
 
 const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 

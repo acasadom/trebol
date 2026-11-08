@@ -6,7 +6,7 @@ import './net.ts';
 import './locale.ts';
 import { setLoader, defaultLoader, type Loader } from './modules.ts';
 import {
-  K, makeRuntime, load, bindSeries, doSource, scriptStart, errorField, errorMessage, form, mold,
+  K, makeRuntime, load, bindSeries, doSource, scriptStart, errorMessage, form, mold,
   type Cell, type ObjectCell, type Runtime,
 } from '../core/index.ts';
 import { makeScheduler, spawn, taskResult, type Scheduler } from './scheduler.ts';
@@ -137,14 +137,7 @@ export interface Host {
 
 /** Rebol-style multi-line report of an error. */
 export function report(e: ObjectCell): string {
-  const lines = [`** ${errorMessage(e)}`];
-  const where = errorField(e, 'where');
-  const near = errorField(e, 'near');
-  const at = errorField(e, 'at');
-  if (where.t !== K.None) lines.push(`** Where: ${form(where)}`);
-  if (near.t !== K.None) lines.push(`** Near: ${mold(near)}`);
-  if (at.t !== K.None) lines.push(`** At: ${form(at)}`);
-  return lines.join('\n');
+  return form(e);
 }
 
 export interface HostOptions {
