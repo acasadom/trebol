@@ -122,6 +122,13 @@ describe('tasks and timers', () => {
     assert.equal(await ev('x: 1 delay 0.01 [x: 2] wait 0.03 x'), '2');
   });
 
+  test('now: whole seconds unless /precise, and one part with a refinement', async () => {
+    assert.equal(await ev('t: now/time t = round t'), 'true');
+    assert.equal(await ev('d: now all [d/date = now/date d/year = now/year 1 <= now/weekday 7 >= now/weekday]'), 'true');
+    assert.equal(await ev('d: now/utc d/zone'), '0:00');
+    assert.equal(await ev('d: now/date none? d/time'), 'true');
+  });
+
   test('print goes to the host output', async () => {
     lines.length = 0;
     await ev('print ["a" 1 + 1]');

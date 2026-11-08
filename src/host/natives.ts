@@ -2,7 +2,7 @@
 // timers. They work wherever there is a JS event loop (browser or Node).
 
 import {
-  K, NONE, UNSET, I64, native, value, form, mold, date, throwError, getWord,
+  K, NONE, UNSET, I64, native, value, form, mold, date, word, pick, throwError, getWord,
   type Cell, type BlockCell, type Step,
 } from '../core/index.ts';
 import {
@@ -30,13 +30,20 @@ function millis(c: Cell): number {
   return (c as { v: number }).v * 1000;
 }
 
-native('now', '[/utc]', (_t, f) => {
+// As in R3: whole seconds unless /precise, and one part of the date with the
+// other refinements (now/date, now/weekday, now/time...).
+const NOW_PARTS = ['year', 'month', 'day', 'time', 'zone', 'date', 'weekday', 'yearday'] as const;
+
+native('now', '[/year /month /day /time /zone /date /weekday /yearday /precise /utc]', (_t, f) => {
   const d = new Date();
-  const utc = f.args[0]!.t === K.Logic;
-  const zone = utc ? 0 : -d.getTimezoneOffset();
+  const on = (i: number) => f.args[i]!.t === K.Logic;
+  const zone = on(9) ? 0 : -d.getTimezoneOffset();
   const local = new Date(d.getTime() + zone * 60000);
-  const ns = ((local.getUTCHours() * 60 + local.getUTCMinutes()) * 60 + local.getUTCSeconds()) * 1e9 + local.getUTCMilliseconds() * 1e6;
-  return value(date({ y: local.getUTCFullYear(), m: local.getUTCMonth() + 1, d: local.getUTCDate(), time: ns, zone }));
+  const ns = ((local.getUTCHours() * 60 + local.getUTCMinutes()) * 60 + local.getUTCSeconds()) * 1e9 +
+    (on(8) ? local.getUTCMilliseconds() * 1e6 : 0);
+  const v = date({ y: local.getUTCFullYear(), m: local.getUTCMonth() + 1, d: local.getUTCDate(), time: ns, zone });
+  const part = NOW_PARTS.find((_p, i) => on(i));
+  return value(part === undefined ? v : pick(v, word(part)) as Cell);
 });
 
 // --- tasks and timers ----------------------------------------------------------------

@@ -17,6 +17,38 @@ Trebol [
 ["a" = min "b" "a"]
 [5 = abs -5]
 
+"round"
+[13.0 == round 12.5]
+[-13.0 == round -12.5]
+[7 == round 7]
+[3.14 == round/to 3.14159 0.01]
+[2.68 == round/to 2.675 0.01]
+[12 == round/to 12.345 1]
+[15 == round/to 17 5]
+[2.0 == round/even 2.5]
+[4.0 == round/even 3.5]
+[12.0 == round/down 12.9]
+[-2.0 == round/floor -1.5]
+[2.0 == round/ceiling 1.1]
+[2.0 == round/half-down 2.5]
+[-2.0 == round/half-ceiling -2.5]
+[$15.13 == round/to $15.125 $0.01]
+[$2.63 == round/to $2.625 0.01]
+[$15.00 == round $15.125]
+[13% == round 12.5%]
+[1:30:46 == round 1:30:45.6]
+[1:30 == round/to 1:37 0:15]
+[error? try [round/to 1 0]]
+
+"date parts"
+[d: 14-Nov-2026/10:30 6 = d/weekday]
+[d: 14-Nov-2026/10:30 318 = d/yearday]
+[d: 14-Nov-2026/10:30 14-Nov-2026 == d/date]
+[d: 14-Nov-2026/10:30 all [10 = d/hour 30 = d/minute 0 = d/second]]
+[d: 14-Nov-2026 none? d/hour]
+[d: 9-Nov-2026 1 = d/weekday]
+[d: 15-Nov-2026 7 = d/weekday]
+
 "comparison"
 [1 = 1.0]
 [not 1 == 1.0]

@@ -6,9 +6,9 @@
 
 import { K, kindName } from '../kinds.ts';
 import * as I64 from '../int64.ts';
-import { decAdd, decSub, decMul, decDiv, decRem, decToNumber, decEqual, type Dec } from '../dec.ts';
+import { decAdd, decSub, decMul, decDiv, decRem, decRound, decFromNumber, decToNumber, decEqual, type Dec, type Rounding } from '../dec.ts';
 import {
-  integer, decimal, percent, money, time, pair, logic, date, strictEqual,
+  TRUE, integer, decimal, percent, money, time, pair, logic, date, strictEqual,
   type Cell, type DateCell, type DateVal,
 } from '../values.ts';
 import { isEqual, compare, toDec } from '../compare.ts';
@@ -197,6 +197,33 @@ native('negate', `[value ${NUMERIC}]`, (_t, f) => {
     case K.Pair: return value(pair(-a.x, -a.y));
   }
   return fail('script', 'bad-math', `cannot negate ${kindName(a.t)}`);
+});
+
+// round: the nearest multiple of a scale (1 by default; 1 second for time!),
+// exact for every kind since it works on decimals. As in R3, half goes away
+// from zero; an integer scale gives an integer, a money! on either side money.
+const ROUNDINGS = ['even', 'down', 'half-down', 'floor', 'ceiling', 'half-ceiling'] as const;
+
+native('round', '[value [number! money! time!] /to scale [number! money! time!] /even /down /half-down /floor /ceiling /half-ceiling]', (_t, f) => {
+  const a = f.args[0]!;
+  const to = f.args[1] === TRUE;
+  const mode: Rounding = ROUNDINGS.find((_m, i) => f.args[3 + i] === TRUE) ?? 'half-away';
+  if (a.t === K.Time) {
+    const s = to ? f.args[2]! : integer(1);
+    const step = s.t === K.Time ? s.v : (num(s) ?? decToNumber(toDec(s)!)) * 1e9;
+    const r = decRound(decFromNumber(a.v)!, decFromNumber(step)!, mode);
+    return r === null ? zeroDivide() : value(time(decToNumber(r)));
+  }
+  const s = to ? f.args[2]! : a.t === K.Percent ? percent(0.01) : integer(1);
+  if (s.t === K.Time) return fail('script', 'bad-math', 'cannot round a number to a time!');
+  const r = decRound(toDec(a)!, toDec(s)!, mode);
+  if (r === null) return zeroDivide();
+  if (a.t === K.Money || s.t === K.Money) return value(money(r, a.t === K.Money ? a.cur : (s as { cur: string }).cur));
+  if (s.t === K.Integer && (to || a.t === K.Integer)) {
+    const n = r.e === 0 ? I64.fromBig(r.d) : null;
+    return n === null ? overflow() : value(integer(n));
+  }
+  return value(a.t === K.Percent ? percent(decToNumber(r)) : decimal(decToNumber(r)));
 });
 
 native('abs', `[value ${NUMERIC}]`, (_t, f) => {

@@ -8,7 +8,7 @@ import { K, isAnyBlock, isAnyString, isAnyWord, kindName } from './kinds.ts';
 import { canon, spell } from './symbols.ts';
 import * as I64 from './int64.ts';
 import {
-  NONE, integer, char, decimal, time, strictEqual, codePoints, fromCodePoints,
+  NONE, integer, char, decimal, time, date, strictEqual, codePoints, fromCodePoints,
   type Cell, type Series, type BlockCell, type StringCell, type WordCell,
 } from './values.ts';
 import { ctxFind, ctxSet } from './ctx.ts';
@@ -38,10 +38,11 @@ function offset(key: Cell): number | null {
   return I64.toNumber(key.v) - 1;
 }
 
-const DATE_PARTS = ['year', 'month', 'day', 'time', 'zone'] as const;
+const DATE_PARTS = ['year', 'month', 'day', 'time', 'zone', 'date', 'weekday', 'yearday', 'hour', 'minute', 'second'] as const;
 const TIME_PARTS = ['hour', 'minute', 'second'] as const;
 const NS_HOUR = 3600e9;
 const NS_MIN = 60e9;
+const DAY_MS = 86400000;
 
 function partName(key: Cell): string | null {
   return isAnyWord(key.t) ? spell(canon((key as WordCell).sym)) : null;
@@ -91,6 +92,12 @@ export function pick(cur: Cell, key: Cell): Cell | string {
         case 'day': return integer(d.d);
         case 'time': return d.time === null ? NONE : time(d.time);
         case 'zone': return d.zone === null ? NONE : time(d.zone * NS_MIN);
+        case 'date': return date({ y: d.y, m: d.m, d: d.d, time: null, zone: null });
+        // ISO weekday: Monday is 1, Sunday 7; 1970-01-01 was a Thursday
+        case 'weekday': return integer(((Date.UTC(d.y, d.m - 1, d.d) / DAY_MS) % 7 + 10) % 7 + 1);
+        case 'yearday': return integer((Date.UTC(d.y, d.m - 1, d.d) - Date.UTC(d.y, 0, 1)) / DAY_MS + 1);
+        case 'hour': case 'minute': case 'second':
+          return d.time === null ? NONE : pick(time(d.time), key.t === K.Integer ? integer(TIME_PARTS.indexOf(p) + 1) : key);
       }
       return `cannot pick ${mold(key)} in a date`;
     }

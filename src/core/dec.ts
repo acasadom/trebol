@@ -122,3 +122,35 @@ export function decRem(a: Dec, b: Dec): Dec | null {
   const [x, y, e] = align(a, b);
   return dec(x % y, e);
 }
+
+/** How `round` breaks a value between two multiples of the scale. */
+export type Rounding = 'half-away' | 'half-down' | 'half-ceiling' | 'even' | 'down' | 'floor' | 'ceiling';
+
+/** The multiple of `scale` nearest to `a` by `mode`, computed exactly; null when scale is zero. */
+export function decRound(a: Dec, scale: Dec, mode: Rounding): Dec | null {
+  if (scale.d === 0n) return null;
+  // a / scale = num / den exactly
+  let num = a.d * 10n ** BigInt(scale.e);
+  let den = scale.d * 10n ** BigInt(a.e);
+  if (den < 0n) {
+    num = -num;
+    den = -den;
+  }
+  let k = num / den;
+  const r = num % den;
+  if (r !== 0n) {
+    const away = num < 0n ? -1n : 1n;
+    const twice = (r < 0n ? -r : r) * 2n;
+    const half = twice > den ? 1 : twice === den ? 0 : -1;
+    switch (mode) {
+      case 'half-away': if (half >= 0) k += away; break;
+      case 'half-down': if (half > 0) k += away; break;
+      case 'half-ceiling': if (half > 0 || (half === 0 && num > 0n)) k += away; break;
+      case 'even': if (half > 0 || (half === 0 && k % 2n !== 0n)) k += away; break;
+      case 'down': break;
+      case 'floor': if (num < 0n) k -= 1n; break;
+      case 'ceiling': if (num > 0n) k += 1n; break;
+    }
+  }
+  return dec(k * scale.d, scale.e);
+}
