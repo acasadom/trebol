@@ -12,6 +12,9 @@ import { T, type Feed, type NativeFrame, type Thrown } from '../eval.ts';
 import { isEqual } from '../compare.ts';
 import { native, value, fail, truthy, doBlock } from './define.ts';
 import { loadUser } from './data.ts';
+import { makeError } from '../errors.ts';
+import { spell } from '../symbols.ts';
+import { form } from '../mold.ts';
 
 const LOOP_TRAP = (1 << T.Break) | (1 << T.Continue);
 
@@ -317,3 +320,10 @@ native('catch', '[body [block!] /name word [word! block!]]', (_t, f, v) => {
 
 native('throw', '[value [any-value!] /name word [word!]]', (_t, f) =>
   ({ k: 'throw', e: { kind: T.Throw, v: f.args[0]!, name: f.args[1]!.t === K.Logic ? f.args[2]! : null } }));
+
+// As in R3, with no catalog of messages: the args, formed, are the message.
+native('cause-error', '["Raises an error of a type and an id." type [word!] id [word!] args [any-value!]]', (_t, f) => {
+  const [type, id, args] = f.args as [WordCell, WordCell, Cell];
+  const e = makeError(spell(type.sym), spell(id.sym), form(args));
+  return { k: 'throw', e: { kind: T.Error, v: e, name: null } };
+});
