@@ -31,7 +31,13 @@ export function loadUser(rt: Runtime, src: StringCell): Step {
   return value(b);
 }
 
-native('load', '[source [string!]]', (t, f) => loadUser(t.rt, f.args[0] as StringCell));
+// As in R3 and Red, text holding one value loads as that value; /all always gives a block.
+native('load', '[source [string!] /all "Gives a block even for one value"]', (t, f) => {
+  const r = loadUser(t.rt, f.args[0] as StringCell);
+  if (r.k !== 'value' || f.args[1] === TRUE) return r;
+  const b = r.v as BlockCell;
+  return b.s.data.length === 1 ? value(b.s.data[0]!) : r;
+});
 
 native('mold', '[value [any-type!] /only /all]', (_t, f) =>
   value(string(mold(f.args[0]!, { only: f.args[1] === TRUE, all: f.args[2] === TRUE }))));

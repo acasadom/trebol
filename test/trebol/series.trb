@@ -124,6 +124,12 @@ Trebol [
 [(to-string 12) = "12"]
 [(to-money "1.5") == $1.50]
 [(to-word "abc") = 'abc]
+[(load "1 2") = [1 2]]
+[(load "$1.50") == $1.50]
+[(load "[a b]") = [a b]]
+[(load "") = []]
+[(load/all "1") = [1]]
+[error? try [load "[1"]]
 [o: construct [a: 1 b: true c: none] all [o/a = 1 o/b = true none? o/c]]
 
 "compose"

@@ -261,7 +261,7 @@ set-formula: function [value] [
     ]
 ]
 
-formula?: function [value] [to logic! attempt [load value]]
+formula?: function [value] [to logic! attempt [load/all value]]
 
 set-options: function [value] [
     lines: either value [split value "^/"] [copy []]
@@ -286,7 +286,7 @@ gen-flags: function [p] [
     if p/readonly [append out 'readonly]
     if p/calc [
         append out 'calc
-        append/only out load p/calc
+        append/only out load/all p/calc
     ]
     out
 ]
