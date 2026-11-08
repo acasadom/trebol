@@ -68,6 +68,7 @@ language/08-series
 language/09-text
 language/10-contexts
 language/11-parse
+language/12-tasks-and-network
 ```
 
 The second tutorial gives the shop its screens; the reference and the technical guides follow it.

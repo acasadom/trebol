@@ -9,15 +9,20 @@
 // - ```trebol-console blocks are typed into the console: `>>` (and `[    ` for
 //   more lines) is input, every other line is what must show, exactly. An
 //   expected line ending in `...` matches any line that starts the same way.
+//
+// The tutorial's parts supplier (examples/supplier.ts) runs while the pages do,
+// unless one already answers on its port.
 
-import { test } from 'node:test';
+import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
+import type { Server } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import type { ObjectCell } from '../src/core/index.ts';
 import { output, runSource, report } from '../src/host/index.ts';
 import { Repl, consoleHost, PROMPT, MORE } from '../tools/console.ts';
+import { startSupplier } from '../examples/supplier.ts';
 
 const DOCS = fileURLToPath(new URL('../docs/', import.meta.url));
 
@@ -65,6 +70,16 @@ async function typeIn(repl: Repl, code: string, where: string): Promise<void> {
   const ok = actual.length === expected.length && actual.every((a, i) => matches(a, expected[i]!));
   assert.ok(ok, `${where}: the console shows\n${actual.join('\n')}\nbut the page says\n${expected.join('\n')}`);
 }
+
+let supplier: Server | null = null;
+before(async () => {
+  try {
+    supplier = await startSupplier();
+  } catch (e) {
+    if ((e as { code?: string }).code !== 'EADDRINUSE') throw e;
+  }
+});
+after(() => supplier?.close());
 
 for (const page of pages(DOCS)) {
   const name = relative(DOCS, page);

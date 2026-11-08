@@ -1,0 +1,170 @@
+# 12. Tasks and the network
+
+The shop does not keep every part in a drawer. When a customer wants a tyre, the counter asks the parts supplier
+what it costs and whether there is one in stock — over the network, and the supplier takes a moment to answer.
+This page asks the supplier questions, sends it an order, and then does what a busy counter does: asks several
+questions at once, and keeps working while the answers come.
+
+The supplier is a small program that comes with Trebol and answers in JSON, as most services on the web do.
+Start it in a second terminal and leave it running:
+
+```sh
+npm run supplier
+```
+
+## Asking
+
+`fetch` reads what a web address answers. JSON comes back as Trebol values: an object is a map, a list is a
+block:
+
+```trebol-console
+>> fetch http://localhost:8089/parts/chain
+== #(part: "chain" price: 11.5 stock: 40)
+```
+
+The supplier sends its prices as plain numbers, which are not exact. The shop turns them into money as soon as
+they arrive:
+
+```trebol-console
+>> chain: fetch http://localhost:8089/parts/chain
+== #(part: "chain" price: 11.5 stock: 40)
+>> to money! chain/price
+== $11.50
+>> chain/stock > 0
+== true
+```
+
+While `fetch` waits for the answer, the line you typed seems to stop, as if Trebol were stuck. It is not: only
+that line waits. Below you will see what goes on meanwhile.
+
+## When the answer is no
+
+The supplier does not sell saddles, and says so with an HTTP error. For `fetch` that is an error like any other
+(page 7), so `try` catches it:
+
+```trebol-console
+>> error? answer: try [fetch http://localhost:8089/parts/saddle]
+== true
+>> answer/id
+== http
+>> answer/message
+== "HTTP 404 Not Found for http://localhost:8089/parts/saddle"
+```
+
+A network has more ways to fail than a supplier saying no: the supplier may be down, or slow. All of them are
+errors of the `access` type, so one `try` covers them. A function that answers `false` for anything that cannot
+be had, whatever the reason:
+
+```trebol
+supplier: http://localhost:8089/parts/
+
+in-stock?: function [part [word!]] [
+    answer: try [fetch join supplier part]
+    either error? answer [false] [answer/stock > 0]
+]
+```
+
+```trebol-console
+>> in-stock? 'chain
+== true
+>> in-stock? 'tyre
+== false
+>> in-stock? 'saddle
+== false
+```
+
+`join` puts the part after the address, and the result is still an address.
+
+## Sending
+
+`fetch/with` takes a block of options. With a `body`, it sends the body to the address instead of only asking: a
+map or a block goes as JSON. The supplier takes orders that way, and answers in how many days they arrive:
+
+```trebol-console
+>> fetch/with http://localhost:8089/orders [body: #(parts: [tyre tyre])]
+== #(accepted: true lines: 2 days: 2)
+```
+
+Another option, `timeout`, says how long to wait for an answer before giving up. Each answer of the supplier
+takes about a third of a second, so a tenth is too short:
+
+```trebol-console
+>> error? answer: try [fetch/with supplier [timeout: 0.1]]
+== true
+>> answer/message
+== "request to http://localhost:8089/parts/ timed out"
+```
+
+## Several things at once
+
+The counter needs the price of three parts. Asked one after another, that is three waits in a row. A **task**
+is a block that runs on its own: `spawn` starts one and gives back a handle for it at once, without waiting for
+it to finish. `wait` takes the handle, waits for the task, and gives its value:
+
+```trebol-console
+>> task: spawn [fetch http://localhost:8089/parts/bell]
+== #[handle!]
+>> print "the counter goes on"
+the counter goes on
+>> wait task
+== #(part: "bell" price: 3.25 stock: 12)
+```
+
+`wait` also takes a block of tasks, and gives a block of their values once all of them are done. So the three
+questions can be asked at the same time, and the three waits overlap:
+
+```trebol
+price-list: function [parts [block!]] [
+    tasks: collect [
+        foreach part parts [keep spawn compose [fetch join supplier (to-string part)]]
+    ]
+    wait tasks
+]
+```
+
+```trebol-console
+>> foreach p price-list [chain bell brake-pad] [print [p/part to money! p/price]]
+chain $11.50
+bell $3.25
+brake-pad $6.80
+```
+
+Each task runs a moment later, when `foreach` has already moved on to the next part — so a task that read the
+word `part` would find the last part, not its own. `compose` puts each part into its task's block while the
+loop is still on it: the task gets `"chain"`, not the word.
+
+Tasks take turns: while one waits for the network, the others run. That is how the counter keeps working while an
+answer is on its way, and how a screen stays alive while it loads its data — the second tutorial depends on it.
+
+## Later, and every so often
+
+`delay` runs a block once, after a while; `every` runs it again and again. The time is in seconds, or a
+`time!` such as `0:05`, five minutes. Both give a handle, and `cancel` stops it. `wait` with a number waits that many
+seconds, and lets the other tasks run meanwhile:
+
+```trebol-console
+>> reminder: delay 0.2 [print "Ada's bike is ready"]
+== #[handle!]
+>> wait 0.5
+Ada's bike is ready
+== none
+```
+
+A shop that checks the supplier's stock every so often, three times here, and then stops:
+
+```trebol-console
+>> checks: 0
+== 0
+>> ticker: every 0.1 [checks: checks + 1  print ["check" checks]  if checks = 3 [cancel ticker]]
+== #[handle!]
+>> wait 1
+check 1
+check 2
+check 3
+== none
+```
+
+## What's next
+
+Every example so far was typed into the console, or kept in one file. The next step splits a program into
+modules: the shop's prices in one file, its rules in another, each saying what it gives the rest.
