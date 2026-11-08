@@ -102,5 +102,27 @@ replace: function [
     target
 ]
 
+take: function [
+    "Removes the value at the head of a series and returns it; none if there is none."
+    series [series! none!]
+    /part "Takes that many values, as a series of the same type" length [integer!]
+    /last "Takes from the tail instead"
+    /deep "Copies the series inside what is taken"
+] [
+    if none? series [return none]
+    n: either part [max 0 length] [1]
+    if last [series: skip tail series negate n]
+    either part [
+        out: copy/part series n
+        remove/part series n
+        either deep [copy/deep out] [out]
+    ] [
+        if tail? series [return none]
+        v: first series
+        remove series
+        either all [deep series? :v] [copy/deep v] [:v]
+    ]
+]
+
 also: func ["Returns the first value, after evaluating the second." a [any-type!] b [any-type!]] [:a]
 `;
