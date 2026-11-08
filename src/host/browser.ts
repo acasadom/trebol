@@ -1441,6 +1441,17 @@ function lookupText(f: ObjectCell, v: Cell): string {
   return t !== null ? translate(t, host.rt) : form(v);
 }
 
+/** Where a readonly lookup's value links to, from its `links` map, or null to show it as text. */
+function lookupHref(f: ObjectCell, v: Cell): string | null {
+  const links = get(f, 'links');
+  if (!flag(f, 'readonly') || links.t !== K.Map) return null;
+  const to = mapAt(links as MapCell, form(v));
+  if (to === null) return null;
+  if (to.t === K.LitWord) return screenHref({ ...to, t: K.Word } as Cell);
+  if (to.t === K.LitPath) return screenHref({ ...to, t: K.Path } as Cell);
+  return screenHref(to) ?? (to.t === K.Url || to.t === K.File || to.t === K.String ? form(to) : null);
+}
+
 function buildLookup(face: ObjectCell, m: Mounted): HTMLElement {
   const id = `tb-${nextId++}`;
   const wrap = el('div', 'tb-field');
@@ -1501,18 +1512,22 @@ function syncLookup(m: Mounted, err: string | null): void {
   const readonly = flag(f, 'readonly');
   const off = flag(f, 'disabled');
   const values = lookupValues(f);
+  // readonly values with a link are shown as chips, so that each one is a real link
+  const chips = many || values.some(v => lookupHref(f, v) !== null);
   input.readOnly = readonly;
   input.disabled = off;
-  input.hidden = many && readonly && values.length > 0;
+  input.hidden = chips && readonly && values.length > 0;
   input.setAttribute('aria-required', required(f) ? 'true' : 'false');
   input.setAttribute('aria-invalid', err !== null ? 'true' : 'false');
   const hint = str(f, 'hint');
   if (hint !== null) input.placeholder = hint;
   m.error!.textContent = err ?? '';
-  if (many) {
+  if (chips) {
     m.box!.replaceChildren(...values.map((v, i) => {
       const li = el('li', 'tb-lookup-chip');
-      const shown = el('span');
+      const href = lookupHref(f, v);
+      const shown = el(href !== null ? 'a' : 'span', href !== null ? 'tb-link' : '');
+      if (shown instanceof HTMLAnchorElement) shown.href = href!;
       shown.textContent = lookupText(f, v);
       li.append(shown);
       if (!readonly && !off) {
@@ -1529,9 +1544,11 @@ function syncLookup(m: Mounted, err: string | null): void {
       }
       return li;
     }));
-  } else if (document.activeElement !== input) {
+  } else {
+    // a single value loses its chip when it stops being readonly or linked
+    m.box!.replaceChildren();
     const want = values.map(v => lookupText(f, v)).join('');
-    if (input.value !== want) input.value = want;
+    if (document.activeElement !== input && input.value !== want) input.value = want;
   }
   if (lookup?.m === m) renderLookup();
 }

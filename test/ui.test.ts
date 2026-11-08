@@ -857,6 +857,20 @@ test('a lookup keeps what was chosen, and only the answer to the last search', a
   assert.equal(r, '[one "This field is required" ["a"] 2 "1" "Ana" none ["7" "2"] "Luis" ["2"] none [one "1" many none]]');
 });
 
+test('a lookup takes the screens its values link to, also as a column of rows', async () => {
+  const r = await ev(`
+    root: view [form [
+        lookup who "Who" readonly links #("ada" client/ada)
+        rows people "People" readonly [lookup who "Who" links #("bob" client/bob)]
+    ]]
+    fs: select first root/pane 'pane
+    w: fs/1  p: fs/2
+    p/value: [#(who: "bob")]  ui-rows p
+    g: first select first p/pane 'pane
+    reduce [select w/links "ada" select g/links "bob" g/readonly g/value]`);
+  assert.equal(r, '[client/ada client/bob true "bob"]');
+});
+
 test('a lookup drops what a search answers once the user has typed on, and works with no on-search', async () => {
   const r = await ev(`
     root: view [form [

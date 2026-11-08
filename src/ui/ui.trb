@@ -49,6 +49,7 @@ face: make object! [
     menu: none          ; context menu (or the menu a button opens): a block of menu items; on-menu runs
     options: none       ; choices of a choice or radio; what a lookup's search found
     known: none         ; a lookup: what each value shows as, a map; a value not in it shows as itself
+    links: none         ; a lookup: the screen each value links to when readonly, a map
     query: none         ; a lookup: the text last searched for
     currency: none      ; a money field's currency code: EUR
     calc: none          ; a formula: the value comes from it and the user cannot change it
@@ -115,7 +116,7 @@ aligns: [left center right spread]
 flags: [fill fit hidden disabled readonly inert narrow-only wide-only linked drag drop reorder multiple]
 simple-rules: [required email url integer]
 letter: charset [#"a" - #"z" #"A" - #"Z"]
-rule-words: [min max length pattern match check check-async calc width pad gap menu accept known]
+rule-words: [min max length pattern match check check-async calc width pad gap menu accept known links]
 
 ; Words that never name a field. email, url and integer are rules too,
 ; but also common field names, so the first word after an input style names it.
@@ -235,6 +236,7 @@ build-faces: function [
         | 'pattern set b block! (add-rule f reduce ['pattern b])
         | 'accept set b block! (f/accept: b)
         | 'known set v map! (f/known: v)
+        | 'links set v map! (f/links: v)
         | 'match set w word! (add-rule f reduce ['match w])
         | 'check set b block! (add-rule f reduce ['check b])
         | 'check-async set b block! (add-rule f reduce ['check-async b])

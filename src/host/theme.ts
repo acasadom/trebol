@@ -777,6 +777,7 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
 .tb-lookup .tb-input { flex: 1; min-width: 8em; width: auto; }
 .tb-lookup-chosen { list-style: none; margin: 0; padding: 0; display: contents; }
 .tb-lookup-chip { display: inline-flex; align-items: center; gap: var(--tb-space-1); min-height: 32px; padding: 0 var(--tb-space-1) 0 var(--tb-space-3); border: var(--tb-line) solid var(--tb-border); border-radius: var(--tb-radius); background: var(--tb-surface); }
+.tb-lookup-chip:not(:has(button)) { padding-right: var(--tb-space-3); }
 .tb-lookup-list {
   position: fixed;
   inset: auto;
