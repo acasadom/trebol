@@ -137,5 +137,5 @@ results, which is how you turn a template into data:
 
 ## What's next
 
-The shop can price a part and an hour of work. Next it needs to decide and repeat — charge the rush fee
-only when a bike is due tomorrow, add up every line of an order — which is the next step.
+The shop can price a part and an hour of work. [Next](04-deciding-and-repeating) it learns to decide and
+to repeat: charge the rush fee only when a bike is due tomorrow, and add up every line of an order.

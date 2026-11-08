@@ -60,6 +60,7 @@ suite, so what you read is what Trebol does.
 language/01-getting-started
 language/02-values
 language/03-words-and-blocks
+language/04-deciding-and-repeating
 ```
 
 The second tutorial gives the shop its screens; the reference and the technical guides follow it.
