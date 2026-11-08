@@ -1159,7 +1159,9 @@ function buildInput(face: ObjectCell, style: string, m: Mounted): HTMLElement {
     void fire('ui-input', face, typed === '' ? NONE : string(typed));
   });
   // an amount shows formatted, and is edited as a plain number of the active language
-  if (style === 'money') input.addEventListener('focus', () => { input.value = editLocal(get(face, 'value'), activeLanguage(host.rt)); });
+  if (style === 'money') input.addEventListener('focus', () => {
+    if (!flag(face, 'readonly')) input.value = editLocal(get(face, 'value'), activeLanguage(host.rt));
+  });
   input.addEventListener('blur', () => void fire('ui-blur', face));
   const iconWord = style === 'area' || style === 'choice' ? null : iconName(face);
   const svg = iconWord !== null ? icon(iconWord) : null;
@@ -2827,7 +2829,8 @@ function sync(m: Mounted): void {
       }
       const want = v.t === K.None ? str(f, 'typed') ?? '' : style === 'money' || style === 'date' ? display(v) : form(v);
       // never fight the user's typing: only push values that differ from what code set
-      if (document.activeElement !== m.input && m.input.value !== want) m.input.value = want;
+      // (a read-only field has no typing to fight, so it shows a new value even with the focus)
+      if ((flag(f, 'readonly') || document.activeElement !== m.input) && m.input.value !== want) m.input.value = want;
       const hint = str(f, 'hint');
       if (m.input instanceof HTMLSelectElement) {
         const select = m.input;
