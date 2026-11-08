@@ -35,8 +35,13 @@ Square brackets make a **block**: a list of values, kept exactly as written. Her
 ```
 
 Look at what happened to `chain`. Outside a block it was an error; inside, Trebol did not try to look it up.
-**Nothing inside a block is evaluated.** The block holds six values — three words and three amounts — and
-the words are just words, as data:
+**Nothing inside a block is evaluated.** The block holds six values: three words — `chain`, `tyre`,
+`brake-pads` — and three amounts.
+
+That sentence counts words as values, and they are: a word is a value of type `word!`, just as `$12.50` is
+a value of type `money!`. What makes a word special is that it can also *name* another value, as
+`labour-rate` names `$30.00`. Outside a block, Trebol replaces a word by the value it names; inside a block,
+the word stays a word:
 
 ```trebol-console
 >> length? prices
@@ -106,8 +111,9 @@ Here is the shop's rule for 45 minutes of work, kept in a block:
 == [labour-rate * 45 / 60]
 ```
 
-It is a block like the price list: five values, nothing evaluated. Its first value is a word, its second
-another word — `*` is a word too. But it is also a piece of Trebol, and `do` runs it:
+It is a block like the price list, with nothing evaluated. It holds five values: the word `labour-rate`,
+the word `*`, the number `45`, the word `/` and the number `60` — operators are words too. But it is also a
+piece of Trebol, and `do` runs it:
 
 ```trebol-console
 >> do labour
