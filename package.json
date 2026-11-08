@@ -21,7 +21,7 @@
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm test",
     "mold": "node tools/mold.ts",
-    "trb": "node tools/run.ts",
+    "trb": "node --disable-warning=ExperimentalWarning tools/cli.ts",
     "dev": "node tools/cli.ts dev --api examples/api.ts"
   },
   "devDependencies": {
