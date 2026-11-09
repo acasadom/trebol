@@ -9,6 +9,17 @@
   // a live page calls this from its <head>, so its first paint is already right
   window.trebolLiveScheme = root => { root.dataset.tbScheme = scheme(); };
   const frames = () => Array.from(document.querySelectorAll('iframe.trebol-live'));
+  // a page opened as a file cannot run them: say how to see them instead of showing an empty frame
+  if (location.protocol === 'file:') {
+    for (const f of frames()) {
+      const note = document.createElement('p');
+      note.className = 'trebol-live-file';
+      note.textContent = 'This example runs live when the documentation is served, not opened as a file. '
+        + 'In the trebol folder run: npm run docs:serve, then open http://localhost:8000/';
+      f.parentElement.replaceWith(note);
+    }
+    return;
+  }
   const repaint = () => {
     for (const f of frames()) if (f.contentDocument) window.trebolLiveScheme(f.contentDocument.documentElement);
   };
