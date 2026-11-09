@@ -380,6 +380,7 @@ view: function [
 ] [
     root: either block? spec [layout spec] [spec]
     attach root root none
+    set 'page root
     entered: copy []
     foreach f all-faces root [
         if f/style = 'screens [
@@ -400,6 +401,7 @@ view: function [
 ; of the screen name and its arguments as strings, as they come in the link.
 
 router: none        ; the screens face of the page
+page: none          ; the root face of the view on show
 
 ; The [name title args body] of the screen a route names, or none.
 find-screen: function [f route [block!] /local n t a b] [
@@ -542,6 +544,8 @@ set-language: func [
     language [word! string!]
 ] [
     i18n/language: either string? language [to word! language] [language]
+    ; the messages under the fields were written in the language before
+    if page [foreach f all-faces page [refresh-form f]]
     repaint
 ]
 

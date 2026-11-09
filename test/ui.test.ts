@@ -762,6 +762,23 @@ test('date fields keep a date!, with min, max and required', async () => {
   assert.equal(r, '[date due [3-Nov-2026 none] "Debe ser como mínimo 1/1/2026" "Debe ser como máximo 31/12/2026" "Este campo es obligatorio"]');
 });
 
+test('a message under a field changes with the language', async () => {
+  const r = await ev(`
+    root: view [form [field customer "Customer" required  money price "Price" min 10  field code "Code"]]
+    fs: select first root/pane 'pane
+    ui-blur fs/1
+    ui-input fs/2 "3"  ui-blur fs/2
+    ui-input fs/3 "A1"  ui-blur fs/3
+    field-error first root/pane 'code "Taken"
+    en: reduce [fs/1/error fs/2/error fs/3/error]
+    set-language 'es
+    es: reduce [fs/1/error fs/2/error fs/3/error]
+    set-language 'en
+    reduce [en es]`);
+  // what a server said stays as it said it
+  assert.equal(r, '[["This field is required" "Must be at least 10" "Taken"] ["Este campo es obligatorio" "Debe ser como mínimo 10" "Taken"]]');
+});
+
 test('text that is not a number, amount or date stays, with its message', async () => {
   const r = await ev(`
     root: view [form [number n "N"  money m "M"  date d "D"  field email "E" date]]
