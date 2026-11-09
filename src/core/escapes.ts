@@ -66,6 +66,9 @@ export function encodeChar(cp: number, quote: '"' | '}', inBraces = false): stri
     case 127: return '^~';
   }
   if (quote === '"' && cp === 0x22) return '^"';
+  // ^A..^Z, ^[ ^\ ^] ^_ as R3 and Red write them; 30 has no short form (^^ is the caret)
+  if (cp >= 1 && cp <= 26) return '^' + String.fromCharCode(64 + cp);
+  if (cp === 27 || cp === 28 || cp === 29 || cp === 31) return '^' + String.fromCharCode(64 + cp);
   if (cp < 32) return '^(' + cp.toString(16).toUpperCase().padStart(2, '0') + ')';
   return String.fromCodePoint(cp);
 }

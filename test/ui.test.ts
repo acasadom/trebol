@@ -389,7 +389,7 @@ describe('components', () => {
       w: view [button "b" [plain: event]]
       ui-click first w/pane
       reduce [log btn/shortcut length? v/pane plain]`);
-    assert.equal(r, '[[focus "Ada" true "Ada" [#"^(0D)" false true] [left true false] #"z"] "Ctrl+S" 1 none]');
+    assert.equal(r, '[[focus "Ada" true "Ada" [#"^M" false true] [left true false] #"z"] "Ctrl+S" 1 none]');
   });
 
   test('menus follow Red: label and word, --- and submenus; on-menu gets event/picked and the row', async () => {
