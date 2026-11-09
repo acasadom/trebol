@@ -241,6 +241,8 @@ body {
 .tb-column { display: flex; flex-direction: column; gap: var(--tb-space-4); min-width: 0; }
 .tb-screens, .tb-screen { display: flex; flex-direction: column; gap: var(--tb-space-4); min-width: 0; }
 .tb-screen:focus { outline: none; }
+/* entering a screen focuses its title for screen readers; it is not a control, so no ring */
+.tb-screen :is(h1, h2)[tabindex="-1"]:focus { outline: none; }
 .tb-screens[aria-busy] { cursor: progress; }
 .tb-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--tb-space-3); }
 .tb-row:where(:not(.tb-top, .tb-middle, .tb-bottom)):has(> .tb-field) { align-items: flex-end; }

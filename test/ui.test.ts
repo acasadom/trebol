@@ -692,6 +692,10 @@ describe('theme', () => {
     assert.match(css, /@container \(max-width: 420px\) \{[^@]*> \.tb-field > \.tb-label[^}]*grid-column: 1 \/ -1;/);
   });
 
+  test('the title focused on entering a screen paints no focus ring', () => {
+    assert.ok(themeCss(DEFAULT_THEME).includes('.tb-screen :is(h1, h2)[tabindex="-1"]:focus { outline: none; }'));
+  });
+
   test('in auto mode an embedding page can force light or dark', () => {
     const css = themeCss(DEFAULT_THEME);
     assert.ok(css.includes(':root:not([data-tb-scheme="light"])'));
