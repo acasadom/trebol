@@ -1,0 +1,5 @@
+Trebol [title: "A plain script, run by do"]
+
+runs: either value? 'runs [runs + 1] [1]
+greeting: "hello"
+runs * 10

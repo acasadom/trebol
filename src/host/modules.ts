@@ -3,16 +3,21 @@
 // `import %clients.trb` loads a file once per runtime and evaluates it as an
 // object (its top-level set-words are its fields), resolving the path
 // against the file that imports it. The words listed in the module header's
-// `exports:` are also set in the user context:
+// `exports:` are also set in the user context, and so is every top-level
+// set-word marked with `export` (as R3):
 //
 //   Trebol [exports: [load-clients]]
+//   export save-client: func [...] [...]
+//
+// `do %file` runs a script in the user context each time; `read` gives a
+// file's text and `load %file` its values.
 //
 // Local storage keeps values molded with mold/all, so they load back exact.
 
 import {
   K, NONE, UNSET, native, value, text, load, mold, string, context, collectSetWords, bindSeries, bindSelf,
-  copyDeep, setWord, currentFile, throwError, makeError, scriptStart, LoadError, T, canon, intern,
-  type Cell, type BlockCell, type StringCell, type ObjectCell, type Runtime, type WordCell,
+  copyDeep, setWord, getWord, splice, currentFile, throwError, makeError, scriptStart, LoadError, T, canon, intern,
+  type Cell, type BlockCell, type StringCell, type ObjectCell, type Runtime, type WordCell, type Series, type Task,
 } from '../core/index.ts';
 
 export interface Loader {
@@ -54,6 +59,90 @@ function resolve(base: string, from: string | null, path: string): string {
 }
 
 const EXPORTS = canon(intern('exports'));
+const EXPORT = canon(intern('export'));
+const TYPE = canon(intern('type'));
+const MODULE = canon(intern('module'));
+
+/** The value after `name:` in a script header, or null. */
+function headerField(header: BlockCell | null, name: number): Cell | null {
+  if (header === null) return null;
+  const hd = header.s.data;
+  for (let i = header.i; i + 1 < hd.length; i++) {
+    const c = hd[i]!;
+    if (c.t === K.SetWord && canon(c.sym) === name) return hd[i + 1]!;
+  }
+  return null;
+}
+
+/** Takes the `export` marks out of a module body, giving the words they export. */
+function takeExports(body: Series<Cell>): WordCell[] {
+  const out: WordCell[] = [];
+  const d = body.data;
+  for (let i = 0; i < d.length; i++) {
+    const c = d[i]!;
+    if (c.t !== K.Word || canon(c.sym) !== EXPORT) continue;
+    const next = d[i + 1];
+    if (next?.t === K.SetWord) {
+      out.push({ t: K.Word, sym: next.sym, bind: null });
+      splice(body, i, 1, []);
+      i--;
+    } else if (next?.t === K.Block) {
+      for (const w of next.s.data) if (w.t === K.Word) out.push(w);
+      splice(body, i, 2, []);
+      i--;
+    }
+  }
+  return out;
+}
+
+function hrefOf(t: Task, loader: Loader, path: Cell): string {
+  return resolve(loader.base, currentFile(t), text(path as StringCell));
+}
+
+function readText(loader: Loader, href: string, path: Cell): Promise<Cell> {
+  return loader.read(href).then(src => string(src), (e: unknown) => {
+    throw makeError('access', 'cannot-open', `cannot open ${mold(path)}: ${(e as Error).message}`);
+  });
+}
+
+native('read', '["The text of a file or a web address." source [file! url!]]', (t, f, v) => {
+  if (f.phase === 1) return value(v!);
+  const loader = loaders.get(t.rt);
+  if (loader === undefined) return throwError('access', 'no-loader', 'this host cannot read files');
+  f.phase = 1;
+  return { k: 'await', p: readText(loader, hrefOf(t, loader, f.args[0]!), f.args[0]!) };
+});
+
+interface DoFileState { href: string }
+
+native('do-file', '["Runs the script in a file, as do does; a module is imported." file [file! url!]]', (t, f, v) => {
+  if (f.phase === 2) return value(v!);
+  const loader = loaders.get(t.rt);
+  if (loader === undefined) return throwError('access', 'no-loader', 'this host cannot read files');
+  if (f.phase === 0) {
+    const href = hrefOf(t, loader, f.args[0]!);
+    f.data = { href } satisfies DoFileState;
+    f.phase = 1;
+    return { k: 'await', p: readText(loader, href, f.args[0]!) };
+  }
+  const { href } = f.data as DoFileState;
+  let code: BlockCell;
+  try {
+    code = load(text(v as StringCell), { file: href });
+  } catch (e) {
+    // LoadError is the one exception on the normal path; it becomes a value here.
+    if (!(e instanceof LoadError)) throw e;
+    return throwError('syntax', 'load', e.message);
+  }
+  const { header, start } = scriptStart(code);
+  f.phase = 2;
+  const type = headerField(header, TYPE);
+  if (type !== null && type.t === K.Word && canon(type.sym) === MODULE) {
+    return { k: 'call', fn: getWord({ t: K.Word, sym: intern('import'), bind: t.rt.lib })!, args: [string(href)] };
+  }
+  bindSeries(code.s, t.rt.user, true);
+  return { k: 'do', s: code.s, i: start };
+});
 
 interface ImportState { href: string; entry: ModuleEntry; ctx: ReturnType<typeof context> | null; exports: WordCell[] }
 
@@ -63,7 +152,7 @@ native('import', '["Runs a module and gives its exports." source [file! url! str
   const mods = modules.get(rt);
   if (loader === undefined || mods === undefined) return throwError('access', 'no-loader', 'this host cannot load modules');
   if (f.phase === 0) {
-    const href = resolve(loader.base, currentFile(t), text(f.args[0] as StringCell));
+    const href = hrefOf(t, loader, f.args[0]!);
     const known = mods.get(href);
     if (known !== undefined) {
       if (known.obj !== null) return value(known.obj);
@@ -107,17 +196,10 @@ native('import', '["Runs a module and gives its exports." source [file! url! str
       return step;
     }
     const { header, start } = scriptStart(code);
-    if (header !== null) {
-      const hd = header.s.data;
-      for (let i = 0; i + 1 < hd.length; i++) {
-        const c = hd[i]!;
-        const next = hd[i + 1]!;
-        if (c.t === K.SetWord && canon(c.sym) === EXPORTS && next.t === K.Block) {
-          st.exports = next.s.data.filter(w => w.t === K.Word) as WordCell[];
-        }
-      }
-    }
+    const listed = headerField(header, EXPORTS);
+    if (listed !== null && listed.t === K.Block) st.exports = listed.s.data.filter(w => w.t === K.Word) as WordCell[];
     const body = copyDeep(code.s, start);
+    st.exports.push(...takeExports(body));
     const ctx = context();
     ctx.self = true;
     collectSetWords(body, 0, ctx);

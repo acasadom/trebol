@@ -13,7 +13,9 @@ import { registeredNatives, newTask, run, type Runtime, type RunResult } from '.
 import { makeError, errorMessage } from './errors.ts';
 import { OPS } from './natives/define.ts';
 import './natives/control.ts';
-import './natives/data.ts';
+import { scriptStart } from './natives/data.ts';
+
+export { scriptStart };
 import './natives/math.ts';
 import './natives/series.ts';
 import './natives/text.ts';
@@ -56,20 +58,6 @@ export function runSync(rt: Runtime, code: BlockCell): RunResult {
     return { k: 'error', e: makeError('script', 'no-await', 'cannot wait in synchronous evaluation') };
   }
   return r;
-}
-
-const TREBOL = canon(intern('trebol'));
-
-/**
- * Where the code of a script starts: after a `Trebol [...]` header if it has
- * one. Returns the header block too (null without one).
- */
-export function scriptStart(code: BlockCell): { header: BlockCell | null; start: number } {
-  const d = code.s.data;
-  const head = d[code.i];
-  const hdr = d[code.i + 1];
-  if (head?.t === K.Word && canon(head.sym) === TREBOL && hdr?.t === K.Block) return { header: hdr, start: code.i + 2 };
-  return { header: null, start: code.i };
 }
 
 /** Loads source into the user context and runs it to completion. */

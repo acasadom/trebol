@@ -21,7 +21,18 @@ export function consoleHost(dir = process.cwd()): Host {
   return startHost({
     loader: {
       base: pathToFileURL(dir + '/').href,
-      read: async href => (href.startsWith('file:') ? readFile(fileURLToPath(href), 'utf8') : (await fetch(href)).text()),
+      read: async href => {
+        if (href.startsWith('file:')) {
+          try {
+            return await readFile(fileURLToPath(href), 'utf8');
+          } catch (e) {
+            throw new Error((e as NodeJS.ErrnoException).code === 'ENOENT' ? 'no such file' : (e as Error).message);
+          }
+        }
+        const res = await fetch(href);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.text();
+      },
     },
   });
 }

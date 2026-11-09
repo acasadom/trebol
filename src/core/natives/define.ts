@@ -9,7 +9,9 @@
 import { K } from '../kinds.ts';
 import { load } from '../lexer.ts';
 import { parseSpec } from '../func.ts';
-import { registerNative, throwError, type NativeFn, type Step } from '../eval.ts';
+import { registerNative, throwError, type NativeFn, type Step, type Task } from '../eval.ts';
+import { ctxFind } from '../ctx.ts';
+import { intern } from '../symbols.ts';
 import type { Cell, BlockCell } from '../values.ts';
 
 export function native(name: string, spec: string, fn: NativeFn): void {
@@ -39,4 +41,15 @@ export function truthy(c: Cell): boolean {
 /** `do` this block and come back. */
 export function doBlock(b: BlockCell): Step {
   return { k: 'do', s: b.s, i: b.i };
+}
+
+/**
+ * Calls a function the host sets in lib, such as `read` or `do-file`: the core
+ * cannot reach files or the network itself. An error when this host has none.
+ */
+export function hostCall(t: Task, name: string, args: Cell[], what: string): Step {
+  const i = ctxFind(t.rt.lib, intern(name));
+  const fn = i < 0 ? undefined : t.rt.lib.vals[i];
+  if (fn === undefined || (fn.t !== K.Native && fn.t !== K.Function)) return throwError('access', 'no-host', `this host cannot ${what}`);
+  return { k: 'call', fn, args };
 }

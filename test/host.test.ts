@@ -242,6 +242,26 @@ describe('modules and storage', () => {
     await assert.rejects(runSource(host, 'import %missing.trb', 'x.trb'), (e: ObjectCell) => form(errorField(e, 'id')) === 'import');
   });
 
+  test('export marks words in the module body, as R3', async () => {
+    const host = fsHost();
+    const v = await runSource(host, 'm: import %marked.trb reduce [double 2 triple 2 m/hidden value? \'hidden words-of m]', 'x.trb');
+    assert.equal(mold(v), '[4 6 7 false [double triple hidden]]');
+  });
+
+  test('do runs a script file each time; a module is imported', async () => {
+    const host = fsHost();
+    const v = await runSource(host, 'a: do %script.trb b: do %script.trb m: do %marked.trb reduce [a b greeting same? m import %marked.trb]', 'x.trb');
+    assert.equal(mold(v), '[10 20 "hello" true]');
+    await assert.rejects(runSource(host, 'do %nothere.trb', 'x.trb'), (e: ObjectCell) => form(errorField(e, 'id')) === 'cannot-open');
+  });
+
+  test('read gives the text of a file, load its values without the header', async () => {
+    const host = fsHost();
+    assert.equal(mold(await runSource(host, 'copy/part read %script.trb 6', 'x.trb')), '"Trebol"');
+    assert.equal(mold(await runSource(host, 'first load %script.trb', 'x.trb')), 'runs:');
+    assert.equal(mold(await runSource(host, 'reduce [load {Trebol [title: "x"] 1 2} do "Trebol [] 5"]', 'x.trb')), '[[1 2] 5]');
+  });
+
   test('local storage keeps values exact', async () => {
     assert.equal(await ev('save-local "k" reduce [$1.10 30-Oct-2026 #(a: 1)] load-local "k"'), '[$1.10 30-Oct-2026 #(a: 1)]');
     assert.equal(await ev('remove-local "k" load-local "k"'), 'none');

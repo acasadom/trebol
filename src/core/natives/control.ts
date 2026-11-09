@@ -11,7 +11,7 @@ import { bindSeries, copyDeep, setWord } from '../ctx.ts';
 import { at } from '../series.ts';
 import { T, type Feed, type NativeFrame, type Thrown } from '../eval.ts';
 import { isEqual } from '../compare.ts';
-import { native, value, fail, truthy, doBlock } from './define.ts';
+import { native, value, fail, truthy, doBlock, hostCall } from './define.ts';
 import { loadUser } from './data.ts';
 import { makeError } from '../errors.ts';
 import { spell } from '../symbols.ts';
@@ -28,7 +28,7 @@ function caught(f: NativeFrame): Thrown | null {
 
 // --- evaluation ------------------------------------------------------------------
 
-native('do', '["Evaluates a block, or source text; gives the last value." value [any-type!] /next "Evaluates only the first expression of a block" position [word!] "Set to the block after it"]', (t, f, v) => {
+native('do', '["Evaluates a block, source text or a script file; gives the last value." value [any-type!] /next "Evaluates only the first expression of a block" position [word!] "Set to the block after it"]', (t, f, v) => {
   if (f.phase === 1) return value(v!);
   let x = f.args[0]!;
   if (f.args[1] === TRUE) {
@@ -66,6 +66,10 @@ native('do', '["Evaluates a block, or source text; gives the last value." value 
       f.phase = 1;
       return doBlock(b.v as BlockCell);
     }
+    case K.File: case K.Url:
+      // as R3: runs the script in that file; the host reads it
+      f.phase = 1;
+      return hostCall(t, 'do-file', [x], 'read files');
     case K.Error:
       return { k: 'throw', e: { kind: T.Error, v: x, name: null } };
   }

@@ -2,7 +2,8 @@
 // series natives the core needs before the full series set arrives.
 
 import { K, isAnyBlock, isAnyString, isAnyWord, kindName, type Kind } from '../kinds.ts';
-import { intern, spell } from '../symbols.ts';
+import { intern, spell, canon } from '../symbols.ts';
+import { splice } from '../series.ts';
 import * as I64 from '../int64.ts';
 import {
   ownMeta,
@@ -16,9 +17,31 @@ import { load, LoadError } from '../lexer.ts';
 import { mold, form } from '../mold.ts';
 import { pick, poke, blockFind } from '../access.ts';
 import type { Runtime, Step } from '../eval.ts';
-import { native, value, fail, doBlock } from './define.ts';
+import { native, value, fail, doBlock, hostCall } from './define.ts';
 
 /** Loads a string into a block bound to the user context. */
+const TREBOL = canon(intern('trebol'));
+
+/**
+ * Where the code of a script starts: after a `Trebol [...]` header if it has
+ * one. Returns the header block too (null without one).
+ */
+export function scriptStart(code: BlockCell): { header: BlockCell | null; start: number } {
+  const d = code.s.data;
+  const head = d[code.i];
+  const hdr = d[code.i + 1];
+  if (head?.t === K.Word && canon(head.sym) === TREBOL && hdr?.t === K.Block) return { header: hdr, start: code.i + 2 };
+  return { header: null, start: code.i };
+}
+
+/** Takes a script header off freshly loaded code, as R3's load and do. */
+function dropHeader(b: BlockCell): void {
+  const { start } = scriptStart(b);
+  if (start === b.i) return;
+  splice(b.s, b.i, start - b.i, []);
+  if (b.s.nl !== undefined && b.s.nl.length > b.i) b.s.nl[b.i] = false;
+}
+
 export function loadUser(rt: Runtime, src: StringCell): Step {
   let b: BlockCell;
   try {
@@ -28,13 +51,19 @@ export function loadUser(rt: Runtime, src: StringCell): Step {
     if (e instanceof LoadError) return fail('syntax', 'load', e.message);
     throw e;
   }
+  dropHeader(b);
   bindSeries(b.s, rt.user, true);
   return value(b);
 }
 
 // As in R3 and Red, text holding one value loads as that value; /all always gives a block.
-native('load', '["Reads Trebol source text into values: the value itself, or a block when there are several." source [string!] /all "Gives a block even for one value"]', (t, f) => {
-  const r = loadUser(t.rt, f.args[0] as StringCell);
+native('load', '["Reads Trebol source text, or a file of it, into values: the value itself, or a block when there are several." source [string! file! url!] /all "Gives a block even for one value"]', (t, f, v) => {
+  const src = f.args[0]!;
+  if (f.phase === 0 && src.t !== K.String) {
+    f.phase = 1;
+    return hostCall(t, 'read', [src], 'read files');
+  }
+  const r = loadUser(t.rt, (f.phase === 1 ? v : src) as StringCell);
   if (r.k !== 'value' || f.args[1] === TRUE) return r;
   const b = r.v as BlockCell;
   return b.s.data.length === 1 ? value(b.s.data[0]!) : r;

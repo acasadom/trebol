@@ -1,0 +1,6 @@
+Trebol [type: module title: "Exports marked in the body"]
+
+export double: func [n] [n * 2]
+export [triple]
+triple: func [n] [n * 3]
+hidden: 7
