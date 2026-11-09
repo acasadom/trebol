@@ -239,11 +239,11 @@ export function toJson(v: Cell, seen: Set<unknown> = new Set()): string {
   return 'null';
 }
 
-native('load-json', '[source [string! binary!]]', (_t, f) => {
+native('load-json', '["Reads JSON text into Trebol values: objects as maps, lists as blocks." source [string! binary!]]', (_t, f) => {
   const x = f.args[0]!;
   const src = x.t === K.Binary ? new TextDecoder().decode(new Uint8Array(x.s.data.slice(x.i))) : text(x as StringCell);
   const r = parseJson(src);
   return typeof r === 'string' ? fail('syntax', 'json', r) : value(r);
 });
 
-native('to-json', '[value [any-type!]]', (_t, f) => value(string(toJson(f.args[0]!))));
+native('to-json', '["Writes a value as JSON text." value [any-type!]]', (_t, f) => value(string(toJson(f.args[0]!))));

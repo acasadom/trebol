@@ -184,13 +184,13 @@ export function dateDiff(d: DateVal, e: DateVal): number {
 
 const NUMERIC = '[number! money! time! pair! date!]';
 
-native('add', `[a ${NUMERIC} b ${NUMERIC}]`, (_t, f) => arith(A.Add, f.args[0]!, f.args[1]!));
-native('subtract', `[a ${NUMERIC} b ${NUMERIC}]`, (_t, f) => arith(A.Sub, f.args[0]!, f.args[1]!));
-native('multiply', `[a ${NUMERIC} b ${NUMERIC}]`, (_t, f) => arith(A.Mul, f.args[0]!, f.args[1]!));
-native('divide', `[a ${NUMERIC} b ${NUMERIC}]`, (_t, f) => arith(A.Div, f.args[0]!, f.args[1]!));
-native('remainder', `[a ${NUMERIC} b ${NUMERIC}]`, (_t, f) => arith(A.Rem, f.args[0]!, f.args[1]!));
+native('add', `["The sum of two values." a ${NUMERIC} b ${NUMERIC}]`, (_t, f) => arith(A.Add, f.args[0]!, f.args[1]!));
+native('subtract', `["The difference of two values." a ${NUMERIC} b ${NUMERIC}]`, (_t, f) => arith(A.Sub, f.args[0]!, f.args[1]!));
+native('multiply', `["The product of two values." a ${NUMERIC} b ${NUMERIC}]`, (_t, f) => arith(A.Mul, f.args[0]!, f.args[1]!));
+native('divide', `["The first value divided by the second." a ${NUMERIC} b ${NUMERIC}]`, (_t, f) => arith(A.Div, f.args[0]!, f.args[1]!));
+native('remainder', `["What is left after dividing the first value by the second." a ${NUMERIC} b ${NUMERIC}]`, (_t, f) => arith(A.Rem, f.args[0]!, f.args[1]!));
 
-native('negate', `[value ${NUMERIC}]`, (_t, f) => {
+native('negate', `["The value with its sign changed." value ${NUMERIC}]`, (_t, f) => {
   const a = f.args[0]!;
   switch (a.t) {
     case K.Integer: {
@@ -211,7 +211,7 @@ native('negate', `[value ${NUMERIC}]`, (_t, f) => {
 // from zero; an integer scale gives an integer, a money! on either side money.
 const ROUNDINGS = ['even', 'down', 'half-down', 'floor', 'ceiling', 'half-ceiling'] as const;
 
-native('round', '[value [number! money! time!] /to scale [number! money! time!] /even /down /half-down /floor /ceiling /half-ceiling]', (_t, f) => {
+native('round', '["The value rounded to the nearest whole number, or to a multiple of a scale." value [number! money! time!] /to scale [number! money! time!] /even /down /half-down /floor /ceiling /half-ceiling]', (_t, f) => {
   const a = f.args[0]!;
   const to = f.args[1] === TRUE;
   const mode: Rounding = ROUNDINGS.find((_m, i) => f.args[3 + i] === TRUE) ?? 'half-away';
@@ -233,7 +233,7 @@ native('round', '[value [number! money! time!] /to scale [number! money! time!] 
   return value(a.t === K.Percent ? percent(decToNumber(r)) : decimal(decToNumber(r)));
 });
 
-native('abs', `[value ${NUMERIC}]`, (_t, f) => {
+native('abs', `["The value without its sign." value ${NUMERIC}]`, (_t, f) => {
   const a = f.args[0]!;
   switch (a.t) {
     case K.Integer: {
@@ -250,7 +250,7 @@ native('abs', `[value ${NUMERIC}]`, (_t, f) => {
   return fail('script', 'bad-math', `cannot take abs of ${kindName(a.t)}`);
 });
 
-native('zero?', `[value ${NUMERIC}]`, (_t, f) => {
+native('zero?', `["True if the value is zero." value ${NUMERIC}]`, (_t, f) => {
   const a = f.args[0]!;
   switch (a.t) {
     case K.Integer: return value(logic(I64.isZero(a.v)));
@@ -261,8 +261,8 @@ native('zero?', `[value ${NUMERIC}]`, (_t, f) => {
   return value(logic(false));
 });
 
-native('even?', '[value [integer!]]', (_t, f) => value(logic(I64.isZero(I64.rem((f.args[0] as { v: I64.I64 }).v, 2)!))));
-native('odd?', '[value [integer!]]', (_t, f) => value(logic(!I64.isZero(I64.rem((f.args[0] as { v: I64.I64 }).v, 2)!))));
+native('even?', '["True if the integer is even." value [integer!]]', (_t, f) => value(logic(I64.isZero(I64.rem((f.args[0] as { v: I64.I64 }).v, 2)!))));
+native('odd?', '["True if the integer is odd." value [integer!]]', (_t, f) => value(logic(!I64.isZero(I64.rem((f.args[0] as { v: I64.I64 }).v, 2)!))));
 
 native('sign?', '["Gives -1, 0 or 1 by the sign of the value." value [number! money! time!]]', (_t, f) => {
   return value(integer(signOf(f.args[0]!)));
@@ -415,10 +415,10 @@ native('random', '["A random value: an integer from 1 to it, a decimal up to it,
 
 // --- comparison ------------------------------------------------------------------
 
-native('equal?', '[a [any-type!] b [any-type!]]', (_t, f) => value(logic(isEqual(f.args[0]!, f.args[1]!))));
-native('not-equal?', '[a [any-type!] b [any-type!]]', (_t, f) => value(logic(!isEqual(f.args[0]!, f.args[1]!))));
-native('strict-equal?', '[a [any-type!] b [any-type!]]', (_t, f) => value(logic(strictEqual(f.args[0]!, f.args[1]!))));
-native('same?', '[a [any-type!] b [any-type!]]', (_t, f) => {
+native('equal?', '["True if the values are equal." a [any-type!] b [any-type!]]', (_t, f) => value(logic(isEqual(f.args[0]!, f.args[1]!))));
+native('not-equal?', '["True if the values are not equal." a [any-type!] b [any-type!]]', (_t, f) => value(logic(!isEqual(f.args[0]!, f.args[1]!))));
+native('strict-equal?', '["True if the values are equal and of the same type and case." a [any-type!] b [any-type!]]', (_t, f) => value(logic(strictEqual(f.args[0]!, f.args[1]!))));
+native('same?', '["True if the values are the very same: the same series at the same position, the same object." a [any-type!] b [any-type!]]', (_t, f) => {
   const a = f.args[0]! as Cell & { ctx?: unknown; s?: unknown; i?: number };
   const b = f.args[1]! as Cell & { ctx?: unknown; s?: unknown; i?: number };
   if (a.t !== b.t) return value(logic(false));
@@ -426,7 +426,7 @@ native('same?', '[a [any-type!] b [any-type!]]', (_t, f) => {
   if (a.s !== undefined) return value(logic(a.s === b.s && a.i === b.i));
   return value(logic(strictEqual(a, b)));
 });
-native('strict-not-equal?', '[a [any-type!] b [any-type!]]', (_t, f) => value(logic(!strictEqual(f.args[0]!, f.args[1]!))));
+native('strict-not-equal?', '["True if the values are not strictly equal." a [any-type!] b [any-type!]]', (_t, f) => value(logic(!strictEqual(f.args[0]!, f.args[1]!))));
 
 function ordered(a: Cell, b: Cell, test: (c: number) => boolean): Step {
   const c = compare(a, b);
@@ -434,10 +434,10 @@ function ordered(a: Cell, b: Cell, test: (c: number) => boolean): Step {
   return value(logic(test(c)));
 }
 
-native('lesser?', '[a [any-value!] b [any-value!]]', (_t, f) => ordered(f.args[0]!, f.args[1]!, c => c < 0));
-native('greater?', '[a [any-value!] b [any-value!]]', (_t, f) => ordered(f.args[0]!, f.args[1]!, c => c > 0));
-native('lesser-or-equal?', '[a [any-value!] b [any-value!]]', (_t, f) => ordered(f.args[0]!, f.args[1]!, c => c <= 0));
-native('greater-or-equal?', '[a [any-value!] b [any-value!]]', (_t, f) => ordered(f.args[0]!, f.args[1]!, c => c >= 0));
+native('lesser?', '["True if the first value is less than the second." a [any-value!] b [any-value!]]', (_t, f) => ordered(f.args[0]!, f.args[1]!, c => c < 0));
+native('greater?', '["True if the first value is more than the second." a [any-value!] b [any-value!]]', (_t, f) => ordered(f.args[0]!, f.args[1]!, c => c > 0));
+native('lesser-or-equal?', '["True if the first value is less than or equal to the second." a [any-value!] b [any-value!]]', (_t, f) => ordered(f.args[0]!, f.args[1]!, c => c <= 0));
+native('greater-or-equal?', '["True if the first value is more than or equal to the second." a [any-value!] b [any-value!]]', (_t, f) => ordered(f.args[0]!, f.args[1]!, c => c >= 0));
 
 function pickBy(a: Cell, b: Cell, wantMax: boolean): Step {
   const c = compare(a, b);
@@ -445,8 +445,8 @@ function pickBy(a: Cell, b: Cell, wantMax: boolean): Step {
   return value((c >= 0) === wantMax ? a : b);
 }
 
-native('max', '[a [any-value!] b [any-value!]]', (_t, f) => pickBy(f.args[0]!, f.args[1]!, true));
-native('min', '[a [any-value!] b [any-value!]]', (_t, f) => pickBy(f.args[0]!, f.args[1]!, false));
+native('max', '["The greater of two values." a [any-value!] b [any-value!]]', (_t, f) => pickBy(f.args[0]!, f.args[1]!, true));
+native('min', '["The lesser of two values." a [any-value!] b [any-value!]]', (_t, f) => pickBy(f.args[0]!, f.args[1]!, false));
 
 // --- logic -----------------------------------------------------------------------
 
@@ -467,9 +467,9 @@ function logicOp(a: Cell, b: Cell, int: (x: bigint, y: bigint) => bigint, bool: 
   return value(logic(bool(truthy(a), truthy(b))));
 }
 
-native('and~', '[a [any-value!] b [any-value!]]', (_t, f) => logicOp(f.args[0]!, f.args[1]!, (x, y) => x & y, (x, y) => x && y));
-native('or~', '[a [any-value!] b [any-value!]]', (_t, f) => logicOp(f.args[0]!, f.args[1]!, (x, y) => x | y, (x, y) => x || y));
-native('xor~', '[a [any-value!] b [any-value!]]', (_t, f) => logicOp(f.args[0]!, f.args[1]!, (x, y) => x ^ y, (x, y) => x !== y));
+native('and~', '["Both values: bitwise for integers and binaries, logical for anything else." a [any-value!] b [any-value!]]', (_t, f) => logicOp(f.args[0]!, f.args[1]!, (x, y) => x & y, (x, y) => x && y));
+native('or~', '["Either value: bitwise for integers and binaries, logical for anything else." a [any-value!] b [any-value!]]', (_t, f) => logicOp(f.args[0]!, f.args[1]!, (x, y) => x | y, (x, y) => x || y));
+native('xor~', '["One value or the other but not both: bitwise for integers and binaries, logical for anything else." a [any-value!] b [any-value!]]', (_t, f) => logicOp(f.args[0]!, f.args[1]!, (x, y) => x ^ y, (x, y) => x !== y));
 
 // --- operators -------------------------------------------------------------------
 

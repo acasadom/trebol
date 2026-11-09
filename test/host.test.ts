@@ -6,12 +6,13 @@ import assert from 'node:assert/strict';
 import { createServer, type Server } from 'node:http';
 import { createHash } from 'node:crypto';
 import type { Duplex } from 'node:stream';
-import { mold, form, errorField, native, value, type ObjectCell } from '../src/core/index.ts';
+import { K, spell, mold, form, errorField, native, value, type ObjectCell } from '../src/core/index.ts';
 import { fileHandle } from '../src/host/net.ts';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
-import { startHost, runSource, output } from '../src/host/index.ts';
+import { startHost, startUi, runSource, output } from '../src/host/index.ts';
+import { consoleHost } from '../tools/console.ts';
 
 let server: Server;
 let base = '';
@@ -144,7 +145,7 @@ describe('tasks and timers', () => {
     assert.deepEqual(lines.slice(0, 2), ['USAGE:', '    a + b']);
     assert.deepEqual(lines.slice(-5), [
       'B is a block! of value: [1 2]', 'NOTHING-HERE has no value.', 'b: [1 2]',
-      'f: func [x] [x * 2]', 'add: native [a [number! money! time! pair! date!] b [number! money! time! pair! date!]]',
+      'f: func [x] [x * 2]', 'add: native ["The sum of two values." a [number! money! time! pair! date!] b [number! money! time! pair! date!]]',
     ]);
   });
 
@@ -174,7 +175,7 @@ describe('http', () => {
   });
 
   test('files the user chose: read-file and multipart', async () => {
-    native('test-file', '[]', () => value(fileHandle(new File(['hello'], 'note.txt', { type: 'text/plain' }))));
+    native('test-file', '["A file handle for the tests." ]', () => value(fileHandle(new File(['hello'], 'note.txt', { type: 'text/plain' }))));
     assert.equal(await ev('to string! read-file test-file'), '"hello"');
     const r = await ev(`f: test-file  r: fetch/with base/echo [multipart: reduce ['doc f 'title "Notes"]] reduce [r/type r/body]`);
     assert.match(r, /multipart\/form-data/);
@@ -265,4 +266,20 @@ describe('phase 2 gate', () => {
     assert.equal(r, '[true ["uno" "dos" "tres"] true]');
     assert.ok(hostTicks > 10, `host timer ticked ${hostTicks} times during the parse`);
   });
+});
+
+test('every function of the library says what it does, for help and the reference', async () => {
+  const host = consoleHost();
+  await startUi(host);
+  const names: string[] = [];
+  for (const ctx of [host.rt.lib, host.rt.user]) {
+    ctx.keys.forEach((k, i) => {
+      const t = ctx.vals[i]!.t;
+      if ((t === K.Function || t === K.Native) && /^[a-z]/.test(spell(k))) names.push(spell(k));
+    });
+  }
+  const missing = await runSource(host, `collect [foreach w [${[...new Set(names)].map(n => `'${n}`).join(' ')}] [
+    unless string? first spec-of get w [keep w]
+  ]]`);
+  assert.equal(mold(missing), '[]');
 });

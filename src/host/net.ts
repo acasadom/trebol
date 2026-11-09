@@ -23,7 +23,7 @@ export function fileHandle(file: Blob): Cell {
   return makeHandle('file', file);
 }
 
-native('read-file', '[file [handle!]]', (_t, f, v) => {
+native('read-file', '["The bytes of a file the user chose." file [handle!]]', (_t, f, v) => {
   if (f.phase === 1) return value(v!);
   f.phase = 1;
   const file = handleOf<Blob>(f.args[0]!, 'file');
@@ -79,7 +79,7 @@ function toSeconds(c: Cell): number {
  * http-request url options: options is none or an object with any of
  * method, headers, body, json, form, multipart, timeout, full.
  */
-native('http-request', '[url [url! string!] options [object! none!]]', (t, f, v) => {
+native('http-request', '["Sends an HTTP request; used by fetch." url [url! string!] options [object! none!]]', (t, f, v) => {
   if (f.phase === 1) return value(v!);
   f.phase = 1;
   const url = text(f.args[0] as StringCell);
@@ -189,7 +189,7 @@ function emit(st: Stream, kind: string, words: Record<string, Cell>): void {
   for (const body of bodies) spawnHandler(st.sch, body, words);
 }
 
-native('open-socket', '[url [url! string!]]', (t, f, v) => {
+native('open-socket', '["Opens a WebSocket; gives a handle once it is open." url [url! string!]]', (t, f, v) => {
   if (f.phase === 1) return value(v!);
   f.phase = 1;
   const url = text(f.args[0] as StringCell);
@@ -254,7 +254,7 @@ function parseSse(buffer: string, onEvent: (event: string, data: string) => void
   }
 }
 
-native('open-events', '[url [url! string!]]', (t, f) => {
+native('open-events', '["Opens a stream of server-sent events; gives a handle." url [url! string!]]', (t, f) => {
   const url = text(f.args[0] as StringCell);
   const sch = schedulerOf(t);
   const ctl = new AbortController();
@@ -294,11 +294,11 @@ function onEvent(kind: string) {
   };
 }
 
-native('on-message', '[stream [handle!] body [block!]]', onEvent('message'));
-native('on-close', '[stream [handle!] body [block!]]', onEvent('close'));
-native('on-error', '[stream [handle!] body [block!]]', onEvent('error'));
+native('on-message', '["Runs a block for each message that comes on a stream." stream [handle!] body [block!]]', onEvent('message'));
+native('on-close', '["Runs a block when a stream closes." stream [handle!] body [block!]]', onEvent('close'));
+native('on-error', '["Runs a block when a stream fails." stream [handle!] body [block!]]', onEvent('error'));
 
-native('send', '[stream [handle!] data [any-value!]]', (_t, f) => {
+native('send', '["Sends a value on a socket." stream [handle!] data [any-value!]]', (_t, f) => {
   const st = handleOf<Stream>(f.args[0]!, 'stream');
   if (st === null || st.send === undefined) {
     return throwError('script', 'bad-handle', 'send needs an open socket');
@@ -313,6 +313,6 @@ const closeStream: NativeFn = (_t, f) => {
   handleOf<Stream>(f.args[0]!, 'stream')?.close();
   return value(f.args[0]!);
 };
-native('close', '[stream [handle!]]', closeStream);
+native('close', '["Closes a stream, or hides a dialog." stream [handle!]]', closeStream);
 // the UI dialect redefines close for dialogs and falls back to this one
-native('close-stream', '[stream [handle!]]', closeStream);
+native('close-stream', '["Closes a socket or a stream of events." stream [handle!]]', closeStream);

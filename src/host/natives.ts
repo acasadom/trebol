@@ -13,12 +13,12 @@ import {
 /** Where `print` writes; the browser host points this at the page console. */
 export const output = { line: (text: string) => console.log(text) };
 
-native('write-line', '[value [any-type!]]', (_t, f) => {
+native('write-line', '["Writes a value and a new line to the output." value [any-type!]]', (_t, f) => {
   output.line(form(f.args[0]!));
   return value(UNSET);
 });
 
-native('probe', '[value [any-type!]]', (_t, f) => {
+native('probe', '["Prints a value as mold shows it; gives the value." value [any-type!]]', (_t, f) => {
   output.line(mold(f.args[0]!));
   return value(f.args[0]!);
 });
@@ -34,7 +34,7 @@ function millis(c: Cell): number {
 // other refinements (now/date, now/weekday, now/time...).
 const NOW_PARTS = ['year', 'month', 'day', 'time', 'zone', 'date', 'weekday', 'yearday'] as const;
 
-native('now', '[/year /month /day /time /zone /date /weekday /yearday /precise /utc]', (_t, f) => {
+native('now', '["The date and time now." /year /month /day /time /zone /date /weekday /yearday /precise /utc]', (_t, f) => {
   const d = new Date();
   const on = (i: number) => f.args[i]!.t === K.Logic;
   const zone = on(9) ? 0 : -d.getTimezoneOffset();
@@ -50,7 +50,7 @@ native('now', '[/year /month /day /time /zone /date /weekday /yearday /precise /
 
 interface Timer { stop: () => void }
 
-native('wait', '[value [number! time! handle! block!]]', (t, f, v) => {
+native('wait', '["Waits a number of seconds, or for tasks to finish; other tasks run meanwhile." value [number! time! handle! block!]]', (t, f, v) => {
   if (f.phase === 1) return value(v!);
   f.phase = 1;
   const x = f.args[0]!;
@@ -74,20 +74,20 @@ native('wait', '[value [number! time! handle! block!]]', (t, f, v) => {
   };
 });
 
-native('spawn', '[body [block!]]', (t, f) => {
+native('spawn', '["Starts a task that evaluates a block on its own; gives a handle at once." body [block!]]', (t, f) => {
   const b = f.args[0] as BlockCell;
   const ht = spawn(schedulerOf(t), b.s, b.i);
   return value(makeHandle('task', ht));
 });
 
-native('delay', '[time [number! time!] body [block!]]', (t, f) => {
+native('delay', '["Evaluates a block once, after a while; gives a handle." time [number! time!] body [block!]]', (t, f) => {
   const sch = schedulerOf(t);
   const body = f.args[1] as BlockCell;
   const id = setTimeout(() => spawnHandler(sch, body, {}), millis(f.args[0]!));
   return value(makeHandle('timer', { stop: () => clearTimeout(id) } satisfies Timer));
 });
 
-native('every', '[time [number! time!] body [block!]]', (t, f) => {
+native('every', '["Evaluates a block again and again, every so often; gives a handle." time [number! time!] body [block!]]', (t, f) => {
   const sch = schedulerOf(t);
   const body = f.args[1] as BlockCell;
   const id = setInterval(() => spawnHandler(sch, body, {}), Math.max(1, millis(f.args[0]!)));
@@ -99,7 +99,7 @@ export const cancellers: Record<string, (obj: unknown) => void> = {
   timer: obj => (obj as Timer).stop(),
 };
 
-native('cancel', '[target [handle!]]', (t, f): Step => {
+native('cancel', '["Stops a task, timer or request." target [handle!]]', (t, f): Step => {
   const h = f.args[0]!;
   const kind = ((h as { p: unknown }).p as { kind: string }).kind;
   if (kind === 'task') {

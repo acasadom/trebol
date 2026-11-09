@@ -539,7 +539,7 @@ function frame(st: PState, f: Frame, r: boolean | null): Step | null {
   }
 }
 
-native('parse', '[input [series!] rules [block!] /case]', (_t, f, v) => {
+native('parse', '["Checks the input against a block of rules; true if they match all of it." input [series!] rules [block!] /case]', (_t, f, v) => {
   if (f.phase === 0) {
     f.phase = 1;
     const input = f.args[0] as SeriesCell;
@@ -558,13 +558,13 @@ native('parse', '[input [series!] rules [block!] /case]', (_t, f, v) => {
 
 // --- bitsets -------------------------------------------------------------------
 
-native('charset', '[spec [char! integer! any-string! binary! block!]]', (_t, f) => {
+native('charset', '["Makes a bitset of characters, for parse." spec [char! integer! any-string! binary! block!]]', (_t, f) => {
   const bytes: number[] = [];
   const err = bitsFrom(f.args[0]!, bytes);
   return err !== null ? fail('script', 'bad-bitset', err) : value({ t: K.Bitset, s: { data: bytes }, neg: false });
 });
 
-native('complement', '[value [bitset! logic! integer!]]', (_t, f) => {
+native('complement', '["The opposite: a bitset of everything else, a logic negated, an integer with its bits flipped." value [bitset! logic! integer!]]', (_t, f) => {
   const x = f.args[0]!;
   if (x.t === K.Bitset) return value({ t: K.Bitset, s: { data: x.s.data.slice() }, neg: !x.neg });
   if (x.t === K.Logic) return value(logic(!x.v));

@@ -57,7 +57,7 @@ const EXPORTS = canon(intern('exports'));
 
 interface ImportState { href: string; entry: ModuleEntry; ctx: ReturnType<typeof context> | null; exports: WordCell[] }
 
-native('import', '[source [file! url! string!]]', (t, f, v) => {
+native('import', '["Runs a module and gives its exports." source [file! url! string!]]', (t, f, v) => {
   const rt = t.rt;
   const loader = loaders.get(rt);
   const mods = modules.get(rt);
@@ -169,12 +169,12 @@ const store: Store = (globalThis as { localStorage?: Store }).localStorage ?? {
 const PREFIX = 'trebol:';
 const keyOf = (c: Cell): string => PREFIX + (c.t === K.Word || c.t === K.LitWord ? mold({ ...c, t: K.Word }) : text(c as StringCell));
 
-native('save-local', '[key [string! word!] value [any-value!]]', (_t, f) => {
+native('save-local', '["Keeps a value in the browser, under a key." key [string! word!] value [any-value!]]', (_t, f) => {
   store.setItem(keyOf(f.args[0]!), mold(f.args[1]!, { all: true }));
   return value(f.args[1]!);
 });
 
-native('load-local', '[key [string! word!]]', (_t, f) => {
+native('load-local', '["The value kept in the browser under a key, or none." key [string! word!]]', (_t, f) => {
   const saved = store.getItem(keyOf(f.args[0]!));
   if (saved === null) return value(NONE);
   try {
@@ -186,7 +186,7 @@ native('load-local', '[key [string! word!]]', (_t, f) => {
   }
 });
 
-native('remove-local', '[key [string! word!]]', (_t, f) => {
+native('remove-local', '["Forgets the value kept in the browser under a key." key [string! word!]]', (_t, f) => {
   store.removeItem(keyOf(f.args[0]!));
   return value(UNSET);
 });

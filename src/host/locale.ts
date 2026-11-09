@@ -208,7 +208,7 @@ export function shown(c: Cell, lang: string): string {
   return formatLocal(c, lang) ?? form(c);
 }
 
-native('format-local', '[value [any-type!] language [word! string!]]', (_t, f) => {
+native('format-local', '["The value as text in the way of a language: dates, numbers, money." value [any-type!] language [word! string!]]', (_t, f) => {
   const l = f.args[1]!;
   const lang = l.t === K.String ? text(l as StringCell) : spell((l as WordCell).sym);
   return value(string(shown(f.args[0]!, lang)));

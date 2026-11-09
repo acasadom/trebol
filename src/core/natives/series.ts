@@ -73,22 +73,22 @@ function toPut(s: SeriesCell, v: Cell, only: boolean, part: Cell | null, dup: Ce
 
 // --- navigation ------------------------------------------------------------------
 
-native('next', '[series [series!]]', (_t, f) => value(at(f.args[0] as SeriesCell, (f.args[0] as SeriesCell).i + 1)));
-native('back', '[series [series!]]', (_t, f) => value(at(f.args[0] as SeriesCell, (f.args[0] as SeriesCell).i - 1)));
-native('head', '[series [series!]]', (_t, f) => value(at(f.args[0] as SeriesCell, 0)));
-native('tail', '[series [series!]]', (_t, f) => value(at(f.args[0] as SeriesCell, Infinity)));
-native('skip', '[series [series!] offset [integer!]]', (_t, f) => {
+native('next', '["The series one position on." series [series!]]', (_t, f) => value(at(f.args[0] as SeriesCell, (f.args[0] as SeriesCell).i + 1)));
+native('back', '["The series one position back." series [series!]]', (_t, f) => value(at(f.args[0] as SeriesCell, (f.args[0] as SeriesCell).i - 1)));
+native('head', '["The series at its first position." series [series!]]', (_t, f) => value(at(f.args[0] as SeriesCell, 0)));
+native('tail', '["The series just past its last value." series [series!]]', (_t, f) => value(at(f.args[0] as SeriesCell, Infinity)));
+native('skip', '["The series moved on, or back, by an offset." series [series!] offset [integer!]]', (_t, f) => {
   const s = f.args[0] as SeriesCell;
   return value(at(s, s.i + num(f.args[1]!)));
 });
-native('at', '[series [series!] index [integer!]]', (_t, f) => {
+native('at', '["The series at a position, counted from where it is." series [series!] index [integer!]]', (_t, f) => {
   const s = f.args[0] as SeriesCell;
   const n = num(f.args[1]!);
   return value(at(s, s.i + (n > 0 ? n - 1 : n)));
 });
-native('index?', '[series [series!]]', (_t, f) => value(integer((f.args[0] as SeriesCell).i + 1)));
-native('head?', '[series [series!]]', (_t, f) => value(logic((f.args[0] as SeriesCell).i === 0)));
-native('tail?', '[series [series!]]', (_t, f) => value(logic(lengthOf(f.args[0] as SeriesCell) === 0)));
+native('index?', '["The position of the series, from 1." series [series!]]', (_t, f) => value(integer((f.args[0] as SeriesCell).i + 1)));
+native('head?', '["True if the series is at its head." series [series!]]', (_t, f) => value(logic((f.args[0] as SeriesCell).i === 0)));
+native('tail?', '["True if the series is at its tail." series [series!]]', (_t, f) => value(logic(lengthOf(f.args[0] as SeriesCell) === 0)));
 
 // --- editing ---------------------------------------------------------------------
 
@@ -125,7 +125,7 @@ native('remove', '["Removes what the series holds where it is; gives the series.
   return value(at(s, from));
 });
 
-native('clear', '[series [series! map!]]', (_t, f) => {
+native('clear', '["Removes everything from the series\' position to its tail." series [series! map!]]', (_t, f) => {
   const x = f.args[0]!;
   if (x.t === K.Map) {
     x.s.data.length = 0;
@@ -136,7 +136,7 @@ native('clear', '[series [series! map!]]', (_t, f) => {
   return value(s);
 });
 
-native('copy', '[value [series! map! object! bitset!] /part length [integer! series!] /deep]', (_t, f) => {
+native('copy', '["A copy of the series, map, object or bitset." value [series! map! object! bitset!] /part length [integer! series!] /deep]', (_t, f) => {
   const x = f.args[0]!;
   const deep = used(f.args[3]!);
   if (x.t === K.Map) return value({ t: K.Map, s: deep ? copyDeep(x.s) : { data: x.s.data.slice() } });
@@ -157,7 +157,7 @@ native('copy', '[value [series! map! object! bitset!] /part length [integer! ser
   return value({ t: s.t, s: { data: (s.s.data as number[]).slice(from, end) }, i: 0 } as StringCell);
 });
 
-native('reverse', '[series [series!] /part length [integer! series!]]', (_t, f) => {
+native('reverse', '["Reverses the order of the values from the series\' position." series [series!] /part length [integer! series!]]', (_t, f) => {
   const s = f.args[0] as SeriesCell;
   const end = used(f.args[1]!) ? partEnd(s, f.args[2]!) : s.s.data.length;
   const d = s.s.data as Item[];
@@ -277,7 +277,7 @@ native('find', '["Finds a value in a series; gives the series where it is, or no
   return value(at(s, used(a[9]!) || o.match ? r.at + r.len : r.at));
 });
 
-native('select', '[series [series! map! object! none!] value [any-type!] /only /case /skip size [integer!] /last]', (_t, f) => {
+native('select', '["The value after the one found, or none." series [series! map! object! none!] value [any-type!] /only /case /skip size [integer!] /last]', (_t, f) => {
   const x = f.args[0]!;
   const a = f.args;
   if (x.t === K.None) return value(NONE);
@@ -350,7 +350,7 @@ function sortRun(st: SortState, before: (a: Item[], b: Item[]) => boolean | null
 }
 
 // As in R3 and Red, /compare takes a function or, with /skip, the position of the field to sort by.
-native('sort', '[series [series!] /case /skip size [integer!] /compare comparator [any-function! integer!] /reverse]', (_t, f, v) => {
+native('sort', '["Sorts the series in place." series [series!] /case /skip size [integer!] /compare comparator [any-function! integer!] /reverse]', (_t, f, v) => {
   const s = f.args[0] as SeriesCell;
   const a = f.args;
   const cased = used(a[1]!);
@@ -437,7 +437,7 @@ function eachNext(f: NativeFrame, st: EachState, data: SeriesCell): Step | null 
   return doBlock(st.body);
 }
 
-native('remove-each', "['word [word! block!] data [series!] body [block!]]", (_t, f, v) => {
+native('remove-each', "[\"Removes the values of a series for which the block gives true.\" 'word [word! block!] data [series!] body [block!]]", (_t, f, v) => {
   const data = f.args[1] as SeriesCell;
   if (f.phase === 0) {
     f.phase = 1;
@@ -460,7 +460,7 @@ native('remove-each', "['word [word! block!] data [series!] body [block!]]", (_t
   return value(data);
 });
 
-native('map-each', "['word [word! block!] data [series!] body [block!]]", (_t, f, v) => {
+native('map-each', "[\"A block of what the block gives for each value of a series.\" 'word [word! block!] data [series!] body [block!]]", (_t, f, v) => {
   const data = f.args[1] as SeriesCell;
   if (f.phase === 0) {
     f.phase = 1;
@@ -505,12 +505,12 @@ function setOp(f: NativeFrame, two: boolean, pick: (a: Item[], b: Item[], eq: (x
   return value(setResult(a, pick(xs, ys, eq)));
 }
 
-native('unique', '[set [series!] /case]', (_t, f) => setOp(f, false, (a, _b, eq) => distinct(a, eq)));
-native('union', '[a [series!] b [series!] /case]', (_t, f) => setOp(f, true, (a, b, eq) => distinct([...a, ...b], eq)));
-native('intersect', '[a [series!] b [series!] /case]', (_t, f) =>
+native('unique', '["The values of the series, each once." set [series!] /case]', (_t, f) => setOp(f, false, (a, _b, eq) => distinct(a, eq)));
+native('union', '["The values that are in either series, each once." a [series!] b [series!] /case]', (_t, f) => setOp(f, true, (a, b, eq) => distinct([...a, ...b], eq)));
+native('intersect', '["The values that are in both series." a [series!] b [series!] /case]', (_t, f) =>
   setOp(f, true, (a, b, eq) => distinct(a.filter(x => b.some(y => eq(x, y))), eq)));
 // Of two dates, the time between them (R3).
-native('difference', '[a [series! date!] b [series! date!] /case]', (_t, f) => {
+native('difference', '["The values that are in one series but not the other; of two dates, the time between them." a [series! date!] b [series! date!] /case]', (_t, f) => {
   const [a, b] = f.args as [Cell, Cell];
   if (a.t === K.Date || b.t === K.Date) {
     if (a.t !== K.Date || b.t !== K.Date) return fail('script', 'bad-set', 'difference takes two dates or two series');
@@ -518,5 +518,5 @@ native('difference', '[a [series! date!] b [series! date!] /case]', (_t, f) => {
   }
   return setOp(f, true, (xs, ys, eq) => distinct([...xs.filter(x => !ys.some(y => eq(x, y))), ...ys.filter(y => !xs.some(x => eq(x, y)))], eq));
 });
-native('exclude', '[a [series!] b [series!] /case]', (_t, f) =>
+native('exclude', '["The values of the first series that are not in the second." a [series!] b [series!] /case]', (_t, f) =>
   setOp(f, true, (a, b, eq) => distinct(a.filter(x => !b.some(y => eq(x, y))), eq)));

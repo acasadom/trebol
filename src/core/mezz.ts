@@ -45,7 +45,7 @@ foreach type [
     any-type! any-value! number! scalar! any-string! series! any-word! any-block!
     any-path! any-object! any-function!
 ] [
-    set bind/new to word! append copy/part form type (length? form type) - 1 "?" 'type? func [value [any-type!]] compose [
+    set bind/new to word! append copy/part form type (length? form type) - 1 "?" 'type? func compose [(append copy "True if the value is " form type) value [any-type!]] compose [
         find (make typeset! reduce [get type]) type? :value
     ]
 ]
@@ -56,7 +56,7 @@ foreach type [
     string! file! email! url! tag! binary! bitset! word! set-word! get-word! lit-word!
     refinement! issue! block! paren! path! set-path! get-path! lit-path! map!
 ] [
-    set bind/new to word! append copy "to-" copy/part form type (length? form type) - 1 'type? func [value] compose [
+    set bind/new to word! append copy "to-" copy/part form type (length? form type) - 1 'type? func compose [(append copy "Converts a value to " form type) value] compose [
         to (get type) :value
     ]
 ]
@@ -74,14 +74,14 @@ slash: #"/"
 backslash: #"\"
 dbl-quote: #"^""
 
-first: func [series] [pick series 1]
-second: func [series] [pick series 2]
-third: func [series] [pick series 3]
-fourth: func [series] [pick series 4]
-fifth: func [series] [pick series 5]
-last: func [series [series!]] [pick back tail series 1]
+first: func ["The first value of a series." series] [pick series 1]
+second: func ["The second value of a series." series] [pick series 2]
+third: func ["The third value of a series." series] [pick series 3]
+fourth: func ["The fourth value of a series." series] [pick series 4]
+fifth: func ["The fifth value of a series." series] [pick series 5]
+last: func ["The last value of a series." series [series!]] [pick back tail series 1]
 
-empty?: func [series [series! map!]] [zero? length? series]
+empty?: func ["True if the series has nothing from its position on, or the map nothing at all." series [series! map!]] [zero? length? series]
 
 rejoin: func [
     "Reduces a block and joins the values into one series, of the type of the first."

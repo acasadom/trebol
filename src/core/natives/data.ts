@@ -32,17 +32,17 @@ export function loadUser(rt: Runtime, src: StringCell): Step {
 }
 
 // As in R3 and Red, text holding one value loads as that value; /all always gives a block.
-native('load', '[source [string!] /all "Gives a block even for one value"]', (t, f) => {
+native('load', '["Reads Trebol source text into values: the value itself, or a block when there are several." source [string!] /all "Gives a block even for one value"]', (t, f) => {
   const r = loadUser(t.rt, f.args[0] as StringCell);
   if (r.k !== 'value' || f.args[1] === TRUE) return r;
   const b = r.v as BlockCell;
   return b.s.data.length === 1 ? value(b.s.data[0]!) : r;
 });
 
-native('mold', '[value [any-type!] /only /all]', (_t, f) =>
+native('mold', '["The value as Trebol source text, the way you would type it." value [any-type!] /only /all]', (_t, f) =>
   value(string(mold(f.args[0]!, { only: f.args[1] === TRUE, all: f.args[2] === TRUE }))));
 
-native('form', '[value [any-type!]]', (_t, f) => value(string(form(f.args[0]!))));
+native('form', '["The value as text for people to read." value [any-type!]]', (_t, f) => value(string(form(f.args[0]!))));
 
 // --- make ------------------------------------------------------------------------
 
@@ -125,7 +125,7 @@ function makeOf(k: Kind, spec: Cell): Cell | string {
   return `cannot make ${kindName(k)} from ${kindName(spec.t)}`;
 }
 
-native('make', '[type [any-value!] spec [any-value!]]', (_t, f) => {
+native('make', '["Makes a new value of a type, or from a prototype object." type [any-value!] spec [any-value!]]', (_t, f) => {
   if (f.phase === 1) return value(f.data as ObjectCell);
   const type = f.args[0]!;
   const spec = f.args[1]!;
@@ -154,7 +154,7 @@ native('make', '[type [any-value!] spec [any-value!]]', (_t, f) => {
 
 // --- words and contexts ----------------------------------------------------------
 
-native('get', '[word [any-word!] /any]', (_t, f) => {
+native('get', '["The value a word refers to." word [any-word!] /any]', (_t, f) => {
   const w = f.args[0] as WordCell;
   const v = getWord(w);
   if (v === null) return fail('script', 'not-bound', `${spell(w.sym)} is not bound to a context`);
@@ -162,7 +162,7 @@ native('get', '[word [any-word!] /any]', (_t, f) => {
   return value(v);
 });
 
-native('set', '[word [any-word! block!] value [any-type!]]', (_t, f) => {
+native('set', '["Sets a word, or each word of a block, to a value." word [any-word! block!] value [any-type!]]', (_t, f) => {
   const target = f.args[0]!;
   const v = f.args[1]!;
   const words = target.t === K.Block ? target.s.data.slice(target.i) : [target];
@@ -175,31 +175,31 @@ native('set', '[word [any-word! block!] value [any-type!]]', (_t, f) => {
   return value(v);
 });
 
-native('value?', '[word [any-word!]]', (_t, f) => {
+native('value?', '["True if the word has a value." word [any-word!]]', (_t, f) => {
   const v = getWord(f.args[0] as WordCell);
   return value(v !== null && v.t !== K.Unset ? TRUE : FALSE);
 });
 
-native('type?', '[value [any-type!]]', (_t, f) => value(datatype(f.args[0]!.t)));
+native('type?', '["The datatype of a value." value [any-type!]]', (_t, f) => value(datatype(f.args[0]!.t)));
 
 // --- reflection: what help and source are written with ---------------------
 
 /** The function an op! calls, or the value itself. */
 const underOp = (c: Cell): Cell => (c.t === K.Op ? ((c as OpaqueCell).p as OpDef).fn : c);
 
-native('spec-of', '[value [any-function!]]', (_t, f) => {
+native('spec-of', '["A copy of a function\'s spec block." value [any-function!]]', (_t, f) => {
   const c = underOp(f.args[0]!);
   const p = (c as OpaqueCell).p;
   const spec = c.t === K.Function ? (p as FuncDef).specBlock : (p as NativeDef).specBlock;
   return value({ t: K.Block, s: copyDeep(spec.s, spec.i), i: 0 });
 });
 
-native('body-of', '[value [any-function!]]', (_t, f) => {
+native('body-of', '["A copy of a function\'s body block, or none for a native." value [any-function!]]', (_t, f) => {
   const c = underOp(f.args[0]!);
   return value(c.t === K.Function ? { t: K.Block, s: copyDeep(((c as OpaqueCell).p as FuncDef).body), i: 0 } : NONE);
 });
 
-native('words-of', '[value [any-object! map! any-function!]]', (_t, f) => {
+native('words-of', '["The words of an object or map, or the arguments and refinements of a function." value [any-object! map! any-function!]]', (_t, f) => {
   const c = underOp(f.args[0]!);
   if (c.t === K.Object || c.t === K.Error) return value(blockOf(K.Block, c.ctx.keys.map(k => wordOf(K.Word, k))));
   if (c.t === K.Map) return value(blockOf(K.Block, c.s.data.filter((_v, i) => i % 2 === 0)));
@@ -210,13 +210,13 @@ native('words-of', '[value [any-object! map! any-function!]]', (_t, f) => {
     .map(p => wordOf(p.kind === P.Ref ? K.Refinement : K.Word, p.sym))));
 });
 
-native('values-of', '[value [any-object! map!]]', (_t, f) => {
+native('values-of', '["The values of an object or map." value [any-object! map!]]', (_t, f) => {
   const c = f.args[0]!;
   if (c.t === K.Map) return value(blockOf(K.Block, c.s.data.filter((_v, i) => i % 2 === 1)));
   return value(blockOf(K.Block, (c as ObjectCell).ctx.vals.slice()));
 });
 
-native('bind', '[words [block! any-word!] context [any-word! any-object!] /new /copy "Binds a deep copy and leaves the block as it was"]', (_t, f) => {
+native('bind', '["Binds the words of a block to a context." words [block! any-word!] context [any-word! any-object!] /new /copy "Binds a deep copy and leaves the block as it was"]', (_t, f) => {
   let x = f.args[0]!;
   const c = f.args[1]!;
   const ctx = c.t === K.Object || c.t === K.Error ? c.ctx : (c as WordCell).bind;
@@ -232,12 +232,12 @@ native('bind', '[words [block! any-word!] context [any-word! any-object!] /new /
   return value(x);
 });
 
-native('context?', '[word [any-word!]]', (_t, f) => {
+native('context?', '["The context a word is bound to, or none." word [any-word!]]', (_t, f) => {
   const ctx = (f.args[0] as WordCell).bind;
   return value(ctx === null ? NONE : object(ctx));
 });
 
-native('unset', '[word [any-word! block!]]', (_t, f) => {
+native('unset', '["Takes the value away from a word, or from each word of a block." word [any-word! block!]]', (_t, f) => {
   const target = f.args[0]!;
   const words = target.t === K.Block ? target.s.data.slice(target.i) : [target];
   for (const w of words) {
@@ -247,13 +247,13 @@ native('unset', '[word [any-word! block!]]', (_t, f) => {
   return value(UNSET);
 });
 
-native('in', '[object [any-object!] word [any-word!]]', (_t, f) => {
+native('in', '["The word of an object, bound to it, or none if the object has no such word." object [any-object!] word [any-word!]]', (_t, f) => {
   const obj = f.args[0] as ObjectCell;
   const w = f.args[1] as WordCell;
   return value(ctxFind(obj.ctx, w.sym) >= 0 ? { t: K.Word, sym: w.sym, bind: obj.ctx } : NONE);
 });
 
-native('use', '[words [block! word!] body [block!]]', (_t, f, v) => {
+native('use', '["Evaluates a block with words of its own, which exist only inside it." words [block! word!] body [block!]]', (_t, f, v) => {
   if (f.phase === 1) return value(v!);
   const words = f.args[0]!;
   const list = words.t === K.Block ? words.s.data.slice(words.i) : [words];
@@ -268,7 +268,7 @@ native('use', '[words [block! word!] body [block!]]', (_t, f, v) => {
 
 // --- minimal series ----------------------------------------------------------------
 
-native('length?', '[series [series! map! object!]]', (_t, f) => {
+native('length?', '["The number of values from the series\' position to its tail." series [series! map! object!]]', (_t, f) => {
   const x = f.args[0]!;
   if (x.t === K.Map) return value({ t: K.Integer, v: x.s.data.length / 2 });
   if (x.t === K.Object || x.t === K.Error) return value({ t: K.Integer, v: x.ctx.keys.length });
@@ -276,12 +276,12 @@ native('length?', '[series [series! map! object!]]', (_t, f) => {
   return value({ t: K.Integer, v: Math.max(0, s.s.data.length - s.i) });
 });
 
-native('pick', '[series [any-value!] index [any-value!]]', (_t, f) => {
+native('pick', '["The value at a position or key." series [any-value!] index [any-value!]]', (_t, f) => {
   const r = pick(f.args[0]!, f.args[1]!);
   return typeof r === 'string' ? fail('script', 'bad-pick', r) : value(r);
 });
 
-native('poke', '[series [any-value!] index [any-value!] value [any-value!]]', (_t, f) => {
+native('poke', '["Sets the value at a position or key; gives the value." series [any-value!] index [any-value!] value [any-value!]]', (_t, f) => {
   const msg = poke(f.args[0]!, f.args[1]!, f.args[2]!);
   return msg !== null ? fail('script', 'bad-poke', msg) : value(f.args[2]!);
 });

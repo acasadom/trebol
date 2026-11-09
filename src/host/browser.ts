@@ -2750,7 +2750,7 @@ function syncSplit(m: Mounted): void {
 
 let toasts: HTMLElement | null = null;
 
-native('show-toast', '[message [string!] kind [word! none!]]', (_t, f) => {
+native('show-toast', '["Shows a short message at the edge of the screen." message [string!] kind [word! none!]]', (_t, f) => {
   if (toasts === null) {
     // a manual popover sits in the top layer, so toasts show above open dialogs
     toasts = el('div', 'tb-toasts');
@@ -3031,7 +3031,7 @@ function screenHref(v: Cell): string | null {
   return null;
 }
 
-native('route', '[]', () => value(routeBlock()));
+native('route', '["The screen and arguments in the address bar." ]', () => value(routeBlock()));
 
 // Where the page stands in the browser's history: how many of its screens lie behind the
 // current one (depth) and how far forward it has been (top). Each entry keeps both in
@@ -3053,7 +3053,7 @@ function landHistory(): void {
   history.replaceState({ ...here }, '');
 }
 
-native('set-route', '[route [block!] replace [logic!]]', (_t, f) => {
+native('set-route', '["Puts a screen and arguments in the address bar." route [block!] replace [logic!]]', (_t, f) => {
   const href = screenHref({ ...(f.args[0] as BlockCell), t: K.Path } as Cell) ?? '#/';
   const replace = f.args[1]!.t === K.Logic && f.args[1]!.v;
   if (replace) {
@@ -3066,15 +3066,15 @@ native('set-route', '[route [block!] replace [logic!]]', (_t, f) => {
   return value(f.args[0]!);
 });
 
-native('route-steps', '[]', () => value(blockOf(K.Block, [int(here.depth), int(here.top - here.depth)])));
+native('route-steps', '["How many steps back and forward the history has." ]', () => value(blockOf(K.Block, [int(here.depth), int(here.top - here.depth)])));
 
-native('route-back', '[]', () => {
+native('route-back', '["Goes one step back in the history." ]', () => {
   if (here.depth === 0) return value(logic(false));
   history.back();
   return value(logic(true));
 });
 
-native('route-forward', '[]', () => {
+native('route-forward', '["Goes one step forward in the history." ]', () => {
   if (here.depth >= here.top) return value(logic(false));
   history.forward();
   return value(logic(true));
@@ -3101,7 +3101,7 @@ function enteredScreen(box: HTMLElement): void {
 
 // --- natives -----------------------------------------------------------------------
 
-native('repaint', '[]', () => {
+native('repaint', '["Redraws the faces that changed." ]', () => {
   // after a change of language: every mounted face shows its values again
   document.documentElement.lang = activeLanguage(host.rt);
   if (titleFace !== null) document.title = str(titleFace, 'text') ?? document.title;
@@ -3117,7 +3117,7 @@ let root: HTMLElement | null = null;
 /** The face whose text is the page title: the view's title, or the screen shown. */
 let titleFace: ObjectCell | null = null;
 
-native('show', '[face [object!]]', (_t, f) => {
+native('show', '["Draws a face and everything in it." face [object!]]', (_t, f) => {
   const face = f.args[0] as ObjectCell;
   viewKeys = null;
   screensFace = null;
@@ -3180,7 +3180,7 @@ function setTheme(p: ThemeParams): void {
   tag.textContent = themeCss(p);
 }
 
-native('apply-theme', '[spec [object!]]', (_t, f) => {
+native('apply-theme', '["Changes the look of the whole screen." spec [object!]]', (_t, f) => {
   setTheme(themeParams(f.args[0] as ObjectCell));
   return value(f.args[0]!);
 });

@@ -43,12 +43,12 @@ function recase(upper: boolean) {
   };
 }
 
-native('uppercase', '[string [any-string! char!] /part length [integer!]]', recase(true));
-native('lowercase', '[string [any-string! char!] /part length [integer!]]', recase(false));
+native('uppercase', '["Changes the text to capitals." string [any-string! char!] /part length [integer!]]', recase(true));
+native('lowercase', '["Changes the text to small letters." string [any-string! char!] /part length [integer!]]', recase(false));
 
 // --- trim and split --------------------------------------------------------------
 
-native('trim', '[series [any-string! block!] /head /tail /lines /all]', (_t, f) => {
+native('trim', '["Removes spaces at both ends, or with refinements other spaces too." series [any-string! block!] /head /tail /lines /all]', (_t, f) => {
   const x = f.args[0]!;
   if (x.t === K.Block) {
     const kept = x.s.data.filter((c, i) => i < x.i || c.t !== K.None);
@@ -84,7 +84,7 @@ native('trim', '[series [any-string! block!] /head /tail /lines /all]', (_t, f) 
   return value(s);
 });
 
-native('split', '[series [any-string! block!] dlm [any-string! char! integer!]]', (_t, f) => {
+native('split', '["Splits a series at a delimiter, or into pieces of a size." series [any-string! block!] dlm [any-string! char! integer!]]', (_t, f) => {
   const s = f.args[0] as SeriesCell;
   const dlm = f.args[1]!;
   const d = (s.s.data as unknown[]).slice(s.i);
@@ -263,7 +263,7 @@ function toKind(k: Kind, v: Cell): Cell | string {
   return bad();
 }
 
-native('to', '[type [datatype! any-value!] value [any-type!]]', (_t, f) => {
+native('to', '["Converts a value to another type." type [datatype! any-value!] value [any-type!]]', (_t, f) => {
   const type = f.args[0]!;
   const k = type.t === K.Datatype ? type.k : type.t;
   const r = toKind(k, f.args[1]!);
@@ -271,7 +271,7 @@ native('to', '[type [datatype! any-value!] value [any-type!]]', (_t, f) => {
 });
 
 /** Object from a block without evaluating it; logic and none words become values. */
-native('construct', '[block [block!]]', (_t, f) => {
+native('construct', '["Makes an object from a block without evaluating its values." block [block!]]', (_t, f) => {
   const b = f.args[0] as BlockCell;
   const keys: number[] = [];
   const vals: Cell[] = [];
@@ -298,7 +298,7 @@ native('construct', '[block [block!]]', (_t, f) => {
 
 interface ComposeLevel { src: BlockCell; i: number; out: Cell[]; nl: boolean[] }
 
-native('compose', '[value [any-value!] /deep /only]', (_t, f, v) => {
+native('compose', '["Evaluates the parens in a block and puts their values in a copy of it." value [any-value!] /deep /only]', (_t, f, v) => {
   const x = f.args[0]!;
   if (x.t !== K.Block) return value(x);
   const deep = used(f.args[1]!);
@@ -346,7 +346,7 @@ native('compose', '[value [any-value!] /deep /only]', (_t, f, v) => {
 
 // --- collect-words ---------------------------------------------------------------
 
-native('collect-words', '[block [block!] /deep /set /ignore words [block!]]', (_t, f) => {
+native('collect-words', '["The words used in a block, each once." block [block!] /deep /set /ignore words [block!]]', (_t, f) => {
   const deep = used(f.args[1]!);
   const setOnly = used(f.args[2]!);
   const ignore = used(f.args[3]!) ? (f.args[4] as BlockCell).s.data.filter(c => isAnyWord(c.t)).map(c => canon((c as WordCell).sym)) : [];
@@ -403,12 +403,12 @@ function walkWord(stepSize: (args: Cell[]) => number, bodyAt: number) {
   };
 }
 
-native('forall', "['word [word!] body [block!]]", walkWord(() => 1, 1));
-native('forskip', "['word [word!] size [integer!] body [block!]]", walkWord(a => Math.max(1, num(a[1]!)), 2));
+native('forall', "[\"Evaluates a block for each position of the series a word refers to.\" 'word [word!] body [block!]]", walkWord(() => 1, 1));
+native('forskip', "[\"Evaluates a block at every so many positions of the series a word refers to.\" 'word [word!] size [integer!] body [block!]]", walkWord(a => Math.max(1, num(a[1]!)), 2));
 
 // --- apply -------------------------------------------------------------------------
 
-native('apply', '[func [any-function!] block [block!] /only]', (_t, f, v) => {
+native('apply', '["Calls a function with the arguments in a block." func [any-function!] block [block!] /only]', (_t, f, v) => {
   const fn = f.args[0]!;
   const b = f.args[1] as BlockCell;
   if (f.phase === 2) return value(v!);

@@ -28,7 +28,7 @@ function caught(f: NativeFrame): Thrown | null {
 
 // --- evaluation ------------------------------------------------------------------
 
-native('do', '[value [any-type!] /next "Evaluates only the first expression of a block" position [word!] "Set to the block after it"]', (t, f, v) => {
+native('do', '["Evaluates a block, or source text; gives the last value." value [any-type!] /next "Evaluates only the first expression of a block" position [word!] "Set to the block after it"]', (t, f, v) => {
   if (f.phase === 1) return value(v!);
   const x = f.args[0]!;
   if (f.args[1] === TRUE) {
@@ -63,7 +63,7 @@ native('do', '[value [any-type!] /next "Evaluates only the first expression of a
   return value(x);
 });
 
-native('reduce', '[value [any-value!]]', (_t, f, v) => {
+native('reduce', '["Evaluates each expression of a block; gives a block of the values." value [any-value!]]', (_t, f, v) => {
   const x = f.args[0]!;
   if (x.t !== K.Block) return value(x);
   if (f.phase === 0) {
@@ -76,31 +76,31 @@ native('reduce', '[value [any-value!]]', (_t, f, v) => {
   return { k: 'expr', feed: st.feed };
 });
 
-native('quote', '[:value [any-type!]]', (_t, f) => value(f.args[0]!));
+native('quote', '["The value as it is, not evaluated." :value [any-type!]]', (_t, f) => value(f.args[0]!));
 
 // --- conditionals ----------------------------------------------------------------
 
-native('if', '[condition [any-value!] body [block!]]', (_t, f, v) => {
+native('if', '["Evaluates the block if the condition is true; gives its value, or none." condition [any-value!] body [block!]]', (_t, f, v) => {
   if (f.phase === 1) return value(v!);
   if (!truthy(f.args[0]!)) return value(NONE);
   f.phase = 1;
   return doBlock(f.args[1] as BlockCell);
 });
 
-native('unless', '[condition [any-value!] body [block!]]', (_t, f, v) => {
+native('unless', '["Evaluates the block if the condition is not true; gives its value, or none." condition [any-value!] body [block!]]', (_t, f, v) => {
   if (f.phase === 1) return value(v!);
   if (truthy(f.args[0]!)) return value(NONE);
   f.phase = 1;
   return doBlock(f.args[1] as BlockCell);
 });
 
-native('either', '[condition [any-value!] true-body [block!] false-body [block!]]', (_t, f, v) => {
+native('either', '["Evaluates the first block if the condition is true, the second if not." condition [any-value!] true-body [block!] false-body [block!]]', (_t, f, v) => {
   if (f.phase === 1) return value(v!);
   f.phase = 1;
   return doBlock(f.args[truthy(f.args[0]!) ? 1 : 2] as BlockCell);
 });
 
-native('not', '[value [any-value!]]', (_t, f) => value({ t: K.Logic, v: !truthy(f.args[0]!) }));
+native('not', '["True if the value is false or none, false otherwise." value [any-value!]]', (_t, f) => value({ t: K.Logic, v: !truthy(f.args[0]!) }));
 
 /** `all` and `any`: evaluate expressions until one is false (all) or true (any). */
 function shortCircuit(f: NativeFrame, v: Cell | null, stopOn: boolean) {
@@ -119,10 +119,10 @@ function shortCircuit(f: NativeFrame, v: Cell | null, stopOn: boolean) {
   return { k: 'expr', feed } as const;
 }
 
-native('all', '[block [block!]]', (_t, f, v) => shortCircuit(f, v, false));
-native('any', '[block [block!]]', (_t, f, v) => shortCircuit(f, v, true));
+native('all', '["Evaluates expressions while they are true; gives the last value, or none at the first false one." block [block!]]', (_t, f, v) => shortCircuit(f, v, false));
+native('any', '["Evaluates expressions until one is true; gives it, or none." block [block!]]', (_t, f, v) => shortCircuit(f, v, true));
 
-native('case', '[cases [block!] /all]', (_t, f, v) => {
+native('case', '["Evaluates the block after the first true condition." cases [block!] /all]', (_t, f, v) => {
   const b = f.args[0] as BlockCell;
   const every = f.args[1]!.t === K.Logic;
   if (f.phase === 0) f.data = { feed: { s: b.s, i: b.i }, out: NONE };
@@ -148,7 +148,7 @@ native('case', '[cases [block!] /all]', (_t, f, v) => {
   return { k: 'expr', feed: st.feed };
 });
 
-native('switch', '[value [any-value!] cases [block!] /default case [block!]]', (_t, f, v) => {
+native('switch', '["Evaluates the block after the value that is equal to the one given." value [any-value!] cases [block!] /default case [block!]]', (_t, f, v) => {
   if (f.phase === 1) return value(v!);
   const x = f.args[0]!;
   const cases = f.args[1] as BlockCell;
@@ -186,7 +186,7 @@ function loopThrow(f: NativeFrame, st: { out: Cell }, v: Cell | null) {
   return null;
 }
 
-native('loop', '[count [integer!] body [block!]]', (_t, f, v) => {
+native('loop', '["Evaluates a block a number of times." count [integer!] body [block!]]', (_t, f, v) => {
   if (f.phase === 0) {
     f.phase = 1;
     f.trap = LOOP_TRAP;
@@ -209,7 +209,7 @@ function loopBody(words: Cell, body: BlockCell): { ctx: Ctx; body: BlockCell } {
   return { ctx, body: { t: K.Block, s, i: 0 } };
 }
 
-native('repeat', "['word [word!] count [integer!] body [block!]]", (_t, f, v) => {
+native('repeat', "[\"Evaluates a block a number of times, with a word counting from 1.\" 'word [word!] count [integer!] body [block!]]", (_t, f, v) => {
   if (f.phase === 0) {
     f.phase = 1;
     f.trap = LOOP_TRAP;
@@ -225,7 +225,7 @@ native('repeat', "['word [word!] count [integer!] body [block!]]", (_t, f, v) =>
   return doBlock(st.body);
 });
 
-native('foreach', "['word [word! block!] data [series!] body [block!]]", (_t, f, v) => {
+native('foreach', "[\"Evaluates a block for each value of a series, with a word set to it.\" 'word [word! block!] data [series!] body [block!]]", (_t, f, v) => {
   const data = f.args[1]!;
   if (f.phase === 0) {
     f.phase = 1;
@@ -259,7 +259,7 @@ function itemAt(series: Cell, i: number): Cell {
   return (series as BlockCell).s.data[i] ?? NONE;
 }
 
-native('while', '[condition [block!] body [block!]]', (_t, f, v) => {
+native('while', '["Evaluates the body as long as the condition block is true." condition [block!] body [block!]]', (_t, f, v) => {
   if (f.phase === 0) {
     f.trap = LOOP_TRAP;
     f.data = { out: NONE };
@@ -278,7 +278,7 @@ native('while', '[condition [block!] body [block!]]', (_t, f, v) => {
   return doBlock(f.args[0] as BlockCell);
 });
 
-native('until', '[body [block!]]', (_t, f, v) => {
+native('until', '["Evaluates the block until it gives true." body [block!]]', (_t, f, v) => {
   const th = caught(f);
   if (th !== null && th.kind === T.Break) return value(th.v);
   if (f.phase === 1 && th === null && truthy(v!)) return value(v!);
@@ -287,21 +287,21 @@ native('until', '[body [block!]]', (_t, f, v) => {
   return doBlock(f.args[0] as BlockCell);
 });
 
-native('break', '[/return value [any-value!]]', (_t, f) =>
+native('break', '["Leaves the loop it is in." /return value [any-value!]]', (_t, f) =>
   ({ k: 'throw', e: { kind: T.Break, v: f.args[0]!.t === K.Logic ? f.args[1]! : NONE, name: null } }));
 
-native('continue', '[]', () => ({ k: 'throw', e: { kind: T.Continue, v: UNSET, name: null } }));
+native('continue', '["Goes on with the next turn of the loop it is in." ]', () => ({ k: 'throw', e: { kind: T.Continue, v: UNSET, name: null } }));
 
 // --- functions -------------------------------------------------------------------
 
-native('return', '[value [any-type!]]', (_t, f) =>
+native('return', '["Leaves the function it is in, giving a value." value [any-type!]]', (_t, f) =>
   ({ k: 'throw', e: { kind: T.Return, v: f.args[0]!, name: null } }));
 
-native('exit', '[]', () => ({ k: 'throw', e: { kind: T.Return, v: UNSET, name: null } }));
+native('exit', '["Leaves the function it is in, giving no value." ]', () => ({ k: 'throw', e: { kind: T.Return, v: UNSET, name: null } }));
 
 // --- errors and throws -----------------------------------------------------------
 
-native('try', '[body [block!]]', (_t, f, v) => {
+native('try', '["Evaluates a block; gives an error as a value instead of raising it." body [block!]]', (_t, f, v) => {
   const th = caught(f);
   if (th !== null) return value(th.v);
   if (f.phase === 1) return value(v!);
@@ -310,7 +310,7 @@ native('try', '[body [block!]]', (_t, f, v) => {
   return doBlock(f.args[0] as BlockCell);
 });
 
-native('attempt', '[body [block!]]', (_t, f, v) => {
+native('attempt', '["Evaluates a block; gives none if it raises an error." body [block!]]', (_t, f, v) => {
   if (caught(f) !== null) return value(NONE);
   if (f.phase === 1) return value(v!);
   f.phase = 1;
@@ -318,7 +318,7 @@ native('attempt', '[body [block!]]', (_t, f, v) => {
   return doBlock(f.args[0] as BlockCell);
 });
 
-native('catch', '[body [block!] /name word [word! block!]]', (_t, f, v) => {
+native('catch', '["Evaluates a block; gives the value a throw inside it threw." body [block!] /name word [word! block!]]', (_t, f, v) => {
   const th = caught(f);
   if (th !== null) {
     const named = f.args[1]!.t === K.Logic;
@@ -335,7 +335,7 @@ native('catch', '[body [block!] /name word [word! block!]]', (_t, f, v) => {
   return doBlock(f.args[0] as BlockCell);
 });
 
-native('throw', '[value [any-value!] /name word [word!]]', (_t, f) =>
+native('throw', '["Throws a value to the catch around it." value [any-value!] /name word [word!]]', (_t, f) =>
   ({ k: 'throw', e: { kind: T.Throw, v: f.args[0]!, name: f.args[1]!.t === K.Logic ? f.args[2]! : null } }));
 
 // As in R3, with no catalog of messages: the args, formed, are the message.
