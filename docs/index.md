@@ -73,7 +73,19 @@ language/13-modules
 language/14-dialects
 ```
 
-The second tutorial gives the shop its screens; the reference and the technical guides follow it.
+## Build the screens
+
+The second tutorial gives Cog & Chain its screens: booking a repair in, the bikes in the workshop, the
+quote a customer takes home. Every example in it is the real app, running right under its code.
+
+```{toctree}
+:maxdepth: 1
+:caption: Build the screens
+
+ui/01-first-screen
+ui/02-forms
+ui/03-layout
+```
 
 ```{toctree}
 :maxdepth: 1
