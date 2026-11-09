@@ -7,6 +7,7 @@
 import { K, isAnyBlock, kindBit, type Kind } from '../kinds.ts';
 import * as I64 from '../int64.ts';
 import {
+  ownMeta,
   NONE, TRUE, integer, char, logic, strictEqual,
   type Cell, type BlockCell, type StringCell, type Series,
 } from '../values.ts';
@@ -161,6 +162,7 @@ native('reverse', '["Reverses the order of the values from the series\' position
   const s = f.args[0] as SeriesCell;
   const end = used(f.args[1]!) ? partEnd(s, f.args[2]!) : s.s.data.length;
   const d = s.s.data as Item[];
+  ownMeta(s.s);
   const nl = s.s.nl;
   for (let a = s.i, b = end - 1; a < b; a++, b--) {
     [d[a], d[b]] = [d[b]!, d[a]!];
@@ -387,6 +389,7 @@ native('sort', '["Sorts the series in place." series [series!] /case /skip size 
   const flat = st.src.flat();
   const d = s.s.data as Item[];
   for (let k = 0; k < flat.length; k++) d[s.i + k] = flat[k]!;
+  ownMeta(s.s);
   if (s.s.nl) s.s.nl.fill(false, s.i);
   return value(s);
 });

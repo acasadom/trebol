@@ -8,6 +8,7 @@ import { K, kindName } from '../kinds.ts';
 import * as I64 from '../int64.ts';
 import { decAdd, decSub, decMul, decDiv, decRem, decRound, decFromNumber, decToNumber, decEqual, type Dec, type Rounding } from '../dec.ts';
 import {
+  ownMeta,
   NONE, UNSET, TRUE, integer, decimal, percent, money, time, pair, logic, date, strictEqual,
   type Cell, type BlockCell, type DateCell, type DateVal,
 } from '../values.ts';
@@ -401,6 +402,7 @@ native('random', '["A random value: an integer from 1 to it, a decimal up to it,
       if (n <= 0) return value(NONE);
       return value(pick(v, integer(randomInt(n))) as Cell);
     }
+    ownMeta(s.s);
     const arrays = [s.s.data, (s.s as { nl?: unknown[] }).nl, (s.s as { pos?: unknown[] }).pos].filter(x => x !== undefined) as unknown[][];
     for (let i = n - 1; i > 0; i--) {
       const j = Math.floor(nextRandom() * (i + 1));

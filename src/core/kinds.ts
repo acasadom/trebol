@@ -112,6 +112,16 @@ export function isSeries(k: Kind): boolean {
 
 // --- typesets ------------------------------------------------------------------
 
+/**
+ * A typeset as a table indexed by kind, for checks on the hot path: testing
+ * a bigint mask allocates, reading an array does not.
+ */
+export function kindTable(bits: bigint): readonly boolean[] {
+  const out: boolean[] = [];
+  for (let k = 0; k < KIND_COUNT; k++) out.push((bits & (1n << BigInt(k))) !== 0n);
+  return out;
+}
+
 /** A set of kinds as a bitmask: bit `k` is set when kind `k` belongs to it. */
 export function kindBit(k: Kind): bigint {
   return 1n << BigInt(k);

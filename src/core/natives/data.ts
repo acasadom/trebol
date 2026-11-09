@@ -5,6 +5,7 @@ import { K, isAnyBlock, isAnyString, isAnyWord, kindName, type Kind } from '../k
 import { intern, spell } from '../symbols.ts';
 import * as I64 from '../int64.ts';
 import {
+  ownMeta,
   NONE, UNSET, TRUE, FALSE, string, codePoints, text, datatype, typeset, context, object, blockOf, wordOf,
   type Cell, type BlockCell, type StringCell, type WordCell, type Ctx, type ObjectCell, type OpaqueCell, type Series,
 } from '../values.ts';
@@ -302,6 +303,7 @@ native('put', '["Sets the value of a key; gives the value." series [map! object!
     const at = blockFind(x.s, x.i, key);
     if (at < 0 || at + 1 >= x.s.data.length) {
       const items = at < 0 ? [key, v] : [v];
+      ownMeta(x.s);
       x.s.data.push(...items);
       if (x.s.nl) x.s.nl.push(...items.map(() => false));
       if (x.s.pos) x.s.pos.push(...items.map(() => -1));

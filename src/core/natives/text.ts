@@ -7,6 +7,7 @@ import { intern, canon, spell } from '../symbols.ts';
 import * as I64 from '../int64.ts';
 import { decToNumber } from '../dec.ts';
 import {
+  ownMeta,
   NONE, TRUE, FALSE, integer, decimal, percent, money, char, logic, pair, tuple, codePoints, text,
   datatype, typeset,
   type Cell, type BlockCell, type StringCell, type WordCell, type Series,
@@ -53,6 +54,7 @@ native('trim', '["Removes spaces at both ends, or with refinements other spaces 
   if (x.t === K.Block) {
     const kept = x.s.data.filter((c, i) => i < x.i || c.t !== K.None);
     x.s.data.splice(0, x.s.data.length, ...kept);
+    ownMeta(x.s);
     if (x.s.nl) x.s.nl.length = 0;
     if (x.s.pos) x.s.pos.length = 0;
     return value(x);

@@ -20,7 +20,7 @@ import {
   NONE, UNSET, TRUE, string, blockOf,
   type Cell, type Ctx, type Series, type BlockCell, type WordCell, type ObjectCell, type OpaqueCell,
 } from './values.ts';
-import { getWord, setWord, copyDeep } from './ctx.ts';
+import { getWord, setWord, instantiate } from './ctx.ts';
 import { makeError, fillErrorField } from './errors.ts';
 import { P, type Spec, type FuncDef, type NativeDef, type OpDef } from './func.ts';
 import { pick, poke } from './access.ts';
@@ -79,15 +79,26 @@ const inLibrary = (s: Series<Cell>): boolean => s.file !== undefined && LIBRARY_
 function calledFromLibrary(t: Task): boolean {
   for (let i = t.stack.length - 2; i >= 0; i--) {
     const f = t.stack[i]!;
-    if (f.k === F.Expr) return inLibrary(f.feed.s);
+    if (f.k === F.Expr || f.k === F.Do || f.k === F.Set) return inLibrary(f.feed.s);
   }
   return false;
 }
 
 export const F = { Do: 0, Expr: 1, Set: 2, Args: 3, Native: 4, Call: 5, Path: 6 } as const;
 
-/** Evaluates expressions until the end of the feed; the result is the last one. */
-interface DoFrame { readonly k: typeof F.Do; readonly feed: Feed; out: Cell }
+/**
+ * Evaluates expressions until the end of the feed; the result is the last one.
+ * It evaluates each expression itself, as an Expr frame would (state 1 while
+ * one is under way), so a block needs no frame per expression.
+ */
+interface DoFrame {
+  readonly k: typeof F.Do;
+  readonly feed: Feed;
+  out: Cell;
+  readonly infix: true;
+  start: number;
+  state: 0 | 1;
+}
 
 /** One expression: a primary value, then any infix operators after it. */
 interface ExprFrame {
@@ -100,7 +111,18 @@ interface ExprFrame {
 }
 
 /** Waits for a value to assign to a set-word. */
-interface SetFrame { readonly k: typeof F.Set; readonly w: WordCell }
+/**
+ * Assigns a set-word: evaluates the expression after it itself, as an Expr
+ * frame would (state 1 once its first value is in), then sets the word.
+ */
+interface SetFrame {
+  readonly k: typeof F.Set;
+  readonly w: WordCell;
+  readonly feed: Feed;
+  readonly infix: true;
+  start: number;
+  state: 0 | 1;
+}
 
 /** Gathers the arguments of a call. */
 interface ArgsFrame {
@@ -110,8 +132,8 @@ interface ArgsFrame {
   readonly spec: Spec;
   /** The frame values, laid out as `spec.params`. */
   readonly vals: Cell[];
-  /** Indexes into `vals` still to gather, in order. */
-  readonly plan: number[];
+  /** Indexes into `vals` still to gather, in order; may be the spec's own `base`, never changed. */
+  plan: number[];
   n: number;
   readonly name: Sym | null;
   readonly op: boolean;
@@ -235,9 +257,9 @@ export function run(t: Task, budget = Infinity): RunResult {
     const f = t.stack[t.stack.length - 1];
     if (f === undefined) return { k: 'done', v: t.v ?? UNSET };
     switch (f.k) {
-      case F.Do: doFrame(t, f); break;
+      case F.Do: if (f.state === 0) doFrame(t, f); else exprInfix(t, f); break;
       case F.Expr: if (f.state === 0) exprStart(t, f); else exprInfix(t, f); break;
-      case F.Set: setFrame(t, f); break;
+      case F.Set: if (f.state === 0) exprStart(t, f); else exprInfix(t, f); break;
       case F.Args: argsFrame(t, f); break;
       case F.Native: {
         const v = t.v;
@@ -316,8 +338,8 @@ function unwind(t: Task): RunResult | null {
     case F.Args:
       if (e !== null && f.name !== null && !calledFromLibrary(t)) fillErrorField(e, 'where', { t: K.Word, sym: f.name, bind: null });
       break;
-    case F.Expr:
-      if (e !== null && !inLibrary(f.feed.s)) {
+    case F.Do: case F.Expr: case F.Set:
+      if (e !== null && (f.k !== F.Do || f.state === 1) && !inLibrary(f.feed.s)) {
         const s = f.feed.s;
         const end = Math.max(f.feed.i, f.start + 1);
         fillErrorField(e, 'near', blockOf(K.Block, s.data.slice(f.start, Math.min(end, f.start + 4))));
@@ -344,7 +366,7 @@ function uncaught(th: Thrown): ObjectCell {
 // --- frame handlers --------------------------------------------------------------
 
 function pushDo(t: Task, s: Series<Cell>, i: number): void {
-  t.stack.push({ k: F.Do, feed: { s, i }, out: UNSET });
+  t.stack.push({ k: F.Do, feed: { s, i }, out: UNSET, infix: true, start: i, state: 0 });
 }
 
 function pushExpr(t: Task, feed: Feed, infix: boolean): void {
@@ -361,10 +383,10 @@ function doFrame(t: Task, f: DoFrame): void {
     t.v = f.out;
     return;
   }
-  pushExpr(t, f.feed, true);
+  exprStart(t, f);
 }
 
-function exprStart(t: Task, f: ExprFrame): void {
+function exprStart(t: Task, f: ExprFrame | DoFrame | SetFrame): void {
   const feed = f.feed;
   const data = feed.s.data;
   f.start = feed.i;
@@ -385,11 +407,19 @@ function exprStart(t: Task, f: ExprFrame): void {
       t.v = v;
       return;
     }
-    case K.SetWord:
+    case K.SetWord: {
       if (feed.i >= data.length) return fail(t, 'script', 'need-value', `${spell(c.sym)}: needs a value`);
-      t.stack.push({ k: F.Set, w: c });
-      pushExpr(t, feed, true);
+      // a plain value with no operator after it is assigned at once
+      const q = quickValue(data[feed.i]!);
+      if (q !== null && q.t !== K.Unset && !isOpWord(data[feed.i + 1])) {
+        feed.i++;
+        if (!setWord(c, q)) return unbound(t, c);
+        t.v = q;
+        return;
+      }
+      t.stack.push({ k: F.Set, w: c, feed, infix: true, start: feed.i, state: 0 });
       return;
+    }
     case K.GetWord: {
       const v = getWord(c);
       if (v === null) return unbound(t, c);
@@ -420,7 +450,7 @@ function exprStart(t: Task, f: ExprFrame): void {
   t.v = c;
 }
 
-function exprInfix(t: Task, f: ExprFrame): void {
+function exprInfix(t: Task, f: ExprFrame | DoFrame | SetFrame): void {
   if (f.infix) {
     const next = f.feed.s.data[f.feed.i];
     if (next !== undefined && next.t === K.Word) {
@@ -429,12 +459,35 @@ function exprInfix(t: Task, f: ExprFrame): void {
         f.feed.i++;
         const left = t.v!;
         t.v = null;
-        beginCall(t, f.feed, (op.p as OpDef).fn as OpaqueCell, next.sym, null, left);
+        const fn = (op.p as OpDef).fn as OpaqueCell;
+        if (!quickOp(t, f.feed, fn, next.sym, left)) beginCall(t, f.feed, fn, next.sym, null, left);
         return;
       }
     }
   }
-  t.stack.pop(); // the value stays in t.v for the parent
+  // the value stays in t.v: for the parent, or for the Do frame to keep
+  if (f.k === F.Do) f.state = 0;
+  else if (f.k === F.Set) setFrame(t, f);
+  else t.stack.pop();
+}
+
+/**
+ * An operator whose native takes just two arguments, with a plain value on its
+ * right that both types allow, runs at once; false means take the general way.
+ */
+function quickOp(t: Task, feed: Feed, fn: OpaqueCell, name: Sym, left: Cell): boolean {
+  if (fn.t !== K.Native) return false;
+  const def = fn.p as NativeDef;
+  const params = def.spec.params;
+  if (params.length !== 2 || params[0]!.kind !== P.Arg || params[1]!.kind !== P.Arg) return false;
+  const rc = feed.s.data[feed.i];
+  const right = rc === undefined ? null : quickValue(rc);
+  if (right === null || !params[0]!.allows[left.t] || !params[1]!.allows[right.t]) return false;
+  feed.i++;
+  const nf: NativeFrame = { k: F.Native, def, args: [left, right], phase: 0, data: null, trap: 0, thrown: null, name };
+  t.stack.push(nf);
+  applyStep(t, nf, NATIVES[def.id]!.fn(t, nf, null));
+  return true;
 }
 
 function setFrame(t: Task, f: SetFrame): void {
@@ -463,9 +516,11 @@ function beginCall(t: Task, feed: Feed | null, fn: Cell, name: Sym | null, refs:
     return fail(t, 'script', 'not-function', `${nameOf(name)} is not a function`);
   }
   const spec = specOf(fn as OpaqueCell);
-  const vals: Cell[] = spec.params.map(() => NONE);
-  const plan = spec.base.slice();
-  if (refs !== null) {
+  const vals: Cell[] = spec.blank.slice();
+  // the plan is the spec's own list unless refinements add to it
+  let plan = spec.base as number[];
+  if (refs !== null && refs.length > 0) {
+    plan = plan.slice();
     for (const seg of refs) {
       const ri = seg.t === K.Word
         ? spec.params.findIndex(p => p.kind === P.Ref && canon(p.sym) === canon(seg.sym))
@@ -487,6 +542,30 @@ function beginCall(t: Task, feed: Feed | null, fn: Cell, name: Sym | null, refs:
   t.stack.push({ k: F.Args, feed, fn: fn as OpaqueCell, spec, vals, plan, n, name, op: left !== null });
 }
 
+/**
+ * The value of an item that evaluates to itself, or to a word's value that is
+ * not a function; null when it needs the full evaluator (a call, a path, a paren...).
+ */
+function quickValue(c: Cell): Cell | null {
+  switch (c.t) {
+    case K.Word: case K.GetWord: {
+      const v = getWord(c);
+      if (v === null) return null;
+      if (c.t === K.Word && (v.t === K.Function || v.t === K.Native || v.t === K.Op || v.t === K.Unset)) return null;
+      return v;
+    }
+    case K.SetWord: case K.LitWord: case K.Paren: case K.Path: case K.GetPath: case K.SetPath: case K.LitPath:
+      return null;
+  }
+  return c;
+}
+
+function isOpWord(c: Cell | undefined): boolean {
+  if (c === undefined || c.t !== K.Word) return false;
+  const v = getWord(c);
+  return v !== null && v.t === K.Op;
+}
+
 function argsFrame(t: Task, f: ArgsFrame): void {
   if (t.v !== null) {
     f.vals[f.plan[f.n++]!] = t.v;
@@ -499,7 +578,16 @@ function argsFrame(t: Task, f: ArgsFrame): void {
     if (feed === null || feed.i >= feed.s.data.length) {
       return fail(t, 'script', 'no-arg', `${nameOf(f.name)} is missing its ${spell(p.sym)} argument`);
     }
-    if (p.kind === P.Arg) return pushExpr(t, feed, !f.op);
+    if (p.kind === P.Arg) {
+      // a plain value with no operator after it needs no expression frame
+      const q = quickValue(feed.s.data[feed.i]!);
+      if (q !== null && (f.op || !isOpWord(feed.s.data[feed.i + 1]))) {
+        feed.i++;
+        t.v = q;
+        return;
+      }
+      return pushExpr(t, feed, !f.op);
+    }
     const c = feed.s.data[feed.i++]!;
     if (p.kind === P.Lit && c.t === K.Paren) return pushDo(t, c.s, c.i);
     if (p.kind === P.Lit && c.t === K.GetWord) {
@@ -514,29 +602,30 @@ function argsFrame(t: Task, f: ArgsFrame): void {
   for (const i of f.plan) {
     const p = params[i]!;
     const v = f.vals[i]!;
-    if ((p.types & kindBit(v.t)) === 0n) {
+    if (!p.allows[v.t]) {
       return fail(t, 'script', 'expect-arg',
         `${nameOf(f.name)} does not allow ${kindName(v.t)} for its ${spell(p.sym)} argument`);
     }
   }
   t.stack.pop();
   if (f.fn.t === K.Native) {
-    t.stack.push({
-      k: F.Native, def: f.fn.p as NativeDef, args: f.vals,
-      phase: 0, data: null, trap: 0, thrown: null, name: f.name,
-    });
+    // run it at once: most natives give their value in this first call
+    const def = f.fn.p as NativeDef;
+    const nf: NativeFrame = { k: F.Native, def, args: f.vals, phase: 0, data: null, trap: 0, thrown: null, name: f.name };
+    t.stack.push(nf);
+    applyStep(t, nf, NATIVES[def.id]!.fn(t, nf, null));
     return;
   }
   const def = f.fn.p as FuncDef;
   const ctx: Ctx = { keys: def.tmpl.keys, vals: f.vals, parent: null };
-  const body = copyDeep(def.body, 0, def.tmpl, ctx);
+  const body = instantiate(def.body, def.tmpl, ctx);
   t.stack.push({ k: F.Call, def, name: f.name });
   pushDo(t, body, 0);
 }
 
 function finishCall(t: Task, f: CallFrame, v: Cell): void {
   const ret = f.def.spec.ret;
-  if (ret !== null && (ret & kindBit(v.t)) === 0n) {
+  if (ret !== null && !f.def.spec.retAllows![v.t]) {
     return fail(t, 'script', 'bad-return', `${nameOf(f.name)} does not allow ${kindName(v.t)} as its result`);
   }
   t.v = v;
@@ -588,7 +677,7 @@ function applyStep(t: Task, f: NativeFrame, step: Step): void {
 /** Fills an Args frame from arguments laid out as the whole spec (see `call` with `full`). */
 function applyFull(a: ArgsFrame, args: readonly Cell[]): void {
   const params = a.spec.params;
-  a.plan.length = 0;
+  a.plan = [];
   let k = 0;
   let on = true;
   for (let i = 0; i < params.length; i++) {

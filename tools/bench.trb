@@ -1,0 +1,18 @@
+Trebol [
+    title: "Benchmark"
+    purpose: "A few loops that time the evaluator, in milliseconds. The same text runs in Rebol 3."
+]
+tm: func [name code /local t d] [
+    t: now/time/precise
+    do code
+    d: now/time/precise - t  print [name round (60000 * d/minute) + (1000 * d/second)]
+]
+fib: func [n] [either n < 2 [n] [(fib n - 1) + fib n - 2]]
+tm "fib-27" [fib 27]
+tm "loop-3M" [n: 0 loop 3000000 [n: n + 1]]
+tm "block-1M" [b: copy [] repeat i 1000000 [append b i] s: 0 foreach x b [s: s + x]]
+tm "string-500k" [s: copy "" repeat i 500000 [append s "ab"]]
+tm "parse-1M" [parse s [some "ab"]]
+tm "object-1M" [o: make object! [a: 1] loop 1000000 [o/a: o/a + 1]]
+tm "money-1M" [m: $0.00 loop 1000000 [m: m + $0.01]]
+tm "sort-200k" [b: copy [] repeat i 200000 [append b remainder i * 7919 200003] sort b]

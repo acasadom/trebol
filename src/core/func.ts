@@ -12,9 +12,9 @@
 // keys. Each call makes a fresh context and a deep copy of the body rebound
 // to it (see `copyDeep`), so frames are never shared between calls or tasks.
 
-import { K, kindBit, typeBitsByName, TYPESETS } from './kinds.ts';
+import { K, kindBit, kindTable, typeBitsByName, TYPESETS } from './kinds.ts';
 import { canon, intern, spell, type Sym } from './symbols.ts';
-import { context, type BlockCell, type Cell, type Ctx, type Series } from './values.ts';
+import { NONE, context, type BlockCell, type Cell, type Ctx, type Series } from './values.ts';
 import { bindSeries, copyDeep } from './ctx.ts';
 
 /** Parameter kinds. */
@@ -38,6 +38,8 @@ export interface Param {
   readonly kind: PKind;
   /** Allowed kinds as a typeset bitmask. */
   readonly types: bigint;
+  /** The same, indexed by kind: `allows[k]`. */
+  readonly allows: readonly boolean[];
   /** Index of the refinement this argument belongs to, or -1. */
   readonly ref: number;
 }
@@ -48,6 +50,10 @@ export interface Spec {
   readonly base: readonly number[];
   /** Allowed return kinds, or null when unchecked. */
   readonly ret: bigint | null;
+  /** The same, indexed by kind. */
+  readonly retAllows: readonly boolean[] | null;
+  /** A frame's values before a call fills them: none for every parameter. */
+  readonly blank: readonly Cell[];
 }
 
 /** The payload of a function! cell. */
@@ -105,7 +111,7 @@ export function parseSpec(b: BlockCell): Spec | string {
           i++;
         }
         if (kind !== P.Local && ref < 0) base.push(params.length);
-        params.push({ sym: c.sym, kind, types, ref: local ? -1 : ref });
+        params.push({ sym: c.sym, kind, types, allows: kindTable(types), ref: local ? -1 : ref });
         continue;
       }
       case K.Refinement: {
@@ -116,7 +122,7 @@ export function parseSpec(b: BlockCell): Spec | string {
         if (local) return `refinement /${spell(c.sym)} after /local`;
         if (params.some(p => canon(p.sym) === canon(c.sym))) return `duplicate parameter ${spell(c.sym)}`;
         ref = params.length;
-        params.push({ sym: c.sym, kind: P.Ref, types: LOGIC_TYPES, ref: -1 });
+        params.push({ sym: c.sym, kind: P.Ref, types: LOGIC_TYPES, allows: kindTable(LOGIC_TYPES), ref: -1 });
         continue;
       }
       case K.SetWord: {
@@ -134,7 +140,7 @@ export function parseSpec(b: BlockCell): Spec | string {
         return 'bad spec item';
     }
   }
-  return { params, base, ret };
+  return { params, base, ret, retAllows: ret === null ? null : kindTable(ret), blank: params.map(() => NONE) };
 }
 
 /** The typeset of a block of datatype names, e.g. [integer! none!]. */

@@ -29,6 +29,20 @@ export interface Series<T> {
   pos?: number[];
   /** Block series only: the file the block was loaded from, if any. */
   file?: string;
+  /**
+   * Set when `nl` and `pos` are shared with the series this one was copied
+   * from (a function body copied for a call); `ownMeta` copies them before
+   * anything changes them.
+   */
+  sharedMeta?: boolean;
+}
+
+/** Gives a series its own `nl` and `pos` before they are changed. Call it before every edit of them. */
+export function ownMeta(s: Series<unknown>): void {
+  if (s.sharedMeta !== true) return;
+  if (s.nl) s.nl = s.nl.slice();
+  if (s.pos) s.pos = s.pos.slice();
+  s.sharedMeta = undefined;
 }
 
 /** A binding context: objects, function frames and the user context. */
@@ -100,7 +114,16 @@ export interface DateCell { readonly t: typeof K.Date; readonly v: Readonly<Date
 export interface TimeCell { readonly t: typeof K.Time; readonly v: number }
 export interface StringCell { readonly t: StringKind; readonly s: Series<number>; readonly i: number }
 export interface BitsetCell { readonly t: typeof K.Bitset; readonly s: Series<number>; readonly neg: boolean }
-export interface WordCell { readonly t: WordKind; readonly sym: Sym; readonly bind: Ctx | null }
+export interface WordCell {
+  readonly t: WordKind;
+  readonly sym: Sym;
+  readonly bind: Ctx | null;
+  /**
+   * Where the word's key is in `bind`, when known at bind time. Keys are only
+   * ever appended, so the index never goes stale: a lookup is one array read.
+   */
+  readonly idx?: number;
+}
 export interface BlockCell { readonly t: BlockKind; readonly s: Series<Cell>; readonly i: number }
 /** Keys and values alternate in `s`. Hashing arrives with the evaluator. */
 export interface MapCell { readonly t: typeof K.Map; readonly s: Series<Cell> }

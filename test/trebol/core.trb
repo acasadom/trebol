@@ -217,3 +217,11 @@ Trebol [
 [not (0.1 + 0.2 == 0.3)]
 [not (0.3 = 0.30000001)]
 [1 = 1.0]
+
+"each call has its own literal blocks"
+[f: func [] [b: [x y] append b 'z  b]  all [(f) = [x y z]  (f) = [x y z]]]
+[f: func [n] [b: [
+    a
+    b
+] insert b n  b]  all [(mold f 1) = "[1^/    a^/    b^/]"  (mold f 2) = "[2^/    a^/    b^/]"]]
+[f: func [] [b: [3 1 2] sort b  reverse b  b]  all [(f) = [3 2 1]  (f) = [3 2 1]]]
