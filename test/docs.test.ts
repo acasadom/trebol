@@ -9,6 +9,8 @@
 // - ```trebol-console blocks are typed into the console: `>>` (and `[    ` for
 //   more lines) is input, every other line is what must show, exactly. An
 //   expected line ending in `...` matches any line that starts the same way.
+// - ```trebol-ui blocks are apps, shown live under their code: each runs on its
+//   own, with the UI dialect loaded, and must draw its view without an error.
 //
 // The tutorial's parts supplier (examples/supplier.ts) runs while the pages do,
 // unless one already answers on its port.
@@ -16,15 +18,24 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import { dirname, join, relative } from 'node:path';
 import type { Server } from 'node:http';
 import { fileURLToPath } from 'node:url';
-import type { ObjectCell } from '../src/core/index.ts';
-import { output, runSource, report } from '../src/host/index.ts';
+import { native, value, blockOf, K, type ObjectCell } from '../src/core/index.ts';
+import { output, runSource, report, startHost, startUi } from '../src/host/index.ts';
 import { Repl, consoleHost, PROMPT, MORE } from '../tools/console.ts';
 import { startSupplier } from '../examples/supplier.ts';
 
 const DOCS = fileURLToPath(new URL('../docs/', import.meta.url));
+
+// what the browser host does, done here without a page: a view is drawn, nothing more
+let shown = 0;
+native('show', '[root [object!]]', (_t, f) => { shown++; return value(f.args[0]!); });
+native('apply-theme', '[spec [object!]]', (_t, f) => value(f.args[0]!));
+native('route', '[]', () => value(blockOf(K.Block, [])));
+native('set-route', '[route [block!] replace [logic!]]', (_t, f) => value(f.args[0]!));
+native('repaint', '[]', () => value(blockOf(K.Block, [])));
 
 function pages(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap(e => {
@@ -38,7 +49,7 @@ interface Block { lang: string; code: string; line: number }
 
 function blocks(md: string): Block[] {
   const found: Block[] = [];
-  const re = /^```(trebol|trebol-console)[ \t]*\n([\s\S]*?)^```[ \t]*$/gm;
+  const re = /^```(trebol|trebol-console|trebol-ui)[ \t]*\n([\s\S]*?)^```[ \t]*$/gm;
   for (let m = re.exec(md); m; m = re.exec(md)) {
     found.push({ lang: m[1]!, code: m[2]!, line: md.slice(0, m.index).split('\n').length });
   }
@@ -71,6 +82,22 @@ async function typeIn(repl: Repl, code: string, where: string): Promise<void> {
   assert.ok(ok, `${where}: the console shows\n${actual.join('\n')}\nbut the page says\n${expected.join('\n')}`);
 }
 
+async function runApp(code: string, where: string): Promise<void> {
+  let failed: ObjectCell | null = null;
+  // Trebol's own files only: a live example runs in a page of its own, with nothing next to it to import
+  const loader = { base: 'file:///', read: (href: string) => readFile(fileURLToPath(href), 'utf8') };
+  const host = startHost({ onError: e => { failed = e; }, loader });
+  await startUi(host);
+  const before = shown;
+  try {
+    await runSource(host, code, where);
+  } catch (e) {
+    assert.fail(`${where}: the app fails:\n${e instanceof Error ? e.message : report(e as ObjectCell)}`);
+  }
+  assert.equal(failed, null, `${where}: the app fails:\n${failed === null ? '' : report(failed)}`);
+  assert.ok(shown > before, `${where}: the app shows no view`);
+}
+
 let supplier: Server | null = null;
 before(async () => {
   try {
@@ -89,7 +116,9 @@ for (const page of pages(DOCS)) {
     for (const b of blocks(md)) {
       const where = `${name}:${b.line}`;
       const file = /^; file: (\S+)\n/.exec(b.code);
-      if (b.lang === 'trebol-console') {
+      if (b.lang === 'trebol-ui') {
+        await runApp(b.code, where);
+      } else if (b.lang === 'trebol-console') {
         await typeIn(repl, b.code, where);
       } else if (file !== null) {
         // a file the page shows: it must be the file next to the page, which the examples import

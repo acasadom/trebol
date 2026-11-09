@@ -679,6 +679,13 @@ describe('theme', () => {
     assert.ok(css.includes('@media (prefers-color-scheme: dark)'));
     assert.ok(!themeCss({ ...DEFAULT_THEME, mode: 'light' }).includes('prefers-color-scheme'));
   });
+
+  test('in auto mode an embedding page can force light or dark', () => {
+    const css = themeCss(DEFAULT_THEME);
+    assert.ok(css.includes(':root:not([data-tb-scheme="light"])'));
+    assert.ok(css.includes(':root[data-tb-scheme="dark"]'));
+    assert.ok(!themeCss({ ...DEFAULT_THEME, mode: 'light' }).includes('data-tb-scheme'));
+  });
 });
 
 test('localize formats dates, times, numbers, percents and money in the active language', async () => {

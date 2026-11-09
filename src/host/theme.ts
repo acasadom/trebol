@@ -207,7 +207,8 @@ export function themeCss(t: ThemeParams): string {
   let colors: string;
   if (t.mode === 'light') colors = `:root {\n${light}\n}`;
   else if (t.mode === 'dark') colors = `:root {\n${dark}\n}`;
-  else colors = `:root {\n${light}\n}\n@media (prefers-color-scheme: dark) {\n:root {\n${dark}\n}\n}`;
+  // an embedding page (the documentation's live examples) may force one: <html data-tb-scheme="dark">
+  else colors = `:root {\n${light}\n}\n@media (prefers-color-scheme: dark) {\n:root:not([data-tb-scheme="light"]) {\n${dark}\n}\n}\n:root[data-tb-scheme="dark"] {\n${dark}\n}`;
   return `:root {\n${sizeVars(t)}\n}\n${colors}\n${COMPONENTS}`;
 }
 

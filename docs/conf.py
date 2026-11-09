@@ -1,6 +1,8 @@
 """Sphinx configuration for the Trebol documentation (Markdown via MyST)."""
 
 import re
+import sys
+from pathlib import Path
 
 from pygments.lexer import RegexLexer, bygroups, using
 from pygments.lexers import RebolLexer
@@ -8,7 +10,9 @@ from pygments.token import Generic
 
 project = "Trebol"
 
-extensions = ["myst_parser"]
+sys.path.insert(0, str(Path(__file__).parent / "_ext"))
+
+extensions = ["myst_parser", "trebol_live"]
 
 # Documentation is authored in Markdown.
 source_suffix = {".md": "markdown"}
@@ -19,6 +23,7 @@ exclude_patterns = ["_build", "design.md", "screenshots"]
 
 html_theme = "furo"  # modern, responsive, dark-mode; install via docs/requirements.txt
 html_title = "Trebol"
+html_static_path = ["_static"]
 
 # Resolve in-page links like [text](#a-heading) to heading anchors (h1..h3).
 myst_heading_anchors = 3

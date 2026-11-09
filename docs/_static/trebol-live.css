@@ -1,0 +1,10 @@
+/* Live examples (see _ext/trebol_live.py) */
+div.trebol-live { margin: -0.5rem 0 1.5rem; }
+iframe.trebol-live {
+  display: block;
+  width: 100%;
+  height: 20rem;
+  border: 1px solid var(--color-background-border);
+  border-radius: 0 0 0.5rem 0.5rem;
+}
+a.trebol-live-open { display: inline-block; margin-top: 0.25rem; font-size: var(--font-size--small); }
