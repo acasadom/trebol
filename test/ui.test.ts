@@ -692,6 +692,17 @@ describe('theme', () => {
     assert.match(css, /@container \(max-width: 420px\) \{[^@]*> \.tb-field > \.tb-label[^}]*grid-column: 1 \/ -1;/);
   });
 
+  test('the classic skin builds controls in relief; the modern one adds nothing', () => {
+    const classic = themeCss({ ...DEFAULT_THEME, ...LOOKS['classic'] });
+    assert.match(classic, /--tb-bevel-hi: oklch/);
+    assert.match(classic, /\.tb-button \{[^}]*box-shadow: var\(--tb-raise\);/);
+    assert.match(classic, /\.tb-input \{[^}]*box-shadow: var\(--tb-sink\);/);
+    assert.match(classic, /--tb-control: 29px;/);
+    const modern = themeCss(DEFAULT_THEME);
+    assert.ok(!modern.includes('--tb-raise:') && !modern.includes('--tb-bevel-hi'));
+    assert.ok(modern.trimEnd().endsWith('}'));
+  });
+
   test('the title focused on entering a screen paints no focus ring', () => {
     assert.ok(themeCss(DEFAULT_THEME).includes('.tb-screen :is(h1, h2)[tabindex="-1"]:focus { outline: none; }'));
   });

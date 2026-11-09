@@ -553,6 +553,7 @@ looks: [
     #(en: "Civic" es: "Institucional") civic
     #(en: "Soft" es: "Amable") soft
     #(en: "Ink" es: "Tinta") ink
+    #(en: "Classic" es: "Clásico") classic
 ]
 
 theme: func [

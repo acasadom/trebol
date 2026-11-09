@@ -26,11 +26,13 @@ export interface ThemeParams {
   depth: 'flat' | 'soft' | 'lifted';
   /** How the same icons are drawn. */
   icons: 'fine' | 'round' | 'sharp' | 'bold';
+  /** How the controls are built: today's flat ones, or classic ones in relief on a grey window. */
+  skin: 'modern' | 'classic';
 }
 
 export const DEFAULT_THEME: ThemeParams = {
   base: 250, accent: 30, neutral: 'neutral', density: 'normal', radius: 'soft', font: 'inter', headings: null, mode: 'auto',
-  color: 1, line: 1, depth: 'soft', icons: 'round',
+  color: 1, line: 1, depth: 'soft', icons: 'round', skin: 'modern',
 };
 
 /** The looks: complete sets of parameters with a name. `theme [look: civic base: 200]` starts from one. */
@@ -40,6 +42,7 @@ export const LOOKS: Record<string, Partial<ThemeParams>> = {
   civic: { base: 255, accent: 75, neutral: 'cool', font: 'system', radius: 'sharp', line: 2, depth: 'flat', icons: 'sharp' },
   soft: { base: 175, accent: 30, density: 'comfortable', radius: 'round', depth: 'lifted', icons: 'round' },
   ink: { color: 0, font: 'system', headings: 'mono', radius: 'sharp', line: 2, depth: 'flat', icons: 'bold' },
+  classic: { base: 240, accent: 45, color: 0.7, font: 'sans', density: 'compact', radius: 'sharp', depth: 'flat', icons: 'sharp', skin: 'classic' },
 };
 
 export interface Oklch { l: number; c: number; h: number }
@@ -73,6 +76,26 @@ export function palette(t: ThemeParams, dark: boolean): Record<Role, Oklch> {
   // what warns or confirms keeps its color in every look
   const signal = (l: number, c: number, h: number): Oklch => ({ l, c, h });
   const hue = (l: number, c: number, h: number): Oklch => ({ l, c: c * t.color, h });
+  // classic: a grey window (panels too: their edges set them apart), white wells for what is typed
+  if (t.skin === 'classic') return {
+    bg: n(dark ? 0.33 : 0.85, 2),
+    surface: n(dark ? 0.25 : 1, dark ? 2 : 0),
+    raised: n(dark ? 0.33 : 0.85, 2),
+    border: n(dark ? 0.22 : 0.7, 2),
+    'border-strong': n(dark ? 0.18 : 0.52, 2),
+    text: n(dark ? 0.95 : 0.18, dark ? 1 : 3),
+    muted: n(dark ? 0.8 : 0.38, 3),
+    primary: hue(dark ? 0.8 : 0.45, 0.12, t.base),
+    'primary-hover': hue(dark ? 0.85 : 0.4, 0.12, t.base),
+    'on-primary': n(dark ? 0.18 : 1, dark ? 2 : 0),
+    accent: hue(dark ? 0.8 : 0.48, 0.13, t.accent),
+    'on-accent': n(dark ? 0.18 : 1, dark ? 2 : 0),
+    danger: signal(dark ? 0.75 : 0.5, dark ? 0.15 : 0.18, 25),
+    'on-danger': n(dark ? 0.18 : 1, dark ? 2 : 0),
+    success: signal(dark ? 0.76 : 0.48, 0.13, 150),
+    warning: signal(dark ? 0.8 : 0.78, 0.14, 75),
+    focus: hue(dark ? 0.75 : 0.5, 0.15, t.base),
+  };
   if (!dark) {
     return {
       bg: n(0.975, 1.2),
@@ -160,6 +183,7 @@ const ICONS = {
 } as const;
 const FONTS: Record<string, string> = {
   inter: 'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+  sans: '"Helvetica Neue", Helvetica, Arial, sans-serif',
   system: 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
   serif: 'ui-serif, Georgia, Cambria, "Times New Roman", serif',
   mono: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
@@ -178,6 +202,12 @@ function colorVars(t: ThemeParams, dark: boolean): string {
   lines.push(`  --tb-shadow-1: ${t.depth === 'flat' ? 'none' : `${shadow}, 0 ${k}px ${3 * k}px ${css(n0(p), dark ? 0.4 : 0.08)}`};`);
   lines.push(`  --tb-shadow-2: ${t.depth === 'flat' ? 'none' : `${shadow}, 0 ${4 * k}px ${12 * k}px ${css(n0(p), dark ? 0.5 : 0.08)}`};`);
   lines.push(`  --tb-shadow-3: ${shadow}, 0 ${12 * k}px ${32 * k}px ${css(n0(p), dark ? 0.6 : 0.12)};`);
+  if (t.skin === 'classic') {
+    // the two edges of what stands out or sinks in, and the faces of buttons and bars
+    const g = (l: number): string => css({ l, c: p.bg.c, h: p.bg.h });
+    lines.push(`  --tb-bevel-hi: ${g(dark ? 0.5 : 1)};`, `  --tb-bevel-lo: ${g(dark ? 0.15 : 0.55)};`);
+    lines.push(`  --tb-face-hi: ${g(dark ? 0.47 : 0.97)};`, `  --tb-face-lo: ${g(dark ? 0.36 : 0.8)};`);
+  }
   lines.push(`  color-scheme: ${dark ? 'dark' : 'light'};`);
   return lines.join('\n');
 }
@@ -189,7 +219,8 @@ function sizeVars(t: ThemeParams): string {
   const lines = SPACE.map((px, i) => `  --tb-space-${i}: ${Math.round(px * k)}px;`);
   const r = RADIUS[t.radius];
   lines.push(`  --tb-radius: ${r}px;`, `  --tb-radius-lg: ${Math.round(r * 1.5)}px;`);
-  lines.push(`  --tb-control: ${Math.max(40, Math.round(44 * k))}px;`);
+  // classic controls are small, as on a desktop; a touch screen still gets 44px (below)
+  lines.push(`  --tb-control: ${t.skin === 'classic' ? Math.round(34 * k) : Math.max(40, Math.round(44 * k))}px;`);
   lines.push(`  --tb-font: ${FONTS[t.font] ?? `"${t.font}", ${FONTS['system']}`};`);
   lines.push(`  --tb-headings: ${t.headings === null ? 'var(--tb-font)' : FONTS[t.headings] ?? `"${t.headings}", ${FONTS['system']}`};`);
   lines.push(`  --tb-mono: ${FONTS['mono']};`);
@@ -209,7 +240,7 @@ export function themeCss(t: ThemeParams): string {
   else if (t.mode === 'dark') colors = `:root {\n${dark}\n}`;
   // an embedding page (the documentation's live examples) may force one: <html data-tb-scheme="dark">
   else colors = `:root {\n${light}\n}\n@media (prefers-color-scheme: dark) {\n:root:not([data-tb-scheme="light"]) {\n${dark}\n}\n}\n:root[data-tb-scheme="dark"] {\n${dark}\n}`;
-  return `:root {\n${sizeVars(t)}\n}\n${colors}\n${COMPONENTS}`;
+  return `:root {\n${sizeVars(t)}\n}\n${colors}\n${COMPONENTS}${SKINS[t.skin]}`;
 }
 
 /** Component rules. Only token variables appear here, never raw values of color. */
@@ -1019,3 +1050,120 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
   .tb-indeterminate .tb-progress-bar { width: 100%; opacity: 0.35; }
 }
 `;
+
+/** What a skin changes on top of the component rules: '' for the modern one. */
+const SKINS: Record<ThemeParams['skin'], string> = {
+  modern: '',
+  classic: String.raw`
+/* classic: controls in relief on a grey window, sunken wells for what is typed, title bars on dialogs */
+:root {
+  --tb-raise: inset 1px 1px 0 var(--tb-bevel-hi), inset -1px -1px 0 var(--tb-bevel-lo);
+  --tb-sink: inset 1px 1px 0 var(--tb-bevel-lo), inset -1px -1px 0 var(--tb-bevel-hi);
+  --tb-drop: 3px 3px 0 color-mix(in oklch, var(--tb-bevel-lo) 60%, transparent);
+  --tb-ring: 0 0 0 2px var(--tb-focus);
+  --tb-face: linear-gradient(var(--tb-face-hi), var(--tb-face-lo));
+}
+body { font-size: 14px; -webkit-font-smoothing: auto; }
+.tb-title { font-weight: 700; letter-spacing: 0; color: var(--tb-primary); text-shadow: 1px 1px 0 var(--tb-bevel-hi); }
+.tb-heading, .tb-panel > .tb-panel-title, .tb-dialog-title { font-weight: 700; letter-spacing: 0; }
+.tb-label { font-weight: 700; font-size: 13px; }
+.tb-divider { border-top: 1px solid var(--tb-bevel-lo); border-bottom: 1px solid var(--tb-bevel-hi); }
+
+.tb-panel { border: 1px solid var(--tb-border-strong); border-radius: var(--tb-radius); box-shadow: var(--tb-raise); padding: var(--tb-space-5); }
+.tb-panel.tb-primary { box-shadow: var(--tb-raise); }
+.tb-panel:focus-visible, .tb-panel.tb-primary:focus-visible { box-shadow: var(--tb-raise), var(--tb-ring); }
+.tb-tile:hover { background: var(--tb-face); border-color: var(--tb-border-strong); box-shadow: var(--tb-raise); }
+
+/* buttons: a face lit from the top left; pressed, it sinks */
+.tb-button { font-size: 13px; font-weight: 700; padding: 0 var(--tb-space-4); border: 1px solid var(--tb-border-strong); background: var(--tb-face); box-shadow: var(--tb-raise); transition: none; }
+.tb-button:hover { background: linear-gradient(var(--tb-bevel-hi), var(--tb-face-hi)); border-color: var(--tb-border-strong); }
+.tb-button:active:not(:disabled, [aria-disabled="true"]) { background: linear-gradient(var(--tb-face-lo), var(--tb-face-hi)); box-shadow: var(--tb-sink); }
+.tb-button:focus-visible { box-shadow: var(--tb-raise), var(--tb-ring); }
+.tb-button:disabled, .tb-button[aria-disabled="true"] { box-shadow: var(--tb-raise); }
+.tb-button.tb-primary { --tb-tint: var(--tb-primary); }
+.tb-button.tb-accent { --tb-tint: var(--tb-accent); }
+.tb-button.tb-danger { --tb-tint: var(--tb-danger); }
+.tb-button:is(.tb-primary, .tb-accent, .tb-danger), .tb-button:is(.tb-primary, .tb-accent, .tb-danger):hover, .tb-button.tb-primary[aria-disabled="true"]:hover {
+  background: linear-gradient(color-mix(in oklch, var(--tb-tint) 85%, var(--tb-bevel-hi)), var(--tb-tint));
+  border-color: color-mix(in oklch, var(--tb-tint) 50%, var(--tb-border-strong));
+  box-shadow: inset 1px 1px 0 color-mix(in oklch, var(--tb-bevel-hi) 45%, transparent), inset -1px -1px 0 color-mix(in oklch, var(--tb-bevel-lo) 60%, transparent);
+}
+.tb-button:is(.tb-primary, .tb-accent, .tb-danger):hover:not(:disabled, [aria-disabled="true"]) { filter: brightness(1.08); }
+.tb-button:is(.tb-primary, .tb-accent, .tb-danger):active:not(:disabled, [aria-disabled="true"]) { background: var(--tb-tint); box-shadow: inset 1px 1px 0 color-mix(in oklch, var(--tb-bevel-lo) 60%, transparent); }
+.tb-button:is(.tb-primary, .tb-accent, .tb-danger):focus-visible { box-shadow: var(--tb-raise), var(--tb-ring); }
+.tb-toolbar { background: var(--tb-face); border: 1px solid var(--tb-border-strong); border-radius: var(--tb-radius); box-shadow: var(--tb-raise); }
+.tb-toolbar > .tb-button:not(.tb-primary, .tb-accent, .tb-danger) { box-shadow: none; }
+.tb-toolbar > .tb-button:not(.tb-primary, .tb-accent, .tb-danger):hover { background: var(--tb-face); border-color: var(--tb-border-strong); box-shadow: var(--tb-raise); }
+.tb-toolbar > .tb-button:not(.tb-primary, .tb-accent, .tb-danger):focus-visible { box-shadow: var(--tb-ring); }
+.tb-toolbar > .tb-divider { border-left-color: var(--tb-bevel-lo); border-right: 1px solid var(--tb-bevel-hi); border-bottom: 0; }
+.tb-rich-tool:hover { background: var(--tb-face); box-shadow: var(--tb-raise); color: var(--tb-text); }
+
+/* what is typed sits in a sunken well; a choice is a button that drops a list */
+.tb-input { border: 1px solid var(--tb-border-strong); box-shadow: var(--tb-sink); transition: none; }
+.tb-input:focus, .tb-rich-box:focus { border-color: var(--tb-focus); box-shadow: var(--tb-sink), 0 0 0 1px var(--tb-focus); }
+.tb-invalid .tb-input:focus { box-shadow: var(--tb-sink), 0 0 0 1px var(--tb-danger); }
+.tb-input[readonly], .tb-input.tb-rich-box[aria-readonly="true"] { background: var(--tb-bg); border-color: var(--tb-border); box-shadow: none; color: var(--tb-text); }
+select.tb-input {
+  font-weight: 700;
+  font-size: 13px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--tb-text) 50%), linear-gradient(135deg, var(--tb-text) 50%, transparent 50%), var(--tb-face);
+  background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%, 0 0;
+  background-size: 5px 5px, 5px 5px, 100% 100%;
+  box-shadow: var(--tb-raise);
+}
+select.tb-input:focus { box-shadow: var(--tb-raise), var(--tb-ring); }
+.tb-switch input, .tb-switch input:focus-visible { border-radius: var(--tb-radius); box-shadow: var(--tb-sink); }
+.tb-switch input:focus-visible { box-shadow: var(--tb-sink), var(--tb-ring); }
+.tb-switch input::before { border-radius: var(--tb-radius); background: var(--tb-face); box-shadow: var(--tb-raise), 0 0 0 1px var(--tb-border-strong); }
+.tb-upload { box-shadow: var(--tb-sink); }
+.tb-date-button { top: 1px; right: 1px; bottom: 1px; width: calc(var(--tb-control) - 2px); border-left: 1px solid var(--tb-border-strong); border-radius: 0; background: var(--tb-face); box-shadow: var(--tb-raise); color: var(--tb-text); }
+.tb-scroll { background: var(--tb-surface); border-color: var(--tb-border-strong); box-shadow: var(--tb-sink); }
+.tb-scroll:focus-visible { box-shadow: var(--tb-sink), var(--tb-ring); }
+
+/* progress: a sunken trough filled with blocks */
+.tb-progress { height: 18px; padding: 2px; border: 1px solid var(--tb-border-strong); border-radius: var(--tb-radius); background: var(--tb-surface); box-shadow: var(--tb-sink); }
+.tb-progress-bar { --tb-bar: var(--tb-primary); border-radius: 0; background: repeating-linear-gradient(90deg, var(--tb-bar) 0 10px, transparent 10px 12px); }
+.tb-success .tb-progress-bar { --tb-bar: var(--tb-success); background: repeating-linear-gradient(90deg, var(--tb-bar) 0 10px, transparent 10px 12px); }
+.tb-warning .tb-progress-bar { --tb-bar: var(--tb-warning); background: repeating-linear-gradient(90deg, var(--tb-bar) 0 10px, transparent 10px 12px); }
+.tb-danger .tb-progress-bar { --tb-bar: var(--tb-danger); background: repeating-linear-gradient(90deg, var(--tb-bar) 0 10px, transparent 10px 12px); }
+.tb-accent .tb-progress-bar { --tb-bar: var(--tb-accent); background: repeating-linear-gradient(90deg, var(--tb-bar) 0 10px, transparent 10px 12px); }
+
+/* tables and lists: a sunken frame, buttons for headers, what is chosen in the primary color */
+.tb-table-wrap, .tb-list { border: 1px solid; border-color: var(--tb-bevel-lo) var(--tb-bevel-hi) var(--tb-bevel-hi) var(--tb-bevel-lo); border-radius: var(--tb-radius); box-shadow: none; }
+.tb-table th { color: var(--tb-text); font-weight: 700; padding: var(--tb-space-2) var(--tb-space-3); background: var(--tb-face); border-bottom: 1px solid var(--tb-border-strong); box-shadow: var(--tb-raise); }
+.tb-sort { padding: var(--tb-space-2) var(--tb-space-3); }
+.tb-table tfoot td { background: var(--tb-bg); border-top-color: var(--tb-border-strong); }
+@media (min-width: 641px) {
+  .tb-table td { padding: var(--tb-space-2) var(--tb-space-3); border-right: 1px solid var(--tb-border); }
+  .tb-table th { border-right: 1px solid var(--tb-border-strong); }
+  .tb-table tr > :last-child { border-right: 0; }
+}
+.tb-table tr.tb-selected, .tb-list > li.tb-selected, .tb-tree li.tb-selected > .tb-tree-row { background: var(--tb-primary); color: var(--tb-on-primary); }
+.tb-list > li.tb-selected .tb-list-secondary, .tb-tree li.tb-selected > .tb-tree-row .tb-tree-toggle { color: inherit; }
+.tb-selectable tbody tr.tb-selected:focus-visible, .tb-selectable .tb-list > li.tb-selected:focus-visible { box-shadow: inset 0 0 0 2px var(--tb-focus), inset 0 0 0 3px var(--tb-on-primary); }
+.tb-tree-row { border-radius: 0; }
+
+/* tabs: raised tabs on a line; the chosen one is taller and opens onto what it shows */
+.tb-tablist { gap: 2px; padding: 0 var(--tb-space-2); box-shadow: inset 0 -1px 0 var(--tb-border-strong); }
+.tb-tab { font-size: 13px; font-weight: 700; min-height: calc(var(--tb-control) - 4px); margin-top: 4px; border: 1px solid var(--tb-border-strong); border-bottom: 0; border-radius: var(--tb-radius) var(--tb-radius) 0 0; background: var(--tb-face); color: var(--tb-muted); box-shadow: inset 1px 1px 0 var(--tb-bevel-hi); }
+.tb-tab[aria-selected="true"] { margin-top: 0; min-height: var(--tb-control); background: var(--tb-bg); color: var(--tb-text); }
+
+/* what floats: raised, with a hard shadow; the item under the pointer or the keys in the primary color */
+.tb-menu, .tb-lookup-list, .tb-calendar { border: 1px solid var(--tb-border-strong); border-radius: var(--tb-radius); box-shadow: var(--tb-raise), var(--tb-drop); animation: none; }
+.tb-menu-item, .tb-lookup-option { border-radius: 0; }
+.tb-menu-item:focus, .tb-lookup-option:hover, .tb-lookup-option[aria-selected="true"] { background: var(--tb-primary); color: var(--tb-on-primary); }
+.tb-menu-item:focus svg { color: inherit; }
+.tb-menu-divider { background: var(--tb-bevel-lo); box-shadow: 0 1px 0 var(--tb-bevel-hi); }
+.tb-calendar-step, .tb-upload-remove { background: var(--tb-face); border: 1px solid var(--tb-border-strong); box-shadow: var(--tb-raise); color: var(--tb-text); }
+.tb-toast { background: var(--tb-raised); color: var(--tb-text); border: 1px solid var(--tb-border-strong); border-radius: var(--tb-radius); box-shadow: var(--tb-raise), var(--tb-drop); font-weight: 700; }
+.tb-drag-ghost { border-color: var(--tb-border-strong); box-shadow: var(--tb-raise), var(--tb-drop); }
+
+/* dialogs: a window with a title bar */
+.tb-dialog { border: 1px solid var(--tb-border-strong); border-radius: var(--tb-radius); box-shadow: var(--tb-raise), var(--tb-drop); animation: none; }
+.tb-dialog-head { margin: 3px 3px 0; padding: var(--tb-space-1) var(--tb-space-1) var(--tb-space-1) var(--tb-space-4); background: linear-gradient(90deg, var(--tb-primary), color-mix(in oklch, var(--tb-primary) 60%, var(--tb-bevel-hi))); color: var(--tb-on-primary); }
+.tb-dialog-title { font-size: 14px; }
+.tb-dialog-close, .tb-dialog-close:hover { width: 24px; height: 24px; font-size: 16px; border: 1px solid var(--tb-border-strong); background: var(--tb-face); color: var(--tb-text); box-shadow: var(--tb-raise); }
+.tb-dialog-close:focus-visible { box-shadow: var(--tb-raise), var(--tb-ring); }
+.tb-dialog-body { padding-top: var(--tb-space-5); }
+`,
+};

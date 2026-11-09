@@ -3259,6 +3259,7 @@ const THEME_WORDS: Record<string, readonly string[]> = {
   mode: ['light', 'dark', 'auto'],
   depth: ['flat', 'soft', 'lifted'],
   icons: ['fine', 'round', 'sharp', 'bold'],
+  skin: ['modern', 'classic'],
 };
 
 /** Theme parameters from a theme object, keeping defaults for anything missing or unknown. */

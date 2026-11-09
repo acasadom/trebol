@@ -1,10 +1,22 @@
 Trebol [title: "Gallery"]
 
-; Every component of the UI dialect on one page.
+; Every component of the UI dialect on one page, in any look.
 
-view [
+view compose/deep/only [
     title "Gallery"
     text muted "Every component of the UI dialect, with no HTML or CSS."
+    row [
+        button #settings "Look" menu (looks) on-menu [look: event/picked retheme]
+        button "Mode" menu ["Light" light "Dark" dark "Auto" auto] on-menu [mode: event/picked retheme]
+        button "Dialog" [open edit]
+    ]
+    global edit: dialog "Edit client" [
+        form [
+            field name "Name" required
+            choice kind "Kind" ["Person" "Company"]
+            submit "Save" [close edit toast/role "Saved" 'success]
+        ]
+    ]
     people-pane: split [
         global list people [name "Name" job "Job"] on-select [
             person/text: row/name
@@ -54,6 +66,12 @@ view [
             button "Reset" [set-values face/form none]
         ]
     ]
+    panel "Tabs" [
+        tabs [
+            "General" [field "Company" "Acme" check "Active"]
+            "Billing" [money "Credit" EUR text muted "Paid by transfer."]
+        ]
+    ]
     panel "Progress" [
         upload: progress "Uploading photos" 40%
         progress "Waiting for the server"
@@ -91,6 +109,10 @@ view [
         ]
     ]
 ]
+
+look: 'minimal
+mode: 'auto
+retheme: does [theme compose [look: (look) mode: (mode)]]
 
 people/data: [
     #(id: 1 name: "Ada Lovelace" job: "Analyst" about: "Wrote the first program for the Analytical Engine.")
