@@ -30,9 +30,18 @@ function caught(f: NativeFrame): Thrown | null {
 
 native('do', '["Evaluates a block, or source text; gives the last value." value [any-type!] /next "Evaluates only the first expression of a block" position [word!] "Set to the block after it"]', (t, f, v) => {
   if (f.phase === 1) return value(v!);
-  const x = f.args[0]!;
+  let x = f.args[0]!;
   if (f.args[1] === TRUE) {
-    if (x.t !== K.Block && x.t !== K.Paren) return fail('script', 'expect-arg', `do/next does not allow ${kindName(x.t)} for its value argument`);
+    // as R3: source text is loaded first; any other value is itself, with nothing after it
+    if (x.t === K.String && f.phase === 0) {
+      const loaded = loadUser(t.rt, x);
+      if (loaded.k !== 'value') return loaded;
+      x = f.args[0] = loaded.v;
+    }
+    if (x.t !== K.Block && x.t !== K.Paren) {
+      setWord(f.args[2] as WordCell, NONE);
+      return x.t === K.Error ? { k: 'throw', e: { kind: T.Error, v: x, name: null } } : value(x);
+    }
     const b = x as BlockCell;
     if (f.phase === 2) {
       const feed = f.data as Feed;
