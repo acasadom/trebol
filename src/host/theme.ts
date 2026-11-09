@@ -6,6 +6,9 @@
 // comes from the theme (`base`, `accent`, `neutral`). `contrast()` checks it
 // and the tests run it over every hue.
 
+/** modern: today's flat controls; classic recalls Rebol/View, cupertino the Mac, fusion Qt, fluent Windows 11. */
+export type Skin = 'modern' | 'classic' | 'cupertino' | 'fusion' | 'fluent';
+
 export interface ThemeParams {
   /** Hue of the primary color, 0-360. */
   base: number;
@@ -26,8 +29,8 @@ export interface ThemeParams {
   depth: 'flat' | 'soft' | 'lifted';
   /** How the same icons are drawn. */
   icons: 'fine' | 'round' | 'sharp' | 'bold';
-  /** How the controls are built: today's flat ones, or classic ones in relief on a grey window. */
-  skin: 'modern' | 'classic';
+  /** How the controls are built: see SKINS. */
+  skin: Skin;
 }
 
 export const DEFAULT_THEME: ThemeParams = {
@@ -43,6 +46,22 @@ export const LOOKS: Record<string, Partial<ThemeParams>> = {
   soft: { base: 175, accent: 30, density: 'comfortable', radius: 'round', depth: 'lifted', icons: 'round' },
   ink: { color: 0, font: 'system', headings: 'mono', radius: 'sharp', line: 2, depth: 'flat', icons: 'bold' },
   classic: { base: 240, accent: 45, color: 0.7, font: 'sans', density: 'compact', radius: 'sharp', depth: 'flat', icons: 'sharp', skin: 'classic' },
+  cupertino: { base: 255, accent: 330, font: 'system', radius: 'soft', depth: 'soft', icons: 'round', skin: 'cupertino' },
+  fusion: { base: 240, accent: 30, color: 0.8, font: 'noto', radius: 'sharp', depth: 'flat', icons: 'sharp', skin: 'fusion' },
+  fluent: { base: 250, accent: 25, font: 'segoe', radius: 'soft', depth: 'soft', icons: 'fine', skin: 'fluent' },
+};
+
+/** Skins whose greys take a hint of the base hue; the others are plain grey. */
+const TINTED: ReadonlySet<Skin> = new Set(['fluent']);
+
+/** Lightness of the neutral roles, and of the primary, for the skins that change them: [light, dark]. */
+const TONES: Partial<Record<Skin, Record<'bg' | 'surface' | 'raised' | 'border' | 'border-strong' | 'muted' | 'primary', [number, number]>>> = {
+  // a light window, group boxes a shade darker, controls lighter than the window in the dark
+  cupertino: { bg: [0.945, 0.23], surface: [1, 0.29], raised: [0.925, 0.26], border: [0.86, 0.37], 'border-strong': [0.76, 0.45], muted: [0.48, 0.74], primary: [0.52, 0.7] },
+  // group boxes are the window itself; in the dark, wells are darker and frames darker still
+  fusion: { bg: [0.95, 0.31], surface: [1, 0.25], raised: [0.95, 0.31], border: [0.84, 0.24], 'border-strong': [0.7, 0.2], muted: [0.46, 0.76], primary: [0.5, 0.72] },
+  // a calm window under white layers
+  fluent: { bg: [0.955, 0.2], surface: [0.995, 0.27], raised: [0.985, 0.24], border: [0.9, 0.33], 'border-strong': [0.78, 0.42], muted: [0.47, 0.74], primary: [0.48, 0.78] },
 };
 
 export interface Oklch { l: number; c: number; h: number }
@@ -68,6 +87,20 @@ const NEUTRAL_CHROMA = { cool: 0.012, neutral: 0, warm: 0.01 } as const;
 
 /** The palette for one mode. Lightness values are fixed; hues come from the theme. */
 export function palette(t: ThemeParams, dark: boolean): Record<Role, Oklch> {
+  const p = basePalette(t, dark);
+  const tones = TONES[t.skin];
+  if (tones === undefined) return p;
+  const i = dark ? 1 : 0;
+  for (const role of ['bg', 'surface', 'raised', 'border', 'border-strong', 'muted'] as const) {
+    const l = tones[role][i];
+    p[role] = { l, c: l >= 0.99 || !TINTED.has(t.skin) ? 0 : p.bg.c, h: p.bg.h };
+  }
+  p.primary = { ...p.primary, l: tones.primary[i] };
+  p['primary-hover'] = { ...p['primary-hover'], l: tones.primary[i] + (dark ? 0.05 : -0.05) };
+  return p;
+}
+
+function basePalette(t: ThemeParams, dark: boolean): Record<Role, Oklch> {
   const nh = t.neutral === 'neutral' ? t.base : NEUTRAL_HUE[t.neutral];
   const nc = (t.neutral === 'neutral' ? 0.006 : NEUTRAL_CHROMA[t.neutral]) * t.color;
   // with no color, what stands out does so by being as dark or as light as the text
@@ -173,6 +206,7 @@ const css = (c: Oklch, alpha?: number): string =>
 // --- tokens ------------------------------------------------------------------------
 
 const SPACE = [0, 4, 8, 12, 16, 24, 32, 48];
+const CONTROL: Partial<Record<Skin, number>> = { classic: 34, cupertino: 30, fusion: 30, fluent: 32 };
 const DENSITY = { compact: 0.85, normal: 1, comfortable: 1.2 } as const;
 const RADIUS = { sharp: 2, soft: 8, round: 16 } as const;
 const ICONS = {
@@ -184,6 +218,8 @@ const ICONS = {
 const FONTS: Record<string, string> = {
   inter: 'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
   sans: '"Helvetica Neue", Helvetica, Arial, sans-serif',
+  noto: '"Noto Sans", "DejaVu Sans", Ubuntu, Cantarell, "Segoe UI", Roboto, sans-serif',
+  segoe: '"Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", ui-sans-serif, system-ui, sans-serif',
   system: 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
   serif: 'ui-serif, Georgia, Cambria, "Times New Roman", serif',
   mono: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
@@ -202,12 +238,17 @@ function colorVars(t: ThemeParams, dark: boolean): string {
   lines.push(`  --tb-shadow-1: ${t.depth === 'flat' ? 'none' : `${shadow}, 0 ${k}px ${3 * k}px ${css(n0(p), dark ? 0.4 : 0.08)}`};`);
   lines.push(`  --tb-shadow-2: ${t.depth === 'flat' ? 'none' : `${shadow}, 0 ${4 * k}px ${12 * k}px ${css(n0(p), dark ? 0.5 : 0.08)}`};`);
   lines.push(`  --tb-shadow-3: ${shadow}, 0 ${12 * k}px ${32 * k}px ${css(n0(p), dark ? 0.6 : 0.12)};`);
+  const g = (l: number): string => css({ l, c: p.bg.c, h: p.bg.h });
   if (t.skin === 'classic') {
     // the two edges of what stands out or sinks in, and the faces of buttons and bars
-    const g = (l: number): string => css({ l, c: p.bg.c, h: p.bg.h });
     lines.push(`  --tb-bevel-hi: ${g(dark ? 0.5 : 1)};`, `  --tb-bevel-lo: ${g(dark ? 0.15 : 0.55)};`);
     lines.push(`  --tb-face-hi: ${g(dark ? 0.47 : 0.97)};`, `  --tb-face-lo: ${g(dark ? 0.36 : 0.8)};`);
   }
+  // the chosen segment of a segmented control
+  if (t.skin === 'cupertino') lines.push(`  --tb-segment: ${g(dark ? 0.47 : 1)};`);
+  if (t.skin === 'fusion') lines.push(`  --tb-face-hi: ${g(dark ? 0.37 : 0.99)};`, `  --tb-face-lo: ${g(dark ? 0.32 : 0.91)};`);
+  // focus is drawn in the color of the text, and what is hovered or chosen is a shade of it
+  if (t.skin === 'fluent') lines.push(`  --tb-focus-ring: ${css(p.text)};`, `  --tb-subtle: ${css(p.text, dark ? 0.08 : 0.06)};`);
   lines.push(`  color-scheme: ${dark ? 'dark' : 'light'};`);
   return lines.join('\n');
 }
@@ -219,8 +260,9 @@ function sizeVars(t: ThemeParams): string {
   const lines = SPACE.map((px, i) => `  --tb-space-${i}: ${Math.round(px * k)}px;`);
   const r = RADIUS[t.radius];
   lines.push(`  --tb-radius: ${r}px;`, `  --tb-radius-lg: ${Math.round(r * 1.5)}px;`);
-  // classic controls are small, as on a desktop; a touch screen still gets 44px (below)
-  lines.push(`  --tb-control: ${t.skin === 'classic' ? Math.round(34 * k) : Math.max(40, Math.round(44 * k))}px;`);
+  // a skin's controls are small, as on a desktop; a touch screen still gets 44px (below)
+  const control = CONTROL[t.skin];
+  lines.push(`  --tb-control: ${control !== undefined ? Math.round(control * k) : Math.max(40, Math.round(44 * k))}px;`);
   lines.push(`  --tb-font: ${FONTS[t.font] ?? `"${t.font}", ${FONTS['system']}`};`);
   lines.push(`  --tb-headings: ${t.headings === null ? 'var(--tb-font)' : FONTS[t.headings] ?? `"${t.headings}", ${FONTS['system']}`};`);
   lines.push(`  --tb-mono: ${FONTS['mono']};`);
@@ -1052,7 +1094,7 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
 `;
 
 /** What a skin changes on top of the component rules: '' for the modern one. */
-const SKINS: Record<ThemeParams['skin'], string> = {
+const SKINS: Record<Skin, string> = {
   modern: '',
   classic: String.raw`
 /* classic: controls in relief on a grey window, sunken wells for what is typed, title bars on dialogs */
@@ -1138,7 +1180,7 @@ select.tb-input:focus { box-shadow: var(--tb-raise), var(--tb-ring); }
   .tb-table th { border-right: 1px solid var(--tb-border-strong); }
   .tb-table tr > :last-child { border-right: 0; }
 }
-.tb-table tr.tb-selected, .tb-list > li.tb-selected, .tb-tree li.tb-selected > .tb-tree-row { background: var(--tb-primary); color: var(--tb-on-primary); }
+.tb-selectable :is(tbody > tr, .tb-list > li).tb-selected, .tb-tree li.tb-selected > .tb-tree-row { background: var(--tb-primary); color: var(--tb-on-primary); }
 .tb-list > li.tb-selected .tb-list-secondary, .tb-tree li.tb-selected > .tb-tree-row .tb-tree-toggle { color: inherit; }
 .tb-selectable tbody tr.tb-selected:focus-visible, .tb-selectable .tb-list > li.tb-selected:focus-visible { box-shadow: inset 0 0 0 2px var(--tb-focus), inset 0 0 0 3px var(--tb-on-primary); }
 .tb-tree-row { border-radius: 0; }
@@ -1165,5 +1207,190 @@ select.tb-input:focus { box-shadow: var(--tb-raise), var(--tb-ring); }
 .tb-dialog-close, .tb-dialog-close:hover { width: 24px; height: 24px; font-size: 16px; border: 1px solid var(--tb-border-strong); background: var(--tb-face); color: var(--tb-text); box-shadow: var(--tb-raise); }
 .tb-dialog-close:focus-visible { box-shadow: var(--tb-raise), var(--tb-ring); }
 .tb-dialog-body { padding-top: var(--tb-space-5); }
+`,
+  cupertino: String.raw`
+/* cupertino: recalls the Mac: small controls on a light window, labels to the right, segmented tabs, translucent menus */
+body { font-size: 13px; }
+.tb-title { font-size: 26px; font-weight: 700; letter-spacing: -0.01em; }
+.tb-heading { font-size: 17px; font-weight: 700; }
+.tb-panel { border-radius: 10px; border-color: var(--tb-border); box-shadow: none; padding: var(--tb-space-5); }
+.tb-panel > .tb-panel-title { font-size: 13px; font-weight: 700; }
+.tb-label { font-size: 13px; font-weight: 400; }
+:is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > .tb-field > .tb-label { text-align: right; }
+@container (max-width: 420px) { :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > .tb-field > .tb-label { text-align: left; } }
+.tb-button { font-size: 13px; font-weight: 400; padding: 0 var(--tb-space-4); border: 0; border-radius: 6px; background: var(--tb-surface); box-shadow: 0 0 0 1px var(--tb-border), var(--tb-shadow-1); }
+.tb-button:hover { background: var(--tb-surface); }
+.tb-button:active:not(:disabled, [aria-disabled="true"]) { background: var(--tb-border); }
+.tb-button:focus-visible { box-shadow: 0 0 0 1px var(--tb-border), 0 0 0 4px var(--tb-focus-ring); }
+.tb-button.tb-primary, .tb-button.tb-primary:hover, .tb-button.tb-primary[aria-disabled="true"]:hover { background: linear-gradient(color-mix(in oklch, var(--tb-primary) 85%, var(--tb-on-primary)), var(--tb-primary)); box-shadow: var(--tb-shadow-1); }
+.tb-button.tb-primary:active:not(:disabled, [aria-disabled="true"]) { background: var(--tb-primary-hover); }
+.tb-button.tb-primary:focus-visible { box-shadow: 0 0 0 4px var(--tb-focus-ring); }
+.tb-toolbar { background: transparent; border: 0; padding: 0; }
+.tb-toolbar > .tb-button:not(.tb-primary, .tb-accent, .tb-danger) { box-shadow: none; }
+.tb-toolbar > .tb-button:not(.tb-primary, .tb-accent, .tb-danger):hover { background: var(--tb-border); }
+.tb-toolbar > .tb-button:not(.tb-primary, .tb-accent, .tb-danger):focus-visible { box-shadow: 0 0 0 3px var(--tb-focus-ring); }
+.tb-input { border-radius: 5px; border-color: var(--tb-border-strong); }
+/* a choice is a pop-up button: the arrow in a small square of the primary color */
+select.tb-input {
+  border: 0;
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px var(--tb-border), var(--tb-shadow-1);
+  background-image: linear-gradient(45deg, transparent 50%, var(--tb-on-primary) 50%), linear-gradient(135deg, var(--tb-on-primary) 50%, transparent 50%), linear-gradient(var(--tb-primary), var(--tb-primary));
+  background-position: calc(100% - 15px) 45%, calc(100% - 11px) 45%, calc(100% - 4px) 50%;
+  background-size: 4px 4px, 4px 4px, 20px calc(100% - 8px);
+  padding-right: 34px;
+}
+select.tb-input:focus { box-shadow: 0 0 0 1px var(--tb-border), 0 0 0 4px var(--tb-focus-ring); }
+.tb-tablist { align-self: center; gap: 0; padding: 2px; border-radius: 7px; background: var(--tb-border); box-shadow: none; }
+.tb-tab { min-height: 24px; padding: 0 var(--tb-space-4); border: 0; border-radius: 5px; font-size: 13px; font-weight: 400; color: var(--tb-text); }
+.tb-tab[aria-selected="true"] { background: var(--tb-segment); color: var(--tb-text); box-shadow: var(--tb-shadow-1); }
+.tb-tab:focus-visible { box-shadow: 0 0 0 3px var(--tb-focus-ring); border-radius: 5px; }
+.tb-table-wrap { border-radius: 8px; box-shadow: none; }
+.tb-table th { background: var(--tb-surface); color: var(--tb-text); font-size: 12px; font-weight: 400; padding: 6px var(--tb-space-3); }
+.tb-sort { padding: 6px var(--tb-space-3); }
+@media (min-width: 641px) {
+  .tb-table th:not(:last-child) { box-shadow: inset -1px 0 0 var(--tb-border); }
+  .tb-table td { height: auto; padding: 6px var(--tb-space-3); border-bottom: 0; }
+  .tb-table tbody tr:nth-child(even) { background: var(--tb-bg); }
+}
+.tb-list { padding: 4px; box-shadow: none; }
+.tb-list > li { border-bottom: 0; border-radius: 6px; }
+.tb-selectable :is(tbody > tr, .tb-list > li).tb-selected, .tb-tree li.tb-selected > .tb-tree-row { background: var(--tb-primary); color: var(--tb-on-primary); }
+.tb-list > li.tb-selected .tb-list-secondary, .tb-tree li.tb-selected > .tb-tree-row .tb-tree-toggle { color: inherit; }
+.tb-tree-row { border-radius: 6px; }
+.tb-menu, .tb-lookup-list { padding: 5px; border-radius: 8px; background: color-mix(in oklch, var(--tb-raised) 82%, transparent); -webkit-backdrop-filter: blur(24px) saturate(1.6); backdrop-filter: blur(24px) saturate(1.6); animation: none; }
+.tb-menu-item { min-height: 24px; border-radius: 5px; font-size: 13px; }
+.tb-menu-item:focus, .tb-lookup-option:hover, .tb-lookup-option[aria-selected="true"] { background: var(--tb-primary); color: var(--tb-on-primary); }
+.tb-menu-item:focus svg { color: inherit; }
+.tb-calendar { border-radius: 10px; }
+/* dialogs: a sheet with its title centred, closed by a red dot on the left */
+.tb-dialog { border: 1px solid var(--tb-border); border-radius: 12px; }
+.tb-dialog-head { position: relative; justify-content: center; padding: var(--tb-space-3) var(--tb-space-6) 0; }
+.tb-dialog-title { font-size: 13px; font-weight: 700; }
+.tb-dialog-close, .tb-dialog-close:hover { position: absolute; left: 12px; top: 12px; width: 14px; height: 14px; border-radius: 50%; background: var(--tb-danger); color: transparent; font-size: 12px; line-height: 14px; }
+.tb-dialog-close:hover { color: var(--tb-on-danger); }
+.tb-toast { border-radius: 10px; background: color-mix(in oklch, var(--tb-text) 80%, transparent); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); }
+.tb-scroll { border-radius: 8px; background: var(--tb-surface); }
+`,
+  fusion: String.raw`
+/* fusion: recalls Qt: group boxes with their title on the frame, buttons with a gentle gradient, tab widgets in a frame */
+.tb-title { font-size: 24px; font-weight: 600; letter-spacing: 0; }
+.tb-heading { font-size: 18px; font-weight: 600; letter-spacing: 0; }
+.tb-label { font-weight: 400; }
+.tb-panel { position: relative; margin-top: var(--tb-space-2); padding: var(--tb-space-5) var(--tb-space-4) var(--tb-space-4); background: transparent; border: 1px solid var(--tb-border-strong); border-radius: 3px; box-shadow: none; }
+.tb-panel > .tb-panel-title { position: absolute; top: 0; left: var(--tb-space-3); transform: translateY(-50%); padding: 0 var(--tb-space-1); background: var(--tb-bg); font-size: 14px; font-weight: 600; line-height: 1.2; }
+.tb-dialog .tb-panel > .tb-panel-title { background: var(--tb-raised); }
+.tb-button { font-weight: 400; padding: 0 var(--tb-space-4); border: 1px solid var(--tb-border-strong); border-radius: 3px; background: linear-gradient(var(--tb-face-hi), var(--tb-face-lo)); box-shadow: none; transition: none; }
+.tb-button:hover { background: linear-gradient(var(--tb-face-hi), var(--tb-face-hi)); border-color: var(--tb-border-strong); }
+.tb-button:active:not(:disabled, [aria-disabled="true"]) { background: var(--tb-face-lo); box-shadow: inset 0 1px 2px var(--tb-border-strong); }
+.tb-button:focus-visible { border-color: var(--tb-focus); box-shadow: 0 0 0 2px var(--tb-focus-ring); }
+/* the default button is framed in the primary color; danger and accent color their text */
+.tb-button.tb-primary, .tb-button.tb-primary:hover, .tb-button.tb-primary[aria-disabled="true"]:hover { background: linear-gradient(color-mix(in oklch, var(--tb-primary) 12%, var(--tb-face-hi)), color-mix(in oklch, var(--tb-primary) 22%, var(--tb-face-lo))); border-color: var(--tb-primary); color: var(--tb-text); font-weight: 600; box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--tb-primary) 35%, transparent); }
+.tb-button.tb-primary:hover:not(:disabled, [aria-disabled="true"]) { background: linear-gradient(color-mix(in oklch, var(--tb-primary) 8%, var(--tb-face-hi)), color-mix(in oklch, var(--tb-primary) 14%, var(--tb-face-hi))); }
+.tb-button.tb-primary:focus-visible { box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--tb-primary) 35%, transparent), 0 0 0 2px var(--tb-focus-ring); }
+.tb-button.tb-danger, .tb-button.tb-accent { background: linear-gradient(var(--tb-face-hi), var(--tb-face-lo)); color: var(--tb-danger); border-color: var(--tb-border-strong); }
+.tb-button.tb-accent { color: var(--tb-accent); }
+.tb-toolbar { padding: 2px; background: linear-gradient(var(--tb-face-hi), var(--tb-face-lo)); border-color: var(--tb-border); border-radius: 0; }
+.tb-toolbar > .tb-button:not(.tb-primary, .tb-accent, .tb-danger):hover { background: var(--tb-face-hi); border-color: var(--tb-border-strong); }
+.tb-input { border-radius: 2px; border-color: var(--tb-border-strong); box-shadow: inset 0 1px 1px var(--tb-border); }
+.tb-input:focus, .tb-rich-box:focus { border-color: var(--tb-focus); box-shadow: 0 0 0 1px var(--tb-focus); }
+.tb-invalid .tb-input:focus { box-shadow: 0 0 0 1px var(--tb-danger); }
+.tb-input[readonly] { box-shadow: none; }
+select.tb-input {
+  border-radius: 3px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--tb-text) 50%), linear-gradient(135deg, var(--tb-text) 50%, transparent 50%), linear-gradient(var(--tb-face-hi), var(--tb-face-lo));
+  background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%, 0 0;
+  background-size: 5px 5px, 5px 5px, 100% 100%;
+  box-shadow: none;
+}
+select.tb-input:focus { box-shadow: 0 0 0 2px var(--tb-focus-ring); }
+/* tabs: a tab widget, the chosen tab open onto a framed page */
+.tb-tabs { gap: 0; }
+.tb-tablist { position: relative; z-index: 1; gap: 0; margin-bottom: -1px; padding-left: 2px; box-shadow: none; }
+.tb-tab { min-height: 30px; margin: 3px -1px 0 0; padding: 0 var(--tb-space-4); border: 1px solid var(--tb-border-strong); border-radius: 3px 3px 0 0; background: linear-gradient(var(--tb-face-hi), var(--tb-face-lo)); color: var(--tb-text); font-weight: 400; }
+.tb-tab[aria-selected="true"] { margin-top: 0; min-height: 33px; background: var(--tb-bg); border-bottom-color: var(--tb-bg); color: var(--tb-text); }
+.tb-tab-panel { padding: var(--tb-space-4); border: 1px solid var(--tb-border-strong); border-radius: 0 3px 3px 3px; }
+.tb-table-wrap, .tb-list { border-color: var(--tb-border-strong); border-radius: 2px; box-shadow: none; }
+.tb-table th { color: var(--tb-text); font-weight: 400; padding: 4px var(--tb-space-3); background: linear-gradient(var(--tb-face-hi), var(--tb-face-lo)); border-bottom: 1px solid var(--tb-border-strong); }
+.tb-sort { padding: 4px var(--tb-space-3); }
+@media (min-width: 641px) {
+  .tb-table th { border-right: 1px solid var(--tb-border-strong); }
+  .tb-table td { height: 30px; padding: 4px var(--tb-space-3); border-right: 1px solid var(--tb-border); }
+  .tb-table tr > :last-child { border-right: 0; }
+}
+.tb-list > li { padding: var(--tb-space-2) var(--tb-space-3); }
+.tb-selectable :is(tbody > tr, .tb-list > li).tb-selected, .tb-tree li.tb-selected > .tb-tree-row { background: var(--tb-primary); color: var(--tb-on-primary); }
+.tb-list > li.tb-selected .tb-list-secondary, .tb-tree li.tb-selected > .tb-tree-row .tb-tree-toggle { color: inherit; }
+.tb-tree-row { border-radius: 0; }
+.tb-progress { height: 20px; border: 1px solid var(--tb-border-strong); border-radius: 3px; background: var(--tb-surface); }
+.tb-progress-bar { border-radius: 2px; background-image: repeating-linear-gradient(-45deg, transparent 0 6px, color-mix(in oklch, var(--tb-surface) 22%, transparent) 6px 12px); }
+.tb-menu, .tb-lookup-list, .tb-calendar { padding: 2px; border-color: var(--tb-border-strong); border-radius: 2px; box-shadow: var(--tb-shadow-2); animation: none; }
+.tb-menu-item, .tb-lookup-option { min-height: 28px; border-radius: 0; }
+.tb-menu-item:focus, .tb-lookup-option:hover, .tb-lookup-option[aria-selected="true"] { background: var(--tb-primary); color: var(--tb-on-primary); }
+.tb-menu-item:focus svg { color: inherit; }
+.tb-dialog { border: 1px solid var(--tb-border-strong); border-radius: 3px; }
+.tb-dialog-head { padding: 4px 4px 4px var(--tb-space-4); background: linear-gradient(var(--tb-face-hi), var(--tb-face-lo)); border-bottom: 1px solid var(--tb-border-strong); }
+.tb-dialog-title { font-size: 14px; font-weight: 600; }
+.tb-dialog-close { width: 28px; height: 28px; font-size: 18px; border-radius: 3px; }
+.tb-dialog-body { padding-top: var(--tb-space-5); }
+/* a toast is a tooltip */
+.tb-toast { background: color-mix(in oklch, var(--tb-warning) 22%, var(--tb-surface)); color: var(--tb-text); border: 1px solid var(--tb-border-strong); border-radius: 2px; box-shadow: var(--tb-shadow-2); font-weight: 400; }
+.tb-scroll { background: var(--tb-surface); border-color: var(--tb-border-strong); border-radius: 2px; }
+`,
+  fluent: String.raw`
+/* fluent: recalls Windows 11: white layers on a calm window, a darker stroke under controls, accent pills for what is chosen */
+.tb-title { font-size: 28px; font-weight: 600; letter-spacing: 0; }
+.tb-heading { font-size: 20px; font-weight: 600; letter-spacing: 0; }
+.tb-panel > .tb-panel-title { font-size: 16px; font-weight: 600; letter-spacing: 0; }
+.tb-label { font-weight: 400; }
+.tb-panel { border-color: var(--tb-border); border-radius: 8px; box-shadow: none; }
+.tb-button { font-weight: 400; border: 1px solid var(--tb-border); border-bottom-color: var(--tb-border-strong); border-radius: 4px; box-shadow: none; }
+.tb-button:hover { background: var(--tb-bg); border-color: var(--tb-border); border-bottom-color: var(--tb-border-strong); }
+.tb-button:active:not(:disabled, [aria-disabled="true"]) { color: var(--tb-muted); }
+.tb-button:focus-visible { box-shadow: 0 0 0 1px var(--tb-surface), 0 0 0 3px var(--tb-focus-ring); }
+.tb-button.tb-primary { border-color: color-mix(in oklch, var(--tb-primary) 88%, var(--tb-on-primary)); border-bottom-color: color-mix(in oklch, var(--tb-primary) 70%, var(--tb-text)); box-shadow: none; }
+.tb-button.tb-primary:focus-visible { box-shadow: 0 0 0 1px var(--tb-surface), 0 0 0 3px var(--tb-focus-ring); }
+.tb-toolbar { background: var(--tb-raised); border-color: var(--tb-border); border-radius: 8px; }
+.tb-toolbar > .tb-button:not(.tb-primary, .tb-accent, .tb-danger):hover { background: var(--tb-subtle); }
+/* a field: a quiet frame with a darker line under it, which turns into the accent while typing */
+.tb-input { border-color: var(--tb-border); border-radius: 4px; box-shadow: inset 0 -1px 0 var(--tb-muted); }
+.tb-input:hover { border-color: var(--tb-border); }
+.tb-input:focus, .tb-rich-box:focus { border-color: var(--tb-border); box-shadow: inset 0 -2px 0 var(--tb-primary); }
+.tb-invalid .tb-input, .tb-invalid .tb-input:focus { box-shadow: inset 0 -2px 0 var(--tb-danger); }
+.tb-input[readonly] { box-shadow: none; }
+select.tb-input { border-bottom-color: var(--tb-border-strong); box-shadow: none; }
+select.tb-input:focus { box-shadow: 0 0 0 1px var(--tb-surface), 0 0 0 3px var(--tb-focus-ring); }
+.tb-switch input { width: 40px; border: 1px solid var(--tb-muted); background: transparent; }
+.tb-switch input::before { top: 3px; left: 3px; width: 12px; height: 12px; background: var(--tb-muted); box-shadow: none; }
+.tb-switch input:checked { border-color: var(--tb-primary); }
+.tb-switch input:checked::before { transform: translateX(20px); background: var(--tb-on-primary); }
+.tb-switch input:focus-visible { box-shadow: 0 0 0 1px var(--tb-surface), 0 0 0 3px var(--tb-focus-ring); }
+/* tabs: plain words; a short pill of the accent under the chosen one */
+.tb-tablist { gap: var(--tb-space-1); box-shadow: none; }
+.tb-tab { position: relative; border-bottom: 0; border-radius: 4px; font-weight: 400; color: var(--tb-muted); }
+.tb-tab:hover { background: var(--tb-subtle); }
+.tb-tab[aria-selected="true"] { color: var(--tb-text); font-weight: 600; }
+.tb-tab[aria-selected="true"]::after { content: ""; position: absolute; left: calc(50% - 8px); bottom: 3px; width: 16px; height: 3px; border-radius: 2px; background: var(--tb-primary); }
+.tb-tab:focus-visible { box-shadow: 0 0 0 3px var(--tb-focus-ring); }
+/* what is chosen: a shade of the text, and a pill of the accent at its left */
+.tb-table-wrap { border-radius: 8px; box-shadow: none; }
+.tb-table th { background: var(--tb-surface); color: var(--tb-text); }
+.tb-list { padding: 4px; border-radius: 8px; box-shadow: none; }
+.tb-list > li { position: relative; border-bottom: 0; border-radius: 4px; }
+.tb-tree-row { position: relative; border-radius: 4px; }
+.tb-selectable :is(tbody > tr, .tb-list > li).tb-selected, .tb-tree li.tb-selected > .tb-tree-row { background: var(--tb-subtle); }
+.tb-tree li.tb-selected > .tb-tree-row { font-weight: 400; }
+.tb-list > li.tb-selected::before, .tb-tree li.tb-selected > .tb-tree-row::before { content: ""; position: absolute; left: 0; top: calc(50% - 8px); width: 3px; height: 16px; border-radius: 2px; background: var(--tb-primary); }
+.tb-selectable tbody > tr.tb-selected > td:first-child { box-shadow: inset 3px 0 0 var(--tb-primary); }
+.tb-selectable :is(tbody > tr, .tb-list > li):hover { background: var(--tb-subtle); }
+.tb-progress { height: 3px; border-radius: 2px; background: linear-gradient(var(--tb-muted), var(--tb-muted)) center / 100% 1px no-repeat; }
+.tb-menu, .tb-lookup-list, .tb-calendar { padding: 4px; border-radius: 8px; }
+.tb-menu-item, .tb-lookup-option { min-height: 32px; border-radius: 4px; }
+.tb-menu-item:focus, .tb-lookup-option:hover, .tb-lookup-option[aria-selected="true"] { background: var(--tb-subtle); }
+.tb-dialog { border: 1px solid var(--tb-border); border-radius: 8px; }
+.tb-dialog-head { padding: var(--tb-space-5) var(--tb-space-3) 0 var(--tb-space-6); }
+.tb-dialog-title { font-size: 20px; font-weight: 600; letter-spacing: 0; }
+.tb-toast { background: var(--tb-raised); color: var(--tb-text); border: 1px solid var(--tb-border); border-radius: 8px; font-weight: 400; }
+.tb-scroll { border-radius: 8px; }
 `,
 };

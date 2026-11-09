@@ -673,9 +673,12 @@ describe('theme', () => {
   });
 
   test('the stylesheet uses only theme tokens for color in component rules', () => {
+    for (const look of Object.values(LOOKS)) {
+      const css = themeCss({ ...DEFAULT_THEME, ...look });
+      const components = css.slice(css.indexOf('*, *::before'));
+      assert.ok(!/#[0-9a-f]{3,6}\b|rgb\(|oklch\(/i.test(components), 'no raw colors in component rules');
+    }
     const css = themeCss(DEFAULT_THEME);
-    const components = css.slice(css.indexOf('*, *::before'));
-    assert.ok(!/#[0-9a-f]{3,6}\b|rgb\(/i.test(components), 'no raw colors in component rules');
     assert.ok(css.includes('@media (prefers-color-scheme: dark)'));
     assert.ok(!themeCss({ ...DEFAULT_THEME, mode: 'light' }).includes('prefers-color-scheme'));
   });

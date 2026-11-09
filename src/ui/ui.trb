@@ -554,6 +554,9 @@ looks: [
     #(en: "Soft" es: "Amable") soft
     #(en: "Ink" es: "Tinta") ink
     #(en: "Classic" es: "Clásico") classic
+    #(en: "Cupertino" es: "Cupertino") cupertino
+    #(en: "Fusion" es: "Fusion") fusion
+    #(en: "Fluent" es: "Fluent") fluent
 ]
 
 theme: func [
