@@ -14,7 +14,7 @@ import {
 import { bindSeries, copyDeep } from '../ctx.ts';
 import { isEqual, compare, foldCase } from '../compare.ts';
 import { pick } from '../access.ts';
-import { context, time } from '../values.ts';
+import { context, time, sameValue } from '../values.ts';
 import { dateDiff } from './math.ts';
 import {
   splice, itemsFor, lengthOf, at, clampIndex,
@@ -181,10 +181,10 @@ function matchCell(el: Cell, v: Cell, cased: boolean): boolean {
 }
 
 /** What to look for: a run of elements, matched with `eq`. */
-function needle(s: SeriesCell, v: Cell, only: boolean, cased: boolean): { run: Item[]; eq: (a: Item, b: Item) => boolean } {
+function needle(s: SeriesCell, v: Cell, only: boolean, cased: boolean, same = false): { run: Item[]; eq: (a: Item, b: Item) => boolean } {
   if (isAnyBlock(s.t)) {
     const run = !only && isAnyBlock(v.t) ? (v as BlockCell).s.data.slice((v as BlockCell).i) : [v];
-    return { run, eq: (a, b) => matchCell(a as Cell, b as Cell, cased) };
+    return { run, eq: same ? (a, b) => sameValue(a as Cell, b as Cell) : (a, b) => matchCell(a as Cell, b as Cell, cased) };
   }
   const run = itemsFor(s.t, v, false).add;
   const eq = cased || s.t === K.Binary
@@ -199,6 +199,8 @@ interface FindOpts {
   reverse?: boolean;
   /** In a string, * matches any run of characters and ? any one. */
   wild?: boolean;
+  /** In a block, only the very same value (same?), not an equal one. */
+  same?: boolean;
 }
 
 const STAR = 0x2a;
@@ -237,7 +239,7 @@ function wildAt(d: Item[], i: number, end: number, run: Item[], eq: (a: Item, b:
 /** Index where the run starts, or -1. */
 function findIn(s: SeriesCell, v: Cell, o: FindOpts): { at: number; len: number } {
   const d = s.s.data as Item[];
-  const { run, eq } = needle(s, v, o.only, o.cased);
+  const { run, eq } = needle(s, v, o.only, o.cased, o.same);
   const wild = o.wild === true && !isAnyBlock(s.t);
   let len = run.length;
   const fits = (i: number) => {
@@ -260,7 +262,7 @@ function findIn(s: SeriesCell, v: Cell, o: FindOpts): { at: number; len: number 
   return { at: -1, len };
 }
 
-native('find', '["Finds a value in a series; gives the series where it is, or none." series [series! none! typeset!] value [any-type!] /part "Look only this far" length [integer! series!] /only "A block is one value" /case "Capitals matter" /skip "Look only at every so many" size [integer!] /last "Find the last one" /tail "Give the series just after it" /match "Only where the series is" /reverse "Look back from where the series is" /any "In a string, * is any run of characters and ? any one"]', (_t, f) => {
+native('find', '["Finds a value in a series; gives the series where it is, or none." series [series! none! typeset!] value [any-type!] /part "Look only this far" length [integer! series!] /only "A block is one value" /case "Capitals matter" /skip "Look only at every so many" size [integer!] /last "Find the last one" /tail "Give the series just after it" /match "Only where the series is" /reverse "Look back from where the series is" /any "In a string, * is any run of characters and ? any one" /same "In a block, the very same value (same?), not an equal one"]', (_t, f) => {
   const x = f.args[0]!;
   if (x.t === K.None) return value(NONE);
   if (x.t === K.Typeset) {
@@ -272,7 +274,7 @@ native('find', '["Finds a value in a series; gives the series where it is, or no
   const o: FindOpts = {
     only: used(a[4]!), cased: used(a[5]!), skip: used(a[6]!) ? Math.max(1, num(a[7]!)) : 1,
     last: used(a[8]!), match: used(a[10]!), end: used(a[2]!) ? partEnd(s, a[3]!) : s.s.data.length,
-    reverse: used(a[11]!), wild: used(a[12]!),
+    reverse: used(a[11]!), wild: used(a[12]!), same: used(a[13]!),
   };
   const r = findIn(s, a[1]!, o);
   if (r.at < 0) return value(NONE);

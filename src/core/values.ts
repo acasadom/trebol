@@ -239,6 +239,16 @@ export function unpackPos(p: number): { line: number; col: number } {
 // Used by tests and as the base for `==` (strict-equal?). The looser `=`
 // (equal?) arrives with the natives.
 
+/** True if two cells are the very same value: the same series at the same position, the same context. */
+export function sameValue(a: Cell, b: Cell): boolean {
+  if (a.t !== b.t) return false;
+  const x = a as Cell & { ctx?: unknown; s?: unknown; i?: number };
+  const y = b as Cell & { ctx?: unknown; s?: unknown; i?: number };
+  if (x.ctx !== undefined) return x.ctx === y.ctx;
+  if (x.s !== undefined) return x.s === y.s && x.i === y.i;
+  return strictEqual(a, b);
+}
+
 export function strictEqual(a: Cell, b: Cell): boolean {
   return eq(a, b, new Set());
 }

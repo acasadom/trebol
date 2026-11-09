@@ -79,6 +79,20 @@ earlier step; `find` gives the place, which you can then change. The tyre suppli
 `change` writes over the value at a position and gives the position after it. The change is in `prices` itself,
 because `tyre` was a position in it, not a copy.
 
+`find` takes any value that is equal to the one it is given. In a block of maps, two bookings with the same
+fields are equal; `find/same` looks for the very map you hold, as `same?` does:
+
+```trebol-console
+>> ada: #(customer: "Ada")
+== #(customer: "Ada")
+>> bookings: reduce [#(customer: "Ada") ada]
+== [#(customer: "Ada") #(customer: "Ada")]
+>> index? find bookings ada
+== 1
+>> index? find/same bookings ada
+== 2
+```
+
 ## Changing a series
 
 The queue grows at the end and is served from the front. `append` adds at the tail, and `take` removes the first

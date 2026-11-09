@@ -9,7 +9,7 @@ import * as I64 from '../int64.ts';
 import { decAdd, decSub, decMul, decDiv, decRem, decRound, decFromNumber, decToNumber, decEqual, type Dec, type Rounding } from '../dec.ts';
 import {
   ownMeta,
-  NONE, UNSET, TRUE, integer, decimal, percent, money, time, pair, logic, date, strictEqual,
+  NONE, UNSET, TRUE, integer, decimal, percent, money, time, pair, logic, date, strictEqual, sameValue,
   type Cell, type BlockCell, type DateCell, type DateVal,
 } from '../values.ts';
 import { isSeries } from '../kinds.ts';
@@ -443,14 +443,8 @@ native('shift-logical', `["Shifts the bits of an integer right, shifting zeros i
 native('equal?', '["True if the values are equal." a [any-type!] b [any-type!]]', (_t, f) => value(logic(isEqual(f.args[0]!, f.args[1]!))));
 native('not-equal?', '["True if the values are not equal." a [any-type!] b [any-type!]]', (_t, f) => value(logic(!isEqual(f.args[0]!, f.args[1]!))));
 native('strict-equal?', '["True if the values are equal and of the same type and case." a [any-type!] b [any-type!]]', (_t, f) => value(logic(strictEqual(f.args[0]!, f.args[1]!))));
-native('same?', '["True if the values are the very same: the same series at the same position, the same object." a [any-type!] b [any-type!]]', (_t, f) => {
-  const a = f.args[0]! as Cell & { ctx?: unknown; s?: unknown; i?: number };
-  const b = f.args[1]! as Cell & { ctx?: unknown; s?: unknown; i?: number };
-  if (a.t !== b.t) return value(logic(false));
-  if (a.ctx !== undefined) return value(logic(a.ctx === b.ctx));
-  if (a.s !== undefined) return value(logic(a.s === b.s && a.i === b.i));
-  return value(logic(strictEqual(a, b)));
-});
+native('same?', '["True if the values are the very same: the same series at the same position, the same object." a [any-type!] b [any-type!]]', (_t, f) =>
+  value(logic(sameValue(f.args[0]!, f.args[1]!))));
 native('strict-not-equal?', '["True if the values are not strictly equal." a [any-type!] b [any-type!]]', (_t, f) => value(logic(!strictEqual(f.args[0]!, f.args[1]!))));
 
 function ordered(a: Cell, b: Cell, test: (c: number) => boolean): Step {
