@@ -483,6 +483,11 @@ select.tb-input { appearance: none; background-image: linear-gradient(45deg, tra
 .tb-button:disabled, .tb-button[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
 .tb-button.tb-primary[aria-disabled="true"]:hover { background: var(--tb-primary); border-color: var(--tb-primary); }
 .tb-button.tb-has-icon:not(:has(> span:not(:empty))) { padding: 0; width: var(--tb-control); }
+/* a button that opens a menu: a chevron after its text, or alone after its icon */
+.tb-menu-chevron { transition: transform var(--tb-fast) var(--tb-ease); }
+.tb-button .tb-menu-chevron { width: 16px; height: 16px; margin-inline-end: calc(var(--tb-space-1) * -1); }
+[aria-expanded="true"] > .tb-menu-chevron { transform: rotate(180deg); }
+.tb-button.tb-has-icon[aria-haspopup]:not(:has(> span:not(:empty))) { width: auto; padding: 0 var(--tb-space-2); gap: 2px; }
 
 .tb-icon { width: 1.25em; height: 1.25em; flex: none; fill: none; stroke: currentColor; stroke-width: var(--tb-icon-stroke); stroke-linecap: var(--tb-icon-cap); stroke-linejoin: var(--tb-icon-join); }
 .tb-button .tb-icon { width: 18px; height: 18px; }

@@ -363,6 +363,16 @@ function listen(m: Mounted, style: string): void {
   if (menu.t === K.Block && (style === 'button' || style === 'link') && get(f, 'action').t !== K.Block) {
     node.setAttribute('aria-haspopup', 'menu');
     node.setAttribute('aria-expanded', 'false');
+    // a chevron after the text (or alone after the icon) says it opens a menu; it turns up while open
+    if (m.label === null) {
+      m.label = el('span');
+      node.prepend(m.label);
+    }
+    const chevron = icon('chevron-down');
+    if (chevron !== null) {
+      chevron.classList.add('tb-menu-chevron');
+      node.append(chevron);
+    }
     node.addEventListener('click', ev => {
       ev.preventDefault();
       const r = node.getBoundingClientRect();

@@ -680,6 +680,12 @@ describe('theme', () => {
     assert.ok(!themeCss({ ...DEFAULT_THEME, mode: 'light' }).includes('prefers-color-scheme'));
   });
 
+  test('a button that opens a menu shows a chevron, turned up while the menu is open', () => {
+    const css = themeCss(DEFAULT_THEME);
+    assert.match(css, /\[aria-expanded="true"\] > \.tb-menu-chevron \{ transform: rotate\(180deg\); \}/);
+    assert.match(css, /\.tb-button\.tb-has-icon\[aria-haspopup\]:not\(:has\(> span:not\(:empty\)\)\) \{ width: auto;/);
+  });
+
   test('a narrow form stacks its labels over its controls, wherever it sits', () => {
     const css = themeCss(DEFAULT_THEME);
     assert.match(css, /\.tb-form \{[^}]*container-type: inline-size;/);
