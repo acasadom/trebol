@@ -7,6 +7,9 @@
 //
 //   <script type="module">import 'trebol/browser';</script>
 //
+// A folder with an app.trb and no index.html is served as that app, so an app
+// needs no HTML at all.
+//
 // An app can bring its own backend: `api` names a module whose `handleApi`
 // answers requests (see examples/api.ts).
 
@@ -50,6 +53,20 @@ const TYPES: Record<string, string> = {
   '.png': 'image/png',
   '.woff2': 'font/woff2',
 };
+
+/** The page of a folder that has an app.trb and no index.html. */
+const APP_PAGE = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trebol</title>
+<script type="module">import 'trebol/browser';</script>
+<script type="text/trebol" src="app.trb"></script>
+</head>
+<body></body>
+</html>
+`;
 
 const RELOAD = `<script>new EventSource('/__reload').onmessage = () => location.reload();</script>`;
 
@@ -97,6 +114,7 @@ export async function startDev(options: DevOptions = {}): Promise<Dev> {
       return;
     }
     asked.add(path);
+    let page: string | null = null;
     try {
       if ((await stat(path)).isDirectory()) {
         // relative URLs in the page (src="app.trb") need the trailing slash
@@ -104,10 +122,12 @@ export async function startDev(options: DevOptions = {}): Promise<Dev> {
           res.writeHead(301, { location: `${url.pathname}/${url.search}` }).end();
           return;
         }
+        const app = join(path, 'app.trb');
         path = join(path, 'index.html');
         asked.add(path);
+        if (!(await stat(path).catch(() => null)) && await stat(app).catch(() => null)) page = APP_PAGE;
       }
-      let body: string | Buffer = await readFile(path);
+      let body: string | Buffer = page ?? await readFile(path);
       const ext = extname(path);
       if (ext === '.ts') body = stripTypeScriptTypes(body.toString(), { mode: 'strip' });
       if (ext === '.html') {

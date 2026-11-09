@@ -37,6 +37,24 @@ test('an app folder loads Trebol by name and brings its own API', async () => {
   }
 });
 
+test('a folder with only an app.trb is served as that app', async () => {
+  const app = mkdtempSync(join(tmpdir(), 'trebol-app-'));
+  writeFileSync(join(app, 'app.trb'), 'view [title "Hi"]');
+  mkdirSync(join(app, 'empty'));
+  const dev = await startDev({ root: app, port: 0 });
+  const base = `http://localhost:${dev.port}`;
+  try {
+    const page = await (await fetch(`${base}/`)).text();
+    assert.match(page, /<script type="importmap">/);
+    assert.match(page, /import 'trebol\/browser'/);
+    assert.match(page, /<script type="text\/trebol" src="app.trb"><\/script>/);
+    assert.equal(await (await fetch(`${base}/app.trb`)).text(), 'view [title "Hi"]');
+    assert.equal((await fetch(`${base}/empty/`)).status, 404);
+  } finally {
+    await dev.close();
+  }
+});
+
 test('a page reloads when a file it asked for changes, not for another one in the folder', async () => {
   const app = realpathSync(mkdtempSync(join(tmpdir(), 'trebol-app-')));
   writeFileSync(join(app, 'index.html'), '<html><head></head><body></body></html>');
