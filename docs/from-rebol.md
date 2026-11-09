@@ -57,6 +57,7 @@ exact number. `=` takes decimals that close as equal, as R3 does; `==` does not.
 | `to block! "a 1"` | `[a 1]`: the text is loaded, as Red | `["a 1"]` |
 | `round/to $2.625 0.01` | `$2.63`: money stays money | `2.63`, the type of the scale |
 | `reword` | takes the longest key that matches | takes the first |
+| `read %file` | the text, a string, as Red | a binary |
 | `context? 'n` in a function | the frame of that call, as an object | no frame as a value |
 
 Trebol also has some of Red's functions that R3 lacks: `pad`, `shift-left`, `shift-right`,

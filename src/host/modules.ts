@@ -138,7 +138,7 @@ native('do-file', '["Runs the script in a file, as do does; a module is imported
   f.phase = 2;
   const type = headerField(header, TYPE);
   if (type !== null && type.t === K.Word && canon(type.sym) === MODULE) {
-    return { k: 'call', fn: getWord({ t: K.Word, sym: intern('import'), bind: t.rt.lib })!, args: [string(href)] };
+    return { k: 'call', fn: getWord({ t: K.Word, sym: intern('import'), bind: t.rt.lib })!, args: [f.args[0]!] };
   }
   bindSeries(code.s, t.rt.user, true);
   return { k: 'do', s: code.s, i: start };
@@ -170,10 +170,9 @@ native('import', '["Runs a module and gives its exports." source [file! url! str
     f.phase = 1;
     return {
       k: 'await',
-      p: loader.read(href).then(src => string(src), (e: unknown) => {
-        const err = makeError('access', 'import', `cannot import ${href}: ${(e as Error).message}`);
+      p: readText(loader, href, f.args[0]!).catch((err: unknown) => {
         mods.delete(href);
-        entry.settle(false, err);
+        entry.settle(false, err as Cell);
         throw err;
       }),
     };

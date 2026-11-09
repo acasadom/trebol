@@ -239,7 +239,7 @@ describe('modules and storage', () => {
   test('an export that is not defined is an error', async () => {
     const host = fsHost();
     await assert.rejects(runSource(host, 'import %broken.trb', 'x.trb'), (e: ObjectCell) => form(errorField(e, 'id')) === 'bad-export');
-    await assert.rejects(runSource(host, 'import %missing.trb', 'x.trb'), (e: ObjectCell) => form(errorField(e, 'id')) === 'import');
+    await assert.rejects(runSource(host, 'import %missing.trb', 'x.trb'), (e: ObjectCell) => form(errorField(e, 'id')) === 'cannot-open');
   });
 
   test('export marks words in the module body, as R3', async () => {
