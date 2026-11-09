@@ -7,7 +7,7 @@ import './locale.ts';
 import { setLoader, defaultLoader, type Loader } from './modules.ts';
 import {
   K, makeRuntime, load, bindSeries, doSource, scriptStart, errorMessage, form, mold,
-  type Cell, type ObjectCell, type Runtime,
+  LIBRARY_FILES, type Cell, type ObjectCell, type Runtime,
 } from '../core/index.ts';
 import { makeScheduler, spawn, taskResult, type Scheduler } from './scheduler.ts';
 
@@ -162,6 +162,8 @@ export function startHost(opts: HostOptions = {}): Host {
 export const UI_SOURCE = new URL('../ui/ui.trb', import.meta.url).href;
 /** URL of the languages module (i18n, tr, translated). */
 export const I18N_SOURCE = new URL('../ui/i18n.trb', import.meta.url).href;
+// Trebol's own code: its errors point at the program's call (see LIBRARY_FILES).
+LIBRARY_FILES.add('host').add(UI_SOURCE).add(I18N_SOURCE);
 
 /** Loads languages and the UI dialect (view, layout, stylize, theme...) into the user context. */
 export function startUi(host: Host): Promise<Cell> {

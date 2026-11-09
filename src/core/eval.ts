@@ -66,6 +66,24 @@ export type Step =
 
 // --- frames ----------------------------------------------------------------------
 
+/**
+ * Files whose code is Trebol's own library. An error raised inside them
+ * reports where the program called into the library, not the library's
+ * insides: `fetch`, not the native it calls.
+ */
+export const LIBRARY_FILES = new Set<string>(['mezzanines']);
+
+const inLibrary = (s: Series<Cell>): boolean => s.file !== undefined && LIBRARY_FILES.has(s.file);
+
+/** True when the expression that made the call on top of the stack is library code. */
+function calledFromLibrary(t: Task): boolean {
+  for (let i = t.stack.length - 2; i >= 0; i--) {
+    const f = t.stack[i]!;
+    if (f.k === F.Expr) return inLibrary(f.feed.s);
+  }
+  return false;
+}
+
 export const F = { Do: 0, Expr: 1, Set: 2, Args: 3, Native: 4, Call: 5, Path: 6 } as const;
 
 /** Evaluates expressions until the end of the feed; the result is the last one. */
@@ -280,7 +298,7 @@ function unwind(t: Task): RunResult | null {
         applyStep(t, f, NATIVES[f.def.id]!.fn(t, f, null));
         return null;
       }
-      if (e !== null && f.name !== null) fillErrorField(e, 'where', { t: K.Word, sym: f.name, bind: null });
+      if (e !== null && f.name !== null && !calledFromLibrary(t)) fillErrorField(e, 'where', { t: K.Word, sym: f.name, bind: null });
       break;
     case F.Call:
       if (th.kind === T.Return) {
@@ -293,13 +311,13 @@ function unwind(t: Task): RunResult | null {
         t.thrown = { kind: T.Error, v: uncaught(th), name: null };
         return null;
       }
-      if (e !== null && f.name !== null) fillErrorField(e, 'where', { t: K.Word, sym: f.name, bind: null });
+      if (e !== null && f.name !== null && !calledFromLibrary(t)) fillErrorField(e, 'where', { t: K.Word, sym: f.name, bind: null });
       break;
     case F.Args:
-      if (e !== null && f.name !== null) fillErrorField(e, 'where', { t: K.Word, sym: f.name, bind: null });
+      if (e !== null && f.name !== null && !calledFromLibrary(t)) fillErrorField(e, 'where', { t: K.Word, sym: f.name, bind: null });
       break;
     case F.Expr:
-      if (e !== null) {
+      if (e !== null && !inLibrary(f.feed.s)) {
         const s = f.feed.s;
         const end = Math.max(f.feed.i, f.start + 1);
         fillErrorField(e, 'near', blockOf(K.Block, s.data.slice(f.start, Math.min(end, f.start + 4))));
@@ -557,7 +575,7 @@ function applyStep(t: Task, f: NativeFrame, step: Step): void {
     case 'throw': {
       // A native that throws is finished: pop it so it cannot trap its own throw.
       const e = step.e;
-      if (e.kind === T.Error && f.name !== null) {
+      if (e.kind === T.Error && f.name !== null && !calledFromLibrary(t)) {
         fillErrorField(e.v as ObjectCell, 'where', { t: K.Word, sym: f.name, bind: null });
       }
       t.stack.pop();

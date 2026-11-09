@@ -127,6 +127,7 @@ Trebol [
 [(catch [throw 3]) = 3]
 [(catch/name [throw/name 4 'k] 'k) = 4]
 [e: try [cause-error 'user 'out-of-stock ["No" 'chain "left"]]  all [e/type = 'user  e/id = 'out-of-stock  e/message = "No chain left"  e/where = 'cause-error]]
+[e: try [first 5]  all [e/where = 'first  e/near = [first 5]]]
 [e: try [cause-error 'math 'zero-divide "x"]  e/message = "x"]
 
 "evaluation"

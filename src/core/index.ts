@@ -16,6 +16,7 @@ export { pick, poke } from './access.ts';
 export {
   T, F, run, resume, resumeError, newTask, registerNative, throwError, currentFile,
   type Task, type Runtime, type RunResult, type Step, type Thrown, type Feed, type NativeFrame, type NativeFn,
+  LIBRARY_FILES,
 } from './eval.ts';
 export { native, op, value, truthy } from './natives/define.ts';
 export { makeRuntime, runSync, doSource, scriptStart } from './boot.ts';
