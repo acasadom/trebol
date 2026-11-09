@@ -539,7 +539,22 @@ function beginCall(t: Task, feed: Feed | null, fn: Cell, name: Sym | null, refs:
     vals[plan[0]!] = left;
     n = 1;
   }
-  t.stack.push({ k: F.Args, feed, fn: fn as OpaqueCell, spec, vals, plan, n, name, op: left !== null });
+  const a: ArgsFrame = { k: F.Args, feed, fn: fn as OpaqueCell, spec, vals, plan, n, name, op: left !== null };
+  t.stack.push(a);
+  // take the plain values among the arguments at once; if they are all plain, the call starts now
+  if (feed !== null && left === null) {
+    const data = feed.s.data;
+    while (a.n < plan.length) {
+      const p = spec.params[plan[a.n]!]!;
+      const c = data[feed.i];
+      if (c === undefined || p.kind !== P.Arg) break;
+      const q = quickValue(c);
+      if (q === null || isOpWord(data[feed.i + 1])) break;
+      feed.i++;
+      vals[plan[a.n++]!] = q;
+    }
+    if (a.n === plan.length) argsFrame(t, a);
+  }
 }
 
 /**
