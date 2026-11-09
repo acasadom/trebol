@@ -2892,6 +2892,8 @@ function sync(m: Mounted): void {
   if (size !== null) cls.push(`tb-${size}`);
   const align = word(f, 'align');
   if (align !== null && style === 'row') cls.push(`tb-${align}`);
+  const valign = word(f, 'valign');
+  if (valign !== null && style === 'row') cls.push(`tb-${valign}`);
   if (err !== null) cls.push('tb-invalid');
   if (flag(f, 'pending')) cls.push('tb-pending');
   setExtra(m.el, cls);

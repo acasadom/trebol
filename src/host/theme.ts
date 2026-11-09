@@ -242,7 +242,12 @@ body {
 .tb-screen:focus { outline: none; }
 .tb-screens[aria-busy] { cursor: progress; }
 .tb-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--tb-space-3); }
-.tb-row:has(> .tb-field) { align-items: flex-end; }
+.tb-row:where(:not(.tb-top, .tb-middle, .tb-bottom)):has(> .tb-field) { align-items: flex-end; }
+/* with fields, a text beside them sits on the line of the controls, not on their labels */
+.tb-row:where(:not(.tb-top, .tb-middle, .tb-bottom)):has(> .tb-field) > :is(.tb-text, .tb-heading) { margin-bottom: max(0px, calc((var(--tb-control) - 1lh) / 2)); }
+.tb-row.tb-top { align-items: flex-start; }
+.tb-row.tb-middle { align-items: center; }
+.tb-row.tb-bottom { align-items: flex-end; }
 .tb-row.tb-center { justify-content: center; }
 .tb-row.tb-right { justify-content: flex-end; }
 .tb-row.tb-spread { justify-content: space-between; }
@@ -954,6 +959,7 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
   :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > .tb-field > .tb-label, :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > .tb-field > .tb-control,
   :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > .tb-actions, :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > .tb-check-row { grid-column: 1; padding-top: 0; }
   .tb-row:has(> .tb-field) { flex-direction: column; align-items: stretch; }
+  .tb-row:has(> .tb-field) > :is(.tb-text, .tb-heading) { margin-bottom: 0; }
   .tb-entry { flex-direction: column; align-items: stretch; padding: var(--tb-space-3); border: var(--tb-line) solid var(--tb-border); border-radius: var(--tb-radius); }
   .tb-entry > * { flex: none; }
   .tb-entry:not(:first-child) .tb-field > .tb-label { position: static; width: auto; height: auto; overflow: visible; clip-path: none; white-space: normal; }

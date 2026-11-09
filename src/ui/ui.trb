@@ -22,6 +22,7 @@ face: make object! [
     role: none          ; primary accent danger success warning muted
     size: none          ; small medium large
     align: none         ; left center right spread
+    valign: none        ; a row's children, top middle bottom; none lines them up on the controls
     cols: none          ; columns of a grid: a number, or the weight of each [1 4 1]
     icon: none
     fill: false
@@ -116,6 +117,7 @@ stylize: function [
 roles: [primary accent danger success warning muted]
 sizes: [small medium large]
 aligns: [left center right spread]
+valigns: [top middle bottom]
 flags: [fill fit hidden disabled readonly inert narrow-only wide-only linked drag drop reorder multiple sortable]
 simple-rules: [required email url integer]
 letter: charset [#"a" - #"z" #"A" - #"Z"]
@@ -253,6 +255,7 @@ build-faces: function [
         | set w word! if (find roles w) (f/role: w)
         | set w word! if (find sizes w) (f/size: w)
         | set w word! if (find aligns w) (f/align: w)
+        | set w word! if (all [f/style = 'row  find valigns w]) (f/valign: w)
         | set w word! if (find flags w) (poke f w true)
         | set w word! if (find simple-rules w) (add-rule f reduce [w])
         ; money price "Price" EUR

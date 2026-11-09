@@ -828,6 +828,10 @@ test('a view takes its width at the head; inert faces; screen titles per languag
   assert.equal(await ev('f: first layout/only [panel drag inert [field "Name"]]  reduce [f/inert f/drag]'), '[true true]');
   assert.equal(await ev('f: first layout/only [field a "A" readonly required]  f/value: none  reduce [f/readonly validate-face f]'), '[true none]');
   assert.equal(await ev('f: first layout/only [grid [1 4 1] [text "a" text "b" text "c"]]  reduce [f/cols length? f/pane]'), '[[1 4 1] 3]');
+  assert.equal(await ev('f: first layout/only [row right middle [text "a"]]  reduce [f/align f/valign]'), '[right middle]');
+  assert.equal(await ev('f: first layout/only [row [text "a"]]  f/valign'), 'none');
+  // only a row takes top, middle or bottom: after an input style the word still names the field
+  assert.equal(await ev('f: first layout/only [field bottom "Bottom"]  reduce [f/name f/valign]'), '[bottom none]');
   assert.equal(await ev('f: first layout/only [grid 3 []]  reduce [f/cols f/pane]'), '[3 []]');
   link = [];
   const r = await ev(`v: view [screens [home #(en: "Home" es: "Inicio") [text "x"] about 'about [text "y"]]]
