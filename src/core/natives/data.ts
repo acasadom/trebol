@@ -13,7 +13,7 @@ import { makeError } from '../errors.ts';
 import { makeFunc, typesOf, P, type FuncDef, type NativeDef, type OpDef } from '../func.ts';
 import { load, LoadError } from '../lexer.ts';
 import { mold, form } from '../mold.ts';
-import { pick, poke } from '../access.ts';
+import { pick, poke, blockFind } from '../access.ts';
 import type { Runtime, Step } from '../eval.ts';
 import { native, value, fail, doBlock } from './define.ts';
 
@@ -284,4 +284,24 @@ native('pick', '[series [any-value!] index [any-value!]]', (_t, f) => {
 native('poke', '[series [any-value!] index [any-value!] value [any-value!]]', (_t, f) => {
   const msg = poke(f.args[0]!, f.args[1]!, f.args[2]!);
   return msg !== null ? fail('script', 'bad-poke', msg) : value(f.args[2]!);
+});
+
+// put, as in R3 and Red: a map or object gets the key set; a block has the value
+// after the key replaced, or the key and value appended when the key is missing.
+native('put', '["Sets the value of a key; gives the value." series [map! object! block!] key [any-value!] value [any-value!]]', (_t, f) => {
+  const [x, key, v] = f.args as [Cell, Cell, Cell];
+  if (x.t === K.Block) {
+    const at = blockFind(x.s, x.i, key);
+    if (at < 0 || at + 1 >= x.s.data.length) {
+      const items = at < 0 ? [key, v] : [v];
+      x.s.data.push(...items);
+      if (x.s.nl) x.s.nl.push(...items.map(() => false));
+      if (x.s.pos) x.s.pos.push(...items.map(() => -1));
+    } else {
+      x.s.data[at + 1] = v;
+    }
+    return value(v);
+  }
+  const msg = poke(x, key, v);
+  return msg !== null ? fail('script', 'bad-poke', msg) : value(v);
 });

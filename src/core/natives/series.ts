@@ -40,6 +40,37 @@ function partEnd(s: SeriesCell, part: Cell | null): number {
   return clampIndex(s, (part as SeriesCell).i);
 }
 
+/**
+ * The span a /part argument covers, as R3 reads it: a negative count, or a
+ * position before the series' own, goes back from where the series is.
+ */
+function partSpan(s: SeriesCell, part: Cell): [number, number] {
+  const e = part.t === K.Integer ? clampIndex(s, s.i + num(part)) : clampIndex(s, (part as SeriesCell).i);
+  return e < s.i ? [e, s.i] : [s.i, e];
+}
+
+/** What insert, append and change put in: /part limits the value, /dup repeats it. */
+function toPut(s: SeriesCell, v: Cell, only: boolean, part: Cell | null, dup: Cell | null): { add: Item[]; nl?: boolean[] } {
+  let { add, nl } = itemsFor(s.t, v, only);
+  if (part !== null) {
+    const n = part.t === K.Integer ? Math.max(0, num(part)) : Math.max(0, (part as SeriesCell).i - (v as SeriesCell).i);
+    add = add.slice(0, n);
+    nl = nl?.slice(0, n);
+  }
+  if (dup !== null) {
+    const times = Math.max(0, num(dup));
+    const one = add;
+    const oneNl = nl;
+    add = [];
+    nl = oneNl === undefined ? undefined : [];
+    for (let k = 0; k < times; k++) {
+      add.push(...one);
+      if (nl !== undefined) nl.push(...oneNl!);
+    }
+  }
+  return nl === undefined ? { add } : { add, nl };
+}
+
 // --- navigation ------------------------------------------------------------------
 
 native('next', '[series [series!]]', (_t, f) => value(at(f.args[0] as SeriesCell, (f.args[0] as SeriesCell).i + 1)));
@@ -61,33 +92,37 @@ native('tail?', '[series [series!]]', (_t, f) => value(logic(lengthOf(f.args[0] 
 
 // --- editing ---------------------------------------------------------------------
 
-native('append', '[series [series!] value [any-value!] /only]', (_t, f) => {
+const PUT_SPEC = 'series [series!] value [any-value!] /part "Put in only part of the value" range [integer! series!] /only "A block goes in as one value" /dup "Put it in several times" count [integer!]';
+const putArgs = (f: NativeFrame) => toPut(f.args[0] as SeriesCell, f.args[1]!, used(f.args[4]!),
+  used(f.args[2]!) ? f.args[3]! : null, used(f.args[5]!) ? f.args[6]! : null);
+
+native('append', `["Puts a value at the tail of a series; gives the series at its head." ${PUT_SPEC}]`, (_t, f) => {
   const s = f.args[0] as SeriesCell;
-  const { add, nl } = itemsFor(s.t, f.args[1]!, used(f.args[2]!));
+  const { add, nl } = putArgs(f);
   splice(s.s as Series<Item>, s.s.data.length, 0, add, nl);
   return value(at(s, 0));
 });
 
-native('insert', '[series [series!] value [any-value!] /only]', (_t, f) => {
+native('insert', `["Puts a value where the series is; gives the series just after it." ${PUT_SPEC}]`, (_t, f) => {
   const s = f.args[0] as SeriesCell;
-  const { add, nl } = itemsFor(s.t, f.args[1]!, used(f.args[2]!));
+  const { add, nl } = putArgs(f);
   splice(s.s as Series<Item>, s.i, 0, add, nl);
   return value(at(s, s.i + add.length));
 });
 
-native('change', '[series [series!] value [any-value!] /only /part length [integer! series!]]', (_t, f) => {
+native('change', '["Puts a value over what the series holds where it is; gives the series just after it." series [series!] value [any-value!] /part "Change this much of the series" range [integer! series!] /only "A block goes in as one value" /dup "Put the value in several times" count [integer!]]', (_t, f) => {
   const s = f.args[0] as SeriesCell;
-  const { add, nl } = itemsFor(s.t, f.args[1]!, used(f.args[2]!));
-  const end = used(f.args[3]!) ? partEnd(s, f.args[4]!) : Math.min(s.s.data.length, s.i + add.length);
+  const { add, nl } = toPut(s, f.args[1]!, used(f.args[4]!), null, used(f.args[5]!) ? f.args[6]! : null);
+  const end = used(f.args[2]!) ? partEnd(s, f.args[3]!) : Math.min(s.s.data.length, s.i + add.length);
   splice(s.s as Series<Item>, s.i, Math.max(0, end - s.i), add, nl);
   return value(at(s, s.i + add.length));
 });
 
-native('remove', '[series [series!] /part length [integer! series!]]', (_t, f) => {
+native('remove', '["Removes what the series holds where it is; gives the series." series [series!] /part "Remove this much" range [integer! series!]]', (_t, f) => {
   const s = f.args[0] as SeriesCell;
-  const end = used(f.args[1]!) ? partEnd(s, f.args[2]!) : Math.min(s.s.data.length, s.i + 1);
-  splice(s.s as Series<Item>, s.i, Math.max(0, end - s.i), []);
-  return value(s);
+  const [from, end] = used(f.args[1]!) ? partSpan(s, f.args[2]!) : [s.i, Math.min(s.s.data.length, s.i + 1)];
+  splice(s.s as Series<Item>, from, Math.max(0, end - from), []);
+  return value(at(s, from));
 });
 
 native('clear', '[series [series! map!]]', (_t, f) => {
@@ -112,14 +147,14 @@ native('copy', '[value [series! map! object! bitset!] /part length [integer! ser
   }
   if (x.t === K.Bitset) return value({ t: K.Bitset, s: { data: x.s.data.slice() }, neg: x.neg });
   const s = x as SeriesCell;
-  const end = used(f.args[1]!) ? partEnd(s, f.args[2]!) : s.s.data.length;
+  const [from, end] = used(f.args[1]!) ? partSpan(s, f.args[2]!) : [s.i, s.s.data.length];
   if (isAnyBlock(s.t)) {
     const b = s as BlockCell;
-    const part: Series<Cell> = { data: b.s.data.slice(b.i, end) };
-    if (b.s.nl) part.nl = b.s.nl.slice(b.i, end);
+    const part: Series<Cell> = { data: b.s.data.slice(from, end) };
+    if (b.s.nl) part.nl = b.s.nl.slice(from, end);
     return value({ t: b.t, s: deep ? copyDeep(part) : part, i: 0 });
   }
-  return value({ t: s.t, s: { data: (s.s.data as number[]).slice(s.i, end) }, i: 0 } as StringCell);
+  return value({ t: s.t, s: { data: (s.s.data as number[]).slice(from, end) }, i: 0 } as StringCell);
 });
 
 native('reverse', '[series [series!] /part length [integer! series!]]', (_t, f) => {
@@ -156,27 +191,74 @@ function needle(s: SeriesCell, v: Cell, only: boolean, cased: boolean): { run: I
   return { run, eq };
 }
 
-interface FindOpts { only: boolean; cased: boolean; skip: number; last: boolean; match: boolean; end: number }
+interface FindOpts {
+  only: boolean; cased: boolean; skip: number; last: boolean; match: boolean; end: number;
+  /** Search back from just before the series' position. */
+  reverse?: boolean;
+  /** In a string, * matches any run of characters and ? any one. */
+  wild?: boolean;
+}
+
+const STAR = 0x2a;
+const QUESTION = 0x3f;
+
+/**
+ * Length of the shortest match of a wildcard pattern at `i`, or -1. Each *
+ * tries the shortest run first; the backtracking keeps one entry per *.
+ */
+function wildAt(d: Item[], i: number, end: number, run: Item[], eq: (a: Item, b: Item) => boolean): number {
+  const stars: Array<[number, number]> = [];
+  let p = 0;
+  let k = i;
+  for (;;) {
+    if (p === run.length) return k - i;
+    const c = run[p]!;
+    if (c === STAR) {
+      stars.push([p + 1, k]);
+      p++;
+      continue;
+    }
+    if (k < end && (c === QUESTION || eq(d[k]!, c))) {
+      p++;
+      k++;
+      continue;
+    }
+    // let the last * take one more character, or fail
+    const last = stars.pop();
+    if (last === undefined || last[1] >= end) return -1;
+    p = last[0];
+    k = last[1] + 1;
+    stars.push([p, k]);
+  }
+}
 
 /** Index where the run starts, or -1. */
 function findIn(s: SeriesCell, v: Cell, o: FindOpts): { at: number; len: number } {
   const d = s.s.data as Item[];
   const { run, eq } = needle(s, v, o.only, o.cased);
+  const wild = o.wild === true && !isAnyBlock(s.t);
+  let len = run.length;
   const fits = (i: number) => {
+    if (wild) {
+      len = wildAt(d, i, o.end, run, eq);
+      return len >= 0;
+    }
     if (i + run.length > o.end) return false;
     for (let k = 0; k < run.length; k++) if (!eq(d[i + k]!, run[k]!)) return false;
     return true;
   };
-  if (o.match) return { at: fits(s.i) ? s.i : -1, len: run.length };
-  if (o.last) {
-    for (let i = o.end - run.length; i >= s.i; i--) if ((i - s.i) % o.skip === 0 && fits(i)) return { at: i, len: run.length };
+  if (o.match) return { at: fits(s.i) ? s.i : -1, len };
+  if (o.reverse) {
+    for (let i = s.i - o.skip; i >= 0; i -= o.skip) if (fits(i)) return { at: i, len };
+  } else if (o.last) {
+    for (let i = o.end - (wild ? 0 : run.length); i >= s.i; i--) if ((i - s.i) % o.skip === 0 && fits(i)) return { at: i, len };
   } else {
-    for (let i = s.i; i + run.length <= o.end; i += o.skip) if (fits(i)) return { at: i, len: run.length };
+    for (let i = s.i; i + (wild ? 0 : run.length) <= o.end; i += o.skip) if (fits(i)) return { at: i, len };
   }
-  return { at: -1, len: run.length };
+  return { at: -1, len };
 }
 
-native('find', '[series [series! none! typeset!] value [any-type!] /part length [integer! series!] /only /case /skip size [integer!] /last /tail /match]', (_t, f) => {
+native('find', '["Finds a value in a series; gives the series where it is, or none." series [series! none! typeset!] value [any-type!] /part "Look only this far" length [integer! series!] /only "A block is one value" /case "Capitals matter" /skip "Look only at every so many" size [integer!] /last "Find the last one" /tail "Give the series just after it" /match "Only where the series is" /reverse "Look back from where the series is" /any "In a string, * is any run of characters and ? any one"]', (_t, f) => {
   const x = f.args[0]!;
   if (x.t === K.None) return value(NONE);
   if (x.t === K.Typeset) {
@@ -188,6 +270,7 @@ native('find', '[series [series! none! typeset!] value [any-type!] /part length 
   const o: FindOpts = {
     only: used(a[4]!), cased: used(a[5]!), skip: used(a[6]!) ? Math.max(1, num(a[7]!)) : 1,
     last: used(a[8]!), match: used(a[10]!), end: used(a[2]!) ? partEnd(s, a[3]!) : s.s.data.length,
+    reverse: used(a[11]!), wild: used(a[12]!),
   };
   const r = findIn(s, a[1]!, o);
   if (r.at < 0) return value(NONE);

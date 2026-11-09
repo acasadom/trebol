@@ -158,3 +158,44 @@ Trebol [
 [(difference 1-Jan-2026/10:00 1-Jan-2026/9:30) = 0:30]
 [(difference 1-Jan-2026/10:00+2:00 1-Jan-2026/9:00) = -1:00]
 [error? try [difference 1-Jan-2026 [a]]]
+
+"put"
+[m: #(a: 1)  all [2 = put m 'b 2  m/b = 2  1 = put m 'a 1]]
+[b: [x 1]  put b 'x 5  put b 'y 6  b = [x 5 y 6]]
+[o: make object! [n: 1]  put o 'n 2  o/n = 2]
+
+"insert, append and change with /part and /dup"
+[(insert/dup b: copy [] 0 3  head b) = [0 0 0]]
+[(append/dup copy "ab" "-" 2) = "ab--"]
+[(head insert/part b: copy [] [1 2 3] 2) = [1 2]]
+[(append/part copy "x" "abc" 1) = "xa"]
+[b: copy [1 2 3]  change/dup b 0 2  b = [0 0 3]]
+[(copy/part tail [1 2 3] -2) = [2 3]]
+[b: [1 2 3 4]  b: remove/part tail b -2  all [tail? b  (head b) = [1 2]]]
+
+"find /reverse /any"
+[(index? find/reverse tail [1 2 1 3] 1) = 3]
+[none? find/reverse [1 2] 1]
+[(find/any "abc" "a*c") = "abc"]
+[(find/any "xabcx" "b?") = "bcx"]
+[(find/any/tail "abcd" "a*c") = "d"]
+[none? find/any "abc" "a*d"]
+[(find/any "aXbYc" "*c") = "aXbYc"]
+
+"extract, alter, swap, move, array"
+[(extract [a 1 b 2 c 3] 2) = [a b c]]
+[(extract/index [a 1 b 2 c 3] 2 2) = [1 2 3]]
+[(extract "abcdef" 2) = "ace"]
+[b: [x y]  all [false = alter b 'x  b = [y]  true = alter b 'z  b = [y z]]]
+[a: [1 2]  b: [3 4]  swap a b  all [a = [3 2]  b = [1 4]]]
+[b: [1 2 3]  move b 1  b = [2 1 3]]
+[b: [1 2 3 4]  move/part b 2 2  b = [3 4 1 2]]
+[b: [1 2 3]  move/to b 3  b = [2 3 1]]
+[b: [a 1 b 2]  move/skip b 1 2  b = [b 2 a 1]]
+[b: array 3  all [3 = length? b  none? b/1  none? b/3]]
+[(array/initial 2 0) = [0 0]]
+[b: array [2 2]  all [2 = length? b  block? b/2  2 = length? b/2  none? b/2/2]]
+[b: array/initial 2 []  append b/1 'x  b = [[x] []]]
+[n: 0  (array/initial 3 does [n: n + 1]) = [1 2 3]]
+[last? [1]]
+[not single? [1 2]]

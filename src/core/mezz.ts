@@ -216,6 +216,84 @@ also: func ["Returns the first value, after evaluating the second." a [any-type!
 
 pi: 3.141592653589793
 
+last?: func ["True if the series has one value left." series [series!]] [1 = length? series]
+single?: :last?
+
+extract: function [
+    "Takes every so many values of a series: the first of each record."
+    series [series!] width [integer!] "Size of each record"
+    /index "Take this position of each record instead" pos [integer!]
+][
+    out: copy/part series 0
+    i: any [pos 1]
+    while [i <= length? series] [
+        append/only out pick series i
+        i: i + width
+    ]
+    out
+]
+
+alter: func [
+    "Removes the value if the series has it, adds it if not; true if it was added."
+    series [series!] value
+][
+    either find/only series :value [remove find/only series :value  false] [append/only series :value  true]
+]
+
+swap: func [
+    "Swaps the first values of two series; gives the first series."
+    a [series!] b [series!] /local x
+][
+    unless any [tail? a tail? b] [
+        x: first a
+        poke a 1 first b
+        poke b 1 :x
+    ]
+    a
+]
+
+move: func [
+    "Moves a value, or a span of values, within a series; gives the series after it."
+    source [series!] "Changed"
+    offset [integer!] "How far to move it, or with /to where to"
+    /part "Move this many values" length [integer!]
+    /skip "The series is records of this size" size [integer!]
+    /to "Offset is a position from the head"
+    /local taken
+][
+    unless length [length: 1]
+    if skip [
+        if size < 1 [cause-error 'script 'out-of-range ["size must be at least 1"]]
+        offset: either to [offset - 1 * size + 1] [offset * size]
+        length: length * size
+    ]
+    taken: take/part source length
+    insert either to [at head source offset] [at source either offset < 0 [offset] [offset + 1]] taken
+]
+
+array: function [
+    "Makes a block of the size given, or of blocks for a block of sizes."
+    size [integer! block!]
+    /initial "Fill it with this; a series is copied, a function called" value
+][
+    rest: none
+    if block? size [
+        rest: next size
+        if tail? rest [rest: none]
+        size: first size
+    ]
+    out: copy []
+    loop size [
+        append/only out case [
+            rest [either initial [array/initial rest :value] [array rest]]
+            series? :value [copy/deep value]
+            any-function? :value [value]
+            true [:value]
+        ]
+    ]
+    out
+]
+
 mod: func [
     "The remainder of a divided by b, with the sign of b."
     a [number! money! time!] b [number! money! time!] "Must not be zero"
