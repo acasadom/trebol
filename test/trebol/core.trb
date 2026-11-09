@@ -196,6 +196,10 @@ Trebol [
 
 "ajoin, comment, forever, default"
 [(ajoin ["a" 1 + 1 'b]) = "a2b"]
+[(reform [1 + 1 "a" [b c]]) = "2 a b c"]
+[(reform "x") = "x"]
+[(reform 3) = "3"]
+[(reform []) = ""]
 [unset? comment [anything here]]
 [n: 0  forever [n: n + 1  if n = 3 [break]]  n = 3]
 [(forever [break/return 5]) = 5]

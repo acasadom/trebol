@@ -220,6 +220,10 @@ ajoin: func ["Reduces a block and joins the values into a string, with no spaces
     to string! reduce block
 ]
 
+reform: func ["Reduces a block and forms it: the values with spaces between. Any other value is formed." value] [
+    form reduce :value
+]
+
 comment: func ["Ignores its argument." value [any-type!]] []
 
 forever: func ["Evaluates a block again and again, until break or return." body [block!]] [
