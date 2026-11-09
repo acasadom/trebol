@@ -88,8 +88,12 @@ for (const page of pages(DOCS)) {
     const repl = new Repl(consoleHost(dirname(page)));
     for (const b of blocks(md)) {
       const where = `${name}:${b.line}`;
+      const file = /^; file: (\S+)\n/.exec(b.code);
       if (b.lang === 'trebol-console') {
         await typeIn(repl, b.code, where);
+      } else if (file !== null) {
+        // a file the page shows: it must be the file next to the page, which the examples import
+        assert.equal(readFileSync(join(dirname(page), file[1]!), 'utf8'), b.code.slice(file[0].length), `${where}: differs from ${file[1]}`);
       } else if (!b.code.startsWith('; docs-test: skip')) {
         const line = output.line;
         output.line = () => {};

@@ -1,0 +1,19 @@
+Trebol [title: "The shop's rules"]
+
+import %prices.trb
+
+discounts: [[total > $50.00] 10% [find parts 'tyre] 5%]
+
+export total-of: function [parts [block!] /local n part] [
+    total: $0.00
+    parse parts [some [set n integer! set part word! (total: total + (n * price-of part))]]
+    total
+]
+
+export discount: function [order [object!]] [
+    best: 0%
+    foreach [test rate] discounts [
+        if do bind/copy test order [best: max best rate]
+    ]
+    best
+]

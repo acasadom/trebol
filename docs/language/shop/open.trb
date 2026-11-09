@@ -1,0 +1,4 @@
+Trebol [title: "Opening the shop"]
+
+orders: 0
+print "the shop is open"
