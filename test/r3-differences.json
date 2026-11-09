@@ -1,0 +1,182 @@
+[
+  {
+    "test": "[-7 // 2 = -1]",
+    "why": "// is the remainder, as in the original R3 and in remainder; in this R3 (Oldes) // is integer division."
+  },
+  {
+    "test": "[$2.63 == round/to $2.625 0.01]",
+    "why": "round/to keeps money when the value is money, whatever the scale; R3 gives the type of the scale (a decimal here)."
+  },
+  {
+    "test": "[\"func [a] [a + 1]\" = mold func [a] [a + 1]]",
+    "why": "mold of a function writes the code that makes it, as Red does (owner's decision, 2026-11-08); R3 writes make function! [...]."
+  },
+  {
+    "test": "[\"#[function!]\" = mold/all func [a] [a]]",
+    "why": "mold/all of a function is #[function!]: nothing loads a function back, so the construction form only names the type."
+  },
+  {
+    "test": "[\"func [a /local b] [b: a]\" = mold function [a] [b: a]]",
+    "why": "function writes its locals as /local in the spec it molds, as Red does."
+  },
+  {
+    "test": "[\"func [a] [a + 1]\" = mold function [a] [a + 1]]",
+    "why": "function adds no empty /local; it molds as the func it is, as Red does."
+  },
+  {
+    "test": "[o: make object! [w: 'red p: 'a/b n: none b: [x y]] (mold o) = {make object! [\n    w: 'red\n    p: 'a/b\n    n: none\n    b: [x y]\n]}]",
+    "why": "mold of an object quotes paths as well as words (p: 'a/b), so make object! gives them back; R3 quotes words only, and writes none as _ (Oldes)."
+  },
+  {
+    "test": "[o: make object! [w: 'red p: 'a/b] o2: do mold o all [o2/w = 'red o2/p = 'a/b]]",
+    "why": "Same: R3 molds p: a/b, which does not load back to the same object."
+  },
+  {
+    "test": "[mk: func [n] [does [n]] a: mk 1 b: mk 2 all [(a) = 1 (b) = 2]]",
+    "why": "Every function keeps the words of the call that made it (func is a closure in Trebol); in R3 only closure does. The UI handlers and the tutorial rely on it."
+  },
+  {
+    "test": "[e: try [do make error! \"custom\"] e/message = \"custom\"]",
+    "why": "An error! has the fields type id message near where at; R3 has code type id arg1 arg2 arg3 near where, and builds the message from a catalogue."
+  },
+  {
+    "test": "[e: try [cause-error 'user 'out-of-stock [\"No\" 'chain \"left\"]] all [e/type = 'user e/id = 'out-of-stock e/message = \"No chain left\" e/where = 'cause-error]]",
+    "why": "Same error fields; where is the one function the error came from, not the stack of calls R3 lists."
+  },
+  {
+    "test": "[e: try [first 5] all [e/where = 'first e/near = [first 5]]]",
+    "why": "Same: where is one word and near the expression of the program, also for errors inside the library."
+  },
+  {
+    "test": "[e: try [cause-error 'math 'zero-divide \"x\"] e/message = \"x\"]",
+    "why": "Same error fields: cause-error takes the message itself, as there is no catalogue of messages."
+  },
+  {
+    "test": "[o: make object! [t: 2] same? o bound? in o 't]",
+    "why": "bound? is kept as an alias of context?; this R3 (Oldes) dropped bound?."
+  },
+  {
+    "test": "[f: func [n] [context? 'n] 2 = get in f 2 'n]",
+    "why": "context? of a function's word gives the frame of that call as an object; R3 has no frame as a value."
+  },
+  {
+    "test": "[e: try [x: ada@shop.example x/name] e/message = \"cannot pick name in an email!\"]",
+    "why": "Same error fields (message)."
+  },
+  {
+    "test": "[(enbase \"Hello\") = \"SGVsbG8=\"]",
+    "why": "enbase takes the base with /base, 64 if not given, as Red and the original R3; this R3 (Oldes) requires the base as an argument."
+  },
+  {
+    "test": "[(enbase/base #{CAFE} 16) = \"CAFE\"]",
+    "why": "Same: enbase/base."
+  },
+  {
+    "test": "[(enbase/base #{0F} 2) = \"00001111\"]",
+    "why": "Same: enbase/base."
+  },
+  {
+    "test": "[(debase \"SGVsbG8=\") = #{48656C6C6F}]",
+    "why": "Same: debase takes the base with /base, 64 if not given."
+  },
+  {
+    "test": "[(to string! debase \"SGVsbG8=\") = \"Hello\"]",
+    "why": "Same: debase without a base."
+  },
+  {
+    "test": "[(debase/base \"cafe\" 16) = #{CAFE}]",
+    "why": "Same: debase/base."
+  },
+  {
+    "test": "[(to-json make object! [a: 1 f: does [2]]) = {{\"a\":1}}]",
+    "why": "to-json is not in R3 core; Trebol has JSON built in (load-json, to-json)."
+  },
+  {
+    "test": "[(to-json reduce [1 :add]) = \"[1,null]\"]",
+    "why": "Same: to-json."
+  },
+  {
+    "test": "[integer? 2 ** 62]",
+    "why": "An integer to a whole power stays an exact integer, as in Red; R3 always gives a decimal."
+  },
+  {
+    "test": "[error? try [2 ** 63]]",
+    "why": "Same: an integer power that does not fit 64 bits is an overflow error, like any integer arithmetic; R3 gives a decimal."
+  },
+  {
+    "test": "[(arctangent2 1 1) = 45.0]",
+    "why": "arctangent2 takes y and x, as Red; R3 takes a pair."
+  },
+  {
+    "test": "[(mod -7 3) = 2]",
+    "why": "mod gives the remainder with the sign of the divisor (as modulo in R3 and mod in Red); this R3's mod gives -1 here."
+  },
+  {
+    "test": "[(mod 7 -3) = -2]",
+    "why": "Same: mod with the sign of the divisor."
+  },
+  {
+    "test": "[(mod -0:10 0:03) = 0:02]",
+    "why": "mod of times is exact: R3 goes through decimals and gives -0:00:59.999999999 here."
+  },
+  {
+    "test": "[(modulo 0.3 0.1) = 0.0]",
+    "why": "modulo treats a remainder too small to tell from the divisor as zero; R3 gives 0.1 here."
+  },
+  {
+    "test": "[(-7 // 3) = -1]",
+    "why": "// is the remainder (see the integer case)."
+  },
+  {
+    "test": "[(shift 16 2) = 4]",
+    "why": "shift goes right unless /left, as Red (owner's decision, 2026-11-09); R3 shifts left for a positive count."
+  },
+  {
+    "test": "[(shift/left 1 4) = 16]",
+    "why": "Same: shift/left is Red's."
+  },
+  {
+    "test": "[(shift -16 2) = -4]",
+    "why": "Same: shift right keeps the sign."
+  },
+  {
+    "test": "[(shift/logical -1 60) = 15]",
+    "why": "Same: shift/logical is Red's."
+  },
+  {
+    "test": "[(-1 >>> 63) = 1]",
+    "why": "The operators << >> >>> are Red's; R3 has none."
+  },
+  {
+    "test": "[(parse \"aa bb\" [collect [some [keep copy w to [\" \" | end] opt \" \"]]]) = [\"aa\" \"bb\"]]",
+    "why": "A repetition stops when a turn matches without moving on; R3 goes once more and keeps an empty string at the end."
+  },
+  {
+    "test": "[error? try [parse \"a\" [some]]]",
+    "why": "A malformed rule is an error that says so; R3 gives false."
+  },
+  {
+    "test": "[b: [1 2] parse b [change only integer! [x] skip] b = [[x] 2]]",
+    "why": "change only is Red's: the block goes in as one value; R3 has no change only."
+  },
+  {
+    "test": "[(find/match \"abc\" \"ab\") = \"c\"]",
+    "why": "find/match gives the series after the match, as R2 and Red; this R3 gives where it starts."
+  },
+  {
+    "test": "[(reword \"Hi $name, $names\" [name \"Ada\" names \"all\"]) = \"Hi Ada, all\"]",
+    "why": "reword takes the longest key that matches ( before ); R3 takes the first and leaves the s."
+  },
+  {
+    "test": "[(reword \"$a $\" [a func [k] [uppercase copy k]]) = \"A $\"]",
+    "why": "reword with a function gives its value once; R3 repeats text after it."
+  },
+  {
+    "test": "[(pad/left \"ab\" 4) = \"  ab\"]",
+    "why": "pad is Red's; R3 has no pad."
+  },
+  {
+    "test": "[(to block! \"a 1\") = [a 1]]",
+    "why": "to block! of a string loads it, as Red; R3 puts the string in a block."
+  }
+]

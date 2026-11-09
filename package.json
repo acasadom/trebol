@@ -23,6 +23,7 @@
     "mold": "node tools/mold.ts",
     "trb": "node --disable-warning=ExperimentalWarning tools/cli.ts",
     "dev": "node tools/cli.ts dev --api examples/api.ts",
+    "r3check": "node --disable-warning=ExperimentalWarning tools/r3check.ts",
     "supplier": "node --disable-warning=ExperimentalWarning examples/supplier.ts",
     "docs": "uv run --quiet --no-project --with-requirements docs/requirements.txt sphinx-build -q -E -b html docs docs/_build/html"
   },

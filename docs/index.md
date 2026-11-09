@@ -72,3 +72,10 @@ language/12-tasks-and-network
 ```
 
 The second tutorial gives the shop its screens; the reference and the technical guides follow it.
+
+```{toctree}
+:maxdepth: 1
+:caption: Guides
+
+from-rebol
+```
