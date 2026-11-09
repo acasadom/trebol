@@ -25,7 +25,7 @@ print "loading the prices"
 prices: #(chain: $12.50 tyre: $18.00 bell: $4.00 brake-pad: $6.80)
 
 price-of: function [part [word!]] [
-    any [select prices part  cause-error 'user 'no-price ["No price for" part]]
+    any [select prices part  cause-error 'user 'no-price reduce ["No price for" part]]
 ]
 ```
 
@@ -39,7 +39,7 @@ loading the prices
 == make object! [
     prices: #(chain: $12.50 tyre: $18.00 bell: $4.00 brake-pad: $6.80)
     price-of: func [part [word!]] [
-        any [select prices part cause-error 'user 'no-price ["No price for" part]]
+        any [select prices part cause-error 'user 'no-price reduce ["No price for" part]]
     ]
 ]
 ```

@@ -164,17 +164,27 @@ function that takes parts from stock does. It **raises** an error with `do make 
 other error.
 
 A message is for people. When a program needs to tell one error from another, give it a `type` and an `id`
-too, with `cause-error`. The last argument becomes the message; in a block, its values are joined with spaces:
+too, with `cause-error`. The last argument becomes the message. A block is formed, its values joined with spaces,
+but it is not evaluated, so `reduce` it to put in the value of `part` rather than the word:
 
 ```trebol-console
 >> take-part: function [part] [
-[        if stock/:part = 0 [cause-error 'user 'out-of-stock ["No" part "left"]]
+[        if stock/:part = 0 [cause-error 'user 'out-of-stock reduce ["No" part "left"]]
 [        stock/:part: stock/:part - 1
 [    ]
 == func [part] [
-    if stock/:part = 0 [cause-error 'user 'out-of-stock ["No" part "left"]]
+    if stock/:part = 0 [cause-error 'user 'out-of-stock reduce ["No" part "left"]]
     stock/:part: stock/:part - 1
 ]
+```
+
+```trebol-console
+>> error? e: try [take-part 'tyre]
+== true
+>> e/id
+== out-of-stock
+>> e/message
+== "No tyre left"
 ```
 
 Now the shop can fill an order, take each part it can, and note the ones it is missing, instead of stopping at
