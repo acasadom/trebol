@@ -34,13 +34,18 @@ A chain costs $12.50. In Trebol that is not a number with a dollar sign in front
 
 ```trebol-console
 >> 0.1 + 0.2
-== 0.30000000000000004
+== 0.3
+>> mold/all 0.1 + 0.2
+== "0.30000000000000004"
 >> $0.10 + $0.20
 == $0.30
+>> mold/all $0.10 + $0.20
+== "$0.30"
 ```
 
-Decimals are binary fractions, like in every language, and `0.1` cannot be stored exactly. Money is kept
-in decimal digits, so cents never drift, however many orders you add. The `$` is only the notation: an
+Decimals are binary fractions, like in every language, and `0.1` cannot be stored exactly. The console shows
+a decimal with 15 digits, which hides the error; `mold/all` shows what is really stored. Money is kept in
+decimal digits, so cents never drift, however many orders you add. The `$` is only the notation: an
 amount has no currency unless you give it one (`EUR$12.50`).
 
 Arithmetic keeps the type, and a division keeps every digit:

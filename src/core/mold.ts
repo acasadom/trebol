@@ -74,10 +74,15 @@ function report(e: ObjectCell): string {
 
 const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-export function formatDecimal(n: number): string {
+/**
+ * A decimal as Trebol writes it. As in R3, mold shows 15 significant digits,
+ * so 0.1 + 0.2 reads 0.3; `exact` (mold/all) gives the shortest text that
+ * loads back to the very same number.
+ */
+export function formatDecimal(n: number, exact = true): string {
   if (Number.isNaN(n)) return '1.#NaN';
   if (!Number.isFinite(n)) return n > 0 ? '1.#INF' : '-1.#INF';
-  let s = String(n);
+  let s = String(exact ? n : Number(n.toPrecision(15)));
   if (s.includes('e')) {
     s = s.replace('e+', 'e');
     const [mant, exp] = s.split('e');
@@ -88,9 +93,11 @@ export function formatDecimal(n: number): string {
   return s;
 }
 
-function formatPercent(v: number): string {
+function formatPercent(v: number, exact: boolean): string {
   // The shortest digits that load back to exactly v (0.15 * 100 is
-  // 15.000000000000002, but 0.15 should mold as 15%).
+  // 15.000000000000002, but 0.15 should mold as 15%); without `exact`, at
+  // most 15 digits, as decimals.
+  if (!exact) v = Number(v.toPrecision(15));
   for (let p = 1; p <= 17; p++) {
     const digits = String(Number((v * 100).toPrecision(p))).replace('e+', 'e');
     const [mant, exp] = digits.split('e');
@@ -199,8 +206,8 @@ class Molder {
       case K.None: this.out += all ? '#[none]' : 'none'; return;
       case K.Logic: this.out += all ? `#[${c.v}]` : String(c.v); return;
       case K.Integer: this.out += I64.toString(c.v); return;
-      case K.Decimal: this.out += formatDecimal(c.v); return;
-      case K.Percent: this.out += formatPercent(c.v); return;
+      case K.Decimal: this.out += formatDecimal(c.v, all); return;
+      case K.Percent: this.out += formatPercent(c.v, all); return;
       case K.Money: {
         const neg = c.v.d < 0n;
         const abs = neg ? { d: -c.v.d, e: c.v.e } : c.v;

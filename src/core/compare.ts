@@ -60,9 +60,37 @@ export function foldCase(cp: number): number {
   return lower.length === 1 || lower.codePointAt(0)! > 0xffff ? lower.codePointAt(0)! : cp;
 }
 
+// Decimals are binary fractions, so as in R3 two of them are equal when they
+// are at most 10 representable numbers apart: 0.1 + 0.2 = 0.3. `==` stays exact.
+const ULPS = 10n;
+const f64 = new Float64Array(1);
+const i64 = new BigInt64Array(f64.buffer);
+
+/** Position of a float on a line where neighbouring floats are 1 apart. */
+function ordinal(x: number): bigint {
+  f64[0] = x;
+  const n = i64[0]!;
+  return n < 0n ? -(n & 0x7fffffffffffffffn) : n;
+}
+
+function almostEqual(x: number, y: number): boolean {
+  if (x === y) return true;
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
+  const d = ordinal(x) - ordinal(y);
+  return (d < 0n ? -d : d) <= ULPS;
+}
+
+const isFloat = (c: Cell): boolean => c.t === K.Decimal || c.t === K.Percent;
+
 export function isEqual(a: Cell, b: Cell): boolean {
   if (a === b) return true;
-  if (isNumeric(a) && isNumeric(b)) return numCmp(a, b) === 0;
+  if (isNumeric(a) && isNumeric(b)) {
+    if ((isFloat(a) || isFloat(b)) && a.t !== K.Money && b.t !== K.Money) {
+      const n = (c: Cell): number => (c.t === K.Integer ? I64.toNumber(c.v) : (c as { v: number }).v);
+      return almostEqual(n(a), n(b));
+    }
+    return numCmp(a, b) === 0;
+  }
   if (isAnyString(a.t) && isAnyString(b.t)) return textCmp(a as StringCell, b as StringCell) === 0;
   if (a.t === K.Char && b.t === K.Char) return foldCase(a.v) === foldCase(b.v);
   if (isAnyWord(a.t) && isAnyWord(b.t)) return canon((a as WordCell).sym) === canon((b as WordCell).sym);

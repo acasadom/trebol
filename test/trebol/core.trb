@@ -203,3 +203,14 @@ Trebol [
 "json leaves functions out"
 [(to-json make object! [a: 1 f: does [2]]) = {{"a":1}}]
 [(to-json reduce [1 :add]) = "[1,null]"]
+
+"decimals show 15 digits and compare as R3"
+[(mold 0.1 + 0.2) = "0.3"]
+[(mold/all 0.1 + 0.2) = "0.30000000000000004"]
+[(mold 10% + 5%) = "15%"]
+[(mold 1.0 / 3) = "0.333333333333333"]
+[(load mold/all 1.0 / 3) == (1.0 / 3)]
+[0.1 + 0.2 = 0.3]
+[not (0.1 + 0.2 == 0.3)]
+[not (0.3 = 0.30000001)]
+[1 = 1.0]
