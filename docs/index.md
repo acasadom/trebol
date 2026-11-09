@@ -86,6 +86,7 @@ ui/01-first-screen
 ui/02-forms
 ui/03-layout
 ui/04-tables
+ui/05-dialogs
 ```
 
 ```{toctree}

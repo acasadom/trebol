@@ -28,8 +28,19 @@
     if (!doc || !doc.body) return;
     // in case the frame was parsed before this script ran
     window.trebolLiveScheme(doc.documentElement);
-    // the body, not the document: a document is never shorter than its frame
-    new ResizeObserver(() => { f.style.height = `${Math.ceil(doc.body.getBoundingClientRect().height)}px`; }).observe(doc.body);
+    // the body, not the document: a document is never shorter than its frame; an open dialog is in the
+    // top layer, outside the body, so the frame also grows to hold it
+    const size = () => {
+      let h = doc.body.getBoundingClientRect().height;
+      for (const d of doc.querySelectorAll('dialog[open]')) h = Math.max(h, d.scrollHeight + 96);
+      f.style.height = `${Math.ceil(h)}px`;
+    };
+    const watch = new ResizeObserver(size);
+    watch.observe(doc.body);
+    new MutationObserver(() => {
+      for (const d of doc.querySelectorAll('dialog')) watch.observe(d);
+      size();
+    }).observe(doc.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['open'] });
   };
   for (const f of frames()) {
     f.addEventListener('load', () => fit(f));

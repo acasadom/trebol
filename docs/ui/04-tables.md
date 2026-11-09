@@ -143,5 +143,5 @@ handler that uses its name is inside the same view.
 
 ## What's next
 
-Choosing a row should open it, to change the booking or mark the bike as ready. The next page does that
-in a dialog, and confirms what was done with a toast.
+Choosing a row should open it, to change the booking or mark the bike as collected. The
+[next page](05-dialogs) does that in a dialog, and confirms what was done with a toast.
