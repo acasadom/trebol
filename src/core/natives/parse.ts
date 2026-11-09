@@ -326,17 +326,31 @@ function startItem(st: PState, rules: Series<Cell>, ip: number): Step | null {
     case KW.None: return done(st, true);
     case KW.Fail: return done(st, false);
     case KW.Break: case KW.Accept: case KW.Reject: {
-      // leave the innermost repetition: break and accept as a match, reject as a failure
-      const ok = kw(w) !== KW.Reject;
-      while (st.stack.length > 0) {
+      // As in R3: they end the innermost rule block, break and accept as a match where
+      // the input is, reject as a failure. When that block is the body of a repetition
+      // (opt too), the repetition ends: with break counting this turn, with reject not.
+      const reject = kw(w) === KW.Reject;
+      let blk: BlockF | null = null;
+      while (st.stack.length > 0 && blk === null) {
         const f = st.stack.pop()!;
-        if (f.k === PF.Rep && f.max > 1) return done(st, ok); // opt is not a loop
-        if (f.k === PF.Into) {
+        if (f.k === PF.Block) blk = f;
+        else if (f.k === PF.Into) {
           st.input = f.outer;
           st.pos = f.outerPos;
         }
       }
-      return ruleErr(st, `${spellKw(w)} outside of a repetition`);
+      if (blk === null) return ruleErr(st, `${spellKw(w)} outside of a rule block`);
+      const rep = st.stack[st.stack.length - 1];
+      if (rep !== undefined && rep.k === PF.Rep) {
+        st.stack.pop();
+        if (!reject) return done(st, true);
+        st.pos = rep.from;
+        return done(st, rep.n >= rep.min);
+      }
+      if (!reject) return done(st, true);
+      st.pos = blk.alt;
+      if (blk.mark !== null) blk.mark.length = blk.markLen;
+      return done(st, false);
     }
     case KW.Return: {
       const next = d[ip + 1];

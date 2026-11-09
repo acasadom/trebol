@@ -50,13 +50,16 @@ Trebol [
 [(parse [1] [collect [keep (10 * 2) skip]]) = [20]]
 
 "control"
-[n: 0 parse "aaaa" [any ["a" (n: n + 1) opt [if (n = 2) break]] to end] n = 2]
+[n: 0 parse "aaaa" [any ["a" (n: n + 1) opt [if (n = 2) break]] to end] n = 4]
+[parse "aaab" [any ["a" break] "aab"]]
+[not parse "aaab" [any ["a" [break]] "aab"]]
+[not parse "aaab" [any "a" break "b"]]
 [not parse "a" [fail]]
 [parse "abab" [some ["ab"]]]
 [parse "" []]
 [parse "" [any "a"]]
 [error? try [parse "a" [some]]]
-[error? try [parse "a" [break]]]
+[not parse "a" [break]]
 
 "editing the input"
 [s: "a b c" parse s [any [remove " " | skip]] s = "abc"]
@@ -76,11 +79,16 @@ Trebol [
 [error? try [parse "a" [only "a"]]]
 
 "accept, reject, return"
-[n: 0  parse "aaab" [any ["a" (n: n + 1) opt [if (n = 2) accept]] "ab"]]
-[not parse "ab" [any ["a" reject] "ab"]]
-[parse "ab" [[any ["a" reject] | "ab"]]]
+[n: 0  not parse "aaab" [any ["a" (n: n + 1) opt [if (n = 2) accept]] "ab"]]
+[parse "aaab" [any ["a" accept] "aab"]]
+[parse "ab" [any ["a" reject] "ab"]]
+[parse "ab" [some ["a" reject] | "ab"]]
+[not parse "aab" [some ["a" opt ["a" reject]] "ab"]]
+[n: 0  not parse "aaab" [some ["a" (n: n + 1) opt [if (n = 3) reject]] "ab"]]
 [not parse "aab" [some ["a" reject] "b"]]
 [(parse "key=value" [to "=" skip return to end]) = "value"]
 [(parse [1 2 3] [skip return (10 * 2)]) = 20]
 [(parse [1 x 3] [integer! return word!]) = [x]]
-[error? try [parse "a" [reject]]]
+[not parse "a" [reject]]
+[parse "aaab" [any ["a" reject] "aaab"]]
+[not parse "aab" [some ["a" [reject]] "aab"]]

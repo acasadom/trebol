@@ -11,27 +11,28 @@ Trebol [
 [(-1 ** 1001) = -1]
 [(0 ** 1000) = 0]
 [(square-root 16) = 4.0]
-[error? try [square-root -1]]
+[(mold square-root -1) = "1.#NaN"]
 [(exp 0) = 1.0]
 [(log-10 1000) = 3.0]
 [(log-2 8) = 3.0]
 [(log-e 1) = 0.0]
-[error? try [log-10 0]]
+[(mold log-10 0) = "-1.#INF"]
 
 "trigonometry"
 [(sine 30) = 0.5]
+[(mold sine 30) = "0.5"]
 [(sine 180) = 0.0]
 [(cosine 60) = 0.5]
 [(cosine 90) = 0.0]
 [(tangent 45) = 1.0]
-[error? try [tangent 90]]
+[(mold tangent 90) = "1.#INF"]
 [(sine/radians pi / 2) = 1.0]
 [(arcsine 1) = 90.0]
 [(arccosine 0) = 90.0]
 [(arctangent 1) = 45.0]
 [(arctangent2 1 1) = 45.0]
 [(arcsine/radians 1) = (pi / 2)]
-[error? try [arcsine 2]]
+[(mold arcsine 2) = "1.#NaN"]
 
 "remainders"
 [(mod 7 3) = 1]
@@ -61,7 +62,9 @@ Trebol [
 "bitwise"
 [(#{FF} and #{0F}) = #{0F}]
 [(#{F0} or #{0F}) = #{FF}]
-[(#{FF00} xor #{0F}) = #{F000}]
+[(#{FF00} xor #{0F}) = #{F00F}]
+[(#{FF00} or #{0F}) = #{FF0F}]
+[(#{0F} and #{FF00}) = #{0F00}]
 
 "shifts, as in Red"
 [(shift 16 2) = 4]

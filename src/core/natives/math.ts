@@ -286,8 +286,9 @@ function real(c: Cell): number {
   return c.t === K.Integer ? I64.toNumber(c.v) : (c as { v: number }).v;
 }
 
+/** As in R3 and Red, a result with no number is 1.#NaN, and one too big 1.#INF: not an error. */
 function finite(x: number): Step {
-  return Number.isFinite(x) ? value(decimal(x)) : Number.isNaN(x) ? fail('math', 'positive', 'the result is not a number') : overflow();
+  return value(decimal(x));
 }
 
 native('power', `["The number raised to the exponent." number ${NUMBER} exponent ${NUMBER}]`, (_t, f) => {
@@ -304,14 +305,12 @@ native('power', `["The number raised to the exponent." number ${NUMBER} exponent
 });
 
 native('square-root', `["The square root of the number." value ${NUMBER}]`, (_t, f) => {
-  const x = real(f.args[0]!);
-  return x < 0 ? fail('math', 'positive', 'square-root needs a number that is not negative') : finite(Math.sqrt(x));
+  return finite(Math.sqrt(real(f.args[0]!)));
 });
 native('exp', `["e raised to the power of the number." power ${NUMBER}]`, (_t, f) => finite(Math.exp(real(f.args[0]!))));
 
 function logOf(f: { args: Cell[] }, log: (x: number) => number): Step {
-  const x = real(f.args[0]!);
-  return x <= 0 ? fail('math', 'positive', 'a logarithm needs a positive number') : finite(log(x));
+  return finite(log(real(f.args[0]!)));
 }
 native('log-e', `["The natural logarithm of the number." value ${NUMBER}]`, (_t, f) => logOf(f, Math.log));
 native('log-10', `["The base-10 logarithm of the number." value ${NUMBER}]`, (_t, f) => logOf(f, Math.log10));
@@ -319,15 +318,15 @@ native('log-2', `["The base-2 logarithm of the number." value ${NUMBER}]`, (_t, 
 
 const DEG = Math.PI / 180;
 
-/** Degrees are for people: 15 digits, so sine 30 is 0.5 and sine 180 is 0. */
+/** In degrees, what is left of an exact zero is zero: sine 180 is 0.0, as in R3. */
 function clean(x: number): number {
-  return Math.abs(x) < 1e-13 ? 0 : Number(x.toPrecision(15)) + 0;
+  return Math.abs(x) < 1e-15 ? 0 : x;
 }
 
 function trig(name: string, doc: string, fn: (x: number) => number): void {
   native(name, `["${doc}" angle ${NUMBER} /radians "The angle is in radians"]`, (_t, f) => {
     const x = real(f.args[0]!) * (f.args[1] === TRUE ? 1 : DEG);
-    if (name === 'tangent' && Math.abs(Math.cos(x)) < 1e-15) return fail('math', 'overflow', 'the tangent of that angle is infinite');
+    if (name === 'tangent' && Math.abs(Math.cos(x)) < 1e-15) return finite(Math.sin(x) > 0 ? Infinity : -Infinity);
     const r = fn(x);
     return finite(f.args[1] === TRUE ? r : clean(r));
   });
@@ -339,7 +338,6 @@ trig('tangent', 'The tangent of an angle, in degrees.', Math.tan);
 function arc(name: string, doc: string, fn: (x: number) => number, bounded: boolean): void {
   native(name, `["${doc}" value ${NUMBER} /radians "Give the angle in radians"]`, (_t, f) => {
     const x = real(f.args[0]!);
-    if (bounded && (x < -1 || x > 1)) return fail('math', 'out-of-range', `${name} needs a value from -1 to 1`);
     return finite(f.args[1] === TRUE ? fn(x) : clean(fn(x) / DEG));
   });
 }
@@ -482,11 +480,14 @@ function logicOp(a: Cell, b: Cell, int: (x: bigint, y: bigint) => bigint, bool: 
     return r === null ? overflow() : value(integer(r));
   }
   if (a.t === K.Binary && b.t === K.Binary) {
-    // byte by byte; the shorter one counts as zeros past its end
+    // byte by byte; as in R3, the shorter one repeats to the length of the longer
     const x = a.s.data.slice(a.i);
     const y = b.s.data.slice(b.i);
     const out: number[] = [];
-    for (let i = 0; i < Math.max(x.length, y.length); i++) out.push(Number(int(BigInt(x[i] ?? 0), BigInt(y[i] ?? 0)) & 255n));
+    const n = Math.max(x.length, y.length);
+    for (let i = 0; i < n && x.length > 0 && y.length > 0; i++) {
+      out.push(Number(int(BigInt(x[i % x.length]!), BigInt(y[i % y.length]!)) & 255n));
+    }
     return value({ t: K.Binary, s: { data: out }, i: 0 });
   }
   return value(logic(bool(truthy(a), truthy(b))));
