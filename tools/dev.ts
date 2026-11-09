@@ -68,7 +68,10 @@ const APP_PAGE = `<!doctype html>
 </html>
 `;
 
-const RELOAD = `<script>new EventSource('/__reload').onmessage = () => location.reload();</script>`;
+// Only the top page listens: a browser keeps at most six connections open to a server, so a page with
+// frames (the documentation's live examples) would leave the last ones waiting. Reloading the top page
+// reloads its frames too.
+const RELOAD = `<script>if (window === top) new EventSource('/__reload').onmessage = () => location.reload();</script>`;
 
 /** `trebol/x` for every export of the package, pointing under /@trebol/. */
 function importMap(): string {

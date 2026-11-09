@@ -48,6 +48,8 @@ test('a folder with only an app.trb is served as that app', async () => {
     assert.match(page, /<script type="importmap">/);
     assert.match(page, /import 'trebol\/browser'/);
     assert.match(page, /<script type="text\/trebol" src="app.trb"><\/script>/);
+    // a frame never listens for reloads: frames would use up the browser's six connections to the server
+    assert.match(page, /if \(window === top\) new EventSource\('\/__reload'\)/);
     assert.equal(await (await fetch(`${base}/app.trb`)).text(), 'view [title "Hi"]');
     assert.equal((await fetch(`${base}/empty/`)).status, 404);
   } finally {
