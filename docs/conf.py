@@ -12,7 +12,7 @@ project = "Trebol"
 
 sys.path.insert(0, str(Path(__file__).parent / "_ext"))
 
-extensions = ["myst_parser", "trebol_live"]
+extensions = ["myst_parser", "sphinx.ext.githubpages", "trebol_live"]
 
 # Documentation is authored in Markdown.
 source_suffix = {".md": "markdown"}
