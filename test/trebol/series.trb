@@ -67,6 +67,10 @@ Trebol [
 [out: copy [] s: [a b c] forall s [append out index? s] out = [1 2 3]]
 [out: copy [] s: [a 1 b 2] forskip s 2 [append out first s] out = [a b]]
 [(collect [foreach x [1 2 3] [if x > 1 [keep x]]]) = [2 3]]
+[(collect [foreach [k v] #(a: 1 b: 2) [keep k keep v]]) = [a 1 b 2]]
+[(collect [foreach k #(a: 1 b: 2) [keep k]]) = [a b]]
+[m: #(a: 1 b: 2) foreach [k v] m [if k = 'a [m/b: 20]] m/b = 20]
+[error? try [foreach [k v x] #(a: 1 b: 2 c: 3) []]]
 
 "sets"
 [(unique [1 2 2 3 1]) = [1 2 3]]

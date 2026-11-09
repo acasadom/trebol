@@ -238,7 +238,7 @@ native('repeat', "[\"Evaluates a block a number of times, with a word counting f
   return doBlock(st.body);
 });
 
-native('foreach', "[\"Evaluates a block for each value of a series, with a word set to it.\" 'word [word! block!] data [series!] body [block!]]", (_t, f, v) => {
+native('foreach', "[\"Evaluates a block for each value of a series, with a word set to it; for a map, each key, or each key and value.\" 'word [word! block!] data [series! map!] body [block!]]", (_t, f, v) => {
   const data = f.args[1]!;
   if (f.phase === 0) {
     f.phase = 1;
@@ -247,11 +247,21 @@ native('foreach', "[\"Evaluates a block for each value of a series, with a word 
     if (words.t === K.Block && (words.s.data.length === words.i || words.s.data.slice(words.i).some(w => w.t !== K.Word))) {
       return fail('script', 'bad-words', 'foreach needs one or more words');
     }
-    f.data = { ...loopBody(words, f.args[2] as BlockCell), at: (data as BlockCell).i, out: NONE };
+    const body = loopBody(words, f.args[2] as BlockCell);
+    if (data.t === K.Map && body.ctx.keys.length > 2) return fail('script', 'bad-words', 'foreach over a map takes a key, or a key and a value');
+    // a map is walked as it was when the loop began (R3): the body may change it
+    f.data = { ...body, at: data.t === K.Map ? 0 : (data as BlockCell).i, pairs: data.t === K.Map ? data.s.data.slice() : null, out: NONE };
   }
-  const st = f.data as { ctx: Ctx; body: BlockCell; at: number; out: Cell };
+  const st = f.data as { ctx: Ctx; body: BlockCell; at: number; pairs: Cell[] | null; out: Cell };
   const stop = loopThrow(f, st, v);
   if (stop !== null) return stop;
+  if (st.pairs !== null) {
+    if (st.at >= st.pairs.length) return value(st.out);
+    st.ctx.vals[0] = st.pairs[st.at]!;
+    if (st.ctx.vals.length === 2) st.ctx.vals[1] = st.pairs[st.at + 1]!;
+    st.at += 2;
+    return doBlock(st.body);
+  }
   const items = (data as BlockCell).s.data as unknown[];
   if (st.at >= items.length) return value(st.out);
   for (let k = 0; k < st.ctx.vals.length; k++) st.ctx.vals[k] = itemAt(data, st.at + k);

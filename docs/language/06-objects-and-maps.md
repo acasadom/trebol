@@ -182,6 +182,15 @@ Unlike an object, a map takes new keys whenever you set them, and gives `none` f
 Keys can be words, as here, or strings, numbers or any other value. `words-of` and `values-of` give the
 keys and the values of a map, as they do for an object.
 
+`foreach` walks a map one key and value at a time, or only its keys when given one word:
+
+```trebol-console
+>> foreach [fee price] fees [print [fee price]]
+rush $10.00
+storage $2.00
+wash $5.00
+```
+
 ## Data from outside
 
 Data from other programs usually arrives as JSON. `load-json` turns it into maps and blocks, and `to-json`
