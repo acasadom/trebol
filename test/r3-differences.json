@@ -178,5 +178,13 @@
   {
     "test": "[(to block! \"a 1\") = [a 1]]",
     "why": "to block! of a string loads it, as Red; R3 puts the string in a block."
+  },
+  {
+    "test": "[f: func [] [b: [x y] append b 'z b] all [(f) = [x y z] (f) = [x y z]]]",
+    "why": "A literal block in a function is new on each call (every call copies the body), so a call never sees what an earlier call put in it; in R3 the block persists between calls (the cache: [] trick)."
+  },
+  {
+    "test": "[f: func [n] [b: [a b] insert b n b] all [(mold f 1) = {[1\n    a\n    b\n]} (mold f 2) = {[2\n    a\n    b\n]}]]",
+    "why": "A literal block in a function is new on each call (every call copies the body), so a call never sees what an earlier call put in it; in R3 the block persists between calls (the cache: [] trick)."
   }
 ]

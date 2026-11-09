@@ -17,6 +17,9 @@ talk to servers.
 - **Every function is a closure.** A function keeps the words of the call that made it, so a function made
   inside another one remembers its arguments, and an event handler made in a loop remembers its own row. In
   R3 only `closure` does that; `func` forgets.
+- **A literal block in a function is new on each call.** Every call works on its own copy of the body, so
+  `b: [x y] append b 'z` gives `[x y z]` every time. In R3 the block keeps what earlier calls put in it (the
+  `cache: []` trick); keep such state in an object or a word outside the function.
 - **Waiting never blocks.** `fetch`, `wait` and the rest pause the task that asked, and other tasks go on;
   a `fetch` can even wait in the middle of a `parse`. Tasks come with `spawn`, `wait`, `delay`, `every` and
   `cancel`. R3 has no tasks.
