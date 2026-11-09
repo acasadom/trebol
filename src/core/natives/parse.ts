@@ -13,7 +13,7 @@
 // a failing alternative does not undo an edit it made.
 
 import { K, isAnyBlock, isAnyString, kindBit } from '../kinds.ts';
-import { intern, canon } from '../symbols.ts';
+import { intern, canon, spell } from '../symbols.ts';
 import * as I64 from '../int64.ts';
 import {
   NONE, TRUE, logic, strictEqual,
@@ -29,7 +29,7 @@ import { native, value, fail, truthy } from './define.ts';
 const KW = {
   Some: 0, Any: 1, Opt: 2, While: 3, Not: 4, Ahead: 5, To: 6, Thru: 7, Set: 8, Copy: 9,
   Into: 10, If: 11, Collect: 12, Keep: 13, End: 14, Skip: 15, None: 16, Fail: 17, Break: 18, Quote: 19, Bar: 20,
-  Remove: 21, Insert: 22, Change: 23, Only: 24,
+  Remove: 21, Insert: 22, Change: 23, Only: 24, Accept: 25, Reject: 26, Return: 27,
 } as const;
 
 const KEYWORDS = new Map<number, number>([
@@ -38,6 +38,7 @@ const KEYWORDS = new Map<number, number>([
   ['into', KW.Into], ['if', KW.If], ['collect', KW.Collect], ['keep', KW.Keep], ['end', KW.End],
   ['skip', KW.Skip], ['none', KW.None], ['fail', KW.Fail], ['break', KW.Break], ['quote', KW.Quote],
   ['remove', KW.Remove], ['insert', KW.Insert], ['change', KW.Change], ['only', KW.Only],
+  ['accept', KW.Accept], ['reject', KW.Reject], ['return', KW.Return],
   ['|', KW.Bar],
 ].map(([name, k]) => [canon(intern(name as string)), k as number]));
 
@@ -56,7 +57,7 @@ function itemEnd(d: readonly Cell[], ip: number): number {
     }
     switch (kw(c)) {
       case KW.Some: case KW.Any: case KW.Opt: case KW.While: case KW.Not: case KW.Ahead:
-      case KW.To: case KW.Thru: case KW.Into: case KW.Keep: case KW.Remove:
+      case KW.To: case KW.Thru: case KW.Into: case KW.Keep: case KW.Remove: case KW.Return:
         ip += 1;
         continue;
       case KW.Insert: {
@@ -95,7 +96,7 @@ interface LookF { k: typeof PF.Look; rules: Series<Cell>; sub: number; not: bool
 /** to and thru: try the rule at each position from here. */
 interface ScanF { k: typeof PF.Scan; rules: Series<Cell>; sub: number; thru: boolean; start: number; at: number }
 /** set, copy and keep of a matched rule. */
-interface CapF { k: typeof PF.Cap; rules: Series<Cell>; sub: number; how: 'set' | 'copy' | 'keep'; word: WordCell | null; from: number }
+interface CapF { k: typeof PF.Cap; rules: Series<Cell>; sub: number; how: 'set' | 'copy' | 'keep' | 'return'; word: WordCell | null; from: number }
 /** into: parse a nested series, which must match to its end. */
 interface IntoF { k: typeof PF.Into; outer: SeriesCell; outerPos: number }
 /** collect: gather keeps into a new block. */
@@ -104,7 +105,7 @@ interface CollF { k: typeof PF.Coll; rules: Series<Cell>; sub: number; word: Wor
 interface EditF { k: typeof PF.Edit; rules: Series<Cell>; sub: number; val: number; only: boolean; from: number }
 /** A paren being evaluated: an action, an `if` condition, a `keep` value or the value an edit puts in. */
 type ActF =
-  | { k: typeof PF.Act; how: 'action' | 'if' | 'keep' }
+  | { k: typeof PF.Act; how: 'action' | 'if' | 'keep' | 'return' }
   | { k: typeof PF.Act; how: 'put'; from: number; to: number; only: boolean };
 
 type Frame = BlockF | RepF | LookF | ScanF | CapF | IntoF | CollF | ActF | EditF;
@@ -122,6 +123,8 @@ interface PState {
   err: string | null;
   /** Counts edits of the input, so a repetition that edits without moving goes on. */
   edits: number;
+  /** What `return` stopped the parse with. */
+  ret: Cell | null;
 }
 
 /** Records a malformed-rule error; the native turns it into a Trebol error. */
@@ -199,6 +202,15 @@ function putValue(st: PState, rules: Series<Cell>, ip: number, from: number, to:
   }
   return put(st, from, to, c, only);
 }
+
+/** Ends the whole parse with a value, for `return`. */
+function stop(st: PState, v: Cell): null {
+  st.ret = v;
+  st.stack.length = 0;
+  return null;
+}
+
+const spellKw = (w: WordCell): string => spell(w.sym);
 
 /** Sets the result register. */
 function done(st: PState, ok: boolean): null {
@@ -313,17 +325,27 @@ function startItem(st: PState, rules: Series<Cell>, ip: number): Step | null {
       return done(st, true);
     case KW.None: return done(st, true);
     case KW.Fail: return done(st, false);
-    case KW.Break: {
-      // leave the innermost repetition, successfully
+    case KW.Break: case KW.Accept: case KW.Reject: {
+      // leave the innermost repetition: break and accept as a match, reject as a failure
+      const ok = kw(w) !== KW.Reject;
       while (st.stack.length > 0) {
         const f = st.stack.pop()!;
-        if (f.k === PF.Rep && f.max > 1) return done(st, true); // opt is not a loop
+        if (f.k === PF.Rep && f.max > 1) return done(st, ok); // opt is not a loop
         if (f.k === PF.Into) {
           st.input = f.outer;
           st.pos = f.outerPos;
         }
       }
-      return ruleErr(st, 'break outside of a repetition');
+      return ruleErr(st, `${spellKw(w)} outside of a repetition`);
+    }
+    case KW.Return: {
+      const next = d[ip + 1];
+      if (next !== undefined && next.t === K.Paren) {
+        st.stack.push({ k: PF.Act, how: 'return' });
+        return { k: 'do', s: next.s, i: next.i };
+      }
+      st.stack.push({ k: PF.Cap, rules, sub: ip + 1, how: 'return', word: null, from: st.pos });
+      return null;
     }
     case KW.Quote: {
       const to = term(st, d[ip + 1]!);
@@ -376,6 +398,8 @@ function runParse(st: PState, actionValue: Cell | null): Step | null {
         if (actionValue.t === K.Unset) return ruleErr(st, 'the value to put in has no value');
         put(st, f.from, f.to, actionValue, f.only);
         break;
+      case 'return':
+        return stop(st, actionValue);
     }
   }
   for (;;) {
@@ -461,7 +485,9 @@ function frame(st: PState, f: Frame, r: boolean | null): Step | null {
         return startItem(st, f.rules, f.sub);
       }
       if (r === false) return pop(false);
-      if (f.how === 'set') {
+      if (f.how === 'return') {
+        return stop(st, slice(st, f.from));
+      } else if (f.how === 'set') {
         setWord(f.word!, st.pos > f.from ? elementAt(st, f.from) : NONE);
       } else if (f.how === 'copy') {
         setWord(f.word!, slice(st, f.from));
@@ -517,7 +543,7 @@ native('parse', '[input [series!] rules [block!] /case]', (_t, f, v) => {
   if (f.phase === 0) {
     f.phase = 1;
     const input = f.args[0] as SeriesCell;
-    const st: PState = { input, pos: input.i, stack: [], res: null, colls: [], out: null, cased: f.args[2] === TRUE, err: null, edits: 0 };
+    const st: PState = { input, pos: input.i, stack: [], res: null, colls: [], out: null, cased: f.args[2] === TRUE, err: null, edits: 0, ret: null };
     pushBlock(st, f.args[1] as BlockCell);
     f.data = st;
   }
@@ -525,6 +551,7 @@ native('parse', '[input [series!] rules [block!] /case]', (_t, f, v) => {
   const step = runParse(st, v);
   if (st.err !== null) return fail('script', 'parse', st.err);
   if (step !== null) return step;
+  if (st.ret !== null) return value(st.ret);
   if (st.out !== null) return value(st.out);
   return value(logic(st.res === true && st.pos >= lenOf(st)));
 });

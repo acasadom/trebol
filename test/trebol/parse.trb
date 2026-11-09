@@ -74,3 +74,13 @@ Trebol [
 [s: "a  b" parse s [any [" " remove some " " | skip]] s = "a b"]
 [error? try [parse "a" [insert]]]
 [error? try [parse "a" [only "a"]]]
+
+"accept, reject, return"
+[n: 0  parse "aaab" [any ["a" (n: n + 1) opt [if (n = 2) accept]] "ab"]]
+[not parse "ab" [any ["a" reject] "ab"]]
+[parse "ab" [[any ["a" reject] | "ab"]]]
+[not parse "aab" [some ["a" reject] "b"]]
+[(parse "key=value" [to "=" skip return to end]) = "value"]
+[(parse [1 2 3] [skip return (10 * 2)]) = 20]
+[(parse [1 x 3] [integer! return word!]) = [x]]
+[error? try [parse "a" [reject]]]

@@ -174,7 +174,10 @@ function jsonString(s: string): string {
   return JSON.stringify(s);
 }
 
-/** Serializes a value as JSON. Cycles become null. */
+/** Functions have no JSON form: a field holding one is left out, as JSON.stringify does. */
+const isFunc = (c: Cell): boolean => c.t === K.Function || c.t === K.Native || c.t === K.Op;
+
+/** Serializes a value as JSON. Cycles, and functions in a block, become null. */
 export function toJson(v: Cell, seen: Set<unknown> = new Set()): string {
   switch (v.t) {
     case K.None: case K.Unset: return 'null';
@@ -208,6 +211,7 @@ export function toJson(v: Cell, seen: Set<unknown> = new Set()): string {
       const parts: string[] = [];
       for (let k = 0; k + 1 < v.s.data.length; k += 2) {
         const key = v.s.data[k]!;
+        if (isFunc(v.s.data[k + 1]!)) continue;
         const name = isAnyWord(key.t) ? spell((key as WordCell).sym) : isAnyString(key.t) ? text(key as StringCell) : toJson(key);
         parts.push(`${jsonString(name)}:${toJson(v.s.data[k + 1]!, seen)}`);
       }
@@ -217,7 +221,8 @@ export function toJson(v: Cell, seen: Set<unknown> = new Set()): string {
     case K.Object: case K.Error: {
       if (seen.has(v.ctx)) return 'null';
       seen.add(v.ctx);
-      const parts = v.ctx.keys.map((key, k) => `${jsonString(spell(key))}:${toJson(v.ctx.vals[k]!, seen)}`);
+      const parts = v.ctx.keys.flatMap((key, k) =>
+        isFunc(v.ctx.vals[k]!) ? [] : [`${jsonString(spell(key))}:${toJson(v.ctx.vals[k]!, seen)}`]);
       seen.delete(v.ctx);
       return `{${parts.join(',')}}`;
     }

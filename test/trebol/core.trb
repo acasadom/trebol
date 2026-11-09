@@ -199,3 +199,7 @@ Trebol [
 [unset 'dflt  default dflt 1  dflt = 1]
 [dflt: 2  default dflt 1  dflt = 2]
 [dflt: none  default dflt 3  dflt = 3]
+
+"json leaves functions out"
+[(to-json make object! [a: 1 f: does [2]]) = {{"a":1}}]
+[(to-json reduce [1 :add]) = "[1,null]"]
