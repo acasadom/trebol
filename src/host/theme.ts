@@ -347,6 +347,9 @@ body {
   column-gap: var(--tb-space-5);
   row-gap: var(--tb-space-4);
   align-items: start;
+  /* a narrow form (in a grid cell, beside another panel) stacks like one on a phone; see @container below */
+  container-type: inline-size;
+  contain-intrinsic-inline-size: 30rem;
 }
 /* a panel in a form (a section) keeps the form's two columns */
 .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel { display: grid; grid-template-columns: subgrid; row-gap: var(--tb-space-4); align-items: start; }
@@ -356,6 +359,11 @@ body {
 :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > .tb-field > .tb-control { grid-column: 2; }
 :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > .tb-actions, :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > .tb-check-row { grid-column: 2; }
 .tb-field { display: flex; flex-direction: column; gap: var(--tb-space-2); min-width: 0; }
+@container (max-width: 420px) {
+  :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > .tb-field { display: flex; }
+  :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > .tb-field > .tb-label, :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > .tb-field > .tb-control,
+  :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > .tb-actions, :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel) > .tb-check-row { grid-column: 1 / -1; padding-top: 0; }
+}
 .tb-rows { display: flex; flex-direction: column; gap: var(--tb-space-3); align-items: stretch; }
 .tb-rows > .tb-button { align-self: flex-start; }
 .tb-entry { display: flex; gap: var(--tb-space-3); align-items: flex-start; }

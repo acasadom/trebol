@@ -680,6 +680,12 @@ describe('theme', () => {
     assert.ok(!themeCss({ ...DEFAULT_THEME, mode: 'light' }).includes('prefers-color-scheme'));
   });
 
+  test('a narrow form stacks its labels over its controls, wherever it sits', () => {
+    const css = themeCss(DEFAULT_THEME);
+    assert.match(css, /\.tb-form \{[^}]*container-type: inline-size;/);
+    assert.match(css, /@container \(max-width: 420px\) \{[^@]*> \.tb-field > \.tb-label[^}]*grid-column: 1 \/ -1;/);
+  });
+
   test('in auto mode an embedding page can force light or dark', () => {
     const css = themeCss(DEFAULT_THEME);
     assert.ok(css.includes(':root:not([data-tb-scheme="light"])'));
