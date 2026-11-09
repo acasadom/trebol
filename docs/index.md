@@ -90,6 +90,7 @@ ui/05-dialogs
 ui/06-screens
 ui/07-themes
 ui/08-languages
+ui/09-server
 ```
 
 ```{toctree}

@@ -1,7 +1,8 @@
 """Live examples: a ```trebol-ui block shows its code and, under it, the app running.
 
 Each block becomes a page of its own under _live/ (its code in a .trb file next
-to it), shown in a frame. The frame loads Trebol's runtime from _trebol/, which
+to it), shown in a frame. The frame loads Trebol's runtime from _trebol/, and the
+pretend server the examples talk to (examples/workshop.ts), which
 `node tools/site.ts` writes once the build has finished. _static/trebol-live.js
 fits each frame to its app and gives it the documentation's light or dark.
 """
@@ -22,6 +23,7 @@ PAGE = """<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Live example</title>
 <script>try {{ parent.trebolLiveScheme(document.documentElement); }} catch {{}}</script>
+<script type="module" src="../_trebol/workshop.js"></script>
 <script type="module" src="../_trebol/host/browser.js"></script>
 <script type="text/trebol" src="{name}.trb"></script>
 </head>

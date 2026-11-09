@@ -11,6 +11,7 @@
 //   expected line ending in `...` matches any line that starts the same way.
 // - ```trebol-ui blocks are apps, shown live under their code: each runs on its
 //   own, with the UI dialect loaded, and must draw its view without an error.
+//   As in the browser, the workshop's pretend server answers its requests to /api/.
 //
 // The tutorial's parts supplier (examples/supplier.ts) runs while the pages do,
 // unless one already answers on its port.
@@ -26,6 +27,7 @@ import { native, value, blockOf, K, type ObjectCell } from '../src/core/index.ts
 import { output, runSource, report, startHost, startUi } from '../src/host/index.ts';
 import { Repl, consoleHost, PROMPT, MORE } from '../tools/console.ts';
 import { startSupplier } from '../examples/supplier.ts';
+import { installWorkshop } from '../examples/workshop.ts';
 
 const DOCS = fileURLToPath(new URL('../docs/', import.meta.url));
 
@@ -89,10 +91,13 @@ async function runApp(code: string, where: string): Promise<void> {
   const host = startHost({ onError: e => { failed = e; }, loader });
   await startUi(host);
   const before = shown;
+  const uninstall = installWorkshop(globalThis, 'http://localhost/');
   try {
     await runSource(host, code, where);
   } catch (e) {
     assert.fail(`${where}: the app fails:\n${e instanceof Error ? e.message : report(e as ObjectCell)}`);
+  } finally {
+    uninstall();
   }
   assert.equal(failed, null, `${where}: the app fails:\n${failed === null ? '' : report(failed)}`);
   assert.ok(shown > before, `${where}: the app shows no view`);
