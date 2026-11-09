@@ -8,9 +8,12 @@ import { K, kindName } from '../kinds.ts';
 import * as I64 from '../int64.ts';
 import { decAdd, decSub, decMul, decDiv, decRem, decRound, decFromNumber, decToNumber, decEqual, type Dec, type Rounding } from '../dec.ts';
 import {
-  TRUE, integer, decimal, percent, money, time, pair, logic, date, strictEqual,
-  type Cell, type DateCell, type DateVal,
+  NONE, UNSET, TRUE, integer, decimal, percent, money, time, pair, logic, date, strictEqual,
+  type Cell, type BlockCell, type DateCell, type DateVal,
 } from '../values.ts';
+import { isSeries } from '../kinds.ts';
+import { mold } from '../mold.ts';
+import { pick } from '../access.ts';
 import { isEqual, compare, toDec } from '../compare.ts';
 import type { Step } from '../eval.ts';
 import { native, op, value, fail, truthy } from './define.ts';
@@ -261,6 +264,155 @@ native('zero?', `[value ${NUMERIC}]`, (_t, f) => {
 native('even?', '[value [integer!]]', (_t, f) => value(logic(I64.isZero(I64.rem((f.args[0] as { v: I64.I64 }).v, 2)!))));
 native('odd?', '[value [integer!]]', (_t, f) => value(logic(!I64.isZero(I64.rem((f.args[0] as { v: I64.I64 }).v, 2)!))));
 
+native('sign?', '["Gives -1, 0 or 1 by the sign of the value." value [number! money! time!]]', (_t, f) => {
+  return value(integer(signOf(f.args[0]!)));
+});
+native('negative?', '["True if the value is less than zero." value [number! money! time!]]', (_t, f) => value(logic(signOf(f.args[0]!) < 0)));
+native('positive?', '["True if the value is more than zero." value [number! money! time!]]', (_t, f) => value(logic(signOf(f.args[0]!) > 0)));
+
+function signOf(a: Cell): number {
+  return a.t === K.Integer ? I64.cmp(a.v, 0) : a.t === K.Money ? Math.sign(Number(a.v.d)) : Math.sign((a as { v: number }).v);
+}
+
+// --- powers, roots, logarithms and trigonometry -------------------------------------
+//
+// As in Red, an integer to a whole power stays an exact integer (an error on
+// 64-bit overflow); anything else is a decimal. Angles are in degrees unless
+// /radians, as in R3 and Red.
+
+const NUMBER = '[number!]';
+
+function real(c: Cell): number {
+  return c.t === K.Integer ? I64.toNumber(c.v) : (c as { v: number }).v;
+}
+
+function finite(x: number): Step {
+  return Number.isFinite(x) ? value(decimal(x)) : Number.isNaN(x) ? fail('math', 'positive', 'the result is not a number') : overflow();
+}
+
+native('power', `["The number raised to the exponent." number ${NUMBER} exponent ${NUMBER}]`, (_t, f) => {
+  const [a, b] = f.args as [Cell, Cell];
+  if (a.t === K.Integer && b.t === K.Integer && I64.cmp(b.v, 0) >= 0) {
+    const base = BigInt(a.v);
+    const e = BigInt(b.v);
+    // past 63 doublings even a base of 2 overflows; 0, 1 and -1 never do
+    if (e > 64n && base !== 0n && base !== 1n && base !== -1n) return overflow();
+    const n = I64.fromBig(base ** (e > 64n ? e % 2n + 2n : e));
+    return n === null ? overflow() : value(integer(n));
+  }
+  return finite(Math.pow(real(a), real(b)));
+});
+
+native('square-root', `["The square root of the number." value ${NUMBER}]`, (_t, f) => {
+  const x = real(f.args[0]!);
+  return x < 0 ? fail('math', 'positive', 'square-root needs a number that is not negative') : finite(Math.sqrt(x));
+});
+native('exp', `["e raised to the power of the number." power ${NUMBER}]`, (_t, f) => finite(Math.exp(real(f.args[0]!))));
+
+function logOf(f: { args: Cell[] }, log: (x: number) => number): Step {
+  const x = real(f.args[0]!);
+  return x <= 0 ? fail('math', 'positive', 'a logarithm needs a positive number') : finite(log(x));
+}
+native('log-e', `["The natural logarithm of the number." value ${NUMBER}]`, (_t, f) => logOf(f, Math.log));
+native('log-10', `["The base-10 logarithm of the number." value ${NUMBER}]`, (_t, f) => logOf(f, Math.log10));
+native('log-2', `["The base-2 logarithm of the number." value ${NUMBER}]`, (_t, f) => logOf(f, Math.log2));
+
+const DEG = Math.PI / 180;
+
+/** Degrees are for people: 15 digits, so sine 30 is 0.5 and sine 180 is 0. */
+function clean(x: number): number {
+  return Math.abs(x) < 1e-13 ? 0 : Number(x.toPrecision(15)) + 0;
+}
+
+function trig(name: string, doc: string, fn: (x: number) => number): void {
+  native(name, `["${doc}" angle ${NUMBER} /radians "The angle is in radians"]`, (_t, f) => {
+    const x = real(f.args[0]!) * (f.args[1] === TRUE ? 1 : DEG);
+    if (name === 'tangent' && Math.abs(Math.cos(x)) < 1e-15) return fail('math', 'overflow', 'the tangent of that angle is infinite');
+    const r = fn(x);
+    return finite(f.args[1] === TRUE ? r : clean(r));
+  });
+}
+trig('sine', 'The sine of an angle, in degrees.', Math.sin);
+trig('cosine', 'The cosine of an angle, in degrees.', Math.cos);
+trig('tangent', 'The tangent of an angle, in degrees.', Math.tan);
+
+function arc(name: string, doc: string, fn: (x: number) => number, bounded: boolean): void {
+  native(name, `["${doc}" value ${NUMBER} /radians "Give the angle in radians"]`, (_t, f) => {
+    const x = real(f.args[0]!);
+    if (bounded && (x < -1 || x > 1)) return fail('math', 'out-of-range', `${name} needs a value from -1 to 1`);
+    return finite(f.args[1] === TRUE ? fn(x) : clean(fn(x) / DEG));
+  });
+}
+arc('arcsine', 'The angle whose sine is the value, in degrees.', Math.asin, true);
+arc('arccosine', 'The angle whose cosine is the value, in degrees.', Math.acos, true);
+arc('arctangent', 'The angle whose tangent is the value, in degrees.', Math.atan, false);
+
+native('arctangent2', `["The angle of the point x, y, in degrees." y ${NUMBER} x ${NUMBER} /radians "Give the angle in radians"]`, (_t, f) => {
+  const r = Math.atan2(real(f.args[0]!), real(f.args[1]!));
+  return finite(f.args[2] === TRUE ? r : clean(r / DEG));
+});
+
+// --- random ------------------------------------------------------------------------
+//
+// A small seeded generator (xorshift128+), so /seed gives the same sequence
+// again. Seeded from the clock until a program seeds it.
+
+const rng = { a: BigInt(Date.now()) | 1n, b: 0x9e3779b97f4a7c15n };
+
+function nextRandom(): number {
+  let x = rng.a;
+  const y = rng.b;
+  rng.a = y;
+  x ^= (x << 23n) & 0xffffffffffffffffn;
+  rng.b = x ^ y ^ (x >> 17n) ^ (y >> 26n);
+  return Number((rng.b + y) & 0x1fffffffffffffn) / 2 ** 53;
+}
+
+/** A whole number from 1 to n. */
+function randomInt(n: number): number {
+  return Math.floor(nextRandom() * n) + 1;
+}
+
+native('random', '["A random value: an integer from 1 to it, a decimal up to it, a shuffled series." value [any-value!] /seed "Start the sequence from this value; gives nothing" /only "Pick one element of a series"]', (_t, f) => {
+  const v = f.args[0]!;
+  if (f.args[1] === TRUE) {
+    let h = 0x811c9dc5n;
+    for (const ch of mold(v)) h = ((h ^ BigInt(ch.codePointAt(0)!)) * 0x100000001b3n) & 0xffffffffffffffffn;
+    rng.a = h | 1n;
+    rng.b = (h * 0x9e3779b97f4a7c15n) & 0xffffffffffffffffn | 1n;
+    for (let i = 0; i < 8; i++) nextRandom();
+    return value(UNSET);
+  }
+  switch (v.t) {
+    case K.Integer: {
+      const n = I64.toNumber(v.v);
+      if (n === 0) return value(integer(0));
+      return value(integer(Math.sign(n) * randomInt(Math.abs(n))));
+    }
+    case K.Decimal: return value(decimal(nextRandom() * v.v));
+    case K.Percent: return value(percent(nextRandom() * v.v));
+    case K.Money: return value(money(decFromNumber(Math.floor(nextRandom() * decToNumber(v.v) * 100) / 100)!, v.cur));
+    case K.Logic: return value(logic(nextRandom() < 0.5));
+    case K.Time: return value(time(Math.floor(nextRandom() * v.v)));
+    case K.Char: return value({ t: K.Char, v: randomInt(v.v) });
+  }
+  if (isSeries(v.t)) {
+    const s = v as BlockCell;
+    const n = s.s.data.length - s.i;
+    if (f.args[2] === TRUE) {
+      if (n <= 0) return value(NONE);
+      return value(pick(v, integer(randomInt(n))) as Cell);
+    }
+    const arrays = [s.s.data, (s.s as { nl?: unknown[] }).nl, (s.s as { pos?: unknown[] }).pos].filter(x => x !== undefined) as unknown[][];
+    for (let i = n - 1; i > 0; i--) {
+      const j = Math.floor(nextRandom() * (i + 1));
+      for (const arr of arrays) [arr[s.i + i], arr[s.i + j]] = [arr[s.i + j], arr[s.i + i]];
+    }
+    return value(v);
+  }
+  return fail('script', 'bad-random', `cannot make a random ${kindName(v.t)}`);
+});
+
 // --- comparison ------------------------------------------------------------------
 
 native('equal?', '[a [any-type!] b [any-type!]]', (_t, f) => value(logic(isEqual(f.args[0]!, f.args[1]!))));
@@ -304,6 +456,14 @@ function logicOp(a: Cell, b: Cell, int: (x: bigint, y: bigint) => bigint, bool: 
     const r = I64.fromBig(BigInt.asIntN(64, int(BigInt(a.v), BigInt(b.v))));
     return r === null ? overflow() : value(integer(r));
   }
+  if (a.t === K.Binary && b.t === K.Binary) {
+    // byte by byte; the shorter one counts as zeros past its end
+    const x = a.s.data.slice(a.i);
+    const y = b.s.data.slice(b.i);
+    const out: number[] = [];
+    for (let i = 0; i < Math.max(x.length, y.length); i++) out.push(Number(int(BigInt(x[i] ?? 0), BigInt(y[i] ?? 0)) & 255n));
+    return value({ t: K.Binary, s: { data: out }, i: 0 });
+  }
   return value(logic(bool(truthy(a), truthy(b))));
 }
 
@@ -318,6 +478,7 @@ op('-', 'subtract');
 op('*', 'multiply');
 op('/', 'divide');
 op('//', 'remainder');
+op('**', 'power');
 op('=', 'equal?');
 op('<>', 'not-equal?');
 op('==', 'strict-equal?');

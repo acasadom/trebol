@@ -213,4 +213,27 @@ take: function [
 ]
 
 also: func ["Returns the first value, after evaluating the second." a [any-type!] b [any-type!]] [:a]
+
+pi: 3.141592653589793
+
+mod: func [
+    "The remainder of a divided by b, with the sign of b."
+    a [number! money! time!] b [number! money! time!] "Must not be zero"
+    /local r
+][
+    r: a // b
+    either all [not zero? r  (negative? r) <> negative? b] [r + b] [r]
+]
+
+modulo: func [
+    "Like mod, but a remainder too small to tell from b or zero is zero."
+    a [number! money! time!] b [number! money! time!] "Must not be zero"
+    /local r
+][
+    r: mod a b
+    either any [
+        all [decimal? r  (abs r) < (1e-13 * abs b)]
+        all [decimal? r  (abs r - b) < (1e-13 * abs b)]
+    ] [0.0] [r]
+]
 `;

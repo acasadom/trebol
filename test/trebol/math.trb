@@ -1,0 +1,64 @@
+Trebol [
+    title: "Math tests"
+]
+
+"powers and roots"
+[(power 2 10) = 1024]
+[integer? 2 ** 62]
+[error? try [2 ** 63]]
+[(2 ** -1) = 0.5]
+[(2 ** 0.5) = square-root 2]
+[(-1 ** 1001) = -1]
+[(0 ** 1000) = 0]
+[(square-root 16) = 4.0]
+[error? try [square-root -1]]
+[(exp 0) = 1.0]
+[(log-10 1000) = 3.0]
+[(log-2 8) = 3.0]
+[(log-e 1) = 0.0]
+[error? try [log-10 0]]
+
+"trigonometry"
+[(sine 30) = 0.5]
+[(sine 180) = 0.0]
+[(cosine 60) = 0.5]
+[(cosine 90) = 0.0]
+[(tangent 45) = 1.0]
+[error? try [tangent 90]]
+[(sine/radians pi / 2) = 1.0]
+[(arcsine 1) = 90.0]
+[(arccosine 0) = 90.0]
+[(arctangent 1) = 45.0]
+[(arctangent2 1 1) = 45.0]
+[(arcsine/radians 1) = (pi / 2)]
+[error? try [arcsine 2]]
+
+"remainders"
+[(mod 7 3) = 1]
+[(mod -7 3) = 2]
+[(mod 7 -3) = -2]
+[(mod -0:10 0:03) = 0:02]
+[(modulo 0.3 0.1) = 0.0]
+[(-7 // 3) = -1]
+
+"signs"
+[(sign? -5) = -1]
+[(sign? 0) = 0]
+[(sign? $2.00) = 1]
+[negative? -0:01]
+[not negative? 0]
+[positive? 0.5]
+
+"random"
+[random/seed 42  a: random 100  random/seed 42  a = random 100]
+[n: random 6  all [n >= 1  n <= 6]]
+[x: random 1.0  all [x >= 0.0  x < 1.0]]
+[(random/only [x]) = 'x]
+[(sort random [3 1 2 4]) = [1 2 3 4]]
+[b: [1 2 3]  same? b random b]
+[logic? random true]
+
+"bitwise"
+[(#{FF} and #{0F}) = #{0F}]
+[(#{F0} or #{0F}) = #{FF}]
+[(#{FF00} xor #{0F}) = #{F000}]
