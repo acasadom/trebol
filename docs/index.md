@@ -85,6 +85,7 @@ quote a customer takes home. Every example in it is the real app, running right 
 ui/01-first-screen
 ui/02-forms
 ui/03-layout
+ui/04-tables
 ```
 
 ```{toctree}

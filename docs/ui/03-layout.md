@@ -104,5 +104,5 @@ out. `gap none` and `pad none` are 0, `gap wide` and `pad wide` are 6.
 
 ## What's next
 
-The workshop list above is three lines of text written by hand. The next page makes it a
+The workshop list above is three lines of text written by hand. The [next page](04-tables) makes it a
 table of the shop's real bookings: columns, sorting, totals, and choosing a row to work on.
