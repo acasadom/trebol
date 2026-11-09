@@ -152,6 +152,10 @@ interface Mounted {
   open: Set<string> | null;
   /** Rows: what the rows were last checked against. Rich text: the Markdown on screen. */
   shown: unknown;
+  /** An input: what the user typed still on its way to the face. */
+  typing: number;
+  /** An input: the value the user's typing gave the face; code that sets another one is shown even with the focus. */
+  typed: Cell | null;
 }
 
 let host: Host;
@@ -190,6 +194,7 @@ function build(face: ObjectCell): HTMLElement {
   const m: Mounted = {
     face, el: null!, input: null, label: null, error: null, kids: get(face, 'pane'),
     box: null, rows: null, empty: null, button: null, radios: null, open: null, shown: undefined,
+    typing: 0, typed: null,
   };
   let node: HTMLElement;
   if (INPUTS.has(style)) {
@@ -1158,7 +1163,12 @@ function buildInput(face: ObjectCell, style: string, m: Mounted): HTMLElement {
     const lang = activeLanguage(host.rt);
     const typed = style === 'money' ? readLocal(input.value, lang) ?? input.value
       : style === 'date' ? readDate(input.value, lang) ?? input.value : input.value;
-    void fire('ui-input', face, typed === '' ? NONE : string(typed));
+    m.typing++;
+    const settled = (): void => {
+      m.typing--;
+      m.typed = get(face, 'value');
+    };
+    void fire('ui-input', face, typed === '' ? NONE : string(typed)).then(settled, settled);
   });
   // an amount shows formatted, and is edited as a plain number of the active language
   if (style === 'money') input.addEventListener('focus', () => {
@@ -2924,9 +2934,10 @@ function sync(m: Mounted): void {
         if (values.join('\0') !== has.join('\0')) fillSelect(m.input, f);
       }
       const want = v.t === K.None ? str(f, 'typed') ?? '' : style === 'money' || style === 'date' ? display(v) : form(v);
-      // never fight the user's typing: only push values that differ from what code set
-      // (a read-only field has no typing to fight, so it shows a new value even with the focus)
-      if ((flag(f, 'readonly') || document.activeElement !== m.input) && m.input.value !== want) m.input.value = want;
+      // never fight the user's typing: with the focus, only a value code set is drawn (set-values
+      // after Enter sent the form); a read-only field has no typing to fight
+      const theirs = document.activeElement === m.input && !flag(f, 'readonly') && (m.typing > 0 || v === m.typed);
+      if (!theirs && m.input.value !== want) m.input.value = want;
       const hint = str(f, 'hint');
       if (m.input instanceof HTMLSelectElement) {
         const select = m.input;
