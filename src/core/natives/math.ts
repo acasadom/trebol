@@ -413,6 +413,31 @@ native('random', '["A random value: an integer from 1 to it, a decimal up to it,
   return fail('script', 'bad-random', `cannot make a random ${kindName(v.t)}`);
 });
 
+// --- bit shifts --------------------------------------------------------------------
+//
+// As in Red: shift goes right (keeping the sign) unless /left; /logical
+// shifts zeros in from the left. Bits shifted out of the 64 are lost.
+
+function shiftBits(x: I64.I64, n: number, left: boolean, logical: boolean): Cell {
+  const v = BigInt(x);
+  const by = BigInt(Math.max(0, Math.min(64, n)));
+  let r: bigint;
+  if (left) r = BigInt.asIntN(64, v << by);
+  else if (logical) r = BigInt.asIntN(64, BigInt.asUintN(64, v) >> by);
+  else r = v >> by;
+  return integer(I64.fromBig(r)!);
+}
+
+const SHIFT_ARGS = 'data [integer!] bits [integer!] "How many bits"';
+native('shift', `["Shifts the bits of an integer right, or left with /left." ${SHIFT_ARGS} /left "Shift to the left" /logical "Shift zeros in, not the sign"]`, (_t, f) =>
+  value(shiftBits((f.args[0] as { v: I64.I64 }).v, I64.toNumber((f.args[1] as { v: I64.I64 }).v), f.args[2] === TRUE, f.args[3] === TRUE)));
+native('shift-left', `["Shifts the bits of an integer left." ${SHIFT_ARGS}]`, (_t, f) =>
+  value(shiftBits((f.args[0] as { v: I64.I64 }).v, I64.toNumber((f.args[1] as { v: I64.I64 }).v), true, false)));
+native('shift-right', `["Shifts the bits of an integer right, keeping its sign." ${SHIFT_ARGS}]`, (_t, f) =>
+  value(shiftBits((f.args[0] as { v: I64.I64 }).v, I64.toNumber((f.args[1] as { v: I64.I64 }).v), false, false)));
+native('shift-logical', `["Shifts the bits of an integer right, shifting zeros in." ${SHIFT_ARGS}]`, (_t, f) =>
+  value(shiftBits((f.args[0] as { v: I64.I64 }).v, I64.toNumber((f.args[1] as { v: I64.I64 }).v), false, true)));
+
 // --- comparison ------------------------------------------------------------------
 
 native('equal?', '["True if the values are equal." a [any-type!] b [any-type!]]', (_t, f) => value(logic(isEqual(f.args[0]!, f.args[1]!))));
@@ -479,6 +504,9 @@ op('*', 'multiply');
 op('/', 'divide');
 op('//', 'remainder');
 op('**', 'power');
+op('<<', 'shift-left');
+op('>>', 'shift-right');
+op('>>>', 'shift-logical');
 op('=', 'equal?');
 op('<>', 'not-equal?');
 op('==', 'strict-equal?');
