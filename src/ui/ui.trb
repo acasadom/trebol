@@ -2,7 +2,7 @@ Trebol [
     title: "UI dialect: faces, styles, layout and validation"
     exports: [
         face styles stylize layout view theme looks open close toast
-        validate-face field-error form-values set-values ui-pane ui-input ui-files ui-remove-file ui-lookup-search ui-lookup-pick ui-lookup-remove ui-blur ui-click ui-select ui-close ui-event ui-menu ui-drop ui-reorder ui-crumb ui-expand
+        validate-face field-error form-values set-values ui-pane ui-input ui-files ui-remove-file ui-lookup-search ui-lookup-pick ui-lookup-remove ui-blur ui-click ui-select ui-sort ui-close ui-event ui-menu ui-drop ui-reorder ui-crumb ui-expand
         go go-back go-forward can-go-back? can-go-forward? ui-route set-language ui-rows
     ]
 ]
@@ -66,6 +66,9 @@ face: make object! [
                         ; have their own in `children`); breadcrumb: its items
     key: 'id            ; the row field that identifies a row
     selected: none      ; the row last chosen
+    sortable: false     ; a table the host sorts, from the rows it has, when a header is chosen
+    sorted: none        ; a table: the order shown, [column asc] or [column desc]
+    totals: none        ; a table: a row shown at the foot, never chosen nor sorted
     form: none          ; the enclosing form, if any
     root: none          ; the view this face belongs to
     submit: false
@@ -113,10 +116,10 @@ stylize: function [
 roles: [primary accent danger success warning muted]
 sizes: [small medium large]
 aligns: [left center right spread]
-flags: [fill fit hidden disabled readonly inert narrow-only wide-only linked drag drop reorder multiple]
+flags: [fill fit hidden disabled readonly inert narrow-only wide-only linked drag drop reorder multiple sortable]
 simple-rules: [required email url integer]
 letter: charset [#"a" - #"z" #"A" - #"Z"]
-rule-words: [min max length pattern match check check-async calc width pad gap menu accept known links]
+rule-words: [min max length pattern match check check-async calc width pad gap menu accept known links sorted]
 
 ; Words that never name a field. email, url and integer are rules too,
 ; but also common field names, so the first word after an input style names it.
@@ -246,6 +249,7 @@ build-faces: function [
         | 'menu set b block! (f/menu: menu-of b)
         | 'key set s string! (f/shortcut: s)
         | 'key set w word! (f/key: w)
+        | 'sorted set b block! (f/sorted: sort-order b)
         | set w word! if (find roles w) (f/role: w)
         | set w word! if (find sizes w) (f/size: w)
         | set w word! if (find aligns w) (f/align: w)
@@ -290,6 +294,14 @@ columns-of: function [spec [block!]] [
         do make error! "layout: table columns are words, each with an optional label"
     ]
     out
+]
+
+; [name desc] -> [name desc], checked
+sort-order: function [b [block!]] [
+    unless parse b [word! ['asc | 'desc]] [
+        do make error! "layout: sorted takes a column and asc or desc"
+    ]
+    copy b
 ]
 
 ; ["General" [...] "Advanced" [...]] -> a tab face per pair
@@ -1042,6 +1054,15 @@ ui-select: function [
 ] [
     f/selected: row
     if h: handler-for f 'on-select [run-handler f h]
+]
+
+ui-sort: function [
+    "Called by the host when the user chooses the header of a column of a table."
+    f column [word!]
+] [
+    order: either all [block? f/sorted  f/sorted/1 = column  f/sorted/2 = 'asc] ['desc] ['asc]
+    f/sorted: reduce [column order]
+    fire-event f 'on-sort reduce [quote column: to lit-word! column  quote order: to lit-word! order]
 ]
 
 ui-close: function [

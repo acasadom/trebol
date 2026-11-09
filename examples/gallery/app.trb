@@ -28,6 +28,9 @@ view [
             button #settings "Settings" menu ["Theme" theme "Language" language] on-menu [toast form event/picked]
         ]
     ]
+    panel "Table" [
+        global table invoices [number "Invoice" client "Client" due "Due" amount "Amount"] sortable sorted [due asc]
+    ]
     panel "Tree" [
         global files: tree [name] reorder on-select [toast row/name] on-expand [
             if empty? row/children [
@@ -94,6 +97,16 @@ people/data: [
     #(id: 2 name: "Grace Hopper" job: "Admiral" about: "Built the first compiler and popularised COBOL.")
     #(id: 3 name: "Alan Turing" job: "Mathematician" about: "Defined computability with the Turing machine.")
 ]
+
+invoices/data: [
+    #(id: 1 number: "F-2026-014" client: "Zoe Martin" due: 12-Nov-2026 amount: EUR$1200.00)
+    #(id: 2 number: "F-2026-009" client: "Álvaro Ruiz" due: 3-Nov-2026 amount: EUR$85.50)
+    #(id: 3 number: "F-2026-021" client: "ana Pérez" amount: EUR$430.00)
+    #(id: 4 number: "F-2026-002" client: "Bruno Díaz" due: 28-Oct-2026 amount: EUR$2310.75)
+]
+total: EUR$0
+foreach row invoices/data [total: total + row/amount]
+invoices/totals: make map! reduce ['number "Total" 'amount total]
 
 node: function [id name kids] [
     n: make map! reduce ['id id 'name name]

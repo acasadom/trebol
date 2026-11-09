@@ -249,6 +249,31 @@ describe('components', () => {
     assert.equal(r, '[["Alan" table] 2]');
   });
 
+  test('choosing a header sorts by that column, and choosing it again reverses the order', async () => {
+    const r = await ev(`
+      root: view [global table t [name total] sortable sorted [total desc]]
+      a: copy t/sorted
+      ui-sort t 'name b: copy t/sorted
+      ui-sort t 'name c: copy t/sorted
+      ui-sort t 'total
+      reduce [t/sortable a b c t/sorted t/totals]`);
+    assert.equal(r, '[true [total desc] [name asc] [name desc] [total asc] none]');
+  });
+
+  test('on-sort gets the column and the new order, and sorted is already set', async () => {
+    const r = await ev(`
+      got: none
+      root: view [global table t [name total] on-sort [got: reduce [event/type event/column event/order face/sorted]]]
+      ui-sort t 'total
+      reduce [got t/sortable]`);
+    assert.equal(r, '[[sort total asc [total asc]] false]');
+  });
+
+  test('sorted takes a column and asc or desc', async () => {
+    await assert.rejects(runSource(host, 'view [table t [name] sorted [name up]]'));
+    await assert.rejects(runSource(host, 'view [table t [name] sorted ["name" asc]]'));
+  });
+
   test('dialogs start hidden; open, close and dismissing toggle them', async () => {
     const r = await ev(`
       closed: 0

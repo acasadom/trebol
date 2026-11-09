@@ -16,7 +16,7 @@
 // set the field again to repaint it.
 
 import { logic,
-  K, NONE, TRUE, FALSE, native, value, string, form, ctxFind, intern, spell, text, canon, blockOf, wordOf, char,
+  K, NONE, TRUE, FALSE, native, value, string, form, ctxFind, intern, spell, text, canon, blockOf, wordOf, char, compare,
   type Cell, type MapCell, type ObjectCell, type BlockCell, type WordCell, type StringCell, type Ctx, type Sym,
 } from '../core/index.ts';
 import { mapAt, startHost, startUi, runSource, report, shown, translate, uiText, activeLanguage, editLocal, readLocal, readDate, weekStart, LOCAL_KINDS, type Host } from './index.ts';
@@ -444,10 +444,12 @@ function sourceAt(start: Element): Source | null {
     const row = rowOf.get(e);
     if (row !== undefined) {
       const m = mountedAbove(e)!;
-      if (!flag(m.face, 'drag') && !flag(m.face, 'reorder')) return null;
+      // rows the host sorted are not in the order of data, so they cannot be moved
+      const reorder = flag(m.face, 'reorder') && hostSorted(m.face) === null;
+      if (!flag(m.face, 'drag') && !reorder) return null;
       const group = e.parentElement!;
       const index = Array.prototype.indexOf.call(group.children, e);
-      return { face: m.face, el: e as HTMLElement, payload: row, within: flag(m.face, 'reorder') ? m : null, index, group };
+      return { face: m.face, el: e as HTMLElement, payload: row, within: reorder ? m : null, index, group };
     }
     const m = byNode.get(e);
     if (m === undefined || m.el !== e) continue;
@@ -2088,7 +2090,7 @@ function syncRich(m: Mounted, err: string | null): void {
 
 // --- tables and lists ---------------------------------------------------------------
 
-interface Column { sym: Sym; label: string }
+interface Column { sym: Sym; word: Cell; label: string }
 
 function columns(face: ObjectCell): Column[] {
   const c = get(face, 'columns');
@@ -2097,7 +2099,7 @@ function columns(face: ObjectCell): Column[] {
   const d = c.s.data;
   for (let i = c.i; i + 1 < d.length; i += 2) {
     const w = d[i]!;
-    if (w.t === K.Word) out.push({ sym: (w as WordCell).sym, label: translate(d[i + 1]!, host.rt) });
+    if (w.t === K.Word) out.push({ sym: (w as WordCell).sym, word: w, label: translate(d[i + 1]!, host.rt) });
   }
   return out;
 }
@@ -2147,16 +2149,26 @@ function buildRows(face: ObjectCell, style: string, m: Mounted): HTMLElement {
     const head = el('thead');
     const tr = el('tr');
     tr.setAttribute('role', 'row');
-    for (const c of columns(face)) {
+    const cols = columns(face);
+    for (const c of cols) {
       const th = el('th');
       th.scope = 'col';
       th.setAttribute('role', 'columnheader');
-      th.textContent = c.label;
       tr.append(th);
     }
     head.append(tr);
+    head.addEventListener('click', ev => {
+      const th = (ev.target as Element).closest('th');
+      const c = th !== null && th.querySelector('.tb-sort') !== null ? cols[th.cellIndex] : undefined;
+      if (c !== undefined) void fire('ui-sort', face, c.word);
+    });
     box = el('tbody');
-    table.append(head, box);
+    // the totals row sits outside tbody, so it is never chosen, sorted or moved
+    const foot = el('tfoot');
+    const totals = newTableRow(cols);
+    totals.className = 'tb-totals';
+    foot.append(totals);
+    table.append(head, box, foot);
     wrap.append(table);
   } else {
     box = el('ul', 'tb-list');
@@ -2188,13 +2200,13 @@ function syncRows(m: Mounted): void {
   const box = m.box!;
   const table = box.tagName === 'TBODY';
   const cols = columns(f);
-  // headers may be texts per language: show them in the active one
-  if (table) {
-    const ths = box.parentElement!.querySelectorAll('thead th');
-    cols.forEach((c, i) => { if (ths[i] !== undefined && ths[i]!.textContent !== c.label) ths[i]!.textContent = c.label; });
-  }
   const data = get(f, 'data');
-  const rows = data.t === K.Block ? data.s.data.slice(data.i) : [];
+  let rows = data.t === K.Block ? data.s.data.slice(data.i) : [];
+  if (table) {
+    syncHead(f, box.parentElement as HTMLTableElement, cols);
+    const order = hostSorted(f);
+    if (order !== null) rows = sortRows(rows, order.sym, order.desc);
+  }
   const keyWord = get(f, 'key');
   const key = keyWord.t === K.Word || keyWord.t === K.LitWord ? (keyWord as WordCell).sym : intern('id');
   const selected = get(f, 'selected');
@@ -2225,6 +2237,88 @@ function syncRows(m: Mounted): void {
   m.rows = next;
   m.empty!.textContent = str(f, 'text') ?? own('empty');
   m.empty!.hidden = rows.length > 0;
+}
+
+/** Headers in the active language; in a sortable table each is a button, with an arrow on the sorted one. */
+function syncHead(f: ObjectCell, table: HTMLTableElement, cols: Column[]): void {
+  const sortable = flag(f, 'sortable') || handlerFor(f, 'on-sort');
+  const order = sortedBy(f);
+  const ths = table.tHead!.rows[0]!.cells;
+  cols.forEach((c, i) => {
+    const th = ths[i];
+    if (th === undefined) return;
+    const on = order !== null && canon(order.sym) === canon(c.sym);
+    let button = th.querySelector<HTMLButtonElement>('.tb-sort');
+    if (sortable && button === null) {
+      button = el('button', 'tb-sort');
+      button.type = 'button';
+      button.append(el('span'));
+      th.replaceChildren(button);
+    } else if (!sortable && button !== null) {
+      th.replaceChildren();
+      button = null;
+    }
+    const label = button !== null ? button.firstChild! : th;
+    if (label.textContent !== c.label) label.textContent = c.label;
+    if (button !== null) {
+      // the button stays, so a header chosen from the keyboard keeps the focus
+      const arrow = on && order.desc ? 'arrow-down' : 'arrow-up';
+      const svg = button.querySelector('svg');
+      if (svg?.dataset['icon'] !== arrow) {
+        const next = icon(arrow);
+        if (next !== null) {
+          next.dataset['icon'] = arrow;
+          if (svg) svg.replaceWith(next);
+          else button.append(next);
+        }
+      }
+      button.querySelector('svg')?.classList.toggle('tb-sort-idle', !on);
+    }
+    if (on) th.setAttribute('aria-sort', order.desc ? 'descending' : 'ascending');
+    else th.removeAttribute('aria-sort');
+  });
+  const totals = get(f, 'totals');
+  const foot = table.tFoot!;
+  foot.hidden = totals.t === K.None;
+  if (totals.t !== K.None) fillRow(foot.rows[0]!, totals, cols, true);
+}
+
+/** A table's sorted facet: [column asc] or [column desc]. */
+function sortedBy(f: ObjectCell): { sym: Sym; desc: boolean } | null {
+  const v = get(f, 'sorted');
+  if (v.t !== K.Block || v.s.data.length - v.i < 2) return null;
+  const c = v.s.data[v.i]!;
+  const o = v.s.data[v.i + 1]!;
+  if ((c.t !== K.Word && c.t !== K.LitWord) || (o.t !== K.Word && o.t !== K.LitWord)) return null;
+  return { sym: (c as WordCell).sym, desc: canon((o as WordCell).sym) === canon(intern('desc')) };
+}
+
+/** The order the host applies itself: a sortable table without on-sort, which sorts for itself. */
+function hostSorted(f: ObjectCell): { sym: Sym; desc: boolean } | null {
+  return flag(f, 'sortable') && !handlerFor(f, 'on-sort') ? sortedBy(f) : null;
+}
+
+/**
+ * Rows by the native value of a column: numbers, amounts and dates by value, texts as
+ * the active language orders them; empty cells go last either way. Ties keep their order.
+ */
+function sortRows(rows: Cell[], col: Sym, desc: boolean): Cell[] {
+  const collator = new Intl.Collator(activeLanguage(host.rt), { numeric: true });
+  const blank = (v: Cell): boolean => v.t === K.None || (v.t === K.String && text(v as StringCell) === '');
+  const order = (a: Cell, b: Cell): number => {
+    if (a.t === K.String && b.t === K.String) return collator.compare(text(a as StringCell), text(b as StringCell));
+    // values that cannot be ordered together (a text and a number) go by what they show
+    return compare(a, b) ?? collator.compare(cellText(a), cellText(b));
+  };
+  return rows
+    .map(row => ({ row, v: rowField(row, col) }))
+    .sort((a, b) => {
+      const ea = blank(a.v);
+      const eb = blank(b.v);
+      if (ea || eb) return ea === eb ? 0 : ea ? 1 : -1;
+      return desc ? order(b.v, a.v) : order(a.v, b.v);
+    })
+    .map(x => x.row);
 }
 
 function newTableRow(cols: Column[]): HTMLElement {

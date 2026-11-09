@@ -16,6 +16,8 @@ const PATHS: Record<string, string> = {
   'chevrons-right': 'M5 6l6 6-6 6M13 6l6 6-6 6',
   'arrow-left': 'M19 12H5M11 6l-6 6 6 6',
   'arrow-right': 'M5 12h14M13 6l6 6-6 6',
+  'arrow-up': 'M12 19V5M6 11l6-6 6 6',
+  'arrow-down': 'M12 5v14M6 13l6 6 6-6',
   edit: 'M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4',
   trash: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6',
   user: 'M12 4a4 4 0 1 0 0 8a4 4 0 1 0 0-8zM4 21c0-4 3.5-7 8-7s8 3 8 7',
