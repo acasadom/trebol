@@ -1,0 +1,38 @@
+Trebol [title: "The shop's quotes" exports: [estimate]]
+
+import %prices.trb
+
+hourly: $30.00
+
+estimate: function [
+    "Reads a quote written the way the shop says it"
+    spec [block!]
+    /local n part time here
+] [
+    who: none
+    rows: copy []
+    off: 0%
+    line: func [what amount] [append rows reduce [what amount]]
+    item: [
+        [set n integer! | (n: 1)] set part word!
+        [   'as 'gift (line reform [n part "(gift)"] $0.00)
+          | (line reform [n part] n * price-of part)
+        ]
+    ]
+    labour: [
+        'labour set time [time! | paren!] (
+            if paren? time [time: do time]
+            line reform ["labour" time] hourly * (time / 1:00)
+        )
+    ]
+    unless parse spec [
+        any [here: ['for set who string! | labour | set off percent! 'off | item]]
+        end
+    ] [
+        cause-error 'user 'bad-quote reduce ["Cannot read the quote at" mold/only copy/part here 2]
+    ]
+    sum: $0.00
+    foreach [what amount] rows [sum: sum + amount]
+    cut: sum * off
+    make object! [customer: who lines: rows discount: cut total: sum - cut]
+]

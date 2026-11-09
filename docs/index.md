@@ -70,6 +70,7 @@ language/10-contexts
 language/11-parse
 language/12-tasks-and-network
 language/13-modules
+language/14-dialects
 ```
 
 The second tutorial gives the shop its screens; the reference and the technical guides follow it.
