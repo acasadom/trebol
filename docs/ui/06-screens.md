@@ -1,0 +1,120 @@
+# 6. Screens and links
+
+The shop has a counter where repairs are booked in and a workshop where the board hangs. Until now both
+lived on one screen. This page gives each its own screen, gives every booking a screen of its own, and
+gives each screen a link that can be bookmarked, opened in another tab or sent to a colleague.
+
+## Two screens
+
+`screens` holds the screens of the app and shows one at a time. Each screen is a name, a title and a
+block with its layout. A `link` with a screen's name goes there:
+
+```trebol-ui
+bookings: copy []
+
+view [
+    screens [
+        counter "Counter" [
+            title "Book a repair"
+            form [
+                field customer "Customer" required
+                choice bike "Bike" ["Road" "Mountain" "City" "Child's"] required
+                submit "Book in" [
+                    append bookings values
+                    toast/role "Booked in." 'success
+                    set-values face/form none
+                ]
+            ]
+            link "See the workshop" 'workshop
+        ]
+        workshop "Workshop" [
+            on-enter [board/data: bookings]
+            title "In the workshop"
+            table board "No bikes in the workshop" [customer "Customer" bike "Bike"]
+            link "Back to the counter" 'counter
+        ]
+    ]
+]
+```
+
+Book a bike in, then go to the workshop: it is on the board. The first screen is the one shown when the
+app starts.
+
+A screen is built again every time it is entered, from its block, so it starts with empty fields and its
+own fresh faces. What must last from one screen to the next lives outside them, like `bookings` here.
+`on-enter`, at the top of a screen's block, runs as the screen is entered, with its faces already made:
+the place to give a table its rows. The screen shows only once `on-enter` has finished, so the reader never
+sees it half filled.
+
+## A screen for each booking
+
+A screen can take arguments, named in a block after its title like the arguments of a function. `go`
+goes to a screen from code; with a block, the first word is the screen and the rest are its arguments:
+
+```trebol-ui
+bookings: [
+    #(id: 1 customer: "Ada Lovelace" bike: "Road" fault: "The rear brake rubs.")
+    #(id: 2 customer: "Grace Hopper" bike: "City" fault: "A flat front tyre.")
+    #(id: 3 customer: "Alan Turing" bike: "Mountain" fault: "The chain slips in top gear.")
+]
+
+find-booking: function [id [string!]] [
+    foreach b bookings [if id = form b/id [return b]]
+    none
+]
+
+view [
+    screens [
+        workshop "Workshop" [
+            on-enter [board/data: bookings]
+            title "In the workshop"
+            table board [customer "Customer" bike "Bike"] on-select [go [booking row/id]]
+        ]
+        booking "Booking" [id] [
+            on-enter [
+                either b: find-booking id [
+                    crumbs/data: reduce ["Workshop" 'workshop b/customer]
+                    who/text: rejoin [b/customer "'s " lowercase copy b/bike " bike"]
+                    fault/text: b/fault
+                ] [
+                    who/text: "No such booking"
+                ]
+            ]
+            crumbs: breadcrumb ["Workshop" workshop "…"] [go value]
+            who: title
+            fault: text muted
+            row [button "Back" [go-back 'workshop]]
+        ]
+    ]
+]
+```
+
+Choose a bike: its screen opens. Inside the screen, `id` is the argument it was entered with. Arguments
+always arrive as strings, because they travel in the link, so `find-booking` compares `id` with the
+booking's id turned into text by `form`. A link can name a booking nobody has, so the screen says so
+instead of failing.
+
+The `breadcrumb` shows where the screen sits: pairs of a label and a screen, and a last label for the
+screen itself. Choosing a step runs its block with the screen's name in `value`. `go-back` returns to the
+screen the reader came from, as the browser's back button would; if they arrived straight at this booking
+from a link, there is nothing to go back to, and it goes to the screen it names instead.
+
+## The link
+
+Every screen has a link of its own: the workshop is `#/workshop` and Grace's booking `#/booking/2`. The
+browser's back and forward buttons move between screens, a `link` can be opened in a new tab, and a link
+pasted in the address bar opens that very screen. A link that names no screen opens the first one. Open
+the example above on its own to see the link change in the address bar.
+
+The screen's title becomes the page's title, so the browser's tabs and history say where each one leads.
+When a screen changes, the focus moves to its title and screen readers announce it.
+
+For buttons of its own, a screen can ask whether there is anywhere to go: `can-go-back?` and
+`can-go-forward?` say whether a screen of the app lies behind or ahead, and `go-forward` goes ahead.
+`on-change` on `screens` runs after every screen is entered, the place to turn such buttons on and off.
+
+## What's next
+
+The shop's screens look the way Trebol's default look draws them. The next page changes that: colors,
+shapes, fonts and whole looks, from flat and modern to one that recalls a desktop of the nineties, all
+without a line of CSS.

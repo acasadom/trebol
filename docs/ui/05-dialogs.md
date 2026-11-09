@@ -131,6 +131,7 @@ does not trigger it.
 
 ## What's next
 
-The shop now books bikes in, keeps the board and takes bikes off it, all on one screen. The next page splits
+The shop now books bikes in, keeps the board and takes bikes off it, all on one screen. The
+[next page](06-screens) splits
 the work into screens of their own, each with its own link, so the counter and the workshop can each keep
 theirs open.
