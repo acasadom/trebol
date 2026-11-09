@@ -14,6 +14,7 @@ import { K, kindByName, isAnyBlock, isAnyString } from './kinds.ts';
 import { intern, spell as symName } from './symbols.ts';
 import * as I64 from './int64.ts';
 import { parseDec } from './dec.ts';
+import { decodeBase } from './base.ts';
 import { decodeEscape } from './escapes.ts';
 import {
   NONE, UNSET, TRUE, FALSE, packPos, codePoints,
@@ -337,20 +338,8 @@ class Lexer {
     const body = s.slice(this.i + 1, close);
     for (let j = this.i; j < close; j++) if (s[j] === '\n') this.newline(j);
     this.i = close + 1;
-    const clean = body.replace(/\s+/g, '');
-    const bytes: number[] = [];
-    if (base === 16) {
-      if (!/^(?:[0-9A-Fa-f]{2})*$/.test(clean)) this.fail('invalid hex binary', start);
-      for (let j = 0; j < clean.length; j += 2) bytes.push(parseInt(clean.slice(j, j + 2), 16));
-    } else if (base === 2) {
-      if (!/^(?:[01]{8})*$/.test(clean)) this.fail('invalid base-2 binary', start);
-      for (let j = 0; j < clean.length; j += 8) bytes.push(parseInt(clean.slice(j, j + 8), 2));
-    } else {
-      if (!/^[A-Za-z0-9+/]*={0,2}$/.test(clean) || clean.length % 4 === 1) {
-        this.fail('invalid base-64 binary', start);
-      }
-      bytes.push(...decodeBase64(clean));
-    }
+    const bytes = decodeBase(body, base);
+    if (bytes === null) this.fail(`invalid ${base === 16 ? 'hex' : `base-${base}`} binary`, start);
     return { t: K.Binary, s: { data: bytes }, i: 0 };
   }
 
@@ -677,20 +666,3 @@ function parseZone(z: string): number {
   return m[1] === '-' ? -minutes : minutes;
 }
 
-const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-
-function decodeBase64(text: string): number[] {
-  const clean = text.replace(/=+$/, '');
-  const out: number[] = [];
-  let buf = 0;
-  let bits = 0;
-  for (const ch of clean) {
-    buf = (buf << 6) | B64.indexOf(ch);
-    bits += 6;
-    if (bits >= 8) {
-      bits -= 8;
-      out.push((buf >> bits) & 0xff);
-    }
-  }
-  return out;
-}

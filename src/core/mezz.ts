@@ -216,6 +216,24 @@ also: func ["Returns the first value, after evaluating the second." a [any-type!
 
 pi: 3.141592653589793
 
+ajoin: func ["Reduces a block and joins the values into a string, with no spaces." block [block!]] [
+    to string! reduce block
+]
+
+comment: func ["Ignores its argument." value [any-type!]] []
+
+forever: func ["Evaluates a block again and again, until break or return." body [block!]] [
+    while [true] body
+]
+
+default: func [
+    "Sets a word to a value if it has none yet; gives the word's value."
+    'word [word! set-word!] value
+][
+    unless all [value? word  not none? get word] [set word :value]
+    get word
+]
+
 last?: func ["True if the series has one value left." series [series!]] [1 = length? series]
 single?: :last?
 
