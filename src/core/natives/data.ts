@@ -2,7 +2,7 @@
 // series natives the core needs before the full series set arrives.
 
 import { K, isAnyBlock, isAnyString, isAnyWord, kindName, type Kind } from '../kinds.ts';
-import { spell } from '../symbols.ts';
+import { intern, spell } from '../symbols.ts';
 import * as I64 from '../int64.ts';
 import {
   NONE, UNSET, TRUE, FALSE, string, codePoints, text, datatype, typeset, context, object, blockOf, wordOf,
@@ -199,15 +199,23 @@ native('body-of', '["A copy of a function\'s body block, or none for a native." 
   return value(c.t === K.Function ? { t: K.Block, s: copyDeep(((c as OpaqueCell).p as FuncDef).body), i: 0 } : NONE);
 });
 
-native('words-of', '["The words of an object or map, or the arguments and refinements of a function." value [any-object! map! any-function!]]', (_t, f) => {
+native('words-of', '["The words of an object or map, or the arguments, refinements and local words of a function." value [any-object! map! any-function!]]', (_t, f) => {
   const c = underOp(f.args[0]!);
   if (c.t === K.Object || c.t === K.Error) return value(blockOf(K.Block, c.ctx.keys.map(k => wordOf(K.Word, k))));
   if (c.t === K.Map) return value(blockOf(K.Block, c.s.data.filter((_v, i) => i % 2 === 0)));
-  // a function's arguments and refinements, as its spec names them
+  // a function's arguments, refinements and local words, as its spec names them (R3)
   const p = (c as OpaqueCell).p;
   const spec = c.t === K.Function ? (p as FuncDef).spec : (p as NativeDef).spec;
-  return value(blockOf(K.Block, spec.params.filter(p => p.kind !== P.Local)
-    .map(p => wordOf(p.kind === P.Ref ? K.Refinement : K.Word, p.sym))));
+  const out: Cell[] = [];
+  let locals = false;
+  for (const x of spec.params) {
+    if (x.kind === P.Local && !locals) {
+      out.push(wordOf(K.Refinement, intern('local')));
+      locals = true;
+    }
+    out.push(wordOf(x.kind === P.Ref ? K.Refinement : K.Word, x.sym));
+  }
+  return value(blockOf(K.Block, out));
 });
 
 native('values-of', '["The values of an object or map." value [any-object! map!]]', (_t, f) => {

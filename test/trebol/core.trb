@@ -52,7 +52,9 @@ Trebol [
 "reflection"
 [f: func ["Doc." a [integer!] /r b] [a] ["Doc." a [integer!] /r b] = spec-of :f]
 [f: func [a] [a + 1] [a + 1] = body-of :f]
-[f: func [a /r b /local c] [a] [a /r b] = words-of :f]
+[f: func [a /r b /local c] [a] [a /r b /local c] = words-of :f]
+[[a b] = words-of func [a b] []]
+[[x /local y] = words-of function [x] [y: x]]
 [none? body-of :append]
 [block? spec-of :append]
 [(spec-of :+) = spec-of :add]
