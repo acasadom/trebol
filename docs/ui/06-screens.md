@@ -115,6 +115,6 @@ For buttons of its own, a screen can ask whether there is anywhere to go: `can-g
 
 ## What's next
 
-The shop's screens look the way Trebol's default look draws them. The next page changes that: colors,
+The shop's screens look the way Trebol's default look draws them. The [next page](07-themes) changes that: colors,
 shapes, fonts and whole looks, from flat and modern to one that recalls a desktop of the nineties, all
 without a line of CSS.
