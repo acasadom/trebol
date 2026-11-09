@@ -4,7 +4,7 @@
 // Both return an error message string instead of throwing; the caller turns
 // it into a Trebol error.
 
-import { K, isAnyBlock, isAnyString, isAnyWord, kindName } from './kinds.ts';
+import { K, isAnyBlock, isAnyString, isAnyWord, aKindName } from './kinds.ts';
 import { canon, spell } from './symbols.ts';
 import * as I64 from './int64.ts';
 import {
@@ -60,6 +60,17 @@ export function pick(cur: Cell, key: Cell): Cell | string {
         return { t: cur.t, s: { data: [...base, ...slash, ...tail] }, i: 0 };
       }
       break;
+    case K.Email: {
+      // email/user and email/host, as in R3
+      const p = partName(key);
+      if (p === 'user' || p === 'host') {
+        const cps = (cur as StringCell).s.data.slice((cur as StringCell).i);
+        const at = cps.indexOf(64);
+        const part = p === 'user' ? (at < 0 ? cps : cps.slice(0, at)) : at < 0 ? [] : cps.slice(at + 1);
+        return { t: K.String, s: { data: part }, i: 0 };
+      }
+      break;
+    }
     case K.Object: case K.Error: {
       if (!isAnyWord(key.t)) return `cannot pick ${mold(key)} in an object`;
       const i = ctxFind(cur.ctx, (key as WordCell).sym);
@@ -129,12 +140,12 @@ export function pick(cur: Cell, key: Cell): Cell | string {
   if (isAnyString(cur.t) || cur.t === K.Binary) {
     const s = cur as StringCell;
     const n = offset(key);
-    if (n === null) return `cannot pick ${mold(key)} in a ${kindName(cur.t)}`;
+    if (n === null) return `cannot pick ${mold(key)} in ${aKindName(cur.t)}`;
     const cp = n >= 0 ? s.s.data[s.i + n] : undefined;
     if (cp === undefined) return NONE;
     return cur.t === K.Binary ? integer(cp) : char(cp);
   }
-  return `cannot pick ${mold(key)} in a ${kindName(cur.t)}`;
+  return `cannot pick ${mold(key)} in ${aKindName(cur.t)}`;
 }
 
 function decimalOrInt(n: number): Cell {
@@ -183,5 +194,5 @@ export function poke(cur: Cell, key: Cell, v: Cell): string | null {
     s.s.data[s.i + n] = v.v;
     return null;
   }
-  return `cannot set ${mold(key)} in a ${kindName(cur.t)}`;
+  return `cannot set ${mold(key)} in ${aKindName(cur.t)}`;
 }

@@ -82,6 +82,12 @@ export function kindName(k: Kind): string {
   return KIND_NAMES[k] ?? '?!';
 }
 
+/** The kind's name with its article: "a block!", "an email!". */
+export function aKindName(k: Kind): string {
+  const n = kindName(k);
+  return ('aeiou'.includes(n[0]!) ? 'an ' : 'a ') + n;
+}
+
 // --- classification helpers ------------------------------------------------
 
 export function isAnyString(k: Kind): boolean {

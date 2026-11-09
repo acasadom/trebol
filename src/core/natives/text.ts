@@ -161,7 +161,8 @@ function toKind(k: Kind, v: Cell): Cell | string {
       return bad();
     }
     case K.Integer: {
-      const n = toNumberCell(v);
+      // a time converts to its seconds, as in R3
+      const n = v.t === K.Time ? decimal(v.v / 1e9) : toNumberCell(v);
       if (n === null) return bad();
       if (n.t === K.Integer) return n;
       const x = n.t === K.Money ? decToNumber(n.v) : (n as { v: number }).v;
@@ -169,7 +170,7 @@ function toKind(k: Kind, v: Cell): Cell | string {
       return r === null ? 'number is too big for integer!' : integer(r);
     }
     case K.Decimal: case K.Percent: {
-      const n = toNumberCell(v);
+      const n = v.t === K.Time && k === K.Decimal ? decimal(v.v / 1e9) : toNumberCell(v);
       if (n === null) return bad();
       const x = n.t === K.Money ? decToNumber(n.v) : n.t === K.Integer ? I64.toNumber(n.v) : (n as { v: number }).v;
       return k === K.Decimal ? decimal(x) : percent(x);
