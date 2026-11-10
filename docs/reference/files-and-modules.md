@@ -2,8 +2,8 @@
 
 # Files and modules
 
-Reading files and web addresses, running scripts and importing modules, and keeping small values in the
-browser. See [modules](../language/13-modules.md).
+Reading files and web addresses, running scripts and importing modules, giving the user files to save, and
+keeping small values in the browser. See [modules](../language/13-modules.md).
 
 (fn-read)=
 ## read
@@ -37,6 +37,23 @@ import source
 ```
 
 - `source` (`file!` `url!` `string!`)
+
+(fn-download)=
+## download
+
+Gives the user a file to save: text (as UTF-8) or bytes.
+
+```text
+download name data
+```
+
+- `name` (`file!` `string!`)
+- `data` (`string!` `binary!`)
+
+The browser saves the file with its usual dialog, or into the Downloads folder: only the name of the file is
+used, not its folder. The type comes from the extension (`.csv`, `.json`, `.txt`, `.png`, `.pdf`...). Text is
+written as UTF-8; a `.csv` starts with a byte order mark, so spreadsheets read its accents right. On a host
+with no browser it is an access error.
 
 (fn-save-local)=
 ## save-local

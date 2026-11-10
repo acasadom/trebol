@@ -177,6 +177,40 @@ view [
 form; `set-values` with `none` empties the form for the next customer. The table needs no `global` here: the
 handler that uses its name is inside the same view.
 
+## To and from a spreadsheet
+
+Spreadsheets read and write CSV. `to-csv` writes the rows as CSV text, with a first line of the keys, and
+`download` gives the user that text as a file to save. To read rows back, an upload takes the file,
+`read-file` gets its bytes and `load-csv/as-records` turns them into a map per row, with the first line
+giving the keys:
+
+```trebol-ui
+bookings: [
+    #(customer: "Ada Lovelace" bike: "Road" due: 11-Nov-2026)
+    #(customer: "Grace Hopper" bike: "City" due: 12-Nov-2026)
+]
+
+view [
+    title "In the workshop"
+    global table workshop "No bikes in the workshop" [customer "Customer" bike "Bike" due "Due back"]
+    row [
+        button "Download" [download %bookings.csv to-csv workshop/data]
+        upload sheet "Load a CSV file" accept ["csv"] on-change [
+            unless empty? face/value [
+                workshop/data: load-csv/as-records read-file face/value/1/file
+            ]
+        ]
+    ]
+]
+
+workshop/data: bookings
+```
+
+Every field of a CSV file is text. A table shows it as it is, but code that counts or adds converts it
+first, as `to integer! row/("Bikes")` or `to date! row/("Due back")`. The keys are strings, the names in the
+first line of the file; the table finds them by its column words. `load-csv` reads other delimiters too,
+such as `load-csv/with text #";"`. The [reference](../reference/data-formats.md) lists all of it.
+
 ## What's next
 
 Choosing a row should open it, to change the booking or mark the bike as collected. The

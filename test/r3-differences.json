@@ -186,5 +186,97 @@
   {
     "test": "[f: func [n] [b: [a b] insert b n b] all [(mold f 1) = {[1\n    a\n    b\n]} (mold f 2) = {[2\n    a\n    b\n]}]]",
     "why": "A literal block in a function is new on each call (every call copies the body), so a call never sees what an earlier call put in it; in R3 the block persists between calls (the cache: [] trick)."
+  },
+  {
+    "test": "[(load-csv {a,b\n1,2\n}) = [[\"a\" \"b\"] [\"1\" \"2\"]]]",
+    "why": "load-csv and to-csv are not in this R3; Trebol has Red's CSV codec."
+  },
+  {
+    "test": "[(load-csv {a,b^M\n1,2^M\n^M\n}) = [[\"a\" \"b\"] [\"1\" \"2\"]]]",
+    "why": "Same: CSV."
+  },
+  {
+    "test": "[(load-csv {\"x, \"\"y\"\"\",\n\"two\nlines\"}) = [[{x, \"y\"} \"\"] [{two\nlines}]]]",
+    "why": "Same: CSV."
+  },
+  {
+    "test": "[(load-csv \"01001\") = [[\"01001\"]]]",
+    "why": "Same: CSV."
+  },
+  {
+    "test": "[(load-csv/with \"a;b\" #\";\") = [[\"a\" \"b\"]]]",
+    "why": "Same: CSV."
+  },
+  {
+    "test": "[(load-csv/with \"a::b\" \"::\") = [[\"a\" \"b\"]]]",
+    "why": "Same: CSV."
+  },
+  {
+    "test": "[(load-csv/trim { a , \"b \" }) = [[\"a\" \"b \"]]]",
+    "why": "Same: CSV."
+  },
+  {
+    "test": "[(load-csv/quote \"'a,b',c\" #\"'\") = [[\"a,b\" \"c\"]]]",
+    "why": "Same: CSV."
+  },
+  {
+    "test": "[(load-csv/flat {1,2\n3,4}) = [\"1\" \"2\" \"3\" \"4\"]]",
+    "why": "Same: CSV."
+  },
+  {
+    "test": "[r: load-csv/as-records {Name,Age\nAna,34\nBo} all [r/1/(\"Name\") = \"Ana\" (select r/2 \"Age\") = none 2 = length? r]]",
+    "why": "Same: CSV."
+  },
+  {
+    "test": "[c: load-csv/header {a,b,a\n1,2,3} all [c/(\"a\") = [\"1\"] c/(\"a 2\") = [\"3\"]]]",
+    "why": "Same: CSV."
+  },
+  {
+    "test": "[c: load-csv/as-columns \"x,y,z\" all [c/(\"A\") = [\"x\"] c/(\"C\") = [\"z\"]]]",
+    "why": "Same: CSV."
+  },
+  {
+    "test": "[(load-csv to-binary \"﻿a,é\") = [[\"a\" \"é\"]]]",
+    "why": "Same: CSV."
+  },
+  {
+    "test": "[e: try [load-csv {\"open}] all [e/id = 'csv e/type = 'syntax]]",
+    "why": "Same: CSV."
+  },
+  {
+    "test": "[(to-csv [[\"Name\" \"Age\"] [\"Lo, Wei\" 34]]) = {Name,Age\n\"Lo, Wei\",34\n}]",
+    "why": "Same: CSV."
+  },
+  {
+    "test": "[(to-csv reduce [reduce [none {say \"hi\"} \" x\"]]) = {,\"say \"\"hi\"\"\",\" x\"\n}]",
+    "why": "Same: CSV."
+  },
+  {
+    "test": "[(to-csv [#[name: \"Ana\" total: $3.50] #[name: \"Bo\" city: \"Ávila\"]]) = {name,total,city\nAna,$3.50,\nBo,,Ávila\n}]",
+    "why": "Same: CSV."
+  },
+  {
+    "test": "[(to-csv reduce [make object! [a: 1 b: 'x]]) = {a,b\n1,x\n}]",
+    "why": "Same: CSV."
+  },
+  {
+    "test": "[(to-csv/skip [a 1 b 2] 2) = {a,1\nb,2\n}]",
+    "why": "Same: CSV."
+  },
+  {
+    "test": "[(to-csv #[x: [1 2] y: [3]]) = {x,y\n1,3\n2,\n}]",
+    "why": "Same: CSV."
+  },
+  {
+    "test": "[(to-csv/with [1 2] #\";\") = {1;2\n}]",
+    "why": "Same: CSV."
+  },
+  {
+    "test": "[(to-csv []) = \"\"]",
+    "why": "Same: CSV."
+  },
+  {
+    "test": "[rows: [[{a\nb} {\"} \"c,d\"] [\"\" \"é\"]] rows = load-csv to-csv rows]",
+    "why": "Same: CSV."
   }
 ]

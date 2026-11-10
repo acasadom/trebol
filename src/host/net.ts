@@ -35,6 +35,49 @@ native('read-file', '["The bytes of a file the user chose." file [handle!]]', (_
   return { k: 'await', p };
 });
 
+// The other way, `download` gives the user a file made by the program: the
+// browser saves it with its usual dialog or into Downloads.
+
+const TYPES: Record<string, string> = {
+  csv: 'text/csv', txt: 'text/plain', json: 'application/json', xml: 'application/xml', html: 'text/html',
+  trb: 'text/plain', md: 'text/markdown', svg: 'image/svg+xml', png: 'image/png', jpg: 'image/jpeg',
+  pdf: 'application/pdf', zip: 'application/zip',
+};
+
+/** Where `download` hands a file; false when this host has no browser. Tests point it elsewhere. */
+export const saver = {
+  save: (name: string, blob: Blob): boolean => {
+    const doc = (globalThis as { document?: Document }).document;
+    if (doc === undefined) return false;
+    const url = URL.createObjectURL(blob);
+    const a = doc.createElement('a');
+    a.href = url;
+    a.download = name;
+    a.style.display = 'none';
+    doc.body.append(a);
+    a.click();
+    a.remove();
+    // the browser reads the blob after the click returns
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return true;
+  },
+};
+
+native('download', '["Gives the user a file to save: text (as UTF-8) or bytes." name [file! string!] data [string! binary!]]', (_t, f) => {
+  const name = text(f.args[0] as StringCell).split('/').pop() ?? '';
+  if (name === '') return throwError('script', 'bad-file', 'download needs a file name');
+  const ext = name.includes('.') ? name.slice(name.lastIndexOf('.') + 1).toLowerCase() : '';
+  const type = TYPES[ext] ?? 'application/octet-stream';
+  const data = f.args[1]!;
+  // a byte order mark lets spreadsheets read a CSV's accents as UTF-8
+  const body = data.t === K.Binary
+    ? new Uint8Array(data.s.data.slice(data.i))
+    : (ext === 'csv' ? '﻿' : '') + text(data as StringCell);
+  const blob = new Blob([body], { type: data.t === K.Binary ? type : `${type};charset=utf-8` });
+  if (!saver.save(name, blob)) return throwError('access', 'no-download', 'this host cannot give the user files');
+  return value(f.args[0]!);
+});
+
 // --- HTTP ------------------------------------------------------------------------
 
 function field(opts: ObjectCell | null, name: string): Cell | null {

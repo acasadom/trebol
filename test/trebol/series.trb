@@ -1,5 +1,5 @@
 Trebol [
-    title: "Series, text, conversion and JSON tests"
+    title: "Series, text, conversion, JSON and CSV tests"
 ]
 
 "navigation"
@@ -163,6 +163,33 @@ Trebol [
 [(to-json make map! [k "v"]) = {{"k":"v"}}]
 [error? try [load-json "{"]]
 [(select load-json {{"with space": 1}} "with space") = 1]
+
+"csv"
+[(load-csv {a,b^/1,2^/}) = [["a" "b"] ["1" "2"]]]
+[(load-csv {a,b^M^/1,2^M^/^M^/}) = [["a" "b"] ["1" "2"]]]
+[(load-csv {"x, ""y""",^/"two^/lines"}) = [[{x, "y"} ""] [{two^/lines}]]]
+[(load-csv {01001}) = [["01001"]]]
+[(load-csv/with {a;b} #";") = [["a" "b"]]]
+[(load-csv/with {a::b} "::") = [["a" "b"]]]
+[(load-csv/trim { a , "b " }) = [["a" "b "]]]
+[(load-csv/quote {'a,b',c} #"'") = [["a,b" "c"]]]
+[(load-csv/flat {1,2^/3,4}) = ["1" "2" "3" "4"]]
+[r: load-csv/as-records {Name,Age^/Ana,34^/Bo} all [r/1/("Name") = "Ana"  (select r/2 "Age") = none  2 = length? r]]
+[c: load-csv/header {a,b,a^/1,2,3} all [c/("a") = ["1"]  c/("a 2") = ["3"]]]
+[c: load-csv/as-columns {x,y,z} all [c/("A") = ["x"]  c/("C") = ["z"]]]
+[(load-csv to-binary {^(FEFF)a,é}) = [["a" "é"]]]
+[e: try [load-csv {"open}] all [e/id = 'csv  e/type = 'syntax]]
+[error? try [load-csv/flat/header "a"]]
+[(to-csv [["Name" "Age"] ["Lo, Wei" 34]]) = {Name,Age^/"Lo, Wei",34^/}]
+[(to-csv reduce [reduce [none {say "hi"} " x"]]) = {,"say ""hi"""," x"^/}]
+[(to-csv [#(name: "Ana" total: $3.50) #(name: "Bo" city: "Ávila")]) = {name,total,city^/Ana,$3.50,^/Bo,,Ávila^/}]
+[(to-csv reduce [make object! [a: 1 b: 'x]]) = {a,b^/1,x^/}]
+[(to-csv/skip [a 1 b 2] 2) = {a,1^/b,2^/}]
+[(to-csv #(x: [1 2] y: [3])) = {x,y^/1,3^/2,^/}]
+[(to-csv/with [1 2] #";") = {1;2^/}]
+[(to-csv []) = ""]
+[error? try [to-csv [[1] 2]]]
+[rows: [["a^/b" {"} "c,d"] ["" "é"]] rows = load-csv to-csv rows]
 
 "difference of dates"
 [(difference 2-Jan-2026 1-Jan-2026) = 24:00]

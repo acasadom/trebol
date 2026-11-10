@@ -7,7 +7,7 @@ import { createServer, type Server } from 'node:http';
 import { createHash } from 'node:crypto';
 import type { Duplex } from 'node:stream';
 import { K, spell, mold, form, errorField, native, value, type ObjectCell } from '../src/core/index.ts';
-import { fileHandle } from '../src/host/net.ts';
+import { fileHandle, saver } from '../src/host/net.ts';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
@@ -181,6 +181,28 @@ describe('http', () => {
     assert.match(r, /multipart\/form-data/);
     assert.match(r, /name="doc"; filename="note.txt"[^]*hello[^]*name="title"[^]*Notes/);
     assert.equal(await evErr('read-file none'), 'expect-arg');
+  });
+
+  test('download hands the browser a file', async () => {
+    const saved: Array<[string, Blob]> = [];
+    const save = saver.save;
+    saver.save = (name, blob) => saved.push([name, blob]) > 0;
+    try {
+      assert.equal(await ev('download %out/clients.csv to-csv [["Name"] ["Ávila"]]'), '%out/clients.csv');
+      assert.equal(await ev('download "logo.png" #{89504E47}'), '"logo.png"');
+      assert.equal(saved[0]![0], 'clients.csv');
+      assert.equal(saved[0]![1].type, 'text/csv;charset=utf-8');
+      // a byte order mark first, so spreadsheets read the accent
+      assert.deepEqual([...new Uint8Array(await saved[0]![1].arrayBuffer())].slice(0, 3), [0xef, 0xbb, 0xbf]);
+      // text() drops the mark
+      assert.equal(await saved[0]![1].text(), 'Name\nÁvila\n');
+      assert.equal(saved[1]![1].type, 'image/png');
+      assert.equal(saved[1]![1].size, 4);
+      assert.equal(await evErr('download "" "x"'), 'bad-file');
+    } finally {
+      saver.save = save;
+    }
+    assert.equal(await evErr('download %a.txt "x"'), 'no-download');
   });
 
   test('form posts', async () => {

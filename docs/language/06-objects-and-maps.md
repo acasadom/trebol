@@ -210,6 +210,24 @@ quotes, which makes it the natural way to write JSON. The braces here are double
 delimits the string and the inner pair belongs to the JSON. In the second tutorial the shop fetches its
 orders from a server, and they arrive just like `customer` here.
 
+Spreadsheets speak CSV. `load-csv/as-records` reads it into a map per row, keyed by the first line, and
+`to-csv` writes rows back, with a first line of the keys:
+
+```trebol-console
+>> parts: load-csv/as-records {Part,Stock^/Chain,12^/Brake pad,4}
+== [#("Part" "Chain" "Stock" "12") #("Part" "Brake pad" "Stock" "4")]
+>> to integer! select parts/2 "Stock"
+== 4
+>> to-csv [#(customer: "Lin Wei" bikes: 2) #(customer: "Ada Okafor" bikes: 1)]
+== {customer,bikes
+Lin Wei,2
+Ada Okafor,1
+}
+```
+
+Every field comes in as a string, as `"12"` shows: a CSV file does not say what is a number, and a postal
+code such as `"01001"` must keep its zero. The keys are strings too, the names in the first line.
+
 ## Objects or maps?
 
 Use an **object** when the shape is known and every value has the same fields — an order, a customer, a
