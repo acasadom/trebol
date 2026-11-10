@@ -106,3 +106,16 @@ reference/index
 
 from-rebol
 ```
+
+```{toctree}
+:maxdepth: 1
+:caption: How Trebol is built
+
+guides/architecture
+guides/values
+guides/binding
+guides/evaluator
+guides/ui
+guides/themes
+guides/testing
+```
