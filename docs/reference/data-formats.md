@@ -2,7 +2,7 @@
 
 # Data formats
 
-Reading values from text, and writing and reading them in other formats: JSON, CSV, base 64 and hexadecimal,
+Reading values from text, and writing and reading them in other formats: JSON, CSV, XML, base 64 and hexadecimal,
 and checksums.
 
 (fn-load)=
@@ -103,6 +103,63 @@ ends with a space. Every row ends with a new line. `/with` and `/quote` work as 
 in that language. Integers stay as they are, so an id gains no thousands separator. Where the language
 writes decimals with a comma, the delimiter is a semicolon, which is what spreadsheets in that language
 expect; `/with` still chooses another.
+
+(fn-load-xml)=
+## load-xml
+
+Reads XML text into a block of nodes, each its name, content and attributes; a text is none, the text and none.
+
+```text
+load-xml source
+```
+
+- `source` (`string!` `binary!`)
+
+XML loads in the shape of Red's community codec: every node is three values, its **name**, its
+**content** and its **attributes**. An element's content is a block of nodes, empty for `<linea/>`; its
+attributes are a map, or `none` when it has none. A text is `none`, the text and `none`, so
+`foreach [name content atts] content [...]` walks any content:
+
+```trebol-console
+>> load-xml {<factura id="7"><cliente nif="B123">Ana &amp; Co</cliente><linea/></factura>}
+== [factura [cliente [none "Ana & Co" none] #(nif: "B123") linea [] none] #(id: "7")]
+```
+
+Names are words when they read as one, as the keys of `load-json`, and strings otherwise: `"fe:Facturae"`,
+`"xmlns:fe"`. Entities (`&amp;`, `&#233;`) and CDATA sections load as text; an entity XML does not define
+stays as written. Comments, processing instructions, the `<?xml ...?>` line, the DOCTYPE and the spaces only
+between tags are left out. A tag that is never closed, or closed by another, is a syntax error that says
+on which line.
+
+In a block written in code, `none` is a word, not the `none` value that `load-xml` puts there: both mold
+the same, but they are not equal. Compare loaded XML with `none? name`.
+
+(fn-to-xml)=
+## to-xml
+
+Writes XML text from a block of nodes, each its name, content and attributes, as load-xml gives them.
+
+```text
+to-xml nodes
+```
+
+- `nodes` (`block!`)
+- `/declaration`: Start with the \<?xml ...?\> line a whole document needs
+
+Writes the nodes as `load-xml` gives them, so `to-xml load-xml text` is the same XML without the parts it
+leaves out. Text is escaped (`&amp;`, `&lt;`, `&gt;`, and `&quot;` in attributes); an element with no content
+is written `<linea/>`. In code, the word `none` counts as the `none` value, the attributes can be a map, an
+object or a block of names and values, and the content can be a single value instead of a block, which is
+its text:
+
+```trebol-console
+>> to-xml [total 1250.5 [currency "EUR"]  due 11-Nov-2026 none]
+== {<total currency="EUR">1250.5</total><due>2026-11-11</due>}
+```
+
+Values are written as `to-csv` writes them: dates in ISO 8601, amounts as plain numbers. An attribute whose
+value is `none` is left out. `/declaration` starts with `<?xml version="1.0" encoding="UTF-8"?>`, which a
+whole document needs; without it the text can also go inside other XML.
 
 (fn-enbase)=
 ## enbase

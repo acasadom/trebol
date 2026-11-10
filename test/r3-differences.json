@@ -282,5 +282,65 @@
   {
     "test": "[(to-csv reduce [reduce [10-Nov-2026 10-Nov-2026/9:30 EUR$1250.50 9:30 12345]]) = {2026-11-10,2026-11-10 09:30:00,1250.50,9:30,12345\n}]",
     "why": "Same: CSV."
+  },
+  {
+    "test": "[(mold load-xml {<a id=\"7\"><b>x</b><c/></a>}) = mold [a [b [none \"x\" none] none c [] none] #[id: \"7\"]]]",
+    "why": "load-xml and to-xml are not in this R3; Trebol has XML built in, in the shape of Red's community codec."
+  },
+  {
+    "test": "[d: load-xml {<fe:f xmlns:fe=\"urn:x\"/>} all [d/1 = \"fe:f\" (select d/3 \"xmlns:fe\") = \"urn:x\"]]",
+    "why": "Same: XML."
+  },
+  {
+    "test": "[(mold load-xml \"<a>&lt;&gt;&amp;&quot;&apos;&#233;&#xE9;&nbsp;</a>\") = mold [a [none {<>&\"'éé&nbsp;} none] none]]",
+    "why": "Same: XML."
+  },
+  {
+    "test": "[(mold load-xml \"<a><![CDATA[x<y]]> z</a>\") = mold [a [none \"x<y z\" none] none]]",
+    "why": "Same: XML."
+  },
+  {
+    "test": "[(mold load-xml {<?xml version=\"1.0\"?>\n<!DOCTYPE a [<!ENTITY e \"x\">]>\n<!-- c -->\n<a>\n  <b/>\n</a>\n}) = mold [a [b [] none] none]]",
+    "why": "Same: XML."
+  },
+  {
+    "test": "[(mold load-xml {<a k='v \"q\"'/>}) = mold [a [] #[k: {v \"q\"}]]]",
+    "why": "Same: XML."
+  },
+  {
+    "test": "[(mold load-xml to-binary \"﻿<a>é</a>\") = mold [a [none \"é\" none] none]]",
+    "why": "Same: XML."
+  },
+  {
+    "test": "[foreach [name content atts] second load-xml \"<a><b/>t<c/></a>\" [] true]",
+    "why": "Same: XML."
+  },
+  {
+    "test": "[e: try [load-xml \"<a><b></a>\"] all [e/id = 'xml to logic! find e/message \"closes <b>\"]]",
+    "why": "Same: XML."
+  },
+  {
+    "test": "[(to-xml [a [b [none \"x & <y>\" none] none c [] none] #[id: \"7\"]]) = {<a id=\"7\"><b>x &amp; &lt;y&gt;</b><c/></a>}]",
+    "why": "Same: XML."
+  },
+  {
+    "test": "[(to-xml [a \"Ana\" [k {say \"hi\"}]]) = {<a k=\"say &quot;hi&quot;\">Ana</a>}]",
+    "why": "Same: XML."
+  },
+  {
+    "test": "[(to-xml reduce ['f 11-Nov-2026 none 't $12.50 #[cur: \"EUR\" none: none]]) = {<f>2026-11-11</f><t cur=\"EUR\">12.50</t>}]",
+    "why": "Same: XML."
+  },
+  {
+    "test": "[(to-xml/declaration [a [] none]) = {<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<a/>}]",
+    "why": "Same: XML."
+  },
+  {
+    "test": "[(to-xml []) = \"\"]",
+    "why": "Same: XML."
+  },
+  {
+    "test": "[x: {<r n=\"1\"><s:t a=\"&amp;\">é &lt; 1</s:t><e/></r>} x = to-xml load-xml x]",
+    "why": "Same: XML."
   }
 ]

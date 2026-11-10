@@ -162,7 +162,7 @@ native('load-csv', '["Reads CSV text into a block of rows, each a block of strin
  * (a space before the time, as spreadsheets read it) and amounts as plain numbers, as to-json
  * writes them; the rest formed.
  */
-function fieldText(c: Cell): string {
+export function fieldText(c: Cell): string {
   if (c.t === K.None || c.t === K.Unset) return '';
   if (c.t === K.Date) return (JSON.parse(toJson(c)) as string).replace('T', ' ');
   if (c.t === K.Money) return formatDec(c.v, 2);

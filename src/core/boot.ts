@@ -22,6 +22,7 @@ import './natives/text.ts';
 import './natives/encode.ts';
 import './natives/json.ts';
 import './natives/csv.ts';
+import './natives/xml.ts';
 import './natives/parse.ts';
 import { MEZZANINES } from './mezz.ts';
 

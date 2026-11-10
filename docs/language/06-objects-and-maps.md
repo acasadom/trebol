@@ -228,6 +228,21 @@ Ada Okafor,1
 Every field comes in as a string, as `"12"` shows: a CSV file does not say what is a number, and a postal
 code such as `"01001"` must keep its zero. The keys are strings too, the names in the first line.
 
+Some programs, and many official forms, speak XML. `load-xml` reads it as a block where every element is
+three values — its name, a block with what is inside, and its attributes — and a piece of text is `none`,
+the text and `none`. `to-xml` writes it back:
+
+```trebol-console
+>> invoice: load-xml {<invoice id="7"><customer>Lin Wei</customer><paid/></invoice>}
+== [invoice [customer [none "Lin Wei" none] none paid [] none] #(id: "7")]
+>> invoice/3/id
+== "7"
+>> to-xml [part "Chain" [stock 12]]
+== {<part stock="12">Chain</part>}
+```
+
+The [reference](../reference/data-formats.md) says more about both.
+
 ## Objects or maps?
 
 Use an **object** when the shape is known and every value has the same fields — an order, a customer, a
