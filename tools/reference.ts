@@ -16,7 +16,8 @@ import { readdirSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'nod
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { K, spell, mold, form, type Cell, type BlockCell, type Ctx } from '../src/core/index.ts';
+import { K, spell, mold, form, load, intern, ctxFind, type Cell, type BlockCell, type Ctx, type MapCell, type ObjectCell } from '../src/core/index.ts';
+import { DEFAULT_THEME, THEME_WORDS, LOOKS } from '../src/host/theme.ts';
 import { startHost, startUi } from '../src/host/index.ts';
 
 const DOCS = join(import.meta.dirname, '..', 'docs');
@@ -48,20 +49,33 @@ export function readTopics(dir = NOTES): Topic[] {
   });
 }
 
-/** The functions a program sees, by name: the UI's and the host's before lib's. */
-export async function functions(): Promise<Map<string, Cell>> {
+/** What the reference describes, read from a runtime with the UI dialect loaded. */
+interface World {
+  /** The functions a program sees, by name: the UI's and the host's before lib's. */
+  fns: Map<string, Cell>;
+  /** The UI dialect's styles: name -> prototype face. */
+  styles: Map<string, ObjectCell>;
+  /** The face every style starts from. */
+  face: ObjectCell;
+}
+
+export async function world(): Promise<World> {
   const loader = { base: 'file:///', read: (href: string) => readFile(fileURLToPath(href), 'utf8') };
   const host = startHost({ loader });
   await startUi(host);
-  const out = new Map<string, Cell>();
+  const fns = new Map<string, Cell>();
   const add = (ctx: Ctx) => ctx.keys.forEach((k, i) => {
     const v = ctx.vals[i];
     const name = spell(k);
-    if (v !== undefined && isFunction(v) && !HOST_ONLY.test(name) && !out.has(name)) out.set(name, v);
+    if (v !== undefined && isFunction(v) && !HOST_ONLY.test(name) && !fns.has(name)) fns.set(name, v);
   });
   add(host.rt.user);
   add(host.rt.lib);
-  return out;
+  const user = (name: string) => host.rt.user.vals[ctxFind(host.rt.user, intern(name))]!;
+  const map = user('styles') as MapCell;
+  const styles = new Map<string, ObjectCell>();
+  for (let i = 0; i + 1 < map.s.data.length; i += 2) styles.set(form(map.s.data[i]!), map.s.data[i + 1] as ObjectCell);
+  return { fns, styles, face: user('face') as ObjectCell };
 }
 
 function isFunction(c: Cell): boolean {
@@ -157,17 +171,117 @@ function describe(name: string, fn: Cell): string {
   return out.join('\n\n');
 }
 
+/** The UI dialect's source, where its words are listed. */
+const UI_TRB = join(import.meta.dirname, '..', 'src', 'ui', 'ui.trb');
+const BROWSER_TS = join(import.meta.dirname, '..', 'src', 'host', 'browser.ts');
+
+/** The lists of words of the dialect in ui.trb (`roles: [primary ...]`), by the name of each list. */
+function wordLists(): Map<string, string[]> {
+  const code = load(readFileSync(UI_TRB, 'utf8'));
+  const d = code.s.data;
+  const out = new Map<string, string[]>();
+  for (let i = code.i; i + 1 < d.length; i++) {
+    const c = d[i]!;
+    const next = d[i + 1]!;
+    if (c.t === K.SetWord && next.t === K.Block && WORD_LISTS[spell(c.sym)] !== undefined) {
+      out.set(spell(c.sym), next.s.data.slice(next.i).map(w => form(w)));
+    }
+  }
+  return out;
+}
+
+/** The lists of ui.trb the dialect reads words from, and what a word of each is. */
+const WORD_LISTS: Record<string, string> = {
+  roles: 'A role', sizes: 'A size', aligns: 'An alignment of the children', valigns: 'A vertical alignment of a row\'s children',
+  flags: 'A flag', 'simple-rules': 'A rule', 'rule-words': 'A word followed by its value',
+};
+
+/** The events a face can have a handler for: the ones the dialect and the host run. */
+function events(): string[] {
+  const names = new Set<string>();
+  for (const m of readFileSync(UI_TRB, 'utf8').matchAll(/'(on-[a-z]+(?:-[a-z]+)*)/g)) names.add(m[1]!);
+  for (const m of readFileSync(BROWSER_TS, 'utf8').matchAll(/['"](on-[a-z]+(?:-[a-z]+)*)['"]/g)) names.add(m[1]!);
+  return [...names].sort();
+}
+
+/** The value a face field holds, as it would be written in a layout. */
+function fieldOf(obj: ObjectCell, name: string): Cell | undefined {
+  const i = ctxFind(obj.ctx, intern(name));
+  return i < 0 ? undefined : obj.ctx.vals[i];
+}
+
+/** A page of the reference that is not about functions: what its sections are and what is said of each. */
+interface Kind { names: (w: World) => string[]; prefix: string; describe: (w: World, name: string) => string }
+
+const KINDS: Record<string, Kind> = {
+  'styles.md': {
+    names: w => [...w.styles.keys()],
+    prefix: 'style',
+    describe: (w, name) => {
+      const proto = w.styles.get(name)!;
+      const base = form(fieldOf(proto, 'style')!);
+      // what it starts with that a plain face does not
+      const own = w.face.ctx.keys.map(spell).filter(k => k !== 'style' && mold(fieldOf(proto, k)!) !== mold(fieldOf(w.face, k)!));
+      const said: string[] = [];
+      if (base !== name) said.push(`Made from [\`${base}\`](#${dialectLabel('style', base)}).`);
+      if (own.length > 0) said.push(`It starts with ${own.map(k => `\`${k}: ${mold(fieldOf(proto, k)!)}\``).join(', ')}.`);
+      return said.join(' ');
+    },
+  },
+  'dialect.md': {
+    names: () => [...new Set([...[...wordLists().values()].flat(), ...events()])],
+    prefix: 'word',
+    describe: (_w, name) => {
+      if (name.startsWith('on-')) return 'An event: the block after it runs when it happens.';
+      const lists = [...wordLists()].filter(([, ws]) => ws.includes(name)).map(([l]) => WORD_LISTS[l]!.toLowerCase());
+      return lists.length === 0 ? '' : `${lists.join('; ').replace(/^./, c => c.toUpperCase())}.`;
+    },
+  },
+  'theme.md': {
+    names: () => ['look', ...Object.keys(DEFAULT_THEME)],
+    prefix: 'theme',
+    describe: (_w, name) => {
+      const words = name === 'look' ? Object.keys(LOOKS) : THEME_WORDS[name];
+      const start = name === 'look' ? 'minimal' : (DEFAULT_THEME as unknown as Record<string, unknown>)[name];
+      const said = words === undefined ? [] : [`Takes ${words.map(v => `\`${v}\``).join(', ')}.`];
+      // accent's default follows base, so its notes say it
+      if (start !== null && start !== undefined && name !== 'accent') said.push(`Without it, \`${String(start)}\`.`);
+      return said.join(' ');
+    },
+  },
+};
+
+function dialectLabel(prefix: string, name: string): string {
+  return label(name).replace(/^fn-/, `${prefix}-`);
+}
+
 /** Every function, for an operator to name the one it calls. */
 let known = new Map<string, Cell>();
 
 /** The pages of docs/reference, by file name. */
 export async function pages(): Promise<Map<string, string>> {
-  known = await functions();
+  const w = await world();
+  known = w.fns;
   const topics = readTopics();
   const out = new Map<string, string>();
   const where = new Map<string, string>();
   for (const t of topics) {
     const body = [`# ${t.title}`, t.intro];
+    const kind = KINDS[t.file.replace(/^\d+-/, '')];
+    if (kind !== undefined) {
+      const want = kind.names(w);
+      const have = t.sections.map(s => s.name);
+      const missing = want.filter(n => !have.includes(n));
+      const unknown = have.filter(n => !want.includes(n));
+      if (missing.length > 0) throw new Error(`${t.file}: no section for ${missing.join(' ')}`);
+      if (unknown.length > 0) throw new Error(`${t.file}: ${unknown.join(' ')} not in the dialect`);
+      for (const s of t.sections) {
+        const said = kind.describe(w, s.name);
+        body.push(`(${dialectLabel(kind.prefix, s.name)})=\n## ${esc(s.name)}\n\n${[said, s.notes].filter(x => x !== '').join('\n\n')}`);
+      }
+      out.set(t.file.replace(/^\d+-/, ''), `${GENERATED}\n\n${body.filter(b => b !== '').join('\n\n')}\n`);
+      continue;
+    }
     for (const s of t.sections) {
       const fn = known.get(s.name);
       if (fn === undefined) throw new Error(`${t.file}: ${s.name} is not a function`);
@@ -176,6 +290,9 @@ export async function pages(): Promise<Map<string, string>> {
       body.push(`(${label(s.name)})=\n## ${esc(s.name)}\n\n${describe(s.name, fn)}` + (s.notes === '' ? '' : `\n\n${s.notes}`));
     }
     out.set(t.file.replace(/^\d+-/, ''), `${GENERATED}\n\n${body.filter(b => b !== '').join('\n\n')}\n`);
+  }
+  for (const file of Object.keys(KINDS)) {
+    if (!topics.some(t => t.file.replace(/^\d+-/, '') === file)) throw new Error(`docs/_reference has no page for ${file}`);
   }
   const missing = [...known.keys()].filter(n => !where.has(n));
   if (missing.length > 0) throw new Error(`no topic in docs/_reference for: ${missing.join(' ')}`);

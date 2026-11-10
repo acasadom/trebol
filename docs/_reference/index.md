@@ -9,5 +9,6 @@ An entry starts with what the function does and how it is called: its name, then
 `append/only`, that change what a function does; the arguments a refinement takes follow the call's own.
 **Gives** is the kind of value it returns, when the function says so.
 
-The functions are grouped by what they work on. The tutorials show them at work: the
+The functions are grouped by what they work on, and the last pages are the UI dialect's: its styles, its words
+and the words of its theme. The tutorials show them at work: the
 [language tutorial](../language/01-getting-started.md) and [building screens](../ui/01-first-screen.md).

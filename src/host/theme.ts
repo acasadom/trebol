@@ -38,6 +38,17 @@ export const DEFAULT_THEME: ThemeParams = {
   color: 1, line: 1, depth: 'soft', icons: 'round', skin: 'modern',
 };
 
+/** The theme parameters that take a word, and the words each takes. */
+export const THEME_WORDS: Record<string, readonly string[]> = {
+  neutral: ['cool', 'neutral', 'warm'],
+  density: ['compact', 'normal', 'comfortable'],
+  radius: ['sharp', 'soft', 'round'],
+  mode: ['light', 'dark', 'auto'],
+  depth: ['flat', 'soft', 'lifted'],
+  icons: ['fine', 'round', 'sharp', 'bold'],
+  skin: ['modern', 'classic', 'cupertino', 'fusion', 'fluent'],
+};
+
 /** The looks: complete sets of parameters with a name. `theme [look: civic base: 200]` starts from one. */
 export const LOOKS: Record<string, Partial<ThemeParams>> = {
   minimal: {},

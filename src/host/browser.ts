@@ -21,7 +21,7 @@ import { logic,
 } from '../core/index.ts';
 import { mapAt, startHost, startUi, runSource, report, shown, translate, uiText, activeLanguage, editLocal, readLocal, readDate, weekStart, LOCAL_KINDS, type Host } from './index.ts';
 import { spawn, taskResult } from './scheduler.ts';
-import { themeCss, DEFAULT_THEME, LOOKS, type ThemeParams } from './theme.ts';
+import { themeCss, DEFAULT_THEME, LOOKS, THEME_WORDS, type ThemeParams } from './theme.ts';
 import { iconNode } from './icons.ts';
 import { parseMd, printMd, safeHref, type Block, type Inline } from './markdown.ts';
 import { fileHandle } from './net.ts';
@@ -3251,16 +3251,6 @@ native('show', '["Draws a face and everything in it." face [object!]]', (_t, f) 
   }
   return value(face);
 });
-
-const THEME_WORDS: Record<string, readonly string[]> = {
-  neutral: ['cool', 'neutral', 'warm'],
-  density: ['compact', 'normal', 'comfortable'],
-  radius: ['sharp', 'soft', 'round'],
-  mode: ['light', 'dark', 'auto'],
-  depth: ['flat', 'soft', 'lifted'],
-  icons: ['fine', 'round', 'sharp', 'bold'],
-  skin: ['modern', 'classic', 'cupertino', 'fusion', 'fluent'],
-};
 
 /** Theme parameters from a theme object, keeping defaults for anything missing or unknown. */
 export function themeParams(obj: ObjectCell): ThemeParams {
