@@ -1,56 +1,73 @@
 # Trebol
 
-Un lenguaje derivado de Rebol para hacer interfaces web (y de escritorio) bonitas
-sin escribir HTML ni CSS. Homoicónico: las interfaces son datos que se generan y
-transforman con el propio lenguaje.
+*Rebol's language, in the browser, for beautiful interfaces with no HTML or CSS.*
+
+Trebol is [Rebol](http://www.rebol.com), the language Carl Sassenrath designed, implemented again in
+TypeScript so that it runs in a web browser. On top of it is a user interface dialect in the spirit of
+Rebol's VID: you describe what a screen is for, and Trebol draws it, accessible, in light and dark, on a
+phone or a desktop.
 
 ```rebol
 view [
-    title "Clients"
+    title "New repair"
     form [
-        field name "Name" required
-        field email "Email" required email
+        field customer "Customer" required
+        money price "Price" EUR min 0
         submit "Save" [save values]
     ]
 ]
 ```
 
-> Estado: **fase 3** (UI mínima). El lenguaje, la red y un primer dialecto de
-> UI funcionan: formularios con validación, tema claro y oscuro, sin CSS.
-> Diseño completo y hoja de ruta en [`docs/design.md`](docs/design.md).
+![A sign-up form in the light theme](docs/screenshots/signup-light.png)
 
-![Formulario de alta en tema claro](docs/screenshots/signup-light.png)
+Code is data: a screen is a block, so it can be built, stored, checked and changed with the language itself,
+like any other value.
 
-## Requisitos
+## What is in it
 
-Node.js 22.18 o superior. No hay paso de compilación: Node ejecuta el TypeScript directamente.
+- **The language**: Rebol 3's values and evaluation, with exact 64-bit integers, exact money, dates, `parse`,
+  objects, maps, errors as values and JSON built in. Where Rebol 3 and Red differ, Trebol usually takes Red's
+  way.
+- **Tasks that never block**: `fetch`, `wait` and the rest pause only the task that asked, anywhere, even in
+  the middle of a `parse`. HTTP, WebSocket and server-sent events are built in.
+- **The UI dialect**: forms with validation, tables, lists, dialogs, toasts, tabs, menus, trees, screens with
+  their own links, languages, nine looks and five skins, all from a theme of a few parameters. No CSS.
+- **A console** like Rebol's, and a development server that reloads on save.
+
+## Getting started
+
+Trebol needs Node.js 22.18 or later. There is no build step: Node runs the TypeScript directly.
 
 ```sh
 npm install
-npm run check        # tipos + tests
+npm run check        # type check and every test
+npm run trb          # the console: >> 1 + 2 * 3  == 9
+npm run dev          # the examples, at http://localhost:5173/examples/signup/
 ```
 
-## Probarlo
+An app is a folder with an `app.trb`; `npx trebol dev that-folder` serves it, with no HTML to write.
 
-```sh
-npm run dev          # y abre http://localhost:5173/examples/signup/
-```
+## Documentation
 
-```sh
-echo 'print 1 + 2 * 3' | npm run trb                 # evalúa (9: sin precedencia)
-npm run trb -- fichero.trb
-npm run mold -- examples/load-tour.trb          # lee el fichero y lo vuelve a escribir
-npm run mold -- --all examples/load-tour.trb    # con sintaxis de construcción
-echo '[a: 1 b: 30-Oct-2026 c: $12.50]' | npm run mold
-```
+`npm run docs:serve` builds the documentation and serves it at http://localhost:8000/. It has two tutorials,
+one for the language and one for the screens, where every example is run by the test suite and every UI
+example is the real app running under its code; a reference of every function; a guide for people who know
+Rebol; and guides to how Trebol is built.
 
-## Estructura
+## Layout
 
-| Carpeta | Contenido |
+| Folder | What is there |
 | --- | --- |
-| `src/core` | núcleo del lenguaje, portable a Zig |
-| `src/host` | host del navegador (fase 2) |
-| `src/ui` | dialecto de UI (fase 3) |
-| `test` | tests en TS y en Trebol (`test/trebol`), incluida una prueba de ida y vuelta con valores aleatorios |
-| `examples` | ficheros `.trb` de ejemplo |
-| `docs` | diseño y decisiones |
+| `src/core` | the language: values, `load` and `mold`, binding, the evaluator, natives, `parse` |
+| `src/host` | the world: tasks, network, files, the console, the DOM and the theme |
+| `src/ui` | the UI dialect, written in Trebol |
+| `test` | tests in TypeScript, and the language suites in Trebol (`test/trebol`) |
+| `examples` | sample apps: `signup`, `clients`, `gallery`, `screens`, `designer` |
+| `docs` | the documentation site |
+| `tools` | the `trebol` command, the console, the documentation builders |
+
+## Thanks
+
+Trebol stands on the work of Carl Sassenrath and REBOL Technologies, Nenad Rakočević and the Red team,
+Oldes and the contributors to his Rebol 3, Brian Dickens and the Ren-C project, and Rasmus Andersson's
+Inter typeface. The first page of the documentation says what each of them gave.
