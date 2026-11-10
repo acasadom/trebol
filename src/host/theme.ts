@@ -6,6 +6,8 @@
 // comes from the theme (`base`, `accent`, `neutral`). `contrast()` checks it
 // and the tests run it over every hue.
 
+import { DRAW_COLORS } from './draw.ts';
+
 /** modern: today's flat controls; classic recalls Rebol/View, cupertino the Mac, fusion Qt, fluent Windows 11. */
 export type Skin = 'modern' | 'classic' | 'cupertino' | 'fusion' | 'fluent';
 
@@ -260,6 +262,8 @@ function colorVars(t: ThemeParams, dark: boolean): string {
   if (t.skin === 'fusion') lines.push(`  --tb-face-hi: ${g(dark ? 0.37 : 0.99)};`, `  --tb-face-lo: ${g(dark ? 0.32 : 0.91)};`);
   // focus is drawn in the color of the text, and what is hovered or chosen is a shade of it
   if (t.skin === 'fluent') lines.push(`  --tb-focus-ring: ${css(p.text)};`, `  --tb-subtle: ${css(p.text, dark ? 0.08 : 0.06)};`);
+  // Red's color words, for drawings and charts: each one light enough, or dark enough, for this mode
+  for (const [name, c] of Object.entries(DRAW_COLORS)) lines.push(`  --tb-c-${name}: ${css({ l: dark ? c.dark : c.light, c: c.c, h: c.h })};`);
   lines.push(`  color-scheme: ${dark ? 'dark' : 'light'};`);
   return lines.join('\n');
 }
@@ -689,6 +693,18 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
 .tb-scroll:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-focus-ring); }
 
 .tb-image { display: block; max-width: 100%; height: auto; border-radius: var(--tb-radius); }
+.tb-canvas { display: block; max-width: 100%; }
+.tb-canvas > svg { display: block; max-width: 100%; height: auto; overflow: visible; }
+.tb-canvas.tb-fill > svg { width: 100%; }
+.tb-chart { display: flex; flex-direction: column; gap: var(--tb-space-2); align-self: stretch; width: 100%; margin: 0; min-width: 0; }
+.tb-chart-caption { font-weight: 600; }
+.tb-chart-plot { width: 100%; min-width: 0; }
+.tb-chart-plot > svg { display: block; width: 100%; height: auto; overflow: visible; }
+.tb-chart-legend { display: flex; flex-wrap: wrap; gap: var(--tb-space-1) var(--tb-space-4); margin: 0; padding: 0; list-style: none; color: var(--tb-muted); font-size: 13px; }
+.tb-chart-key { display: inline-flex; align-items: center; gap: var(--tb-space-2); }
+.tb-chart-swatch { width: 12px; height: 12px; border-radius: 3px; background: var(--tb-swatch); }
+.tb-chart-empty { margin: 0; color: var(--tb-muted); }
+.tb-chart-caption[hidden], .tb-chart-plot[hidden], .tb-chart-legend[hidden], .tb-chart-empty[hidden] { display: none; }
 .tb-image.tb-small { width: 96px; }
 .tb-image.tb-medium { width: 240px; }
 .tb-image.tb-large { width: 480px; }

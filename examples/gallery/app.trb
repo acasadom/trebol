@@ -95,6 +95,29 @@ view compose/deep/only [
             text "Dennis updated his phone"
         ]
     ]
+    panel "Drawing" [
+        row [
+            canvas 120x120 "A wheel" [
+                pen text line-width 4 fill-pen surface circle 60x60 52
+                line-width 2 pen muted
+                line 60x8 60x112 line 8x60 112x60 line 23x23 97x97 line 97x23 23x97
+                pen primary fill-pen primary circle 60x60 10
+            ]
+            canvas 160x120 "Shapes" [
+                fill-pen orange box 10x10 70x50 6
+                fill-pen teal triangle 90x50 150x50 120x10
+                pen purple line-width 3 fill-pen off arc 40x90 25x25 180 180
+                pen red curve 90x110 120x60 150x110
+            ]
+        ]
+    ]
+    panel "Charts" [
+        global chart bar income "Income by month" [month "Month" repairs "Repairs" parts "Parts"]
+        grid 2 [
+            global chart line visits small "Bikes in" [day "Day" bikes "Bikes"]
+            global chart pie jobs small "Jobs" [job "Job" count "Count"]
+        ]
+    ]
     panel "Icons" [
         row [
             icon #home icon #user icon #mail primary icon #star accent
@@ -145,3 +168,17 @@ files/data: reduce [
     node 9 "Readme.md" none
 ]
 files/data/1/expanded: true
+
+income/data: [
+    #(month: "Jul" repairs: EUR$1200.00 parts: EUR$340.00)
+    #(month: "Aug" repairs: EUR$1450.00 parts: EUR$410.00)
+    #(month: "Sep" repairs: EUR$1620.00 parts: EUR$380.00)
+    #(month: "Oct" repairs: EUR$1380.00 parts: EUR$520.00)
+]
+visits/data: [
+    #(day: "Mon" bikes: 6) #(day: "Tue" bikes: 9) #(day: "Wed" bikes: 4)
+    #(day: "Thu" bikes: 11) #(day: "Fri" bikes: 8)
+]
+jobs/data: [
+    #(job: "Brakes" count: 14) #(job: "Chains" count: 9) #(job: "Wheels" count: 6) #(job: "Other" count: 3)
+]

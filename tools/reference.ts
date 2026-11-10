@@ -18,6 +18,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { K, spell, mold, form, load, intern, ctxFind, type Cell, type BlockCell, type Ctx, type MapCell, type ObjectCell } from '../src/core/index.ts';
 import { DEFAULT_THEME, THEME_WORDS, LOOKS } from '../src/host/theme.ts';
+import { DRAW_COMMANDS, DRAW_COLORS, DRAW_ROLES } from '../src/host/draw.ts';
 import { startHost, startUi } from '../src/host/index.ts';
 
 const DOCS = join(import.meta.dirname, '..', 'docs');
@@ -193,7 +194,7 @@ function wordLists(): Map<string, string[]> {
 /** The lists of ui.trb the dialect reads words from, and what a word of each is. */
 const WORD_LISTS: Record<string, string> = {
   roles: 'A role', sizes: 'A size', aligns: 'An alignment of the children', valigns: 'A vertical alignment of a row\'s children',
-  flags: 'A flag', 'simple-rules': 'A rule', 'rule-words': 'A word followed by its value',
+  flags: 'A flag', 'simple-rules': 'A rule', 'rule-words': 'A word followed by its value', 'chart-kinds': 'A kind of chart',
 };
 
 /** The events a face can have a handler for: the ones the dialect and the host run. */
@@ -235,6 +236,18 @@ const KINDS: Record<string, Kind> = {
       if (name.startsWith('on-')) return 'An event: the block after it runs when it happens.';
       const lists = [...wordLists()].filter(([, ws]) => ws.includes(name)).map(([l]) => WORD_LISTS[l]!.toLowerCase());
       return lists.length === 0 ? '' : `${lists.join('; ').replace(/^./, c => c.toUpperCase())}.`;
+    },
+  },
+  'draw.md': {
+    names: () => Object.keys(DRAW_COMMANDS),
+    prefix: 'draw',
+    describe: (_w, name) => {
+      const said = [`Written \`${DRAW_COMMANDS[name]}\`.`];
+      if (name === 'pen' || name === 'fill-pen') {
+        said.push(`A color is a role of the theme (${DRAW_ROLES.map(r => `\`${r}\``).join(', ')}), one of Red's color words `
+          + `(${Object.keys(DRAW_COLORS).map(c => `\`${c}\``).join(', ')}), or \`off\`.`);
+      }
+      return said.join(' ');
     },
   },
   'theme.md': {

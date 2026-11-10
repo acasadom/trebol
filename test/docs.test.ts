@@ -23,7 +23,8 @@ import { readFile } from 'node:fs/promises';
 import { dirname, join, relative } from 'node:path';
 import type { Server } from 'node:http';
 import { fileURLToPath } from 'node:url';
-import { native, value, blockOf, K, type ObjectCell } from '../src/core/index.ts';
+import { native, value, blockOf, K, ctxFind, intern, NONE, type Cell, type ObjectCell } from '../src/core/index.ts';
+import { drawSvg } from '../src/host/draw.ts';
 import { output, runSource, report, startHost, startUi } from '../src/host/index.ts';
 import { Repl, consoleHost, PROMPT, MORE } from '../tools/console.ts';
 import { startSupplier } from '../examples/supplier.ts';
@@ -33,7 +34,26 @@ const DOCS = fileURLToPath(new URL('../docs/', import.meta.url));
 
 // what the browser host does, done here without a page: a view is drawn, nothing more
 let shown = 0;
-native('show', '[root [object!]]', (_t, f) => { shown++; return value(f.args[0]!); });
+let root: ObjectCell | null = null;
+native('show', '[root [object!]]', (_t, f) => { shown++; root = f.args[0] as ObjectCell; return value(root); });
+
+const field = (face: ObjectCell, name: string): Cell => {
+  const i = ctxFind(face.ctx, intern(name));
+  return i < 0 ? NONE : face.ctx.vals[i]!;
+};
+
+/** What is wrong with the drawing of each canvas under a face, as the browser would warn of it. */
+function drawErrors(face: ObjectCell): string[] {
+  const out: string[] = [];
+  const style = field(face, 'style');
+  if (style.t === K.Word && style.sym === intern('canvas')) {
+    const r = drawSvg(field(face, 'draw'));
+    if (r.error !== null) out.push(r.error);
+  }
+  const pane = field(face, 'pane');
+  if (pane.t === K.Block) for (const c of pane.s.data.slice(pane.i)) if (c.t === K.Object) out.push(...drawErrors(c as ObjectCell));
+  return out;
+}
 native('apply-theme', '[spec [object!]]', (_t, f) => value(f.args[0]!));
 native('route', '[]', () => value(blockOf(K.Block, [])));
 native('set-route', '[route [block!] replace [logic!]]', (_t, f) => value(f.args[0]!));
@@ -101,6 +121,7 @@ async function runApp(code: string, where: string): Promise<void> {
   }
   assert.equal(failed, null, `${where}: the app fails:\n${failed === null ? '' : report(failed)}`);
   assert.ok(shown > before, `${where}: the app shows no view`);
+  assert.deepEqual(drawErrors(root!), [], `${where}: a canvas cannot draw`);
 }
 
 let supplier: Server | null = null;

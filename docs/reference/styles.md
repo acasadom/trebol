@@ -161,6 +161,28 @@ A bar: its value is a percent or a number from 0 to 1; with `none`, it moves wit
 
 An image, from a file or an address: `image %logo.png`.
 
+(style-canvas)=
+## canvas
+
+It starts with `extent: 300x150`.
+
+A drawing: `canvas 120x120 [fill-pen primary circle 60x60 50]`. The pair is the size of its drawing space, and
+the block is in the [draw dialect](draw.md). It is as wide as that size, or narrower when there is no room,
+and `fill` makes it as wide as it can be. With a string, the drawing is a picture with that name for a screen
+reader; without one, it is decoration. Setting `draw` redraws it.
+
+(style-chart)=
+## chart
+
+It starts with `kind: bar`.
+
+A chart of rows: `chart bar income "Income" [month "Month" repairs "Repairs" parts "Parts"]`. The word after
+`chart` is its kind, `bar`, `line`, `area` or `pie`; the next one is its label, as in a table. The first
+column names each point and the others are the series, each in a color of the theme; numbers, money and
+percents show as they do in a table. A pie shows the first series. `stacked` puts the series of a bar or area
+chart on top of each other, and `small`, `medium` or `large` sets its height. The string is its caption.
+Setting `data` redraws it, and a screen reader reads the same numbers as a table.
+
 (style-icon)=
 ## icon
 

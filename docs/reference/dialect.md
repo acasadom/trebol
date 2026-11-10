@@ -220,6 +220,41 @@ A flag.
 
 A table whose headers sort the rows it has, without the program. See `on-sort` for the program to sort them.
 
+(word-stacked)=
+## stacked
+
+A flag.
+
+A chart whose series sit on top of each other, so each bar or area shows the total too.
+
+(word-bar)=
+## bar
+
+A kind of chart.
+
+A chart of bars, side by side for each label.
+
+(word-line)=
+## line
+
+A kind of chart.
+
+A chart of lines, with a dot for each value.
+
+(word-area)=
+## area
+
+A kind of chart.
+
+A chart of lines filled below.
+
+(word-pie)=
+## pie
+
+A kind of chart.
+
+A chart of slices, one for each label, of the first series.
+
 (word-required)=
 ## required
 

@@ -172,9 +172,6 @@ board/data: bookings
 
 `find/same` finds the very booking that was chosen, not another one that looks like it.
 
-## Where to go from here
+## What's next
 
-The screens of this tutorial are the pieces of a whole app: forms, tables, dialogs, screens with links, a
-theme, two languages and a server. `examples/clients` puts them together in a list of
-clients that are added, searched, changed and removed on a server. In Trebol's folder, `npm run dev` serves it,
-server included, on http://localhost:5173/examples/clients/.
+The bookings live on a server now. The last page draws: the shop's logo, and its takings as charts.

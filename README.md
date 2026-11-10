@@ -31,7 +31,8 @@ like any other value.
 - **Tasks that never block**: `fetch`, `wait` and the rest pause only the task that asked, anywhere, even in
   the middle of a `parse`. HTTP, WebSocket and server-sent events are built in.
 - **The UI dialect**: forms with validation, tables, lists, dialogs, toasts, tabs, menus, trees, screens with
-  their own links, languages, nine looks and five skins, all from a theme of a few parameters. No CSS.
+  their own links, languages, drawings with Red's draw dialect, and charts, in nine looks and five skins, all
+  from a theme of a few parameters. No CSS.
 - **A console** like Rebol's, and a development server that reloads on save.
 
 ## Getting started

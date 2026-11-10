@@ -128,6 +128,26 @@ An upload or a lookup takes more than one.
 
 A table whose headers sort the rows it has, without the program. See `on-sort` for the program to sort them.
 
+## stacked
+
+A chart whose series sit on top of each other, so each bar or area shows the total too.
+
+## bar
+
+A chart of bars, side by side for each label.
+
+## line
+
+A chart of lines, with a dot for each value.
+
+## area
+
+A chart of lines filled below.
+
+## pie
+
+A chart of slices, one for each label, of the first series.
+
 ## required
 
 The field must have a value.

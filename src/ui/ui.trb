@@ -70,6 +70,10 @@ face: make object! [
     sortable: false     ; a table the host sorts, from the rows it has, when a header is chosen
     sorted: none        ; a table: the order shown, [column asc] or [column desc]
     totals: none        ; a table: a row shown at the foot, never chosen nor sorted
+    kind: none          ; a chart: bar line area pie
+    stacked: false      ; a chart: its series one on top of another
+    draw: none          ; a canvas: the block of the draw dialect it shows
+    extent: none        ; a canvas: the size of its drawing space, a pair
     form: none          ; the enclosing form, if any
     root: none          ; the view this face belongs to
     submit: false
@@ -80,7 +84,7 @@ styles: make map! []
 
 container-styles: [view column row form panel grid dialog scroll split toolbar desktop]
 input-styles: [field password number money date area rich check toggle choice radio upload lookup rows]
-data-styles: [table list tree]
+data-styles: [table list tree chart]
 
 foreach [name base] [
     view column  column column  row row  form form  panel panel  grid grid  scroll scroll  desktop desktop
@@ -89,6 +93,7 @@ foreach [name base] [
     toggle toggle  radio radio  upload upload  lookup lookup  progress progress  image image  icon icon
     button button  link link  tile tile  table table  list list  tabs tabs  tab tab
     toolbar toolbar  breadcrumb breadcrumb  tree tree  screens screens  screen screen  rows rows  entry entry
+    canvas canvas  chart chart
 ] [
     poke styles name make face [style: base]
 ]
@@ -98,6 +103,8 @@ poke styles 'dialog make face [style: 'dialog hidden: true]
 poke styles 'tabs make face [style: 'tabs value: 1]
 poke styles 'screens make face [style: 'screens entering: false]   ; entering: the screen on show is still the old one
 poke styles 'split make face [style: 'split value: 1]   ; value: the pane shown on narrow screens
+poke styles 'canvas make face [style: 'canvas extent: 300x150]
+poke styles 'chart make face [style: 'chart kind: 'bar]
 
 stylize: function [
     "Defines styles from existing ones: name: base [field: value ...]"
@@ -118,7 +125,8 @@ roles: [primary accent danger success warning muted]
 sizes: [small medium large]
 aligns: [left center right spread]
 valigns: [top middle bottom]
-flags: [fill fit hidden disabled readonly inert narrow-only wide-only linked drag drop reorder multiple sortable]
+flags: [fill fit hidden disabled readonly inert narrow-only wide-only linked drag drop reorder multiple sortable stacked]
+chart-kinds: [bar line area pie]
 simple-rules: [required email url integer]
 letter: charset [#"a" - #"z" #"A" - #"Z"]
 rule-words: [min max length pattern match check check-async calc width pad gap menu accept known links sorted]
@@ -196,7 +204,7 @@ text-of: func [t] [either lit-word? :t [to word! t] [t]]
 ; The faces of a block of the dialect; labels collects [word face ...].
 build-faces: function [
     spec [block!] labels [block!]
-    /local label global? style-word f proto n s b w a i v ev
+    /local label global? style-word f proto n s b w a i v ev p
 ] [
     out: copy []
     modifier: [
@@ -223,6 +231,7 @@ build-faces: function [
                 find data-styles f/style [f/columns: columns-of b]
                 ; the first block holds the items, the second is the action
                 all [f/style = 'breadcrumb  none? f/data] [f/data: crumbs-of b]
+                f/style = 'canvas [f/draw: b]
                 f/style = 'tabs [f/pane: tabs-of b labels]
                 f/style = 'screens [f/data: screens-of b]
                 find [choice radio] f/style [f/options: options-of b]
@@ -235,6 +244,8 @@ build-faces: function [
         | set v lit-word! (f/value: to word! v)
         | set v lit-path! (f/value: to path! v)
         | set n integer! (f/cols: n)
+        | set p pair! (f/extent: p)
+        | set w word! if (all [f/style = 'chart  find chart-kinds w]) (f/kind: w)
         | 'min set n [number! | money! | date!] (add-rule f reduce ['min n])
         | 'max set n [number! | money! | date!] (add-rule f reduce ['max n])
         | 'length set a integer! set n integer! (add-rule f reduce ['length a n])
@@ -274,6 +285,8 @@ build-faces: function [
                 if label [label-face label labels global? f]
             )
             opt [if (find input-styles f/style) set n word! if (field-name? n) (f/name: n)]
+            ; chart bar income [...]: the kind comes before the label
+            opt [if (f/style = 'chart) set n word! if (find chart-kinds n) (f/kind: n)]
             ; table clients [...] is the same as clients: table [...]
             opt [if (find data-styles f/style) set n word! if (all [field-name? n  n <> 'key]) (label-face n labels global? f)]
             any modifier

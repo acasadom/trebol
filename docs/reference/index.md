@@ -38,6 +38,7 @@ screens
 styles
 dialect
 theme
+draw
 ```
 
 ## Every function
