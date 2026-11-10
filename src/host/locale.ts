@@ -208,6 +208,21 @@ export function shown(c: Cell, lang: string): string {
   return formatLocal(c, lang) ?? form(c);
 }
 
+/** A size in bytes as it reads in a language: 89 bytes, 12 kB, 3.4 MB. */
+export function fileSize(bytes: number, lang: string): string {
+  const units = ['byte', 'kilobyte', 'megabyte', 'gigabyte'];
+  let n = bytes;
+  let u = 0;
+  while (n >= 1000 && u < units.length - 1) { n /= 1000; u++; }
+  try {
+    // short bytes read "89 byte" in English: whole words for bytes, symbols above
+    const display = u === 0 ? 'long' : 'short';
+    return new Intl.NumberFormat(lang, { style: 'unit', unit: units[u], unitDisplay: display, maximumFractionDigits: u === 0 ? 0 : 1 }).format(n);
+  } catch {
+    return `${bytes} B`;
+  }
+}
+
 native('format-local', '["The value as text in the way of a language: dates, numbers, money." value [any-type!] language [word! string!]]', (_t, f) => {
   const l = f.args[1]!;
   const lang = l.t === K.String ? text(l as StringCell) : spell((l as WordCell).sym);

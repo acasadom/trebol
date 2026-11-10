@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { K, NONE, TRUE, FALSE, native, value, mold, form, string, text, money, blockOf, errorField, type Cell, type ObjectCell, type StringCell } from '../src/core/index.ts';
-import { startHost, startUi, runSource, readLocal, editLocal, readDate, weekStart, translate, uiText, type Host } from '../src/host/index.ts';
+import { startHost, startUi, runSource, readLocal, editLocal, readDate, weekStart, fileSize, translate, uiText, type Host } from '../src/host/index.ts';
 import { fileHandle } from '../src/host/net.ts';
 import { themeCss, DEFAULT_THEME, LOOKS, palette, contrast, CONTRAST_PAIRS } from '../src/host/theme.ts';
 
@@ -800,6 +800,13 @@ test('text that is not a number, amount or date stays, with its message', async 
     append out reduce [fs/2/typed fs/2/error]
     out`);
   assert.equal(r, '[[none "abc" "Enter a number"] [none "abc" "Enter an amount"] [none "abc" "Enter a valid date"] 12 none email none "Enter an amount" none none]');
+});
+
+test('file sizes read in the language: bytes as words, larger sizes as symbols', () => {
+  assert.equal(fileSize(1, 'en'), '1 byte');
+  assert.equal(fileSize(89, 'en'), '89 bytes');
+  assert.equal(fileSize(12_400, 'en'), '12.4 kB');
+  assert.equal(fileSize(3_400_000, 'es'), '3,4 MB');
 });
 
 test('upload fields keep a block of chosen files; refused ones give a message', async () => {

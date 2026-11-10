@@ -19,7 +19,7 @@ import { logic,
   K, NONE, TRUE, FALSE, native, value, string, form, money, decToNumber, decFromNumber, ctxFind, intern, spell, text, canon, blockOf, wordOf, char, compare,
   type Cell, type MapCell, type ObjectCell, type BlockCell, type WordCell, type StringCell, type Ctx, type Sym,
 } from '../core/index.ts';
-import { mapAt, startHost, startUi, runSource, report, shown, translate, uiText, activeLanguage, editLocal, readLocal, readDate, weekStart, LOCAL_KINDS, type Host } from './index.ts';
+import { mapAt, startHost, startUi, runSource, report, shown, translate, uiText, activeLanguage, editLocal, readLocal, readDate, weekStart, fileSize, LOCAL_KINDS, type Host } from './index.ts';
 import { spawn, taskResult } from './scheduler.ts';
 import { themeCss, DEFAULT_THEME, LOOKS, THEME_WORDS, type ThemeParams } from './theme.ts';
 import { iconNode } from './icons.ts';
@@ -1407,19 +1407,6 @@ function chooseFiles(face: ObjectCell, files: File[]): void {
   for (const f of taken) cells.push(string(f.name), int(f.size), string(f.type), fileHandle(f));
   const refused = files.filter(f => !accepts(f, list)).map(f => string(f.name));
   void fire('ui-files', face, blockOf(K.Block, cells), blockOf(K.Block, refused));
-}
-
-/** A size in bytes as it reads in a language: 12 kB, 3.4 MB. */
-function fileSize(bytes: number, lang: string): string {
-  const units = ['byte', 'kilobyte', 'megabyte', 'gigabyte'];
-  let n = bytes;
-  let u = 0;
-  while (n >= 1000 && u < units.length - 1) { n /= 1000; u++; }
-  try {
-    return new Intl.NumberFormat(lang, { style: 'unit', unit: units[u], unitDisplay: 'short', maximumFractionDigits: u === 0 ? 0 : 1 }).format(n);
-  } catch {
-    return `${bytes} B`;
-  }
 }
 
 /** A link as the page would follow it, relative ones too; null unless it is http or https. */

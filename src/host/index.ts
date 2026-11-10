@@ -13,7 +13,7 @@ import { makeScheduler, spawn, taskResult, type Scheduler } from './scheduler.ts
 
 export { output } from './natives.ts';
 export { fileHandle } from './net.ts';
-export { mapAt, formatLocal, activeLanguage, shown, translate, uiText, editLocal, readLocal, readDate, weekStart, LOCAL_KINDS } from './locale.ts';
+export { mapAt, formatLocal, activeLanguage, shown, translate, uiText, editLocal, readLocal, readDate, weekStart, fileSize, LOCAL_KINDS } from './locale.ts';
 export type { Loader } from './modules.ts';
 export * from './scheduler.ts';
 
