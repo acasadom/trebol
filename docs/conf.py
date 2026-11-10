@@ -19,7 +19,8 @@ source_suffix = {".md": "markdown"}
 root_doc = "index"
 
 # design.md is the working design log, not part of the published documentation.
-exclude_patterns = ["_build", "design.md", "screenshots"]
+# _reference holds the notes tools/reference.ts writes the reference from (npm run reference).
+exclude_patterns = ["_build", "design.md", "screenshots", "_reference"]
 
 html_theme = "furo"  # modern, responsive, dark-mode; install via docs/requirements.txt
 html_title = "Trebol"

@@ -95,6 +95,13 @@ ui/09-server
 
 ```{toctree}
 :maxdepth: 1
+:caption: Reference
+
+reference/index
+```
+
+```{toctree}
+:maxdepth: 1
 :caption: Guides
 
 from-rebol

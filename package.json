@@ -24,6 +24,7 @@
     "trb": "node --disable-warning=ExperimentalWarning tools/cli.ts",
     "dev": "node tools/cli.ts dev --api examples/api.ts",
     "bench": "node --disable-warning=ExperimentalWarning tools/cli.ts tools/bench.trb",
+    "reference": "node --disable-warning=ExperimentalWarning tools/reference.ts",
     "r3check": "node --disable-warning=ExperimentalWarning tools/r3check.ts",
     "supplier": "node --disable-warning=ExperimentalWarning examples/supplier.ts",
     "docs:serve": "npm run docs && node --disable-warning=ExperimentalWarning tools/cli.ts dev docs/_build/html --port 8000",
