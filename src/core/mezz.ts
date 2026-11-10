@@ -216,6 +216,8 @@ also: func ["Returns the first value, after evaluating the second." a [any-type!
 
 pi: 3.141592653589793
 
+as-pair: func ["Makes a pair of two numbers: as-pair 3 4 is 3x4." x [number!] y [number!]] [make pair! reduce [x y]]
+
 ajoin: func ["Reduces a block and joins the values into a string, with no spaces." block [block!]] [
     to string! reduce block
 ]

@@ -31,6 +31,18 @@ to type value
 - `type` (`datatype!` `any-value!`)
 - `value` (`any-type!`)
 
+(fn-as-pair)=
+## as-pair
+
+Makes a pair of two numbers: as-pair 3 4 is 3x4.
+
+```text
+as-pair x y
+```
+
+- `x` (`number!`)
+- `y` (`number!`)
+
 (fn-construct)=
 ## construct
 

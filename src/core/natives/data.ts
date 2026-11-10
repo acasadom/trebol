@@ -7,7 +7,7 @@ import { splice } from '../series.ts';
 import * as I64 from '../int64.ts';
 import {
   ownMeta,
-  NONE, UNSET, TRUE, FALSE, string, codePoints, text, datatype, typeset, context, object, blockOf, wordOf,
+  NONE, UNSET, TRUE, FALSE, string, codePoints, text, datatype, typeset, context, object, blockOf, wordOf, pair,
   type Cell, type BlockCell, type StringCell, type WordCell, type Ctx, type ObjectCell, type OpaqueCell, type Series,
 } from '../values.ts';
 import { bindSeries, bindSelf, collectSetWords, copyDeep, ctxFind, getWord, setWord } from '../ctx.ts';
@@ -143,6 +143,16 @@ function makeOf(k: Kind, spec: Cell): Cell | string {
     case K.String: case K.File: case K.Email: case K.Url: case K.Tag:
       if (spec.t === K.Integer) return { t: k, s: { data: [] }, i: 0 };
       return { t: k, s: { data: codePoints(form(spec)) }, i: 0 };
+    case K.Pair: {
+      // make pair! [3 4], as R3
+      if (spec.t !== K.Block) break;
+      const [a, b] = spec.s.data.slice(spec.i);
+      const n = (c: Cell | undefined) => (c?.t === K.Integer ? I64.toNumber(c.v) : c?.t === K.Decimal ? c.v : null);
+      const x = n(a);
+      const y = n(b);
+      if (x === null || y === null) return 'make pair! needs two numbers';
+      return pair(x, y);
+    }
     case K.Typeset: {
       if (spec.t !== K.Block) break;
       const bits = typesOf(spec);

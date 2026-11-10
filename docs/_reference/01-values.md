@@ -9,6 +9,8 @@ have a conversion that starts with `to-`, a shorter way of writing `to`. See
 
 ## to
 
+## as-pair
+
 ## construct
 
 ## type?
