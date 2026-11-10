@@ -122,6 +122,13 @@ describe('layout', () => {
     assert.equal(r, '[3 ["Person" "Company"]]');
   });
 
+  test('a title followed by a block is a group of options, reduced like the rest', async () => {
+    const r = await ev(`city: "City"
+      root: view [choice bike "Bike" ["Adults" ["Road" city] #(en: "Children" es: "Niños") ["Child's"] "Other"]]
+      select first root/pane 'options`);
+    assert.equal(r, '["Adults" ["Road" "City"] #(en: "Children" es: "Niños") ["Child\'s"] "Other"]');
+  });
+
   test('unknown styles are an error', async () => {
     await assert.rejects(runSource(host, 'view [nonsense "x"]'));
   });

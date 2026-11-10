@@ -100,7 +100,9 @@ A check box. Its value is `true` or `false`.
 ## choice
 
 A list to choose one from: `choice bike "Bike" ["Road" "City"]`. An option is a string, both its value and its
-text, or a map with a `value` and a `text`.
+text, or a map with a `value` and a `text`. A title followed by a block is a group of options:
+`["Repairs" ["Brakes" "Gears"] "Other"]`. The title, like a text, may be a text per language or a word of
+the dictionary.
 
 ## toggle
 
@@ -108,7 +110,8 @@ A switch. Its value is `true` or `false`.
 
 ## radio
 
-Options to choose one from, all shown: the same options as a `choice`.
+Options to choose one from, all shown: the same options as a `choice`, groups included, each with its title
+over its options.
 
 ## upload
 

@@ -53,23 +53,59 @@ function optionText(o: Cell): string {
   return t !== null ? translate(t, host.rt) : optionValue(o);
 }
 
-/** The options of a choice or radio. */
-function optionsOf(face: ObjectCell): Cell[] {
+/** A group of options: its title and its options. */
+interface OptionGroup { title: Cell; options: Cell[] }
+
+/** The options of a choice or radio as written: options and groups, a title followed by a block. */
+function entriesOf(face: ObjectCell): (Cell | OptionGroup)[] {
   const opts = get(face, 'options');
-  return opts.t === K.Block ? opts.s.data.slice(opts.i) : [];
+  if (opts.t !== K.Block) return [];
+  const data = opts.s.data.slice(opts.i);
+  const out: (Cell | OptionGroup)[] = [];
+  for (let i = 0; i < data.length; i++) {
+    const next = data[i + 1];
+    if (next !== undefined && next.t === K.Block && data[i]!.t !== K.Block) {
+      out.push({ title: data[i]!, options: next.s.data.slice(next.i) });
+      i++;
+    } else if (data[i]!.t !== K.Block) out.push(data[i]!);
+  }
+  return out;
 }
 
-/** Writes the options of a select: an empty one first, then those of the face. */
+function isGroup(e: Cell | OptionGroup): e is OptionGroup {
+  return 'options' in e;
+}
+
+/** The options of a choice or radio, those of its groups included, in order. */
+function optionsOf(face: ObjectCell): Cell[] {
+  return entriesOf(face).flatMap(e => isGroup(e) ? e.options : [e]);
+}
+
+/** What tells apart two sets of options: their values and where each group starts. */
+function optionsKey(face: ObjectCell): string {
+  return entriesOf(face).map(e => isGroup(e) ? `\u0001${e.options.map(optionValue).join('\0')}` : optionValue(e)).join('\0');
+}
+
+/** Writes the options of a select: an empty one first, then those of the face, each group in an optgroup. */
 function fillSelect(sel: HTMLSelectElement, face: ObjectCell): void {
   const first = el('option');
   first.value = '';
   sel.replaceChildren(first);
-  for (const o of optionsOf(face)) {
+  const option = (o: Cell): HTMLOptionElement => {
     const opt = el('option');
     opt.value = optionValue(o);
     opt.textContent = optionText(o);
-    sel.append(opt);
+    return opt;
+  };
+  for (const e of entriesOf(face)) {
+    if (isGroup(e)) {
+      const group = el('optgroup');
+      group.label = translate(e.title, host.rt);
+      group.append(...e.options.map(option));
+      sel.append(group);
+    } else sel.append(option(e));
   }
+  sel.dataset.options = optionsKey(face);
 }
 
 /** One of Trebol's own texts (`i18n/ui`) in the active language. */
@@ -1248,7 +1284,7 @@ function buildRadio(face: ObjectCell, m: Mounted): HTMLElement {
   error.setAttribute('aria-live', 'polite');
   group.setAttribute('aria-describedby', error.id);
   m.radios = [];
-  for (const o of optionsOf(face)) {
+  const radio = (o: Cell): HTMLElement => {
     const option = el('label', 'tb-check');
     const r = el('input');
     r.type = 'radio';
@@ -1260,8 +1296,23 @@ function buildRadio(face: ObjectCell, m: Mounted): HTMLElement {
     const caption = el('span');
     caption.textContent = optionText(o);
     option.append(r, caption);
-    group.append(option);
-    m.radios.push(r);
+    m.radios!.push(r);
+    return option;
+  };
+  // a group of options: its title over them, the group named by it
+  for (const e of entriesOf(face)) {
+    if (isGroup(e)) {
+      const sub = el('div', 'tb-radio-group');
+      sub.setAttribute('role', 'group');
+      const title = el('span', 'tb-radio-title');
+      title.id = `tb-${nextId++}`;
+      title.textContent = translate(e.title, host.rt);
+      sub.setAttribute('aria-labelledby', title.id);
+      const items = el('div', 'tb-radios');
+      items.append(...e.options.map(radio));
+      sub.append(title, items);
+      group.append(sub);
+    } else group.append(radio(e));
   }
   control.append(group, error);
   wrap.append(label, control);
@@ -1760,7 +1811,11 @@ function syncRadio(m: Mounted, err: string | null): void {
     r.checked = r.value === want;
     r.disabled = flag(f, 'disabled') || flag(f, 'readonly');
   }
-  const group = m.radios![0]?.parentElement!.parentElement;
+  const group = m.radios![0]?.closest('[role="radiogroup"]');
+  group?.querySelectorAll('.tb-radio-title').forEach((t, i) => {
+    const g = entriesOf(f).filter(isGroup)[i];
+    if (g) t.textContent = translate(g.title, host.rt);
+  });
   group?.setAttribute('aria-invalid', err !== null ? 'true' : 'false');
   group?.setAttribute('aria-required', required(f) ? 'true' : 'false');
   m.error!.textContent = err ?? '';
@@ -2939,9 +2994,7 @@ function sync(m: Mounted): void {
     } else {
       // options given by code after the face was made
       if (m.input instanceof HTMLSelectElement) {
-        const values = optionsOf(f).map(optionValue);
-        const has = [...m.input.options].slice(1).map(o => o.value);
-        if (values.join('\0') !== has.join('\0')) fillSelect(m.input, f);
+        if (m.input.dataset.options !== optionsKey(f)) fillSelect(m.input, f);
       }
       const want = v.t === K.None ? str(f, 'typed') ?? '' : style === 'money' || style === 'date' ? display(v) : form(v);
       // never fight the user's typing: with the focus, only a value code set is drawn (set-values
@@ -2955,6 +3008,10 @@ function sync(m: Mounted): void {
         optionsOf(f).forEach((o, i) => {
           const opt = select.options[i + 1];
           if (opt) opt.textContent = optionText(o);
+        });
+        const groups = select.querySelectorAll('optgroup');
+        entriesOf(f).filter(isGroup).forEach((g, i) => {
+          if (groups[i]) groups[i]!.label = translate(g.title, host.rt);
         });
       }
       else if (hint !== null) m.input.placeholder = hint;

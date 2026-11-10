@@ -514,6 +514,8 @@ select.tb-input { appearance: none; background-image: linear-gradient(45deg, tra
 .tb-check input:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-focus-ring); border-radius: 4px; }
 .tb-check input[type="radio"]:focus-visible { border-radius: 50%; }
 .tb-radios { display: flex; flex-wrap: wrap; column-gap: var(--tb-space-5); }
+.tb-radio-group { flex-basis: 100%; }
+.tb-radio-title { display: block; margin-top: var(--tb-space-2); font-size: 13px; font-weight: 600; color: var(--tb-muted); }
 .tb-switch input {
   appearance: none;
   width: 36px;

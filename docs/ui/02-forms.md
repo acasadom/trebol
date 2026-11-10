@@ -56,6 +56,27 @@ Each value has its own type. The estimate is a `money!` and the due date a `date
 store, the same values the first tutorial worked with. A field left empty is `none`. Nothing in the form had
 to turn text into a number.
 
+## Options in groups
+
+A long list of options is easier to read in groups. In the options of a `choice`, a title followed by a block
+is a group, with the block's options under the title; options on their own and groups can go together:
+
+```trebol-ui
+view [
+    form [
+        choice job "Job" [
+            "Repairs" ["Puncture" "Brakes" "Gears"]
+            "Service" ["Basic service" "Full service"]
+            "Something else"
+        ] required
+        submit "Book in" [toast values/job]
+    ]
+]
+```
+
+What the program receives is still the option chosen, here `"Brakes"`, not its group. A `radio` takes groups
+the same way, and shows each title over its options.
+
 ## Rules of your own
 
 The built-in rules cover the usual cases: `required`, `email`, `url`, `integer`, `min` and `max` for
