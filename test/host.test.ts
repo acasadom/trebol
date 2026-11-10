@@ -183,6 +183,14 @@ describe('http', () => {
     assert.equal(await evErr('read-file none'), 'expect-arg');
   });
 
+  test('to-csv/language writes dates and amounts as the language does', async () => {
+    const rows = '[#(id: 12345 due: 11-Nov-2026 at: 11-Nov-2026/9:30 total: EUR$1250.5 rate: 1.5)]';
+    assert.equal(await ev(`to-csv/language ${rows} 'es`), '{id;due;at;total;rate\n12345;11/11/2026;11/11/2026 9:30;1250,50\u00a0€;1,5\n}');
+    assert.equal(await ev(`to-csv/language ${rows} "en-GB"`), '{id,due,at,total,rate\n12345,11/11/2026,11/11/2026 9:30,"€1,250.50",1.5\n}');
+    assert.equal(await ev(`to-csv/language/with ${rows} 'es #"|"`), '{id|due|at|total|rate\n12345|11/11/2026|11/11/2026 9:30|1250,50\u00a0€|1,5\n}');
+    assert.equal(await ev(`to-csv/language [["a" 1]] 'es`), '{a;1\n}');
+  });
+
   test('download hands the browser a file', async () => {
     const saved: Array<[string, Blob]> = [];
     const save = saver.save;

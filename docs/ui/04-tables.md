@@ -209,7 +209,12 @@ workshop/data: bookings
 Every field of a CSV file is text. A table shows it as it is, but code that counts or adds converts it
 first, as `to integer! row/("Bikes")` or `to date! row/("Due back")`. The keys are strings, the names in the
 first line of the file; the table finds them by its column words. `load-csv` reads other delimiters too,
-such as `load-csv/with text #";"`. The [reference](../reference/data-formats.md) lists all of it.
+such as `load-csv/with text #";"`.
+
+`to-csv` writes dates as `2026-11-11` and amounts as `45.50`, which every program reads. A file for a person
+to open in a spreadsheet in Spanish is better as that person writes them: `to-csv/language rows 'es` gives
+`11/11/2026` and `45,50 €`, with semicolons between the fields, as a Spanish spreadsheet expects. The
+[reference](../reference/data-formats.md) lists all of it.
 
 ## What's next
 

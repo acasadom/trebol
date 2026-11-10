@@ -89,12 +89,20 @@ to-csv data
 - `/with delimiter` (`char!` `string!`): Another delimiter than a comma
 - `/skip size` (`integer!`): A flat block, so many fields to a row
 - `/quote qt-char` (`char!`): Another quote character than a double quote
+- `/language lang` (`word!` `string!`): Dates and amounts as a language writes them, and a semicolon where its decimals have a comma
 
 What it takes: a block of blocks (each a row); a block of maps or objects, with a header line from their
 keys in the order first seen; a flat block with `/skip size`; or a map of columns, each key with a block of
-values. A block of plain values is one row. `none` is an empty field; other values are written as `form`
-writes them. A field is put in quotes when it holds the delimiter, a quote or a line break, or starts or
+values. A block of plain values is one row. `none` is an empty field. Dates are written in ISO 8601, as
+`2026-11-10` or `2026-11-10 09:30:00`, and amounts as plain numbers, `1250.50`, as `to-json` writes them:
+every program and spreadsheet reads them. Other values are written as `form` writes them. A field is put in quotes when it holds the delimiter, a quote or a line break, or starts or
 ends with a space. Every row ends with a new line. `/with` and `/quote` work as in `load-csv`.
+
+`/language 'es` writes dates, times, decimals, percents and amounts as that language does, as
+`format-local` does (`11/11/2026`, `1250,50 €`, `1,5`), for a person who opens the file in a spreadsheet
+in that language. Integers stay as they are, so an id gains no thousands separator. Where the language
+writes decimals with a comma, the delimiter is a semicolon, which is what spreadsheets in that language
+expect; `/with` still chooses another.
 
 (fn-enbase)=
 ## enbase

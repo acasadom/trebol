@@ -13,11 +13,14 @@ import { K, isAnyString, isAnyWord } from '../kinds.ts';
 import { canon, intern, spell } from '../symbols.ts';
 import * as I64 from '../int64.ts';
 import { form } from '../mold.ts';
+import { formatDec } from '../dec.ts';
+import { toJson } from './json.ts';
 import {
-  NONE, TRUE, string, block, map, fromCodePoints, codePoints,
+  NONE, TRUE, string, block, map, decimal, text, fromCodePoints, codePoints,
   type Cell, type BlockCell, type StringCell, type WordCell,
 } from '../values.ts';
-import { native, value, fail } from './define.ts';
+import type { Step } from '../eval.ts';
+import { native, value, fail, hostCall } from './define.ts';
 
 const used = (c: Cell): boolean => c === TRUE;
 const CR = 13;
@@ -154,9 +157,15 @@ native('load-csv', '["Reads CSV text into a block of rows, each a block of strin
   return value(map(names.flatMap((name, k) => [string(name), block(body.map(row => field(row, k)))])));
 });
 
-/** A value as the text of a field: none is empty, strings and words as they are, the rest formed. */
+/**
+ * A value as the text of a field: none is empty, strings and words as they are, dates in ISO 8601
+ * (a space before the time, as spreadsheets read it) and amounts as plain numbers, as to-json
+ * writes them; the rest formed.
+ */
 function fieldText(c: Cell): string {
   if (c.t === K.None || c.t === K.Unset) return '';
+  if (c.t === K.Date) return (JSON.parse(toJson(c)) as string).replace('T', ' ');
+  if (c.t === K.Money) return formatDec(c.v, 2);
   if (isAnyString(c.t) && c.t !== K.Binary) return fromCodePoints((c as StringCell).s.data, (c as StringCell).i);
   if (isAnyWord(c.t)) return spell((c as WordCell).sym);
   return form(c);
@@ -210,39 +219,84 @@ function recordRows(recs: Cell[]): Cell[][] {
 const isRecord = (c: Cell): boolean => c.t === K.Map || c.t === K.Object;
 const itemsOf = (c: Cell): Cell[] => (c.t === K.Block ? c.s.data.slice(c.i) : [c]);
 
-native('to-csv', '["Writes CSV text from rows: a block of blocks, of maps or objects (a header from their keys), a flat block with /skip, or a map of columns." data [block! map! object!] /with "Another delimiter than a comma" delimiter [char! string!] /skip "A flat block, so many fields to a row" size [integer!] /quote "Another quote character than a double quote" qt-char [char!]]', (_t, f) => {
-  const a = f.args;
+/** Values a language writes its own way; integers stay plain, so an id gains no thousands. */
+const LOCAL_KINDS: ReadonlySet<number> = new Set([K.Decimal, K.Percent, K.Money, K.Date, K.Time]);
+
+/** to-csv/language between calls to the host's format-local: the rows, their texts, and where it is. */
+interface LocalWrite { rows: Cell[][]; texts: string[][]; todo: Array<[number, number]>; at: number; delim: string | null }
+
+/** The CSV text of rows whose fields are already texts. */
+function csvText(texts: string[][], delim: string, q: string): string {
+  return texts.map(row => row.map(s => quoteField(s, delim, q)).join(delim) + '\n').join('');
+}
+
+/** The rows to write: a step when the data has no shape to-csv knows. */
+function rowsOf(a: Cell[]): Cell[][] | Step {
   const data = a[0]!;
-  const d = used(a[1]!) ? delimOf(a[2]!) : [44];
-  if (d === null) return fail('script', 'bad-delimiter', 'to-csv needs a delimiter that is not empty');
-  const delim = fromCodePoints(d);
-  const q = used(a[5]!) ? String.fromCodePoint((a[6] as { v: number }).v) : '"';
-  let rows: Cell[][];
   if (isRecord(data)) {
     // a map or object of columns: its keys are the header
     const keys = recordKeys(data);
     const cols = keys.map(k => itemsOf(recordGet(data, keyCanon(k))));
     const count = cols.reduce((m, c) => Math.max(m, c.length), 0);
-    rows = [keys];
+    const rows = [keys];
     for (let k = 0; k < count; k++) rows.push(cols.map(c => c[k] ?? NONE));
-  } else {
-    const items = (data as BlockCell).s.data.slice((data as BlockCell).i);
-    if (used(a[3]!)) {
-      const size = I64.toNumber((a[4] as { v: I64.I64 }).v);
-      if (size < 1) return fail('script', 'bad-skip', 'to-csv/skip needs a size of 1 or more');
-      rows = [];
-      for (let k = 0; k < items.length; k += size) rows.push(items.slice(k, k + size));
-    } else if (items.length > 0 && items.every(isRecord)) {
-      rows = recordRows(items);
-    } else if (items.length > 0 && items[0]!.t === K.Block) {
-      if (!items.every(c => c.t === K.Block)) return fail('script', 'bad-rows', 'to-csv needs every row to be a block');
-      rows = items.map(c => (c as BlockCell).s.data.slice((c as BlockCell).i));
-    } else if (items.some(c => c.t === K.Block || isRecord(c))) {
-      return fail('script', 'bad-rows', 'to-csv needs rows all of one kind: blocks, maps or objects');
-    } else {
-      // a block of plain values is one row
-      rows = items.length === 0 ? [] : [items];
-    }
+    return rows;
   }
-  return value(string(rows.map(row => row.map(c => quoteField(fieldText(c), delim, q)).join(delim) + '\n').join('')));
+  const items = (data as BlockCell).s.data.slice((data as BlockCell).i);
+  if (used(a[3]!)) {
+    const size = I64.toNumber((a[4] as { v: I64.I64 }).v);
+    if (size < 1) return fail('script', 'bad-skip', 'to-csv/skip needs a size of 1 or more');
+    const rows: Cell[][] = [];
+    for (let k = 0; k < items.length; k += size) rows.push(items.slice(k, k + size));
+    return rows;
+  }
+  if (items.length > 0 && items.every(isRecord)) return recordRows(items);
+  if (items.length > 0 && items[0]!.t === K.Block) {
+    if (!items.every(c => c.t === K.Block)) return fail('script', 'bad-rows', 'to-csv needs every row to be a block');
+    return items.map(c => (c as BlockCell).s.data.slice((c as BlockCell).i));
+  }
+  if (items.some(c => c.t === K.Block || isRecord(c))) {
+    return fail('script', 'bad-rows', 'to-csv needs rows all of one kind: blocks, maps or objects');
+  }
+  // a block of plain values is one row
+  return items.length === 0 ? [] : [items];
+}
+
+native('to-csv', '["Writes CSV text from rows: a block of blocks, of maps or objects (a header from their keys), a flat block with /skip, or a map of columns." data [block! map! object!] /with "Another delimiter than a comma" delimiter [char! string!] /skip "A flat block, so many fields to a row" size [integer!] /quote "Another quote character than a double quote" qt-char [char!] /language "Dates and amounts as a language writes them, and a semicolon where its decimals have a comma" lang [word! string!]]', (t, f, v) => {
+  const a = f.args;
+  const q = used(a[5]!) ? String.fromCodePoint((a[6] as { v: number }).v) : '"';
+  let given: string | null = null;
+  if (used(a[1]!)) {
+    const d = delimOf(a[2]!);
+    if (d === null) return fail('script', 'bad-delimiter', 'to-csv needs a delimiter that is not empty');
+    given = fromCodePoints(d);
+  }
+  const lang = a[8]!;
+  if (f.phase === 0) {
+    const rows = rowsOf(a);
+    if (!Array.isArray(rows)) return rows;
+    const texts = rows.map(row => row.map(fieldText));
+    if (!used(a[7]!)) return value(string(csvText(texts, given ?? ',', q)));
+    const todo: Array<[number, number]> = [];
+    rows.forEach((row, r) => row.forEach((c, k) => { if (LOCAL_KINDS.has(c.t)) todo.push([r, k]); }));
+    f.data = { rows, texts, todo, at: 0, delim: given } satisfies LocalWrite;
+    f.phase = 1;
+    // how the language writes a half tells its decimal separator
+    return hostCall(t, 'format-local', [decimal(1.5), lang], 'write values in a language');
+  }
+  const w = f.data as LocalWrite;
+  if (f.phase === 1) {
+    if (w.delim === null) w.delim = text(v as StringCell).includes(',') ? ';' : ',';
+    f.phase = 2;
+  } else {
+    const [r, k] = w.todo[w.at++]!;
+    // a date and its time with no comma between, as spreadsheets read them
+    const local = text(v as StringCell);
+    w.texts[r]![k] = w.rows[r]![k]!.t === K.Date ? local.replace(', ', ' ') : local;
+  }
+  if (w.at < w.todo.length) {
+    const [r, k] = w.todo[w.at]!;
+    return hostCall(t, 'format-local', [w.rows[r]![k]!, lang], 'write values in a language');
+  }
+  return value(string(csvText(w.texts, w.delim!, q)));
 });
