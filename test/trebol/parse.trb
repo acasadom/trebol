@@ -52,6 +52,9 @@ Trebol [
 "control"
 [n: 0 parse "aaaa" [any ["a" (n: n + 1) opt [if (n = 2) break]] to end] n = 4]
 [parse "aaab" [any ["a" break] "aab"]]
+; while goes on when a turn matches without advancing, as in R3; any stops
+[n: 0 parse "" [while [(n: n + 1) if (n < 3)]] n = 3]
+[n: 0 parse "" [any [(n: n + 1) if (n < 3)]] n = 1]
 [not parse "aaab" [any ["a" [break]] "aab"]]
 [not parse "aaab" [any "a" break "b"]]
 [not parse "a" [fail]]

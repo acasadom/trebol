@@ -90,7 +90,8 @@ const PF = { Block: 0, Rep: 1, Look: 2, Scan: 3, Cap: 4, Into: 5, Coll: 6, Act: 
 /** A rule block: alternatives of sequences. */
 interface BlockF { k: typeof PF.Block; rules: Series<Cell>; ip: number; next: number; alt: number; mark: Cell[] | null; markLen: number; started: boolean }
 /** some, any, opt, while, N and N M. */
-interface RepF { k: typeof PF.Rep; rules: Series<Cell>; sub: number; min: number; max: number; n: number; from: number; edits: number }
+/** A repetition; `stall` (while) goes on even when a turn matched without advancing, as in R3. */
+interface RepF { k: typeof PF.Rep; rules: Series<Cell>; sub: number; min: number; max: number; n: number; from: number; edits: number; stall: boolean }
 /** not and ahead: match without advancing. */
 interface LookF { k: typeof PF.Look; rules: Series<Cell>; sub: number; not: boolean; from: number }
 /** to and thru: try the rule at each position from here. */
@@ -242,7 +243,7 @@ function startItem(st: PState, rules: Series<Cell>, ip: number): Step | null {
       const min = I64.toNumber(c.v);
       const second = d[ip + 1];
       const two = second?.t === K.Integer;
-      st.stack.push({ k: PF.Rep, rules, sub: ip + (two ? 2 : 1), min, max: two ? I64.toNumber((second as { v: I64.I64 }).v) : min, n: 0, from: st.pos, edits: st.edits });
+      st.stack.push({ k: PF.Rep, rules, sub: ip + (two ? 2 : 1), min, max: two ? I64.toNumber((second as { v: I64.I64 }).v) : min, n: 0, from: st.pos, edits: st.edits, stall: false });
       return null;
     }
     case K.SetWord:
@@ -272,9 +273,9 @@ function startItem(st: PState, rules: Series<Cell>, ip: number): Step | null {
   }
   const w = c as WordCell;
   switch (kw(w)) {
-    case KW.Some: st.stack.push({ k: PF.Rep, rules, sub: ip + 1, min: 1, max: Infinity, n: 0, from: st.pos, edits: st.edits }); return null;
-    case KW.Any: case KW.While: st.stack.push({ k: PF.Rep, rules, sub: ip + 1, min: 0, max: Infinity, n: 0, from: st.pos, edits: st.edits }); return null;
-    case KW.Opt: st.stack.push({ k: PF.Rep, rules, sub: ip + 1, min: 0, max: 1, n: 0, from: st.pos, edits: st.edits }); return null;
+    case KW.Some: st.stack.push({ k: PF.Rep, rules, sub: ip + 1, min: 1, max: Infinity, n: 0, from: st.pos, edits: st.edits, stall: false }); return null;
+    case KW.Any: case KW.While: st.stack.push({ k: PF.Rep, rules, sub: ip + 1, min: 0, max: Infinity, n: 0, from: st.pos, edits: st.edits, stall: kw(w) === KW.While }); return null;
+    case KW.Opt: st.stack.push({ k: PF.Rep, rules, sub: ip + 1, min: 0, max: 1, n: 0, from: st.pos, edits: st.edits, stall: false }); return null;
     case KW.Not: case KW.Ahead:
       st.stack.push({ k: PF.Look, rules, sub: ip + 1, not: kw(w) === KW.Not, from: st.pos });
       return null;
@@ -464,8 +465,8 @@ function frame(st: PState, f: Frame, r: boolean | null): Step | null {
         return pop(f.n >= f.min);
       }
       f.n++;
-      // a match that did not advance (nor edit) would repeat forever: stop here
-      if ((st.pos === f.from && st.edits === f.edits) || f.n >= f.max) return pop(true);
+      // a match that did not advance (nor edit) would repeat forever: stop here, unless it is while's
+      if ((!f.stall && st.pos === f.from && st.edits === f.edits) || f.n >= f.max) return pop(true);
       f.from = st.pos;
       f.edits = st.edits;
       return startItem(st, f.rules, f.sub);
