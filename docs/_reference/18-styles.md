@@ -171,6 +171,9 @@ one that stands for something kept elsewhere.
 Rows of data in columns: `table board [customer "Customer" due "Due back"]` names the field of each column and
 its header; its `data` is a block of maps or objects. On a narrow screen, each row is a card. `on-select` lets the
 rows be chosen; `sortable` or `on-sort` let the headers sort them; `totals` is a row shown at the foot.
+Among the rows, `[head 1 "Title"]` is the title of a group, the width of the table, and `[foot 1 row]` its
+subtotals; level 2 is indented. Neither is chosen or sorted: `sortable` sorts the rows inside each group. A
+list shows them too.
 
 ## list
 

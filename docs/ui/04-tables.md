@@ -66,6 +66,42 @@ Dates sort as dates and amounts as amounts, not as the text they show. Sorting c
 shows: `bookings` keeps its order. `sortable` is for a table that has all its rows; one that shows a page
 of thousands asks the server for them in order instead, with `on-sort`.
 
+## Groups
+
+Rows can come in groups, each with a title above it and its subtotals below. Between the rows of `data` go
+blocks: `[head 1 "Title"]` is a title the width of the table, and `[foot 1 row]` is a row of subtotals, shown
+as the totals are. A second level, `2`, is indented under the first:
+
+```trebol-ui
+view [
+    title "Bikes in, by kind"
+    global table workshop [
+        customer "Customer" due "Due back" estimate "Estimate"
+    ] sortable
+]
+
+workshop/data: [
+    [head 1 "Road"]
+    #(customer: "Ada Lovelace" due: 11-Nov-2026 estimate: $45.50)
+    #(customer: "Linus Torvalds" due: 13-Nov-2026 estimate: $30.00)
+    [foot 1 #(customer: "2 bikes" estimate: $75.50)]
+    [head 1 "Mountain"]
+    [head 2 "Electric"]
+    #(customer: "Alan Turing" due: 10-Nov-2026 estimate: $112.00)
+    [foot 2 #(customer: "1 bike" estimate: $112.00)]
+    [head 2 "Other"]
+    #(customer: "Grace Hopper" due: 12-Nov-2026 estimate: $28.60)
+    #(customer: "Barbara Liskov" due: 9-Nov-2026 estimate: $64.00)
+    [foot 2 #(customer: "2 bikes" estimate: $92.60)]
+    [foot 1 #(customer: "3 bikes" estimate: $204.60)]
+]
+```
+
+Titles and subtotals are never chosen and never sorted: sorting the table sorts the rows inside each group,
+so every subtotal still adds up. Trebol does not add them up itself, because a page of rows from a server is
+not every row of a group; the program, or the server, writes them. A title can be a text per language, as
+any text of the interface.
+
 ## Choosing a row
 
 With `on-select`, the rows can be chosen with a click, or from the keyboard with Enter or Space. The handler finds

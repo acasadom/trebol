@@ -26,6 +26,7 @@ import { iconNode } from './icons.ts';
 import { parseMd, printMd, safeHref, type Block, type Inline } from './markdown.ts';
 import { fileHandle } from './net.ts';
 import { drawSvg, type El } from './draw.ts';
+import { rowField, groupRow, sortGroups } from './rows.ts';
 import { chartSvg, SERIES_COLORS, pieColor, type ChartKind, type Series } from './chart.ts';
 
 // --- reading faces -----------------------------------------------------------------
@@ -2354,27 +2355,6 @@ function columns(face: ObjectCell): Column[] {
   return out;
 }
 
-/** A field of a map! or object! row; map keys may be words or strings. */
-function rowField(row: Cell, sym: Sym): Cell {
-  if (row.t === K.Object) {
-    const i = ctxFind(row.ctx, sym);
-    return i < 0 ? NONE : row.ctx.vals[i]!;
-  }
-  if (row.t === K.Map) {
-    const d = row.s.data;
-    const c = canon(sym);
-    for (let i = 0; i + 1 < d.length; i += 2) {
-      const k = d[i]!;
-      if (k.t === K.Word || k.t === K.SetWord || k.t === K.LitWord) {
-        if (canon((k as WordCell).sym) === c) return d[i + 1]!;
-      } else if (k.t === K.String && canon(intern(text(k as StringCell))) === c) {
-        return d[i + 1]!;
-      }
-    }
-  }
-  return NONE;
-}
-
 function sameRow(a: Cell, b: Cell): boolean {
   if (a.t === K.Map && b.t === K.Map) return a.s === b.s;
   if (a.t === K.Object && b.t === K.Object) return a.ctx === b.ctx;
@@ -2455,7 +2435,7 @@ function syncRows(m: Mounted): void {
   if (table) {
     syncHead(f, box.parentElement as HTMLTableElement, cols);
     const order = hostSorted(f);
-    if (order !== null) rows = sortRows(rows, order.sym, order.desc);
+    if (order !== null) rows = sortGroups(rows, order.sym, order.desc, activeLanguage(host.rt), cellText);
   }
   const keyWord = get(f, 'key');
   const key = keyWord.t === K.Word || keyWord.t === K.LitWord ? (keyWord as WordCell).sym : intern('id');
@@ -2466,6 +2446,24 @@ function syncRows(m: Mounted): void {
   const next = new Map<string, HTMLElement>();
   let cursor = box.firstChild;
   rows.forEach((row, i) => {
+    const group = groupRow(row);
+    if (group !== null) {
+      // a group's head or foot: kept by its place, never chosen, dragged or sorted
+      const k = `${group.kind}#${i}`;
+      let item = old.get(k);
+      if (item === undefined) item = group.kind === 'head' ? newGroupHead(cols, table) : table ? newTableRow(cols) : newListItem();
+      next.set(k, item);
+      item.className = `tb-group-${group.kind} tb-level-${group.level}`;
+      if (group.kind === 'head') {
+        const t = translate(group.value, host.rt);
+        const cell = item.firstElementChild!;
+        if (cell.textContent !== t) cell.textContent = t;
+        if (table) (cell as HTMLTableCellElement).colSpan = Math.max(1, cols.length);
+      } else fillRow(item, group.value, cols, table);
+      if (item !== cursor) box.insertBefore(item, cursor);
+      else cursor = cursor.nextSibling;
+      return;
+    }
     const id = rowField(row, key);
     let k = id.t === K.None ? `#${i}` : `${id.t}:${form(id)}`;
     if (next.has(k)) k = `${k}#${i}`;
@@ -2548,27 +2546,21 @@ function hostSorted(f: ObjectCell): { sym: Sym; desc: boolean } | null {
   return flag(f, 'sortable') && !handlerFor(f, 'on-sort') ? sortedBy(f) : null;
 }
 
-/**
- * Rows by the native value of a column: numbers, amounts and dates by value, texts as
- * the active language orders them; empty cells go last either way. Ties keep their order.
- */
-function sortRows(rows: Cell[], col: Sym, desc: boolean): Cell[] {
-  const collator = new Intl.Collator(activeLanguage(host.rt), { numeric: true });
-  const blank = (v: Cell): boolean => v.t === K.None || (v.t === K.String && text(v as StringCell) === '');
-  const order = (a: Cell, b: Cell): number => {
-    if (a.t === K.String && b.t === K.String) return collator.compare(text(a as StringCell), text(b as StringCell));
-    // values that cannot be ordered together (a text and a number) go by what they show
-    return compare(a, b) ?? collator.compare(cellText(a), cellText(b));
-  };
-  return rows
-    .map(row => ({ row, v: rowField(row, col) }))
-    .sort((a, b) => {
-      const ea = blank(a.v);
-      const eb = blank(b.v);
-      if (ea || eb) return ea === eb ? 0 : ea ? 1 : -1;
-      return desc ? order(b.v, a.v) : order(a.v, b.v);
-    })
-    .map(x => x.row);
+/** A group's title, the width of the whole row. */
+function newGroupHead(cols: Column[], table: boolean): HTMLElement {
+  if (!table) {
+    const li = el('li');
+    li.append(el('span'));
+    return li;
+  }
+  const tr = el('tr');
+  tr.setAttribute('role', 'row');
+  const th = el('th');
+  th.scope = 'rowgroup';
+  th.setAttribute('role', 'rowheader');
+  th.colSpan = Math.max(1, cols.length);
+  tr.append(th);
+  return tr;
 }
 
 function newTableRow(cols: Column[]): HTMLElement {
