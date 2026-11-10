@@ -7,7 +7,7 @@ import { createServer, type Server } from 'node:http';
 import { createHash } from 'node:crypto';
 import type { Duplex } from 'node:stream';
 import { K, spell, mold, form, errorField, native, value, type ObjectCell } from '../src/core/index.ts';
-import { fileHandle, saver } from '../src/host/net.ts';
+import { fileHandle, saver, dispositionName } from '../src/host/net.ts';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
@@ -66,6 +66,20 @@ before(async () => {
         let body = '';
         req.on('data', c => { body += c; });
         req.on('end', () => json(200, { method: req.method, type: req.headers['content-type'] ?? '', body, auth: req.headers['authorization'] ?? '' }));
+        return;
+      }
+      case '/report': {
+        // a POST answered with a file, as a report is
+        const name = url.searchParams.get('name');
+        const head: Record<string, string> = { 'content-type': 'application/pdf' };
+        if (name === 'accents') head['content-disposition'] = `attachment; filename="informe.pdf"; filename*=UTF-8''${encodeURIComponent('Año fiscal.pdf')}`;
+        if (name === 'plain') head['content-disposition'] = 'attachment; filename="march \\"A\\".pdf"';
+        if (name === 'refused') {
+          json(403, { error: 'not allowed' });
+          return;
+        }
+        res.writeHead(200, head);
+        res.end(Buffer.from('%PDF-1.7'));
         return;
       }
       case '/text':
@@ -211,6 +225,35 @@ describe('http', () => {
       saver.save = save;
     }
     assert.equal(await evErr('download %a.txt "x"'), 'no-download');
+  });
+
+  test('download saves an answer of the server under the name it gives', async () => {
+    const saved: Array<[string, Blob]> = [];
+    const save = saver.save;
+    saver.save = (name, blob) => saved.push([name, blob]) > 0;
+    const post = (q: string) => `fetch/with join base/report "?name=${q}" [method: 'post body: #(year: 2026) full: true]`;
+    try {
+      assert.equal(await ev(`download %informe.pdf ${post('accents')}`), '%Año%20fiscal.pdf');
+      assert.equal(saved[0]![0], 'Año fiscal.pdf');
+      assert.equal(saved[0]![1].type, 'application/pdf');
+      assert.equal(await saved[0]![1].text(), '%PDF-1.7');
+      assert.equal(await ev(`download "x.pdf" ${post('plain')}`), '{march "A".pdf}');
+      // no name from the server: the one given
+      assert.equal(await ev(`download %out/informe.pdf ${post('none')}`), '%out/informe.pdf');
+      assert.equal(saved[2]![0], 'informe.pdf');
+      assert.equal(await evErr(`download %x.pdf ${post('refused')}`), 'http');
+      assert.equal(saved.length, 3);
+      assert.equal(await evErr('download %x.pdf make object! [a: 1]'), 'bad-answer');
+    } finally {
+      saver.save = save;
+    }
+  });
+
+  test('content-disposition names', () => {
+    assert.equal(dispositionName(`attachment; filename*=UTF-8''%C3%B1u.pdf; filename="nu.pdf"`), 'ñu.pdf');
+    assert.equal(dispositionName(`attachment; filename*=iso-8859-1'es'%F1u.pdf`), 'ñu.pdf');
+    assert.equal(dispositionName('attachment; filename=plain.csv'), 'plain.csv');
+    assert.equal(dispositionName('inline'), '');
   });
 
   test('form posts', async () => {

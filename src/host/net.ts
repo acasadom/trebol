@@ -6,7 +6,7 @@
 // `try` can catch. `cancel` on the task aborts the request in flight.
 
 import {
-  K, NONE, I64, native, value, string, text, binary, makeError, throwError, form, spell, ctxFind, intern,
+  K, NONE, I64, native, value, string, stringOf, text, binary, makeError, throwError, form, spell, ctxFind, intern,
   parseJson, toJson,
   type Cell, type BlockCell, type StringCell, type ObjectCell, type WordCell, type Step, type NativeFn,
 } from '../core/index.ts';
@@ -63,19 +63,74 @@ export const saver = {
   },
 };
 
-native('download', '["Gives the user a file to save: text (as UTF-8) or bytes." name [file! string!] data [string! binary!]]', (_t, f) => {
-  const name = text(f.args[0] as StringCell).split('/').pop() ?? '';
+/**
+ * The file name a server gives in content-disposition: filename*=UTF-8''... (which
+ * carries accents) wins over filename=...; '' when there is none.
+ */
+export function dispositionName(header: string): string {
+  const star = /filename\*\s*=\s*([^']*)'[^']*'([^;]+)/i.exec(header);
+  if (star !== null) {
+    try {
+      const raw = star[2]!.trim();
+      if (/^utf-8$/i.test(star[1]!.trim())) return decodeURIComponent(raw);
+      // ISO-8859-1: each escaped byte is its own character
+      return raw.replace(/%([0-9a-f]{2})/gi, (_m, h: string) => String.fromCharCode(parseInt(h, 16)));
+    } catch { /* a bad escape: try the plain name */ }
+  }
+  const plain = /filename\s*=\s*(?:"((?:[^"\\]|\\.)*)"|([^;]+))/i.exec(header);
+  if (plain === null) return '';
+  return plain[1] !== undefined ? plain[1].replace(/\\(.)/g, '$1') : plain[2]!.trim();
+}
+
+/** The field of an answer of fetch/with [full: true]; undefined when it has none. */
+function answerField(o: ObjectCell, name: string): Cell | undefined {
+  const i = ctxFind(o.ctx, intern(name));
+  return i < 0 ? undefined : o.ctx.vals[i];
+}
+
+/** A header of an answer, by its name in lowercase as fetch gives them. */
+function answerHeader(headers: Cell | undefined, name: string): string {
+  if (headers === undefined || headers.t !== K.Map) return '';
+  const d = headers.s.data;
+  for (let i = 0; i + 1 < d.length; i += 2) {
+    if (d[i]!.t === K.String && text(d[i] as StringCell).toLowerCase() === name) return form(d[i + 1]!);
+  }
+  return '';
+}
+
+native('download', '["Gives the user a file to save: text (as UTF-8), bytes, or the answer of fetch/with [full: true], under the name the server gives." name [file! string!] data [string! binary! object!]]', (_t, f) => {
+  let name = text(f.args[0] as StringCell).split('/').pop() ?? '';
+  let data = f.args[1]!;
+  let given = '';
+  let renamed = false;
+  if (data.t === K.Object) {
+    const status = answerField(data, 'status');
+    const headers = answerField(data, 'headers');
+    const body = answerField(data, 'body');
+    if (status === undefined || status.t !== K.Integer || body === undefined) {
+      return throwError('script', 'bad-answer', 'download needs an answer of fetch/with [full: true]');
+    }
+    const code = I64.toNumber(status.v);
+    if (code >= 400) return throwError('access', 'http', `HTTP ${code}: no file to save`);
+    const server = dispositionName(answerHeader(headers, 'content-disposition')).split(/[/\\]/).pop() ?? '';
+    if (server !== '') {
+      name = server;
+      renamed = true;
+    }
+    given = answerHeader(headers, 'content-type');
+    data = body.t === K.Binary || body.t === K.String ? body : string(toJson(body));
+  }
   if (name === '') return throwError('script', 'bad-file', 'download needs a file name');
   const ext = name.includes('.') ? name.slice(name.lastIndexOf('.') + 1).toLowerCase() : '';
   const type = TYPES[ext] ?? 'application/octet-stream';
-  const data = f.args[1]!;
   // a byte order mark lets spreadsheets read a CSV's accents as UTF-8
   const body = data.t === K.Binary
     ? new Uint8Array(data.s.data.slice(data.i))
-    : (ext === 'csv' ? '﻿' : '') + text(data as StringCell);
-  const blob = new Blob([body], { type: data.t === K.Binary ? type : `${type};charset=utf-8` });
+    : (ext === 'csv' ? '\ufeff' : '') + text(data as StringCell);
+  const blob = new Blob([body], { type: given !== '' ? given : data.t === K.Binary ? type : `${type};charset=utf-8` });
   if (!saver.save(name, blob)) return throwError('access', 'no-download', 'this host cannot give the user files');
-  return value(f.args[0]!);
+  // the name it was saved under, when the server gave one
+  return value(renamed ? stringOf(f.args[0]!.t === K.File ? K.File : K.String, name) : f.args[0]!);
 });
 
 // --- HTTP ------------------------------------------------------------------------

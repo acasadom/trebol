@@ -172,6 +172,25 @@ board/data: bookings
 
 `find/same` finds the very booking that was chosen, not another one that looks like it.
 
+## A file from the server
+
+Some files only the server can make, like a report as a PDF. `download` takes the answer of
+`fetch/with [... full: true]` and gives the user its body as a file, without leaving the page. What is asked
+goes in the body of a POST, so it shows neither in the address nor in the server's logs:
+
+```
+answer: fetch/with "/api/reports" [method: 'POST body: #(year: 2026) full: true]
+either answer/status < 400 [
+    download %report.pdf answer
+] [
+    toast/role "The report could not be made" 'danger
+]
+```
+
+The name comes from the server, when its answer says one in `content-disposition` (accents too); otherwise
+it is the one given, here `report.pdf`. `download` gives back the name the file was saved under. An answer
+with a status of 400 or more is an error, so the app looks at the status first, as above.
+
 ## What's next
 
 The bookings live on a server now. The last page draws: the shop's logo, and its takings as charts.
