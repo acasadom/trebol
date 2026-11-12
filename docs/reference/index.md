@@ -53,7 +53,7 @@ draw
 
 ### B
 
-[`back`](#fn-back) · [`binary?`](#fn-binary-3f) · [`bind`](#fn-bind) · [`bitset?`](#fn-bitset-3f) · [`block?`](#fn-block-3f) · [`body-of`](#fn-body-of) · [`bound?`](#fn-bound-3f) · [`break`](#fn-break)
+[`back`](#fn-back) · [`binary?`](#fn-binary-3f) · [`bind`](#fn-bind) · [`bitset?`](#fn-bitset-3f) · [`block?`](#fn-block-3f) · [`body-of`](#fn-body-of) · [`bound?`](#fn-bound-3f) · [`break`](#fn-break) · [`browse`](#fn-browse)
 
 ### C
 
@@ -113,7 +113,7 @@ draw
 
 ### R
 
-[`random`](#fn-random) · [`read`](#fn-read) · [`read-file`](#fn-read-file) · [`reduce`](#fn-reduce) · [`refinement?`](#fn-refinement-3f) · [`reform`](#fn-reform) · [`rejoin`](#fn-rejoin) · [`remainder`](#fn-remainder) · [`remove`](#fn-remove) · [`remove-each`](#fn-remove-each) · [`remove-local`](#fn-remove-local) · [`repeat`](#fn-repeat) · [`replace`](#fn-replace) · [`return`](#fn-return) · [`reverse`](#fn-reverse) · [`reword`](#fn-reword) · [`round`](#fn-round)
+[`random`](#fn-random) · [`read`](#fn-read) · [`read-clipboard`](#fn-read-clipboard) · [`read-file`](#fn-read-file) · [`reduce`](#fn-reduce) · [`refinement?`](#fn-refinement-3f) · [`reform`](#fn-reform) · [`rejoin`](#fn-rejoin) · [`remainder`](#fn-remainder) · [`remove`](#fn-remove) · [`remove-each`](#fn-remove-each) · [`remove-local`](#fn-remove-local) · [`repeat`](#fn-repeat) · [`replace`](#fn-replace) · [`return`](#fn-return) · [`reverse`](#fn-reverse) · [`reword`](#fn-reword) · [`round`](#fn-round)
 
 ### S
 
@@ -133,7 +133,7 @@ draw
 
 ### W
 
-[`wait`](#fn-wait) · [`while`](#fn-while) · [`word?`](#fn-word-3f) · [`words-of`](#fn-words-of) · [`write-line`](#fn-write-line)
+[`wait`](#fn-wait) · [`while`](#fn-while) · [`word?`](#fn-word-3f) · [`words-of`](#fn-words-of) · [`write-clipboard`](#fn-write-clipboard) · [`write-line`](#fn-write-line)
 
 ### X
 

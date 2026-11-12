@@ -11,7 +11,7 @@ import { fileHandle, saver, dispositionName } from '../src/host/net.ts';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
-import { startHost, startUi, runSource, output } from '../src/host/index.ts';
+import { startHost, startUi, runSource, output, page } from '../src/host/index.ts';
 import { consoleHost } from '../tools/console.ts';
 
 let server: Server;
@@ -203,6 +203,30 @@ describe('http', () => {
     assert.equal(await ev(`to-csv/language ${rows} "en-GB"`), '{id,due,at,total,rate\n12345,11/11/2026,11/11/2026 9:30,"€1,250.50",1.5\n}');
     assert.equal(await ev(`to-csv/language/with ${rows} 'es #"|"`), '{id|due|at|total|rate\n12345|11/11/2026|11/11/2026 9:30|1250,50\u00a0€|1,5\n}');
     assert.equal(await ev(`to-csv/language [["a" 1]] 'es`), '{a;1\n}');
+  });
+
+  test('browse opens an address and the clipboard takes and gives text', async () => {
+    const was = { ...page };
+    const opened: string[] = [];
+    let board: string | null = null;
+    page.open = url => opened.push(url) > 0;
+    page.writeClipboard = s => { board = s; return Promise.resolve(true); };
+    page.readClipboard = () => Promise.resolve(board);
+    try {
+      assert.equal(await ev('read-clipboard'), 'none');
+      assert.equal(await ev('browse https://example.org/a?b=1 browse %help.html'), '');
+      assert.deepEqual(opened, ['https://example.org/a?b=1', 'help.html']);
+      assert.equal(await ev('write-clipboard "Año 2026"'), 'true');
+      assert.equal(await ev('read-clipboard'), '"Año 2026"');
+      page.writeClipboard = () => Promise.resolve(false);
+      assert.equal(await ev('write-clipboard "x"'), 'false');
+      page.open = () => false;
+      page.readClipboard = () => null;
+      assert.equal(await evErr('browse http://x.es'), 'no-browse');
+      assert.equal(await evErr('read-clipboard'), 'no-clipboard');
+    } finally {
+      Object.assign(page, was);
+    }
   });
 
   test('download hands the browser a file', async () => {

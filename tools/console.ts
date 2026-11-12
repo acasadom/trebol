@@ -13,11 +13,19 @@
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline';
+import { spawn } from 'node:child_process';
 import { K, LoadError, form, load, mold, type ObjectCell } from '../src/core/index.ts';
-import { startHost, runSource, report, type Host } from '../src/host/index.ts';
+import { startHost, runSource, report, page, type Host } from '../src/host/index.ts';
 
 /** A host for Node: console output, timers, tasks, network; `import` reads files relative to `dir`. */
 export function consoleHost(dir = process.cwd()): Host {
+  // browse opens the system's browser, as R3's console does; a file is taken from dir
+  page.open = url => {
+    const href = /^[a-z][a-z0-9+.-]*:/i.test(url) ? url : new URL(url, pathToFileURL(dir + '/')).href;
+    const [cmd, ...args] = process.platform === 'darwin' ? ['open'] : process.platform === 'win32' ? ['cmd', '/c', 'start', '""'] : ['xdg-open'];
+    spawn(cmd!, [...args, href], { stdio: 'ignore', detached: true }).on('error', () => {}).unref();
+    return true;
+  };
   return startHost({
     loader: {
       base: pathToFileURL(dir + '/').href,

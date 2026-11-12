@@ -1,7 +1,7 @@
 # Files and modules
 
-Reading files and web addresses, running scripts and importing modules, giving the user files to save, and
-keeping small values in the browser. See [modules](../language/13-modules.md).
+Reading files and web addresses, running scripts and importing modules, giving the user files to save,
+keeping small values in the browser, opening other addresses and using the clipboard. See [modules](../language/13-modules.md).
 
 ## read
 
@@ -27,3 +27,18 @@ nothing is saved.
 ## load-local
 
 ## remove-local
+
+## browse
+
+In the browser the address opens in a new tab, which cannot reach back to the page; a `file!` is taken from the
+page's own address. In the console it opens in the system's browser, as R3 does. Browsers open new tabs only
+when the user has just done something, so call it from a button or a link, not from a timer.
+
+## write-clipboard
+
+The names are Red's. Browsers let a page write to the clipboard when the user has just done something, such as
+clicking a *Copy* button; `false` says the browser refused.
+
+## read-clipboard
+
+The browser asks the user the first time a page reads the clipboard, and gives `none` when the user says no.
