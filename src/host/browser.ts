@@ -16,7 +16,7 @@
 // set the field again to repaint it.
 
 import { logic,
-  K, NONE, TRUE, FALSE, native, value, string, form, money, decToNumber, decFromNumber, ctxFind, intern, spell, text, canon, blockOf, wordOf, char, compare,
+  K, NONE, TRUE, FALSE, native, value, string, form, money, decToNumber, decFromNumber, ctxFind, intern, spell, text, canon, blockOf, wordOf, char, compare, UNSET, throwError,
   type Cell, type MapCell, type ObjectCell, type BlockCell, type WordCell, type StringCell, type Ctx, type Sym,
 } from '../core/index.ts';
 import { mapAt, startHost, startUi, runSource, report, shown, translate, uiText, activeLanguage, editLocal, readLocal, readDate, weekStart, fileSize, LOCAL_KINDS, type Host } from './index.ts';
@@ -3138,6 +3138,23 @@ native('show-confirm', '["Asks a question in a small dialog; true when the user 
   // what cannot be undone starts on no, so Enter does not do it by mistake
   (danger ? no : yes).focus();
   return { k: 'await', p };
+});
+
+native('print-faces', '["Opens the print dialog for the page, or for one face only." face [object! none!]]', (_t, f) => {
+  const target = f.args[0]!.t === K.Object ? byCtx.get((f.args[0] as ObjectCell).ctx)?.el : undefined;
+  if (f.args[0]!.t === K.Object && (target === undefined || !target.isConnected)) {
+    return throwError('script', 'not-shown', 'print-page/only needs a face on the screen');
+  }
+  if (target !== undefined) {
+    target.classList.add('tb-print-target');
+    document.documentElement.classList.add('tb-print-only');
+    addEventListener('afterprint', () => {
+      target.classList.remove('tb-print-target');
+      document.documentElement.classList.remove('tb-print-only');
+    }, { once: true });
+  }
+  print();
+  return value(UNSET);
 });
 
 // --- syncing -----------------------------------------------------------------------

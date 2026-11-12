@@ -5,7 +5,7 @@ import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { K, NONE, TRUE, FALSE, native, value, mold, form, string, text, money, blockOf, errorField, type Cell, type ObjectCell, type StringCell } from '../src/core/index.ts';
+import { K, NONE, spell, TRUE, FALSE, native, value, mold, form, string, text, money, blockOf, errorField, type Cell, type ObjectCell, type StringCell } from '../src/core/index.ts';
 import { startHost, startUi, runSource, readLocal, editLocal, readDate, weekStart, fileSize, translate, uiText, type Host } from '../src/host/index.ts';
 import { fileHandle } from '../src/host/net.ts';
 import { themeCss, DEFAULT_THEME, LOOKS, palette, contrast, CONTRAST_PAIRS } from '../src/host/theme.ts';
@@ -26,6 +26,12 @@ native('show-confirm', '[question [string!] yes [string! none!] no [string! none
   asked.push(f.args.slice(0, 4).map(a => mold(a)).join(' '));
   // the user says yes to every question but the second
   return value(asked.length === 2 ? FALSE : TRUE);
+});
+let printed: string[] = [];
+native('print-faces', '[face [object! none!]]', (_t, f) => {
+  const a = f.args[0]!;
+  printed.push(a.t === K.Object ? mold(a.ctx.vals[a.ctx.keys.findIndex(k => spell(k) === 'style')]!) : 'page');
+  return value(NONE);
 });
 native('apply-theme', '[spec [object!]]', (_t, f) => {
   themed = f.args[0]!;
@@ -317,6 +323,12 @@ describe('components', () => {
     ]`);
     assert.equal(r, '[true false true]');
     assert.deepEqual(asked, ['"Remove it?" none none none', '"Remove all?" none none danger', '"Keep it?" "Keep" "Drop" none']);
+  });
+
+  test('print-page prints the page, or one face with /only', async () => {
+    printed = [];
+    await ev(`root: view [global bill: panel [text "Total"]] print-page print-page/only bill`);
+    assert.deepEqual(printed, ['page', 'panel']);
   });
 
   test('tabs hold a face per tab and select the first one', async () => {

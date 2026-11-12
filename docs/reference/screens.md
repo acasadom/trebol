@@ -89,6 +89,20 @@ The yes answer shows with the role's color, `primary` unless `/role` says `dange
 focus first, so Enter does not do what cannot be undone. Esc answers no. The question and the answers are
 translated as `toast`'s message is. The handler that asks waits for the answer; the rest of the page goes on.
 
+(fn-print-page)=
+## print-page
+
+Opens the browser's print dialog for the screen.
+
+```text
+print-page
+```
+
+- `/only face` (`object!`): Print just this face and what is inside it
+
+The browser's own print dialog opens, where the user can also save a PDF. With `/only`, only that face prints, at
+the top of the page; it must be on the screen, or it is an error. Toasts and closed dialogs never print.
+
 (fn-toast)=
 ## toast
 

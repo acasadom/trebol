@@ -1131,7 +1131,14 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
   .tb-crumb-middle { display: none !important; }
   .tb-crumb-more { display: inline-flex !important; }
   .tb-dialog { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; border-radius: 0; }
-  .tb-dialog.tb-confirm { width: calc(100vw - 32px); height: auto; margin: auto; border-radius: var(--tb-radius-lg); }
+  .tb-dialog.tb-confirm { width: calc(100vw - 32px); height: fit-content; max-height: calc(100dvh - 32px); margin: auto; border-radius: var(--tb-radius-lg); }
+}
+@media print {
+  .tb-toasts, .tb-dialog:not([open]) { display: none !important; }
+  /* print-page/only: the face alone, at the top of the page, with what holds it out of sight */
+  .tb-print-only body * { visibility: hidden; }
+  .tb-print-only .tb-print-target, .tb-print-only .tb-print-target * { visibility: visible; }
+  .tb-print-only .tb-print-target { position: absolute; inset: 0 0 auto 0; margin: 0; box-shadow: none; }
 }
 @media (pointer: coarse) { :root { --tb-control: 44px; } }
 @media (prefers-reduced-motion: reduce) {

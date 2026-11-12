@@ -105,7 +105,7 @@ draw
 
 ### P
 
-[`pad`](#fn-pad) · [`pair?`](#fn-pair-3f) · [`paren?`](#fn-paren-3f) · [`parse`](#fn-parse) · [`path?`](#fn-path-3f) · [`percent?`](#fn-percent-3f) · [`pick`](#fn-pick) · [`poke`](#fn-poke) · [`positive?`](#fn-positive-3f) · [`power`](#fn-power) · [`print`](#fn-print) · [`probe`](#fn-probe) · [`put`](#fn-put)
+[`pad`](#fn-pad) · [`pair?`](#fn-pair-3f) · [`paren?`](#fn-paren-3f) · [`parse`](#fn-parse) · [`path?`](#fn-path-3f) · [`percent?`](#fn-percent-3f) · [`pick`](#fn-pick) · [`poke`](#fn-poke) · [`positive?`](#fn-positive-3f) · [`power`](#fn-power) · [`print`](#fn-print) · [`print-page`](#fn-print-page) · [`probe`](#fn-probe) · [`put`](#fn-put)
 
 ### Q
 

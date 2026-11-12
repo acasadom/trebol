@@ -216,6 +216,29 @@ to open in a spreadsheet in Spanish is better as that person writes them: `to-cs
 `11/11/2026` and `45,50 €`, with semicolons between the fields, as a Spanish spreadsheet expects. The
 [reference](../reference/data-formats.md) lists all of it.
 
+## On paper
+
+`print-page` opens the browser's print dialog, where the user prints the screen or saves it as a PDF. With
+`/only` it prints one face and what is inside it, such as the board without the buttons around it:
+
+```trebol-ui
+view [
+    title "In the workshop"
+    board: panel [
+        heading "Bikes in the workshop"
+        global table jobs [customer "Customer" bike "Bike"]
+    ]
+    row right [button "Print the board" [print-page/only board]]
+]
+
+jobs/data: [
+    #(customer: "Ada Lovelace" bike: "Road")
+    #(customer: "Grace Hopper" bike: "City")
+]
+```
+
+On paper the page drops what only works on screen: toasts, and dialogs that are not open.
+
 ## What's next
 
 Choosing a row should open it, to change the booking or mark the bike as collected. The
