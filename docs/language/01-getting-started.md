@@ -8,20 +8,23 @@ This first page gets Trebol running, opens its console and runs a first script.
 
 ## What you need
 
-Trebol runs on [Node.js](https://nodejs.org) 22.18 or later; there is nothing to compile. It is not
-published yet, so you work from a copy of its source:
+Trebol runs on [Node.js](https://nodejs.org) 22.18 or later; there is nothing to compile. Make a folder for
+the shop and install Trebol in it:
 
 ```sh
-cd trebol
-npm install
+mkdir cog-and-chain
+cd cog-and-chain
+npm install trebol
 ```
+
+That puts Trebol in the folder's `node_modules`, and `npx trebol` runs it from there.
 
 ## The console
 
 The console is where you try things. Open it:
 
 ```sh
-npm run trb
+npx trebol
 ```
 
 It greets you and waits at a `>>` prompt. Type an expression and press Enter; Trebol shows its value after
@@ -82,7 +85,7 @@ print 12 * 3
 and run it:
 
 ```sh
-npm run trb -- shop.trb
+npx trebol shop.trb
 ```
 
 ```text

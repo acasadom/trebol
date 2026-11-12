@@ -99,7 +99,16 @@ function hrefOf(t: Task, loader: Loader, path: Cell): string {
   return resolve(loader.base, currentFile(t), text(path as StringCell));
 }
 
+/** Sources built into a bundle (dist/), by URL: they are read without asking the loader. */
+const builtIn = new Map<string, string>();
+
+export function addBuiltIn(href: string, src: string): void {
+  builtIn.set(href, src);
+}
+
 function readText(loader: Loader, href: string, path: Cell): Promise<Cell> {
+  const src = builtIn.get(href);
+  if (src !== undefined) return Promise.resolve(string(src));
   return loader.read(href).then(src => string(src), (e: unknown) => {
     throw makeError('access', 'cannot-open', `cannot open ${mold(path)}: ${(e as Error).message}`);
   });

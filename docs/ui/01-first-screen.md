@@ -9,8 +9,8 @@ real app, not a picture of one.
 
 ## An app is a folder
 
-An app is a folder with a file called `app.trb` in it. Make a folder `cog-and-chain` next to the `trebol`
-folder and save this in it as `app.trb`:
+An app is a folder with a file called `app.trb` in it. In the `cog-and-chain` folder of the first tutorial
+(the one where Trebol is installed), save this as `app.trb`:
 
 ```trebol-ui
 Trebol [title: "Cog & Chain"]
@@ -22,10 +22,10 @@ view [
 ]
 ```
 
-From the `trebol` folder, serve it:
+and serve the folder:
 
 ```sh
-npm run trb -- dev ../cog-and-chain
+npx trebol dev
 ```
 
 and open <http://localhost:5173/> in a browser. The page reloads by itself every time you save the file, so
@@ -73,6 +73,29 @@ Look at the examples again in dark mode, or on a phone. Nothing in them says how
 space goes between faces or which grey `muted` is. The theme decides all of it: the page follows the
 system's light or dark, a row too narrow for its faces wraps them onto the next line, and every button
 can be reached and pressed from the keyboard. A later page changes the theme; nothing in the views changes with it.
+
+## Putting it on the web
+
+`trebol dev` is for writing the app. To put it on a web server, add a page called `index.html` next to
+`app.trb`:
+
+```html
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cog &amp; Chain</title>
+<script type="module" src="https://cdn.jsdelivr.net/npm/trebol@0.1/dist/trebol.js"></script>
+<script type="text/trebol" src="app.trb"></script>
+</head>
+<body></body>
+</html>
+```
+
+and copy the two files to any server that serves plain files. The first `script` brings all of Trebol in one
+file; the second runs the app. To serve Trebol from your own server instead, copy
+`node_modules/trebol/dist/trebol.js` next to the page and write `src="trebol.js"`.
 
 ## What's next
 

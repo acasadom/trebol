@@ -9,7 +9,7 @@ The examples use files kept in a folder called `shop`, next to where you start T
 files as the page shows them, then start the console in the folder that holds `shop`:
 
 ```sh
-npm run trb
+npx trebol
 ```
 
 ## A module

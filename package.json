@@ -1,7 +1,19 @@
 {
   "name": "trebol",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Trebol: a Rebol-derived language for building beautiful web UIs without HTML or CSS",
+  "keywords": [
+    "rebol",
+    "language",
+    "interpreter",
+    "ui",
+    "web"
+  ],
+  "homepage": "https://github.com/acasadom/trebol",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/acasadom/trebol.git"
+  },
   "type": "module",
   "exports": {
     "./core": "./src/core/index.ts",
@@ -9,10 +21,15 @@
     "./browser": "./src/host/browser.ts"
   },
   "bin": {
-    "trebol": "./tools/cli.ts"
+    "trebol": "./dist/cli.js"
   },
-  "license": "UNLICENSED",
-  "private": true,
+  "license": "Apache-2.0",
+  "files": [
+    "dist",
+    "src",
+    "LICENSE",
+    "README.md"
+  ],
   "engines": {
     "node": ">=22.18"
   },
@@ -20,6 +37,8 @@
     "test": "node --test \"test/**/*.test.ts\"",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm test",
+    "build": "node --disable-warning=ExperimentalWarning tools/build.ts",
+    "prepack": "npm run build",
     "mold": "node tools/mold.ts",
     "trb": "node --disable-warning=ExperimentalWarning tools/cli.ts",
     "dev": "node tools/cli.ts dev --api examples/api.ts",
@@ -32,6 +51,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
+    "esbuild": "^0.28.2",
     "typescript": "^5.9.0"
   }
 }

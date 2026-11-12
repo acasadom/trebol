@@ -37,16 +37,33 @@ like any other value.
 
 ## Getting started
 
-Trebol needs Node.js 22.18 or later. There is no build step: Node runs the TypeScript directly.
+A page needs two lines, one that brings Trebol and one that runs the app:
+
+```html
+<script type="module" src="https://cdn.jsdelivr.net/npm/trebol@0.1/dist/trebol.js"></script>
+<script type="text/trebol" src="app.trb"></script>
+```
+
+Any server of plain files will do. To write apps with the console and a development server that reloads the
+page on save, install it with Node.js 22.18 or later:
+
+```sh
+npm install trebol
+npx trebol                # the console: >> 1 + 2 * 3  == 9
+npx trebol dev my-app     # serves the folder my-app, with its app.trb, at http://localhost:5173/
+```
+
+## Working on Trebol
+
+There is no build step while working on Trebol: Node runs the TypeScript directly.
 
 ```sh
 npm install
 npm run check        # type check and every test
-npm run trb          # the console: >> 1 + 2 * 3  == 9
+npm run trb          # the console
 npm run dev          # the examples, at http://localhost:5173/examples/signup/
+npm run build        # dist/trebol.js and dist/cli.js, what the npm package runs
 ```
-
-An app is a folder with an `app.trb`; `npx trebol dev that-folder` serves it, with no HTML to write.
 
 ## Documentation
 
@@ -72,3 +89,7 @@ Rebol; and guides to how Trebol is built.
 Trebol stands on the work of Carl Sassenrath and REBOL Technologies, Nenad Rakočević and the Red team,
 Oldes and the contributors to his Rebol 3, Brian Dickens and the Ren-C project, and Rasmus Andersson's
 Inter typeface. The first page of the documentation says what each of them gave.
+
+## License
+
+Apache License 2.0. See [LICENSE](LICENSE).
