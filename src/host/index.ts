@@ -34,6 +34,24 @@ fetch: func [
     http-request url either with [either block? options [make object! options] [options]] [none]
 ]
 
+save: func [
+    "Gives the user a file with a value written so load reads it back; .json, .csv and .xml are written as such."
+    where [file! none!] "The name of the file, or none for the bytes"
+    value [any-type!]
+    /all "Kept for R3 code: values are always written so load gives them back"
+    /local data
+][
+    ; /all names the refinement here, not the native
+    data: switch/default either file? where [suffix? where] [none] [
+        %.json [to-json :value]
+        %.csv [to-csv :value]
+        %.xml [to-xml :value]
+    ] [
+        append either block? :value [mold/all/only value] [mold/all :value] newline
+    ]
+    either where [download where data] [to binary! data]
+]
+
 help: func [
     "Shows how to call a function, or what a word holds."
     'word [any-type!] "The word to explain"

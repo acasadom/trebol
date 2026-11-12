@@ -211,6 +211,10 @@ first, as `to integer! row/("Bikes")` or `to date! row/("Due back")`. The keys a
 first line of the file; the table finds them by its column words. `load-csv` reads other delimiters too,
 such as `load-csv/with text #";"`.
 
+To keep the board itself for later, not for a spreadsheet, `save %board.trb workshop/data` gives the user a
+file of Trebol values, and `load read-file` turns that file back into the same rows, dates and amounts
+included.
+
 `to-csv` writes dates as `2026-11-11` and amounts as `45.50`, which every program reads. A file for a person
 to open in a spreadsheet in Spanish is better as that person writes them: `to-csv/language rows 'es` gives
 `11/11/2026` and `45,50 €`, with semicolons between the fields, as a Spanish spreadsheet expects. The

@@ -251,6 +251,31 @@ describe('http', () => {
     assert.equal(await evErr('download %a.txt "x"'), 'no-download');
   });
 
+  test('save gives the user a file that load reads back, written as its suffix says', async () => {
+    const saved: Array<[string, Blob]> = [];
+    const save = saver.save;
+    saver.save = (name, blob) => saved.push([name, blob]) > 0;
+    try {
+      await ev('save %board.trb [order 7 #[none] 12-Nov-2026]');
+      await ev('save/all %one.trb "x"');
+      await ev('save %board.JSON #(bike: "Road")');
+      await ev('save %rows.csv [["a" 1]]');
+      await ev('save %p.xml [part "Chain" none]');
+      assert.deepEqual(await Promise.all(saved.map(([n, b]) => b.text().then(t => `${n}: ${t}`))), [
+        'board.trb: order 7 #[none] 12-Nov-2026\n',
+        'one.trb: "x"\n',
+        'board.JSON: {"bike":"Road"}',
+        'rows.csv: a,1\n',
+        'p.xml: <part>Chain</part>',
+      ]);
+      assert.equal(saved[0]![1].type, 'text/plain;charset=utf-8');
+    } finally {
+      saver.save = save;
+    }
+    assert.equal(await ev('load save none [a #[none] $1.50]'), '[a none $1.50]');
+    assert.equal(await ev('none? second load save none [a #[none]]'), 'true');
+  });
+
   test('download saves an answer of the server under the name it gives', async () => {
     const saved: Array<[string, Blob]> = [];
     const save = saver.save;

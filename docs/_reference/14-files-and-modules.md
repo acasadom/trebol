@@ -27,6 +27,23 @@ as a PDF: its body is saved, with the type the server says. When the answer has 
 and returned; otherwise the one given. An answer with a status of 400 or more is an `access/http` error, and
 nothing is saved.
 
+## save
+
+R3's `save`, in a browser: the file goes to the user through `download`, so its name is all that counts. The
+suffix chooses how the value is written, as in R3: `.json` with `to-json`, `.csv` with `to-csv`, `.xml` with
+`to-xml`, and any other as Trebol source, in the form `mold/all` gives, so that `load` reads back the same
+values; a block is written without its outer brackets. With `none` instead of a name, it gives those bytes as a
+`binary!`, and `load` reads them too:
+
+```trebol-console
+>> load save none [order 7 #(bike: "Road") 12-Nov-2026]
+== [order 7 #(bike: "Road") 12-Nov-2026]
+```
+
+A file the user chose comes back with `load read-file file`, from an upload field. `/all` is there for R3
+code: every value is always written so that it loads back. A web address cannot be a target; `fetch` sends to
+servers.
+
 ## save-local
 
 ## load-local
