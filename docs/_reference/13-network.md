@@ -16,6 +16,7 @@ The options of `/with`, a block or an object:
 | `body` | what to send: a string or binary as it is, any other value as JSON |
 | `form` | a block or map sent as a web form (`application/x-www-form-urlencoded`) |
 | `multipart` | a block of names and values sent as `multipart/form-data`; a file from an upload field goes as a file |
+| `cookies` | `yes` sends the browser's cookies to any server, as a login on another server needs; `no` sends none; without it, they go only to the page's own server |
 | `timeout` | how long to wait for the answer, a `time!` or a number of seconds, before it is an error |
 | `full` | when true, `fetch` gives an object with `status`, `headers` and `body`, and an HTTP error is not an error |
 

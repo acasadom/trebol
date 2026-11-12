@@ -263,6 +263,18 @@ describe('http', () => {
     assert.equal(await evErr('fetch/with base/echo [query: [1 2]]'), 'bad-query');
   });
 
+  test('cookies go to the server of the page, to every server, or to none', async () => {
+    const sent: Array<RequestCredentials | undefined> = [];
+    const real = globalThis.fetch;
+    globalThis.fetch = (url, init) => { sent.push(init?.credentials); return real(url, init); };
+    try {
+      for (const o of ['[]', '[cookies: yes]', '[cookies: no]']) await ev(`fetch/with base/echo ${o}`);
+    } finally {
+      globalThis.fetch = real;
+    }
+    assert.deepEqual(sent, ['same-origin', 'include', 'omit']);
+  });
+
   test('form posts', async () => {
     assert.equal(await ev('r: fetch/with base/echo [form: [a 1 b "x y"]] r/body'), '"a=1&b=x+y"');
   });

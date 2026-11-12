@@ -229,6 +229,9 @@ native('http-request', '["Sends an HTTP request; used by fetch." url [url! strin
   if (!headers.has('accept')) headers.set('accept', 'application/json, text/*;q=0.9, */*;q=0.8');
   const timeout = field(opts, 'timeout');
   const full = isOn(field(opts, 'full'));
+  // without cookies the browser's own rule: sent to the page's own server only
+  const cookies = field(opts, 'cookies');
+  const credentials: RequestCredentials = cookies === null ? 'same-origin' : isOn(cookies) ? 'include' : 'omit';
   const ctl = new AbortController();
   let timedOut = false;
   const timer = timeout !== null ? setTimeout(() => { timedOut = true; ctl.abort(); }, toSeconds(timeout) * 1000) : null;
@@ -237,7 +240,7 @@ native('http-request', '["Sends an HTTP request; used by fetch." url [url! strin
   const verb = method === null ? (body === undefined ? 'GET' : 'POST') : form(method).toUpperCase();
   const p = (async (): Promise<Cell> => {
     try {
-      const res = await fetch(url, { method: verb, headers, body, signal: ctl.signal });
+      const res = await fetch(url, { method: verb, headers, body, credentials, signal: ctl.signal });
       const bytes = new Uint8Array(await res.arrayBuffer());
       const data = decodeBody(res.headers.get('content-type') ?? '', bytes);
       if (full) {
