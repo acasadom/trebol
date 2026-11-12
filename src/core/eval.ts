@@ -446,6 +446,9 @@ function exprStart(t: Task, f: ExprFrame | DoFrame | SetFrame): void {
     case K.LitPath:
       t.v = { t: K.Path, s: c.s, i: c.i };
       return;
+    // a function itself in a block, as reduce [:f x] leaves it, is called, as in R3
+    case K.Function: case K.Native:
+      return beginCall(t, feed, c, null, null, null);
   }
   t.v = c;
 }
@@ -570,6 +573,7 @@ function quickValue(c: Cell): Cell | null {
       return v;
     }
     case K.SetWord: case K.LitWord: case K.Paren: case K.Path: case K.GetPath: case K.SetPath: case K.LitPath:
+    case K.Function: case K.Native:
       return null;
   }
   return c;

@@ -143,6 +143,10 @@ Trebol [
 [b: []  all [unset? do/next b 'r  same? b r]]
 [all [1 = do/next 1 'r  none? r]]
 [all [1 = do/next "1 2" 'r  r = [2]]]
+[(do reduce [:add 1 2]) = 3]
+[f: func [a b] [a * b]  (do reduce [:f :add 1 2 3]) = 9]
+[do reduce [to set-word! quote x :add 1 2]  x = 3]
+[f: func [a b] [a * b]  error? try [do reduce [:f 1]]]
 
 "binding"
 [o: make object! [t: 2]  r: [t * 3]  all [6 = do bind r o  r = [t * 3]]]
