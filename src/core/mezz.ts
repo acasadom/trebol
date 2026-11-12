@@ -338,4 +338,24 @@ modulo: func [
         all [decimal? r  (abs r - b) < (1e-13 * abs b)]
     ] [0.0] [r]
 ]
+
+suffix?: func [
+    "The suffix of a file name or URL, as %.txt; none when it has none."
+    path [file! url! string!]
+    /local end
+][
+    either all [url? path  end: any [find path #"?" find path #"#"]] [
+        all [
+            path: find/reverse end #"."
+            not find/part path #"/" end
+            to file! copy/part path end
+        ]
+    ] [
+        all [
+            path: find/last path #"."
+            not find path #"/"
+            to file! path
+        ]
+    ]
+]
 `;

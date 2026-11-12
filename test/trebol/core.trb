@@ -249,3 +249,14 @@ Trebol [
     b
 ] insert b n  b]  all [(mold f 1) = "[1^/    a^/    b^/]"  (mold f 2) = "[2^/    a^/    b^/]"]]
 [f: func [] [b: [3 1 2] sort b  reverse b  b]  all [(f) = [3 2 1]  (f) = [3 2 1]]]
+
+"suffix?"
+[(suffix? %a/b.JSON) = %.JSON]
+[(suffix? %a.tar.gz) = %.gz]
+[(suffix? "doc.txt") = %.txt]
+[(suffix? %.bashrc) = %.bashrc]
+[none? suffix? %a.b/c]
+[none? suffix? %a/]
+[(suffix? http://x.es/a.html) = %.html]
+[(suffix? http://x.es/a.html?q=1.2) = %.html]
+[none? suffix? http://x.es/a?q=1.2]

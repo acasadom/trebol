@@ -5,6 +5,20 @@
 Reading files and web addresses, running scripts and importing modules, giving the user files to save,
 keeping small values in the browser, opening other addresses and using the clipboard. See [modules](../language/13-modules.md).
 
+(fn-suffix-3f)=
+## suffix?
+
+The suffix of a file name or URL, as %.txt; none when it has none.
+
+```text
+suffix? path
+```
+
+- `path` (`file!` `url!` `string!`)
+
+As in R3: the part from the last dot, as a `file!`, when no `/` follows it; in a URL, the query after `?` and the
+part after `#` do not count.
+
 (fn-read)=
 ## read
 
