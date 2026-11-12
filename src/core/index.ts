@@ -22,3 +22,4 @@ export {
 export { native, op, value, truthy } from './natives/define.ts';
 export { makeRuntime, runSync, doSource, scriptStart } from './boot.ts';
 export { parseJson, toJson } from './natives/json.ts';
+export { queryText } from './natives/encode.ts';

@@ -1,7 +1,7 @@
 # Data formats
 
-Reading values from text, and writing and reading them in other formats: JSON, CSV, XML, base 64 and hexadecimal,
-and checksums.
+Reading values from text, and writing and reading them in other formats: JSON, CSV, XML, the query of a URL,
+base 64 and hexadecimal, and checksums.
 
 ## load
 
@@ -83,11 +83,41 @@ Values are written as `to-csv` writes them: dates in ISO 8601, amounts as plain 
 value is `none` is left out. `/declaration` starts with `<?xml version="1.0" encoding="UTF-8"?>`, which a
 whole document needs; without it the text can also go inside other XML.
 
+## to-query
+
+Writes each name and value as `name=value`, joined by `&`, with what a URL cannot hold as `%xx` escapes. A block
+value gives the name once for each of its values, and a `none` value is left out. Values are written as `to-csv`
+writes them: dates in ISO 8601, amounts as plain numbers.
+
+```trebol-console
+>> to-query #(q: "café" tags: ["a" "b"] page: 2)
+== "q=caf%C3%A9&tags=a&tags=b&page=2"
+```
+
+`fetch/with url [query: #(...)]` adds the same text to the URL it requests.
+
+## load-query
+
+Takes the text after `?`, or a whole URL, and gives a map. Names that read as words are words, the rest stay
+strings; every value is a `string!`, as in `load-csv`. A name given more than once holds a block of its values, a
+name with no `=` holds `""`, and `+` is a space, as forms send it.
+
+```trebol-console
+>> load-query http://shop.example/search?q=caf%C3%A9+con+leche&tag=a&tag=b
+== #(q: "café con leche" tag: ["a" "b"])
+```
+
 ## enbase
 
 ## debase
 
 ## to-hex
+
+## enhex
+
+What stays as it is depends on the value, as in R3: in a `url!` or a `file!`, every character a URL may hold
+(`/ ? : @ & = + $ , ; #` among them); in other text, only letters, digits and `- _ . ! ~ * ' ( )`, so the text can
+go inside one part of a URL. `/uri` writes spaces as `+`.
 
 ## dehex
 

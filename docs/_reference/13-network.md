@@ -11,6 +11,7 @@ The options of `/with`, a block or an object:
 | Option | What it does |
 | --- | --- |
 | `method` | the HTTP method, `'PUT`, `'DELETE`...; without it, `GET`, or `POST` when there is something to send |
+| `query` | a map, object or block of names and values added to the URL after `?`, as `to-query` writes them |
 | `headers` | a block or map of header names and values |
 | `body` | what to send: a string or binary as it is, any other value as JSON |
 | `form` | a block or map sent as a web form (`application/x-www-form-urlencoded`) |

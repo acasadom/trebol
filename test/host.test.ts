@@ -65,7 +65,7 @@ before(async () => {
       case '/echo': {
         let body = '';
         req.on('data', c => { body += c; });
-        req.on('end', () => json(200, { method: req.method, type: req.headers['content-type'] ?? '', body, auth: req.headers['authorization'] ?? '' }));
+        req.on('end', () => json(200, { method: req.method, type: req.headers['content-type'] ?? '', body, auth: req.headers['authorization'] ?? '', query: url.search }));
         return;
       }
       case '/report': {
@@ -254,6 +254,13 @@ describe('http', () => {
     assert.equal(dispositionName(`attachment; filename*=iso-8859-1'es'%F1u.pdf`), 'ñu.pdf');
     assert.equal(dispositionName('attachment; filename=plain.csv'), 'plain.csv');
     assert.equal(dispositionName('inline'), '');
+  });
+
+  test('query adds names and values to the URL', async () => {
+    assert.equal(await ev('r: fetch/with base/echo [query: #(q: "café ñ" page: 2)] r/query'), '"?q=caf%C3%A9%20%C3%B1&page=2"');
+    assert.equal(await ev('r: fetch/with join base/echo "?a=1#top" [query: [b 2]] r/query'), '"?a=1&b=2"');
+    assert.equal(await ev('r: fetch/with base/echo [query: #()] r/query'), '""');
+    assert.equal(await evErr('fetch/with base/echo [query: [1 2]]'), 'bad-query');
   });
 
   test('form posts', async () => {

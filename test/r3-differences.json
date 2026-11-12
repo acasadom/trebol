@@ -342,5 +342,53 @@
   {
     "test": "[x: {<r n=\"1\"><s:t a=\"&amp;\">é &lt; 1</s:t><e/></r>} x = to-xml load-xml x]",
     "why": "Same: XML."
+  },
+  {
+    "test": "[(to-query #[q: \"café ñ\" page: 2]) = \"q=caf%C3%A9%20%C3%B1&page=2\"]",
+    "why": "R3 has no query codec: to-query and load-query are Trebol's pair, as load-csv/to-csv."
+  },
+  {
+    "test": "[(to-query [q \"x\" n 3 skip none]) = \"q=x&n=3\"]",
+    "why": "R3 has no query codec: to-query and load-query are Trebol's pair, as load-csv/to-csv."
+  },
+  {
+    "test": "[(to-query #[tags: [\"a\" \"b\"]]) = \"tags=a&tags=b\"]",
+    "why": "R3 has no query codec: to-query and load-query are Trebol's pair, as load-csv/to-csv."
+  },
+  {
+    "test": "[(to-query #[day: 1-Jan-2026 price: $3.50 \"my key\" \"a&b\"]) = \"day=2026-01-01&price=3.50&my%20key=a%26b\"]",
+    "why": "R3 has no query codec: to-query and load-query are Trebol's pair, as load-csv/to-csv."
+  },
+  {
+    "test": "[(to-query make object! [a: 1]) = \"a=1\"]",
+    "why": "R3 has no query codec: to-query and load-query are Trebol's pair, as load-csv/to-csv."
+  },
+  {
+    "test": "[(to-query #[]) = \"\"]",
+    "why": "R3 has no query codec: to-query and load-query are Trebol's pair, as load-csv/to-csv."
+  },
+  {
+    "test": "[(load-query \"q=caf%C3%A9+x&page=2\") = #[q: \"café x\" page: \"2\"]]",
+    "why": "R3 has no query codec: to-query and load-query are Trebol's pair, as load-csv/to-csv."
+  },
+  {
+    "test": "[(load-query \"tags=a&tags=b&flag\") = #[tags: [\"a\" \"b\"] flag: \"\"]]",
+    "why": "R3 has no query codec: to-query and load-query are Trebol's pair, as load-csv/to-csv."
+  },
+  {
+    "test": "[(load-query \"?my%20key=1\") = #[\"my key\" \"1\"]]",
+    "why": "R3 has no query codec: to-query and load-query are Trebol's pair, as load-csv/to-csv."
+  },
+  {
+    "test": "[(load-query http://x.es/p?a=1&b=2#top) = #[a: \"1\" b: \"2\"]]",
+    "why": "R3 has no query codec: to-query and load-query are Trebol's pair, as load-csv/to-csv."
+  },
+  {
+    "test": "[(load-query http://x.es/p) = #[]]",
+    "why": "R3 has no query codec: to-query and load-query are Trebol's pair, as load-csv/to-csv."
+  },
+  {
+    "test": "[q: #[q: \"a&b=ñ\" n: \"1\"] (load-query to-query q) = q]",
+    "why": "R3 has no query codec: to-query and load-query are Trebol's pair, as load-csv/to-csv."
   }
 ]

@@ -7,7 +7,7 @@
 
 import {
   K, NONE, I64, native, value, string, stringOf, text, binary, makeError, throwError, form, spell, ctxFind, intern,
-  parseJson, toJson,
+  parseJson, toJson, queryText,
   type Cell, type BlockCell, type StringCell, type ObjectCell, type WordCell, type Step, type NativeFn,
 } from '../core/index.ts';
 import { schedulerOf, spawnHandler, makeHandle, handleOf, type Scheduler } from './scheduler.ts';
@@ -180,8 +180,16 @@ function toSeconds(c: Cell): number {
 native('http-request', '["Sends an HTTP request; used by fetch." url [url! string!] options [object! none!]]', (t, f, v) => {
   if (f.phase === 1) return value(v!);
   f.phase = 1;
-  const url = text(f.args[0] as StringCell);
   const opts = f.args[1]!.t === K.Object ? f.args[1] as ObjectCell : null;
+  let url = text(f.args[0] as StringCell);
+  const q = field(opts, 'query');
+  if (q !== null) {
+    const qs = queryText(q);
+    if (qs === null) return throwError('script', 'bad-query', 'a query takes words or strings as names');
+    const hash = url.includes('#') ? url.slice(url.indexOf('#')) : '';
+    const base = url.slice(0, url.length - hash.length);
+    if (qs !== '') url = base + (base.includes('?') ? '&' : '?') + qs + hash;
+  }
   const method = field(opts, 'method');
   const headers = new Headers();
   const h = field(opts, 'headers');

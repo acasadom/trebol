@@ -241,7 +241,17 @@ the text and `none`. `to-xml` writes it back:
 == {<part stock="12">Chain</part>}
 ```
 
-The [reference](../reference/data-formats.md) says more about both.
+The part of a web address after `?` holds names and values too. `load-query` reads it as a map, and
+`to-query` writes one, with what an address cannot hold, such as spaces and accents, as `%` escapes:
+
+```trebol-console
+>> load-query http://shop.example/search?bike=road&size=54
+== #(bike: "road" size: "54")
+>> to-query #(customer: "Lin Wei" bikes: 2)
+== "customer=Lin%20Wei&bikes=2"
+```
+
+The [reference](../reference/data-formats.md) says more about all of them.
 
 ## Objects or maps?
 
