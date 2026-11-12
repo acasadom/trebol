@@ -276,6 +276,18 @@ describe('http', () => {
     assert.equal(await ev('none? second load save none [a #[none]]'), 'true');
   });
 
+  test('compress and decompress give the bytes back, and read what R3 writes', async () => {
+    for (const m of ['gzip', 'zlib', 'deflate']) {
+      assert.equal(await ev(`to string! decompress compress "ñandú ñandú" '${m} '${m}`), '"ñandú ñandú"');
+      assert.equal(await ev(`(decompress compress #{00FF01} '${m} '${m}) = #{00FF01}`), 'true');
+    }
+    assert.equal(await ev(`binary? compress "x" 'gzip`), 'true');
+    // written by R3 (Oldes): compress "hola hola hola" 'gzip
+    assert.equal(await ev(`to string! decompress #{1F8B08000000000002FFCBC8CF4954C880110047EE085A0E000000} 'gzip`), '"hola hola hola"');
+    assert.equal(await evErr(`decompress #{0102} 'zlib`), 'bad-compression');
+    assert.equal(await evErr(`compress "x" 'lzma`), 'bad-method');
+  });
+
   test('download saves an answer of the server under the name it gives', async () => {
     const saved: Array<[string, Blob]> = [];
     const save = saver.save;

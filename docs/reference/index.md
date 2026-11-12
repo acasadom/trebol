@@ -57,11 +57,11 @@ draw
 
 ### C
 
-[`can-go-back?`](#fn-can-go-back-3f) · [`can-go-forward?`](#fn-can-go-forward-3f) · [`cancel`](#fn-cancel) · [`case`](#fn-case) · [`catch`](#fn-catch) · [`cause-error`](#fn-cause-error) · [`change`](#fn-change) · [`char?`](#fn-char-3f) · [`charset`](#fn-charset) · [`checksum`](#fn-checksum) · [`clear`](#fn-clear) · [`close`](#fn-close) · [`close-stream`](#fn-close-stream) · [`closure`](#fn-closure) · [`collect`](#fn-collect) · [`collect-words`](#fn-collect-words) · [`comment`](#fn-comment) · [`complement`](#fn-complement) · [`compose`](#fn-compose) · [`confirm`](#fn-confirm) · [`construct`](#fn-construct) · [`context`](#fn-context) · [`context?`](#fn-context-3f) · [`continue`](#fn-continue) · [`copy`](#fn-copy) · [`cosine`](#fn-cosine)
+[`can-go-back?`](#fn-can-go-back-3f) · [`can-go-forward?`](#fn-can-go-forward-3f) · [`cancel`](#fn-cancel) · [`case`](#fn-case) · [`catch`](#fn-catch) · [`cause-error`](#fn-cause-error) · [`change`](#fn-change) · [`char?`](#fn-char-3f) · [`charset`](#fn-charset) · [`checksum`](#fn-checksum) · [`clear`](#fn-clear) · [`close`](#fn-close) · [`close-stream`](#fn-close-stream) · [`closure`](#fn-closure) · [`collect`](#fn-collect) · [`collect-words`](#fn-collect-words) · [`comment`](#fn-comment) · [`complement`](#fn-complement) · [`compose`](#fn-compose) · [`compress`](#fn-compress) · [`confirm`](#fn-confirm) · [`construct`](#fn-construct) · [`context`](#fn-context) · [`context?`](#fn-context-3f) · [`continue`](#fn-continue) · [`copy`](#fn-copy) · [`cosine`](#fn-cosine)
 
 ### D
 
-[`datatype?`](#fn-datatype-3f) · [`date?`](#fn-date-3f) · [`debase`](#fn-debase) · [`decimal?`](#fn-decimal-3f) · [`default`](#fn-default) · [`dehex`](#fn-dehex) · [`delay`](#fn-delay) · [`difference`](#fn-difference) · [`divide`](#fn-divide) · [`do`](#fn-do) · [`do-file`](#fn-do-file) · [`does`](#fn-does) · [`download`](#fn-download)
+[`datatype?`](#fn-datatype-3f) · [`date?`](#fn-date-3f) · [`debase`](#fn-debase) · [`decimal?`](#fn-decimal-3f) · [`decompress`](#fn-decompress) · [`default`](#fn-default) · [`dehex`](#fn-dehex) · [`delay`](#fn-delay) · [`difference`](#fn-difference) · [`divide`](#fn-divide) · [`do`](#fn-do) · [`do-file`](#fn-do-file) · [`does`](#fn-does) · [`download`](#fn-download)
 
 ### E
 

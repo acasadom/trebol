@@ -4,6 +4,7 @@
 import './natives.ts';
 import './net.ts';
 import './page.ts';
+import './compress.ts';
 import './locale.ts';
 import { setLoader, defaultLoader, type Loader } from './modules.ts';
 import {

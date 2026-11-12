@@ -3,7 +3,7 @@
 # Data formats
 
 Reading values from text, and writing and reading them in other formats: JSON, CSV, XML, the query of a URL,
-base 64 and hexadecimal, and checksums.
+base 64 and hexadecimal, checksums and compressed bytes.
 
 (fn-load)=
 ## load
@@ -277,3 +277,39 @@ checksum data method
 
 - `data` (`binary!` `any-string!`)
 - `method` (`word!`)
+
+(fn-compress)=
+## compress
+
+Compresses bytes, or text as UTF-8, into a binary.
+
+```text
+compress data method
+```
+
+- `data` (`binary!` `string!`)
+- `method` (`word!`): gzip, zlib or deflate
+
+The methods are R3's and Red's: `gzip` (the `.gz` file format), `zlib` (what HTTP calls `deflate`) and
+`deflate` (the bare stream, as inside a ZIP file). What one writes, the others read: R3 decompresses what Trebol
+compresses, and the other way round, although the bytes need not be the same. The browser does the work, so a
+program waits for it as it does for `fetch`.
+
+```trebol-console
+>> to string! decompress compress "a long text, a long text, a long text" 'gzip 'gzip
+== "a long text, a long text, a long text"
+```
+
+(fn-decompress)=
+## decompress
+
+The bytes that compress was given.
+
+```text
+decompress data method
+```
+
+- `data` (`binary!`)
+- `method` (`word!`): gzip, zlib or deflate
+
+Bytes that are not compressed with that method are a `script/bad-compression` error.
