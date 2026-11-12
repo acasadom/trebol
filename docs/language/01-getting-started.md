@@ -95,6 +95,35 @@ Cog & Chain, bicycle repairs
 
 The header can hold more than a title, as you will see later, but `Trebol []` is enough.
 
+## The trebol command
+
+`npx trebol` does one of three things, by what follows it:
+
+```sh
+npx trebol                         # the console
+npx trebol shop.trb                # runs a script
+npx trebol dev [folder]            # serves an app (the second tutorial)
+```
+
+In the console, a line that leaves a block, a paren or a string open is not run yet: the prompt turns into
+`[` and waits for the rest, so a function can be typed over several lines.
+
+```text
+>> double: func [n] [
+[      n * 2
+[  ]
+>> double 21
+== 42
+```
+
+Ctrl+C drops what is being typed; on an empty prompt it leaves, as do `q` and Ctrl+D. With no terminal, the
+console runs what it is given instead, so a script can come through a pipe: `echo "print 1 + 2" | npx trebol`.
+
+`dev` serves the folder (the current one by default) at <http://localhost:5173/>; `--port 8080` picks another
+port, and `--api api.ts` lets a module of yours answer requests before the files are served: its
+`handleApi(req, res, url)` answers the ones it knows and gives `false` for the rest, so an app can bring a
+small server of its own while it is being written.
+
 ## What's next
 
 So far the shop has a name and some numbers. In [the next step](02-values) it gets prices, a tax rate
