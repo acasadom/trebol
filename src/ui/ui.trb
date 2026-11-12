@@ -1,7 +1,7 @@
 Trebol [
     title: "UI dialect: faces, styles, layout and validation"
     exports: [
-        face styles stylize layout view theme looks open close toast
+        face styles stylize layout view theme looks open close toast confirm
         validate-face field-error form-values set-values ui-pane ui-input ui-files ui-remove-file ui-lookup-search ui-lookup-pick ui-lookup-remove ui-blur ui-click ui-select ui-sort ui-close ui-event ui-menu ui-drop ui-reorder ui-crumb ui-expand
         go go-back go-forward can-go-back? can-go-forward? ui-route set-language ui-rows
     ]
@@ -558,6 +558,20 @@ toast: func [
         kind [word!]
 ] [
     show-toast tr message either role [kind] [none]
+]
+
+confirm: func [
+    "Asks a question in a small dialog and waits: true when the user says yes."
+    question [string! map! word!] "A text, a text per language, or a word of the dictionary"
+    /with "The answers, yes first"
+        choices [block!]
+    /role "primary (the default) or danger, for what cannot be undone"
+        kind [word!]
+] [
+    show-confirm tr question
+        either with [tr first choices] [none]
+        either with [tr second choices] [none]
+        either role [kind] [none]
 ]
 
 set-language: func [

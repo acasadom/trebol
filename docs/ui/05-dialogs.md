@@ -129,6 +129,38 @@ A dialog can also do something when the reader closes it with Esc or its corner 
 one of its own buttons: `on-close [...]` after the dialog's block runs then. Code that closes it with `close`
 does not trigger it.
 
+## A question in one line
+
+When the question needs no more than a yes or a no, `confirm` asks it without a dialog in the layout. It
+shows a small dialog, waits for the answer and gives `true` or `false`, so it goes straight into an `if`:
+
+```trebol-ui
+bookings: [
+    #(customer: "Ada Lovelace" bike: "Road")
+    #(customer: "Grace Hopper" bike: "City")
+]
+view [
+    title "In the workshop"
+    global table workshop "No bikes in the workshop" [customer "Customer" bike "Bike"]
+    row right [
+        button danger "Clear the board" [
+            if confirm/role/with "Take every bike off the board?" 'danger ["Clear it" "Keep them"] [
+                clear bookings
+                workshop/data: bookings
+                toast/role "The board is clear." 'success
+            ]
+        ]
+    ]
+]
+
+workshop/data: bookings
+```
+
+Without `/with` the answers are *Yes* and *No*, in the language of the page; `/with` gives two of your own,
+yes first. `/role 'danger` paints the yes in red and starts on the no, so pressing Enter does nothing that
+cannot be undone. Esc answers no. Like a toast, the question can be a text per language or a word of the
+dictionary.
+
 ## What's next
 
 The shop now books bikes in, keeps the board and takes bikes off it, all on one screen. The

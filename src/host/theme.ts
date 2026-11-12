@@ -855,6 +855,9 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
   padding: var(--tb-space-4) var(--tb-space-6) var(--tb-space-6);
   overflow: auto;
 }
+.tb-dialog.tb-confirm { width: min(420px, calc(100vw - 32px)); }
+.tb-dialog.tb-confirm > .tb-dialog-body { padding-top: var(--tb-space-6); gap: var(--tb-space-6); }
+.tb-confirm-question { margin: 0; font-size: 15px; line-height: 1.5; }
 @keyframes tb-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
 /* tabs */
@@ -1128,6 +1131,7 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
   .tb-crumb-middle { display: none !important; }
   .tb-crumb-more { display: inline-flex !important; }
   .tb-dialog { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; border-radius: 0; }
+  .tb-dialog.tb-confirm { width: calc(100vw - 32px); height: auto; margin: auto; border-radius: var(--tb-radius-lg); }
 }
 @media (pointer: coarse) { :root { --tb-control: 44px; } }
 @media (prefers-reduced-motion: reduce) {

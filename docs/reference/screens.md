@@ -72,6 +72,23 @@ close target
 
 - `target` (`object!` `handle!`)
 
+(fn-confirm)=
+## confirm
+
+Asks a question in a small dialog and waits: true when the user says yes.
+
+```text
+confirm question
+```
+
+- `question` (`string!` `map!` `word!`): A text, a text per language, or a word of the dictionary
+- `/with choices` (`block!`): The answers, yes first
+- `/role kind` (`word!`): primary (the default) or danger, for what cannot be undone
+
+The yes answer shows with the role's color, `primary` unless `/role` says `danger`; with `danger` the no has the
+focus first, so Enter does not do what cannot be undone. Esc answers no. The question and the answers are
+translated as `toast`'s message is. The handler that asks waits for the answer; the rest of the page goes on.
+
 (fn-toast)=
 ## toast
 

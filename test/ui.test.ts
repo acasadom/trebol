@@ -21,6 +21,12 @@ native('show-toast', '[message [string!] kind [word! none!]]', (_t, f) => {
   toasts.push(mold(f.args[0]!) + ' ' + mold(f.args[1]!));
   return value(f.args[0]!);
 });
+let asked: string[] = [];
+native('show-confirm', '[question [string!] yes [string! none!] no [string! none!] kind [word! none!]]', (_t, f) => {
+  asked.push(f.args.slice(0, 4).map(a => mold(a)).join(' '));
+  // the user says yes to every question but the second
+  return value(asked.length === 2 ? FALSE : TRUE);
+});
 native('apply-theme', '[spec [object!]]', (_t, f) => {
   themed = f.args[0]!;
   return value(themed);
@@ -300,6 +306,17 @@ describe('components', () => {
     toasts = [];
     await ev(`toast "Saved" toast/role "Failed" 'danger`);
     assert.deepEqual(toasts, ['"Saved" none', '"Failed" danger']);
+  });
+
+  test('confirm asks the host and gives the answer', async () => {
+    asked = [];
+    const r = await ev(`reduce [
+      confirm "Remove it?"
+      confirm/role "Remove all?" 'danger
+      confirm/with #(en: "Keep it?" es: "¿Guardarlo?") [#(en: "Keep" es: "Guardar") "Drop"]
+    ]`);
+    assert.equal(r, '[true false true]');
+    assert.deepEqual(asked, ['"Remove it?" none none none', '"Remove all?" none none danger', '"Keep it?" "Keep" "Drop" none']);
   });
 
   test('tabs hold a face per tab and select the first one', async () => {

@@ -3100,6 +3100,46 @@ native('show-toast', '["Shows a short message at the edge of the screen." messag
   return value(f.args[0]!);
 });
 
+native('show-confirm', '["Asks a question in a small dialog; true when the user says yes." question [string!] yes [string! none!] no [string! none!] kind [word! none!]]', (_t, f, v) => {
+  if (f.phase === 1) return value(v!);
+  f.phase = 1;
+  const answer = (at: number, key: string): string => f.args[at]!.t === K.String ? text(f.args[at] as StringCell) : own(key);
+  const danger = f.args[3]!.t === K.Word && spell((f.args[3] as WordCell).sym).toLowerCase() === 'danger';
+  const d = el('dialog', 'tb-dialog tb-confirm');
+  d.setAttribute('role', 'alertdialog');
+  const body = el('div', 'tb-dialog-body');
+  const q = el('p', 'tb-confirm-question');
+  q.id = `tb-${nextId++}`;
+  q.textContent = text(f.args[0] as StringCell);
+  d.setAttribute('aria-labelledby', q.id);
+  const row = el('div', 'tb-row tb-right');
+  const no = el('button', 'tb-button');
+  const yes = el('button', danger ? 'tb-button tb-danger' : 'tb-button tb-primary');
+  no.type = yes.type = 'button';
+  no.textContent = answer(2, 'no');
+  yes.textContent = answer(1, 'yes');
+  row.append(no, yes);
+  body.append(q, row);
+  d.append(body);
+  const p = new Promise<Cell>(resolve => {
+    const done = (ok: boolean): void => {
+      d.close();
+      d.remove();
+      resolve(ok ? TRUE : FALSE);
+    };
+    yes.addEventListener('click', () => done(true));
+    no.addEventListener('click', () => done(false));
+    // Esc is no
+    d.addEventListener('cancel', ev => { ev.preventDefault(); done(false); });
+  });
+  document.body.append(d);
+  // over an open dialog too: the top layer stacks dialogs in the order they open
+  d.showModal();
+  // what cannot be undone starts on no, so Enter does not do it by mistake
+  (danger ? no : yes).focus();
+  return { k: 'await', p };
+});
+
 // --- syncing -----------------------------------------------------------------------
 
 function sync(m: Mounted): void {
