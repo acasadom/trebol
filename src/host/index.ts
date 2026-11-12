@@ -35,6 +35,17 @@ fetch: func [
     http-request url either with [either block? options [make object! options] [options]] [none]
 ]
 
+show-progress: func [
+    "Shows how far a request went on a face: a progress bar's value, or the bar of an upload."
+    face [object!]
+    done [integer! none!] "Bytes done; none once the request is over"
+    total [integer! none!] "Bytes in all, when known"
+    /local part
+][
+    part: either all [done total total > 0] [done / to decimal! total] [none]
+    either 'upload = select face 'style [face/sent: part] [if done [face/value: part]]
+]
+
 save: func [
     "Gives the user a file with a value written so load reads it back; .json, .csv and .xml are written as such."
     where [file! none!] "The name of the file, or none for the bytes"

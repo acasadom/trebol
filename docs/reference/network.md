@@ -29,11 +29,29 @@ The options of `/with`, a block or an object:
 | `form` | a block or map sent as a web form (`application/x-www-form-urlencoded`) |
 | `multipart` | a block of names and values sent as `multipart/form-data`; a file from an upload field goes as a file |
 | `cookies` | `yes` sends the browser's cookies to any server, as a login on another server needs; `no` sends none; without it, they go only to the page's own server |
+| `progress` | an upload field or a `progress` face whose bar shows how far the request went, or a block run with `done` and `total` bytes as it goes |
 | `timeout` | how long to wait for the answer, a `time!` or a number of seconds, before it is an error |
 | `full` | when true, `fetch` gives an object with `status`, `headers` and `body`, and an HTTP error is not an error |
 
 A network failure, a timeout and, without `full`, an answer with an HTTP error are access errors, which
 `try` catches.
+
+(fn-show-progress)=
+## show-progress
+
+Shows how far a request went on a face: a progress bar's value, or the bar of an upload.
+
+```text
+show-progress face done total
+```
+
+- `face` (`object!`)
+- `done` (`integer!` `none!`): Bytes done; none once the request is over
+- `total` (`integer!` `none!`): Bytes in all, when known
+
+What `fetch/with [progress: face]` calls as the request goes; a program does not need to. A `progress` face
+gets the part done as its `value`, from 0 to 1, or `none` while the total is unknown; an upload gets it as its
+`sent`, which shows a bar under its files, and `none` once the request is over, which hides it.
 
 (fn-http-request)=
 ## http-request

@@ -714,6 +714,8 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
 .tb-progress-label { font-size: 14px; font-weight: 550; }
 .tb-progress-label[hidden] { display: none; }
 .tb-progress { height: 8px; border-radius: 4px; background: var(--tb-border); overflow: hidden; }
+.tb-upload-progress { height: 6px; }
+.tb-upload-progress[hidden] { display: none; }
 .tb-progress-bar { height: 100%; width: 0; border-radius: inherit; background: var(--tb-primary); transition: width 300ms var(--tb-ease); }
 .tb-success .tb-progress-bar { background: var(--tb-success); }
 .tb-warning .tb-progress-bar { background: var(--tb-warning); }

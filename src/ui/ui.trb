@@ -43,6 +43,7 @@ face: make object! [
     error: none         ; current message, shown once the face is touched
     touched: false
     pending: false      ; an asynchronous check is running
+    sent: none          ; an upload: how far its files went up, 0-1; none hides the bar
     async-error: none   ; result of the last asynchronous check
     action: none        ; the block after the face: click, change
     events: none        ; [on-change [...] on-select [...]]

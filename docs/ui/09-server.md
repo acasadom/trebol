@@ -191,6 +191,34 @@ The name comes from the server, when its answer says one in `content-disposition
 it is the one given, here `report.pdf`. `download` gives back the name the file was saved under. An answer
 with a status of 400 or more is an error, so the app looks at the status first, as above.
 
+## How far it went
+
+A photo of the bike, or a long report, takes a while to go up or come down. `progress:` shows how far the
+request went. Given an upload field, its own bar fills as the files go up and goes away when they are there;
+given a `progress` face, that bar fills; given a block, the block runs as the bytes go, with `done` and `total`
+set:
+
+```trebol-ui
+view [
+    title "Bike photos"
+    global upload photos "Photos of the bike" multiple accept ["image/*"]
+    row right [
+        button primary "Send" [
+            fetch/with "/api/photos" [
+                multipart: collect [foreach file photos/value [keep reduce ['photo file/file]]]
+                progress: photos
+            ]
+            toast/role "The photos are with the shop." 'success
+        ]
+    ]
+]
+```
+
+With a body, the count is first of the bytes sent and then of the bytes received; without one, of the bytes
+received. `total` is `none` when the server does not say how many bytes come, and then a progress face moves
+without saying how far. The block runs at most ten times a second, and always once at the end, when `total`
+is known: `done` and `total` are then the bytes that came.
+
 ## What's next
 
 The bookings live on a server now. The last page draws: the shop's logo, and its takings as charts.

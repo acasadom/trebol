@@ -62,6 +62,17 @@ before(async () => {
       case '/missing':
         json(404, { error: 'not here' });
         return;
+      case '/big': {
+        // 4 parts of 1000 bytes, a little apart, so the progress can be seen
+        res.writeHead(200, { 'content-type': 'application/octet-stream', 'content-length': '4000' });
+        let n = 0;
+        const part = (): void => {
+          res.write(Buffer.alloc(1000, 65));
+          if (++n < 4) setTimeout(part, 120); else res.end();
+        };
+        part();
+        return;
+      }
       case '/echo': {
         let body = '';
         req.on('data', c => { body += c; });
@@ -334,6 +345,24 @@ describe('http', () => {
       globalThis.fetch = real;
     }
     assert.deepEqual(sent, ['same-origin', 'include', 'omit']);
+  });
+
+  test('progress runs a block with done and total, and fills a face', async () => {
+    const r = await ev(`
+      seen: copy []
+      data: fetch/with base/big [progress: [append/only seen reduce [done total]]]
+      wait 0.05
+      reduce [length? data first seen last seen 2 < length? seen]`);
+    assert.equal(r, '[4000 [0 4000] [4000 4000] true]');
+    const f = await ev(`
+      bar: make object! [style: 'progress value: none]
+      up: make object! [style: 'upload sent: none]
+      fetch/with base/big [progress: bar]
+      fetch/with base/big [progress: up]
+      wait 0.05
+      reduce [bar/value up/sent]`);
+    // a bar stays full; an upload hides its bar once the request is over
+    assert.equal(f, '[1.0 none]');
   });
 
   test('form posts', async () => {

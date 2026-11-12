@@ -8,9 +8,9 @@
 import {
   K, NONE, I64, native, value, string, stringOf, text, binary, makeError, throwError, form, spell, ctxFind, intern,
   parseJson, toJson, queryText,
-  type Cell, type BlockCell, type StringCell, type ObjectCell, type WordCell, type Step, type NativeFn,
+  type Cell, type BlockCell, type StringCell, type ObjectCell, type WordCell, type Step, type NativeFn, type Task,
 } from '../core/index.ts';
-import { schedulerOf, spawnHandler, makeHandle, handleOf, type Scheduler } from './scheduler.ts';
+import { schedulerOf, spawn, spawnHandler, makeHandle, handleOf, type Scheduler } from './scheduler.ts';
 import { cancellers } from './natives.ts';
 
 // --- files -----------------------------------------------------------------------
@@ -180,6 +180,104 @@ function toSeconds(c: Cell): number {
  * http-request url options: options is none or an object with any of
  * method, headers, body, json, form, multipart, timeout, full.
  */
+/** An answer of the server, however it was asked. */
+interface Answer { status: number; statusText: string; ok: boolean; headers: Array<[string, string]>; bytes: Uint8Array }
+
+/** How far a request went: bytes done, and the total when the server or the body says it. */
+type Progress = (done: number, total: number | null) => void;
+
+/**
+ * Sends a request with fetch. With progress, the body of the answer is read
+ * as it comes, so the bytes received can be told.
+ */
+async function sendFetch(url: string, init: RequestInit, progress: Progress | null): Promise<Answer> {
+  const res = await fetch(url, init);
+  const headers: Array<[string, string]> = [];
+  res.headers.forEach((val, k) => headers.push([k, val]));
+  let bytes: Uint8Array;
+  if (progress === null || res.body === null) {
+    bytes = new Uint8Array(await res.arrayBuffer());
+  } else {
+    const size = Number(res.headers.get('content-length') ?? NaN);
+    const total = Number.isFinite(size) && res.headers.get('content-encoding') === null ? size : null;
+    const parts: Uint8Array[] = [];
+    let done = 0;
+    progress(0, total);
+    for (const reader = res.body.getReader(); ;) {
+      const { value: part, done: end } = await reader.read();
+      if (end) break;
+      parts.push(part);
+      done += part.length;
+      progress(done, total);
+    }
+    // at the end the total is known: what came
+    if (total === null) progress(done, done);
+    bytes = new Uint8Array(done);
+    let at = 0;
+    for (const part of parts) { bytes.set(part, at); at += part.length; }
+  }
+  return { status: res.status, statusText: res.statusText, ok: res.ok, headers, bytes };
+}
+
+/**
+ * Sends a request with XMLHttpRequest, the one way a browser tells how much
+ * of the body went up: first the bytes sent, then the bytes received.
+ */
+function sendXhr(url: string, init: RequestInit, progress: Progress): Promise<Answer> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open(init.method ?? 'GET', url);
+    (init.headers as Headers).forEach((val, k) => xhr.setRequestHeader(k, val));
+    xhr.withCredentials = init.credentials === 'include';
+    xhr.responseType = 'arraybuffer';
+    const tell = (e: ProgressEvent): void => progress(e.loaded, e.lengthComputable ? e.total : null);
+    if (init.body !== undefined) xhr.upload.onprogress = tell;
+    xhr.onprogress = tell;
+    xhr.onload = () => {
+      const headers = xhr.getAllResponseHeaders().trim().split(/[\r\n]+/).filter(l => l.includes(':'))
+        .map(l => [l.slice(0, l.indexOf(':')).trim().toLowerCase(), l.slice(l.indexOf(':') + 1).trim()] as [string, string]);
+      const ok = xhr.status >= 200 && xhr.status < 300;
+      const got = (xhr.response as ArrayBuffer).byteLength;
+      progress(got, got);
+      resolve({ status: xhr.status, statusText: xhr.statusText, ok, headers, bytes: new Uint8Array(xhr.response as ArrayBuffer) });
+    };
+    xhr.onerror = () => reject(new Error('network error'));
+    xhr.onabort = () => reject(new Error('aborted'));
+    init.signal?.addEventListener('abort', () => xhr.abort());
+    xhr.send((init.body ?? null) as XMLHttpRequestBodyInit | null);
+  });
+}
+
+/**
+ * What runs as a request goes: a block, with done and total set, or a face,
+ * through the host's show-progress. Calls come at most every tenth of a
+ * second, and always at the end; `end` says the request is over.
+ */
+function progressOf(t: Task, target: Cell): { tell: Progress; end: () => void } {
+  const sch = schedulerOf(t);
+  let last = 0;
+  const run = (done: Cell, total: Cell): void => {
+    if (target.t === K.Block) {
+      spawnHandler(sch, target as BlockCell, { done, total });
+      return;
+    }
+    // a host mezzanine: in user, where the host's Trebol code is loaded
+    const i = ctxFind(t.rt.user, intern('show-progress'));
+    const fn = i < 0 ? undefined : t.rt.user.vals[i];
+    if (fn !== undefined) spawn(sch, { data: [fn, target, done, total] }, 0);
+  };
+  const count = (n: number): Cell => ({ t: K.Integer, v: n });
+  return {
+    tell: (done, total) => {
+      const now = Date.now();
+      if (now - last < 100 && done !== total) return;
+      last = now;
+      run(count(done), total === null ? NONE : count(total));
+    },
+    end: () => { if (target.t !== K.Block) run(NONE, NONE); },
+  };
+}
+
 native('http-request', '["Sends an HTTP request; used by fetch." url [url! string!] options [object! none!]]', (t, f, v) => {
   if (f.phase === 1) return value(v!);
   f.phase = 1;
@@ -238,14 +336,19 @@ native('http-request', '["Sends an HTTP request; used by fetch." url [url! strin
   const me = schedulerOf(t).byTask.get(t);
   if (me) me.abort = () => ctl.abort();
   const verb = method === null ? (body === undefined ? 'GET' : 'POST') : form(method).toUpperCase();
+  const watch = field(opts, 'progress');
+  const shown = watch === null ? null : progressOf(t, watch);
   const p = (async (): Promise<Cell> => {
     try {
-      const res = await fetch(url, { method: verb, headers, body, credentials, signal: ctl.signal });
-      const bytes = new Uint8Array(await res.arrayBuffer());
-      const data = decodeBody(res.headers.get('content-type') ?? '', bytes);
+      const init: RequestInit = { method: verb, headers, body, credentials, signal: ctl.signal };
+      const res = shown !== null && typeof XMLHttpRequest !== 'undefined'
+        ? await sendXhr(url, init, shown.tell)
+        : await sendFetch(url, init, shown === null ? null : shown.tell);
+      const type = res.headers.find(([k]) => k === 'content-type')?.[1] ?? '';
+      const data = decodeBody(type, res.bytes);
       if (full) {
         const hs: Cell[] = [];
-        res.headers.forEach((val, k) => hs.push(string(k), string(val)));
+        for (const [k, val] of res.headers) hs.push(string(k), string(val));
         return {
           t: K.Object,
           ctx: {
@@ -264,6 +367,7 @@ native('http-request', '["Sends an HTTP request; used by fetch." url [url! strin
       throw makeError('access', 'network', `cannot reach ${url}: ${(e as Error).message}`);
     } finally {
       if (timer !== null) clearTimeout(timer);
+      shown?.end();
     }
   })();
   return { k: 'await', p };

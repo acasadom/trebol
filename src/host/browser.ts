@@ -1352,6 +1352,15 @@ function buildUpload(face: ObjectCell, m: Mounted): HTMLElement {
   error.setAttribute('aria-live', 'polite');
   choose.setAttribute('aria-describedby', error.id);
   const list = el('ul', 'tb-upload-list');
+  // how far the files went up, while a fetch with progress: the upload sends them
+  label.id = `${id}-label`;
+  const track = el('div', 'tb-progress tb-upload-progress');
+  track.setAttribute('role', 'progressbar');
+  track.setAttribute('aria-valuemin', '0');
+  track.setAttribute('aria-valuemax', '100');
+  track.setAttribute('aria-labelledby', label.id);
+  track.hidden = true;
+  track.append(el('div', 'tb-progress-bar'));
   choose.addEventListener('click', () => picker.click());
   picker.addEventListener('change', () => {
     const files = [...(picker.files ?? [])];
@@ -1375,7 +1384,7 @@ function buildUpload(face: ObjectCell, m: Mounted): HTMLElement {
     chooseFiles(face, [...ev.dataTransfer!.files]);
   });
   zone.append(choose, hint, picker);
-  control.append(zone, list, error);
+  control.append(zone, list, track, error);
   wrap.append(label, control);
   m.label = label;
   m.error = error;
@@ -1481,6 +1490,11 @@ function syncUpload(m: Mounted, err: string | null): void {
   });
   m.box!.replaceChildren(...items);
   m.box!.hidden = items.length === 0;
+  const track = m.el.querySelector<HTMLElement>('.tb-upload-progress')!;
+  const sent = fraction(get(f, 'sent'));
+  track.hidden = get(f, 'sent').t === K.None;
+  track.setAttribute('aria-valuenow', String(Math.round((sent ?? 0) * 100)));
+  (track.firstChild as HTMLElement).style.width = `${(sent ?? 0) * 100}%`;
 }
 
 // A lookup: a field where the user types and chooses among what on-search finds, as in
