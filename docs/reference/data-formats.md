@@ -14,7 +14,7 @@ Reads Trebol source text, or a file of it, into values: the value itself, or a b
 load source
 ```
 
-- `source` (`string!` `file!` `url!`)
+- `source` (`string!` `binary!` `file!` `url!`)
 - `/all`: Gives a block even for one value
 
 (fn-to-json)=

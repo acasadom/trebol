@@ -138,6 +138,8 @@ Trebol [
 [(load "1 2") = [1 2]]
 [(load "$1.50") == $1.50]
 [(load "[a b]") = [a b]]
+[(load #{3120C3B1}) = [1 ñ]]
+[(load #{22636166C3A922}) = "café"]
 [(load "") = []]
 [(load/all "1") = [1]]
 [error? try [load "[1"]]

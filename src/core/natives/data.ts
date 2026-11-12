@@ -57,8 +57,10 @@ export function loadUser(rt: Runtime, src: StringCell): Step {
 }
 
 // As in R3 and Red, text holding one value loads as that value; /all always gives a block.
-native('load', '["Reads Trebol source text, or a file of it, into values: the value itself, or a block when there are several." source [string! file! url!] /all "Gives a block even for one value"]', (t, f, v) => {
-  const src = f.args[0]!;
+native('load', '["Reads Trebol source text, or a file of it, into values: the value itself, or a block when there are several." source [string! binary! file! url!] /all "Gives a block even for one value"]', (t, f, v) => {
+  let src = f.args[0]!;
+  // bytes are UTF-8 text, as save gives them
+  if (src.t === K.Binary) src = string(new TextDecoder().decode(new Uint8Array(src.s.data.slice(src.i))));
   if (f.phase === 0 && src.t !== K.String) {
     f.phase = 1;
     return hostCall(t, 'read', [src], 'read files');
