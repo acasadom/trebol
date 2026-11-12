@@ -142,6 +142,9 @@ function field(opts: ObjectCell | null, name: string): Cell | null {
   return v === undefined || v.t === K.None ? null : v;
 }
 
+/** A yes-or-no option: on unless it is missing, none or false. */
+const isOn = (v: Cell | null): boolean => v !== null && !(v.t === K.Logic && !v.v);
+
 /** Pairs from a block [name value ...], a map or an object, as strings. */
 function pairs(c: Cell): Array<[string, string]> {
   const out: Array<[string, string]> = [];
@@ -225,7 +228,7 @@ native('http-request', '["Sends an HTTP request; used by fetch." url [url! strin
   }
   if (!headers.has('accept')) headers.set('accept', 'application/json, text/*;q=0.9, */*;q=0.8');
   const timeout = field(opts, 'timeout');
-  const full = field(opts, 'full') !== null;
+  const full = isOn(field(opts, 'full'));
   const ctl = new AbortController();
   let timedOut = false;
   const timer = timeout !== null ? setTimeout(() => { timedOut = true; ctl.abort(); }, toSeconds(timeout) * 1000) : null;

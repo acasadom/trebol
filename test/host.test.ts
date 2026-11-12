@@ -272,6 +272,7 @@ describe('http', () => {
     assert.equal(await evErr('fetch/with base/never [timeout: 0.05]'), 'timeout');
     assert.equal(await ev('t: spawn [fetch base/never] wait 0.02 cancel t e: try [wait t] e/id'), 'cancelled');
     assert.equal(await ev('r: fetch/with base/missing [full: true] r/status'), '404');
+    assert.equal(await evErr('fetch/with base/missing [full: false]'), 'http');
   });
 
   test('requests run concurrently', async () => {
