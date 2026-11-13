@@ -71,7 +71,7 @@ interface Block { lang: string; code: string; line: number }
 
 function blocks(md: string): Block[] {
   const found: Block[] = [];
-  const re = /^```(trebol|trebol-console|trebol-ui)[ \t]*\n([\s\S]*?)^```[ \t]*$/gm;
+  const re = /^```(trebol|trebol-console|trebol-ui|js)[ \t]*\n([\s\S]*?)^```[ \t]*$/gm;
   for (let m = re.exec(md); m; m = re.exec(md)) {
     found.push({ lang: m[1]!, code: m[2]!, line: md.slice(0, m.index).split('\n').length });
   }
@@ -141,7 +141,7 @@ for (const page of pages(DOCS)) {
     const repl = new Repl(consoleHost(dirname(page)));
     for (const b of blocks(md)) {
       const where = `${name}:${b.line}`;
-      const file = /^; file: (\S+)\n/.exec(b.code);
+      const file = /^(?:;|\/\/) file: (\S+)\n/.exec(b.code);
       if (b.lang === 'trebol-ui') {
         await runApp(b.code, where);
       } else if (b.lang === 'trebol-console') {
@@ -149,7 +149,7 @@ for (const page of pages(DOCS)) {
       } else if (file !== null) {
         // a file the page shows: it must be the file next to the page, which the examples import
         assert.equal(readFileSync(join(dirname(page), file[1]!), 'utf8'), b.code.slice(file[0].length), `${where}: differs from ${file[1]}`);
-      } else if (!b.code.startsWith('; docs-test: skip')) {
+      } else if (b.lang !== 'js' && !b.code.startsWith('; docs-test: skip')) {
         const line = output.line;
         output.line = () => {};
         try {

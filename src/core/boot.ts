@@ -38,7 +38,7 @@ export function makeRuntime(): Runtime {
     ['off', FALSE], ['yes', TRUE], ['no', FALSE]] as const) set(name, v);
   KIND_NAMES.forEach((name, k) => set(name, datatype(k as Kind)));
   for (const [name, bits] of Object.entries(TYPESETS)) set(name, typeset(bits));
-  for (const def of registeredNatives()) set(def.name, { t: K.Native, p: def });
+  for (const def of registeredNatives()) if (def.hidden !== true) set(def.name, { t: K.Native, p: def });
   for (const [name, fn] of OPS) {
     const i = ctxFind(lib, intern(fn));
     if (i < 0) throw new Error(`operator ${name} refers to unknown native ${fn}`);

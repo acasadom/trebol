@@ -9,6 +9,8 @@
 //   Trebol [exports: [load-clients]]
 //   export save-client: func [...] [...]
 //
+// A `.js` file is a JavaScript module instead (js.ts).
+//
 // `do %file` runs a script in the user context each time; `read` gives a
 // file's text and `load %file` its values.
 //
@@ -19,12 +21,15 @@ import {
   copyDeep, setWord, getWord, splice, currentFile, throwError, makeError, scriptStart, LoadError, T, canon, intern,
   type Cell, type BlockCell, type StringCell, type ObjectCell, type Runtime, type WordCell, type Series, type Task,
 } from '../core/index.ts';
+import { jsModule } from './js.ts';
 
 export interface Loader {
   /** Base for resolving the first file: the page URL, or the working directory as a file: URL. */
   base: string;
   /** Reads a module's source by its resolved URL. */
   read: (href: string) => Promise<string>;
+  /** Loads a JavaScript module by its resolved URL; the platform's import when not given. */
+  importJs?: (href: string) => Promise<Record<string, unknown>>;
 }
 
 interface ModuleEntry {
@@ -183,6 +188,28 @@ native('import', '["Runs a module and gives its exports." source [file! url! str
     const entry: ModuleEntry = { obj: null, done, settle };
     mods.set(href, entry);
     f.data = { href, entry, ctx: null, exports: [] } satisfies ImportState;
+    if (/\.m?js$/i.test(new URL(href).pathname)) {
+      f.phase = 4;
+      const load = loader.importJs ?? ((h: string) => import(/* @vite-ignore */ h) as Promise<Record<string, unknown>>);
+      return {
+        k: 'await',
+        p: load(href).then(ns => {
+          const obj = jsModule(ns);
+          if (typeof obj === 'string') throw makeError('script', 'bad-module', obj);
+          return obj;
+        }, (e: unknown) => {
+          throw makeError('access', 'cannot-open', `cannot open ${mold(f.args[0]!)}: ${(e as Error)?.message ?? String(e)}`);
+        }).then(obj => {
+          entry.obj = obj;
+          entry.settle(true, obj);
+          return obj;
+        }, (err: unknown) => {
+          mods.delete(href);
+          entry.settle(false, err as Cell);
+          throw err;
+        }),
+      };
+    }
     f.phase = 1;
     return {
       k: 'await',
@@ -193,7 +220,7 @@ native('import', '["Runs a module and gives its exports." source [file! url! str
       }),
     };
   }
-  if (f.phase === 3) return value(v!);
+  if (f.phase === 3 || f.phase === 4) return value(v!);
   const st = f.data as ImportState;
   const failed = (e: Cell) => {
     mods.delete(st.href);

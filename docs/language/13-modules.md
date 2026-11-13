@@ -176,6 +176,56 @@ the shop is open
 == 0
 ```
 
+## A module in JavaScript
+
+Some work is already done in JavaScript, by a library or by you. `import` of a `.js` file loads it as a
+JavaScript module and gives an object with a function for each function it exports, named the way Trebol names
+words, so `inchesToCm` is `inches-to-cm`; its other exports are values:
+
+```js
+// file: shop/units.js
+// Wheel sizes are said in inches; the shop's tables are in centimetres.
+
+export function inchesToCm(inches) {
+  if (inches <= 0) throw new Error('a wheel has a size');
+  return Math.round(inches * 254) / 100;
+}
+
+export const sizes = [26, 27.5, 29];
+```
+
+```trebol-console
+>> units: import %shop/units.js
+== make object! [
+    inches-to-cm: #[native!]
+    sizes: [26 27.5 29]
+]
+>> units/inches-to-cm 29
+== 73.66
+>> units/sizes
+== [26 27.5 29]
+>> spec-of :units/inches-to-cm
+== [inches]
+```
+
+Values cross as JSON does: text, numbers, blocks, maps, `true`, `false` and `none` keep their shape, a word
+arrives as its text and a file as its name. A function that gives a promise is waited for while other tasks go
+on, as `fetch` is (page 12). An exception in JavaScript is an error in Trebol:
+
+```trebol-console
+>> error? answer: try [units/inches-to-cm 0]
+== true
+>> answer/message
+== "inches-to-cm: a wheel has a size"
+```
+
+A function can say what it takes, as a Trebol spec in a `spec` property, so `help` describes it and Trebol
+checks its arguments:
+
+```text
+inchesToCm.spec = '["A wheel size in centimetres." inches [number!]]';
+```
+
 ## When the file is not there
 
 A file that cannot be read is an `access` error, so `try` catches it as any other (page 7):

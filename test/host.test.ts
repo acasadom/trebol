@@ -431,6 +431,27 @@ describe('modules and storage', () => {
     assert.equal(mold(v), '[4 6 7 false [double triple hidden]]');
   });
 
+  test('import of a .js gives its functions, named as Trebol names words, and its values', async () => {
+    const host = fsHost();
+    const v = await runSource(host, `js: import %tools.js
+      reduce [js/add-up 2 3 js/shout "hi" js/later [1 "a"] js/nothing js/version js/limits/high
+        js/described "x" words-of js same? js import %tools.js]`, 'x.trb');
+    assert.equal(mold(v), '[5 "HI!" #(got: [1 "a"] items: [1 2.5 "x" none true]) none "1.2" 9 "x" '
+      + '[add-up described fails later limits nothing rejects shout version] true]');
+    const spec = await runSource(host, 'js: import %tools.js reduce [spec-of :js/add-up spec-of :js/described]', 'x.trb');
+    assert.equal(mold(spec), '[[a b] ["Gives back what it is given." file [file! string!]]]');
+  });
+
+  test('a JavaScript exception or rejection is a Trebol error; lib gains no word', async () => {
+    const host = fsHost();
+    const id = (e: ObjectCell) => form(errorField(e, 'id')) === 'js-error';
+    await assert.rejects(runSource(host, 'js: import %tools.js js/fails', 'x.trb'), id);
+    await assert.rejects(runSource(host, 'js: import %tools.js js/rejects', 'x.trb'), id);
+    await assert.rejects(runSource(host, 'js: import %tools.js js/described 1', 'x.trb'));
+    await assert.rejects(runSource(host, 'import %nothere.js', 'x.trb'), (e: ObjectCell) => form(errorField(e, 'id')) === 'cannot-open');
+    assert.equal(mold(await runSource(host, "value? 'js-function", 'x.trb')), 'false');
+  });
+
   test('do runs a script file each time; a module is imported', async () => {
     const host = fsHost();
     const v = await runSource(host, 'a: do %script.trb b: do %script.trb m: do %marked.trb reduce [a b greeting same? m import %marked.trb]', 'x.trb');

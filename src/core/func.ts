@@ -73,6 +73,10 @@ export interface NativeDef {
   readonly specBlock: BlockCell;
   readonly id: number;
   readonly name: string;
+  /** Explicit data for natives the host makes after boot, such as which JavaScript function a call runs. */
+  readonly data?: number;
+  /** Kept out of lib: only the host hands out natives built on it. */
+  readonly hidden?: boolean;
 }
 
 /** The payload of an op! cell: the two-argument function it calls. */

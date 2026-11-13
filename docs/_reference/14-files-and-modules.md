@@ -14,6 +14,11 @@ part after `#` do not count.
 
 ## import
 
+A `.js` or `.mjs` file is a JavaScript module: the object has a function for each function it exports, with its
+name in Trebol's way (`inchesToCm` is `inches-to-cm`) and its parameters as the spec, or the Trebol spec in its
+`spec` property; its other exports are values. Arguments and results cross as JSON, a promise is waited for,
+and an exception is a `script/js-error`. See [A module in JavaScript](../language/13-modules.md#a-module-in-javascript).
+
 ## download
 
 The browser saves the file with its usual dialog, or into the Downloads folder: only the name of the file is

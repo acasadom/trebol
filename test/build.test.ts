@@ -79,7 +79,9 @@ console.log(n, mold(face).length > 0);
 test('the browser runtime is one module with the UI dialect inside', async () => {
   const { pkg } = await installed();
   const js = readFileSync(join(pkg, 'dist', 'trebol.js'), 'utf8');
-  assert.doesNotMatch(js, /^import\b|\bimport\s*\(|\bfrom\s*["']/m);
+  // the one dynamic import is the app's own: import %x.js, by an address known only when it runs
+  assert.doesNotMatch(js, /^import\b|\bimport\s*\(\s*["'`]|\bfrom\s*["']/m);
+  assert.equal(js.match(/\bimport\s*\(/g)?.length, 1);
   for (const name of ['ui.trb', 'i18n.trb']) {
     const first = readFileSync(join(ROOT, 'src', 'ui', name), 'utf8').split('\n')[0]!;
     assert.ok(js.includes(JSON.stringify(first).slice(1, -1)), `${name} is inside`);
