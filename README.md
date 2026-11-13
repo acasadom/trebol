@@ -65,6 +65,9 @@ npm run dev          # the examples, at http://localhost:5173/examples/signup/
 npm run build        # dist/trebol.js and dist/cli.js, what the npm package runs
 ```
 
+A release is a tag: `npm version minor` (or `patch`) and `git push --follow-tags`. The `release` workflow checks
+the tagged commit and stages it on npm, where a maintainer approves it with `npm stage approve`.
+
 ## Documentation
 
 The documentation is at <https://acasadom.github.io/trebol/>. It has two tutorials,
