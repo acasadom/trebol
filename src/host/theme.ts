@@ -213,6 +213,34 @@ export function contrast(x: Oklch, y: Oklch): number {
   return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
 }
 
+const encode = (x: number): number => (x <= 0.0031308 ? 12.92 * x : 1.055 * x ** (1 / 2.4) - 0.055);
+const decode = (x: number): number => (x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4);
+
+/** Luminance of `c` at `alpha` over a pixel of gray `px` (0 black, 1 white), blended as browsers do. */
+export function luminanceOver(c: Oklch, alpha: number, px: number): number {
+  const [r, g, b] = toLinearRgb(c).map(x => decode(alpha * encode(x) + (1 - alpha) * px)) as [number, number, number];
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/** The worst contrast of `fg` on the background at `alpha` over any image: a black or a white one. */
+export function contrastOverImage(fg: Oklch, bg: Oklch, alpha: number): number {
+  const t = luminance(fg);
+  return Math.min(...[0, 1].map(px => {
+    const b = luminanceOver(bg, alpha, px);
+    return (Math.max(t, b) + 0.05) / (Math.min(t, b) + 0.05);
+  }));
+}
+
+/**
+ * The alpha of the veil over a backdrop: the least that keeps text AA on any image. Muted text would
+ * need a veil almost opaque, so on a backdrop it takes the color of the text.
+ */
+export function scrimAlpha(p: Record<Role, Oklch>): number {
+  let alpha = 0.5;
+  while (alpha < 1 && contrastOverImage(p.text, p.bg, alpha) < 4.6) alpha = Math.round((alpha + 0.01) * 100) / 100;
+  return alpha;
+}
+
 const css = (c: Oklch, alpha?: number): string =>
   `oklch(${(c.l * 100).toFixed(1)}% ${c.c.toFixed(3)} ${c.h.toFixed(1)}${alpha === undefined ? '' : ` / ${alpha}`})`;
 
@@ -245,6 +273,7 @@ function colorVars(t: ThemeParams, dark: boolean): string {
   lines.push(`  --tb-danger-soft: ${css(p.danger, dark ? 0.16 : 0.08)};`);
   lines.push(`  --tb-primary-soft: ${css(p.primary, dark ? 0.16 : 0.08)};`);
   lines.push(`  --tb-overlay: ${css(n0(p), dark ? 0.6 : 0.4)};`);
+  lines.push(`  --tb-scrim: ${css(p.bg, scrimAlpha(p))};`);
   const shadow = dark ? '0 0 0 1px oklch(100% 0 0 / 0.06)' : `0 1px 2px ${css(n0(p), 0.06)}`;
   const k = t.depth === 'lifted' ? 2 : 1;
   // a flat look has no shadows, but what floats over the page still needs one
@@ -363,6 +392,12 @@ body {
   background-size: cover;
   background-position: center;
 }
+/* an image behind what holds it, under a veil that keeps text on it AA; muted text needs the text's color there */
+:has(> .tb-backdrop) { position: relative; isolation: isolate; --tb-muted: var(--tb-text); }
+.tb-backdrop { position: absolute; inset: 0; z-index: -1; border-radius: inherit; background-size: cover; background-position: center; pointer-events: none; }
+.tb-backdrop::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: var(--tb-scrim); }
+/* the backdrop of the view or of a screen is the window's */
+:is(.tb-view, .tb-screen) > .tb-backdrop { position: fixed; border-radius: 0; }
 .tb-tile {
   font: inherit;
   font-size: 13px;

@@ -319,6 +319,12 @@ function build(face: ObjectCell): HTMLElement {
       }
       case 'progress': node = buildProgress(m); break;
       case 'image': node = el('img', 'tb-image'); break;
+      case 'backdrop': {
+        // decoration behind its container: screen readers skip it
+        node = el('div', 'tb-backdrop');
+        node.setAttribute('aria-hidden', 'true');
+        break;
+      }
       case 'canvas': node = buildCanvas(m); break;
       case 'chart': node = buildChart(m); break;
       case 'icon': node = el('span', 'tb-icon-face'); break;
@@ -3297,7 +3303,7 @@ function sync(m: Mounted): void {
       else m.el.removeAttribute('aria-label');
       break;
     }
-    case 'desktop': {
+    case 'desktop': case 'backdrop': {
       const src = str(f, 'value');
       m.el.style.backgroundImage = src !== null ? `url(${JSON.stringify(src)})` : '';
       break;

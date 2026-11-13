@@ -161,6 +161,14 @@ A bar: its value is a percent or a number from 0 to 1; with `none`, it moves wit
 
 An image, from a file or an address: `image %logo.png`.
 
+(style-backdrop)=
+## backdrop
+
+An image behind what holds it: `view [backdrop %entry.jpg ...]`. It is not laid out with the rest; it
+covers its container, and the whole window when that is the view or a screen. The theme lays a veil of the
+background over it, just as strong as it takes for text on it to be easy to read on any image, in light and
+dark; muted text takes the color of the text there.
+
 (style-canvas)=
 ## canvas
 

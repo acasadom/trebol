@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { K, NONE, spell, TRUE, FALSE, native, value, mold, form, string, text, money, blockOf, errorField, type Cell, type ObjectCell, type StringCell } from '../src/core/index.ts';
 import { startHost, startUi, runSource, readLocal, editLocal, readDate, weekStart, fileSize, translate, uiText, type Host } from '../src/host/index.ts';
 import { fileHandle } from '../src/host/net.ts';
-import { themeCss, DEFAULT_THEME, LOOKS, palette, contrast, CONTRAST_PAIRS } from '../src/host/theme.ts';
+import { themeCss, DEFAULT_THEME, LOOKS, palette, contrast, contrastOverImage, scrimAlpha, CONTRAST_PAIRS } from '../src/host/theme.ts';
 
 let shown: Cell | null = null;
 let themed: Cell | null = null;
@@ -373,6 +373,15 @@ describe('components', () => {
       + '#(dark: true size: "M") [progress 40% none image %logo.png none icon none #search button none #plus]]');
   });
 
+  test('a backdrop takes its image from a file or an address', async () => {
+    const r = await ev(`
+      root: view [backdrop %entry.jpg  title "Hi"  panel [backdrop https://example.com/a.png  text "In"]]
+      b: first root/pane
+      p: third root/pane
+      reduce [b/style b/value select first p/pane 'value]`);
+    assert.equal(r, '[backdrop %entry.jpg https://example.com/a.png]');
+  });
+
   test('set-values sets a toggle to true or false', async () => {
     const r = await ev(`
       root: view [global f: form [toggle on "On"]]
@@ -706,6 +715,22 @@ describe('theme', () => {
         }
       }
     }
+  });
+
+  test('the veil over a backdrop keeps text AA on any image, for every look, hue and mode', () => {
+    const themes = [
+      ...Object.values(LOOKS).map(look => ({ ...DEFAULT_THEME, ...look })),
+      ...Array.from({ length: 36 }, (_, i) => ({ ...DEFAULT_THEME, base: i * 10, accent: (i * 10 + 150) % 360 })),
+    ];
+    for (const t of themes) {
+      for (const dark of [false, true]) {
+        const p = palette(t, dark);
+        const a = scrimAlpha(p);
+        const c = contrastOverImage(p.text, p.bg, a);
+        assert.ok(c >= 4.5 && a < 0.8, `text over the veil: ${c.toFixed(2)} at ${a} (hue ${t.base}, ${t.skin}, ${dark ? 'dark' : 'light'})`);
+      }
+    }
+    assert.ok(themeCss(DEFAULT_THEME).includes('--tb-scrim: '));
   });
 
   test('the stylesheet uses only theme tokens for color in component rules', () => {

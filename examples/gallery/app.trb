@@ -131,6 +131,11 @@ view compose/deep/only [
     panel "Image" [
         image %wheel.svg "A bicycle wheel" small
     ]
+    panel "Backdrop" [
+        backdrop %workshop.svg
+        heading "Open every day"
+        text muted "The theme veils the image so this text reads well on it."
+    ]
     panel "Charts" [
         global chart bar income "Income by month" [month "Month" repairs "Repairs" parts "Parts"]
         grid 2 [

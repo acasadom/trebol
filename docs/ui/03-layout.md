@@ -102,6 +102,30 @@ needs to, `gap` sets the space between a container's faces and `pad` the space i
 of the theme's scale from 0 to 7: `panel gap 1 [...]` packs a panel tight, `row gap 6 [...]` spreads a row
 out. `gap none` and `pad none` are 0, `gap wide` and `pad wide` are 6.
 
+## An image behind
+
+`backdrop` puts an image behind the faces of its container. It takes no place among them: in a `panel` it
+covers the panel, and in the `view` or a screen it covers the whole window, as on a sign-in page:
+
+```trebol-ui
+view [
+    width small
+    backdrop %workshop.svg
+    title "Cog & Chain"
+    text "Repairs and bookings."
+    panel "Sign in" [
+        form [
+            field email "Email" email required
+            password secret "Password" required
+            submit "Sign in" [toast "Welcome back"]
+        ]
+    ]
+]
+```
+
+You never have to choose an image that suits the text. The theme lays a veil of the page's color over it,
+just as strong as it takes for text on it to read well on any image, in light and dark.
+
 ## What's next
 
 The workshop list above is three lines of text written by hand. The [next page](04-tables) makes it a

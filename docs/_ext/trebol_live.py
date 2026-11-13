@@ -3,11 +3,14 @@
 Each block becomes a page of its own under _live/ (its code in a .trb file next
 to it), shown in a frame. The frame loads Trebol's runtime from _trebol/, and the
 pretend server the examples talk to (docs/_servers/workshop.ts), which
-`node tools/site.ts` writes once the build has finished. _static/trebol-live.js
-fits each frame to its app and gives it the documentation's light or dark.
+`node tools/site.ts` writes once the build has finished. The files in docs/_media
+go next to the pages, so an example names them as a file: `backdrop %workshop.svg`.
+_static/trebol-live.js fits each frame to its app and gives it the documentation's
+light or dark.
 """
 
 import html
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -37,9 +40,10 @@ def live(app, doctree, docname):
         return
     out = Path(app.outdir) / "_live"
     blocks = [b for b in doctree.findall(nodes.literal_block) if b.get("language") == "trebol-ui"]
+    if blocks:
+        shutil.copytree(ROOT / "docs" / "_media", out, dirs_exist_ok=True)
     for n, block in enumerate(blocks, 1):
         name = f"{docname.replace('/', '-')}-{n}"
-        out.mkdir(parents=True, exist_ok=True)
         (out / f"{name}.trb").write_text(block.astext() + "\n", encoding="utf-8")
         (out / f"{name}.html").write_text(PAGE.format(name=name), encoding="utf-8")
         src = html.escape(relative_uri(app.builder.get_target_uri(docname), f"_live/{name}.html"))
