@@ -2,6 +2,9 @@ Trebol [title: "Gallery"]
 
 ; Every component of the UI dialect on one page, in any look.
 
+; a widget: an element defined in JavaScript
+import %star-rating.js
+
 view compose/deep/only [
     title "Gallery"
     text muted "Every component of the UI dialect, with no HTML or CSS."
@@ -69,6 +72,7 @@ view compose/deep/only [
             date due "Due date" min 1-Nov-2026
             upload docs "Attachments" multiple accept ["pdf" "png"]
             photo picture "Photo" round
+            widget <star-rating> rating "Rating"
             radio size "Size" ["Small" "Medium" "Large"] required
             toggle alerts "Email alerts"
             area notes "Notes"

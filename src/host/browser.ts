@@ -16,7 +16,7 @@
 // set the field again to repaint it.
 
 import { logic,
-  K, NONE, TRUE, FALSE, native, value, string, form, money, decToNumber, decFromNumber, ctxFind, intern, spell, text, canon, blockOf, wordOf, char, compare, UNSET, throwError,
+  K, NONE, TRUE, FALSE, native, value, string, form, money, decToNumber, decFromNumber, ctxFind, intern, spell, text, canon, blockOf, wordOf, char, compare, UNSET, throwError, toJson, parseJson,
   type Cell, type MapCell, type ObjectCell, type BlockCell, type WordCell, type StringCell, type Ctx, type Sym,
 } from '../core/index.ts';
 import { mapAt, startHost, startUi, runSource, report, shown, translate, uiText, activeLanguage, editLocal, readLocal, readDate, weekStart, fileSize, LOCAL_KINDS, type Host } from './index.ts';
@@ -246,6 +246,8 @@ function build(face: ObjectCell): HTMLElement {
     node = buildUpload(face, m);
   } else if (style === 'photo') {
     node = buildPhoto(face, m);
+  } else if (style === 'widget') {
+    node = buildWidget(face, m);
   } else if (style === 'lookup') {
     node = buildLookup(face, m);
   } else if (style === 'rich') {
@@ -1603,6 +1605,104 @@ function syncPhoto(m: Mounted, err: string | null): void {
   (m.el.querySelector('input[type="file"]') as HTMLInputElement).accept = pickerAccept(acceptList(f));
   m.error!.textContent = err ?? '';
   syncSent(m);
+}
+
+// --- widget: an element the page's JavaScript defines ----------------------------
+//
+// The element is made by its tag, once the page has defined it (import %geo-map.js).
+// The face's value is the element's value property, both ways, as JSON; its props set
+// properties. Its change event gives the value back, and any other on-xxx of the face
+// listens to the element's event xxx, with the event's detail. The theme's custom
+// properties (--tb-*) reach it, as they reach every element of the page.
+
+/** What was last given to or taken from each widget, as JSON, so a repaint sets only what changed. */
+const widgetSet = new WeakMap<HTMLElement, { value: string; props: string }>();
+
+/** Events every face has, which the host listens to itself. */
+const FACE_EVENTS = new Set(['on-change', 'on-focus', 'on-unfocus', 'on-over', 'on-dbl-click', 'on-key', 'on-end',
+  'on-drop', 'on-reorder', 'on-menu', 'on-select']);
+
+/** A JavaScript value as Trebol's, as JSON carries it; none for what JSON cannot write. */
+function fromJs(x: unknown): Cell {
+  let json: string | undefined;
+  try {
+    json = JSON.stringify(x);
+  } catch {
+    json = undefined;
+  }
+  if (json === undefined) return NONE;
+  const v = parseJson(json);
+  return typeof v === 'string' ? NONE : v;
+}
+
+function buildWidget(face: ObjectCell, m: Mounted): HTMLElement {
+  const id = `tb-${nextId++}`;
+  const wrap = el('div', 'tb-field');
+  const label = el('label', 'tb-label');
+  label.htmlFor = id;
+  const control = el('div', 'tb-control');
+  let node: HTMLElement;
+  try {
+    node = document.createElement(str(face, 'tag') ?? 'div');
+  } catch {
+    // a tag that is no element's name
+    node = el('div');
+  }
+  node.classList.add('tb-widget');
+  node.id = id;
+  const error = el('div', 'tb-error');
+  error.id = `${id}-error`;
+  error.setAttribute('aria-live', 'polite');
+  node.setAttribute('aria-describedby', error.id);
+  widgetSet.set(node, { value: '', props: '' });
+  node.addEventListener('change', ev => {
+    if (ev.target !== node) return;
+    const v = fromJs((node as unknown as { value?: unknown }).value);
+    widgetSet.get(node)!.value = toJson(v);
+    void fire('ui-input', face, v);
+  });
+  const events = get(face, 'events');
+  if (events.t === K.Block) {
+    for (const w of events.s.data) {
+      const name = w.t === K.Word ? spell((w as WordCell).sym).toLowerCase() : '';
+      if (!name.startsWith('on-') || FACE_EVENTS.has(name)) continue;
+      node.addEventListener(name.slice(3), ev => fireEvent(face, name, [['detail', fromJs((ev as CustomEvent).detail)]]));
+    }
+  }
+  control.append(node, error);
+  wrap.append(label, control);
+  m.label = label;
+  m.error = error;
+  m.box = node;
+  return wrap;
+}
+
+function syncWidget(m: Mounted, err: string | null): void {
+  const f = m.face;
+  const t = str(f, 'text') ?? '';
+  m.label!.textContent = t;
+  m.label!.hidden = t === '';
+  m.label!.classList.toggle('tb-required', required(f));
+  const node = m.box! as HTMLElement & { value?: unknown; disabled?: boolean; readOnly?: boolean };
+  const set = widgetSet.get(node)!;
+  const props = get(f, 'props');
+  const propsJson = props.t === K.Object || props.t === K.Map ? toJson(props) : '{}';
+  if (propsJson !== set.props) {
+    Object.assign(node, JSON.parse(propsJson) as object);
+    set.props = propsJson;
+  }
+  const valueJson = toJson(get(f, 'value'));
+  if (valueJson !== set.value) {
+    node.value = JSON.parse(valueJson) as unknown;
+    set.value = valueJson;
+  }
+  const disabled = flag(f, 'disabled');
+  node.toggleAttribute('disabled', disabled);
+  if ('disabled' in node) node.disabled = disabled;
+  if ('readOnly' in node) node.readOnly = flag(f, 'readonly');
+  node.setAttribute('aria-invalid', err !== null ? 'true' : 'false');
+  if (t !== '') node.setAttribute('aria-label', t);
+  m.error!.textContent = err ?? '';
 }
 
 function accepts(file: File, list: string[]): boolean {
@@ -3441,6 +3541,7 @@ function sync(m: Mounted): void {
   if (style === 'radio') return syncRadio(m, err);
   if (style === 'upload') return syncUpload(m, err);
   if (style === 'photo') return syncPhoto(m, err);
+  if (style === 'widget') return syncWidget(m, err);
   if (style === 'lookup') return syncLookup(m, err);
   if (style === 'rich') return syncRich(m, err);
   if (m.input !== null) {

@@ -909,6 +909,21 @@ test('upload fields keep a block of chosen files; refused ones give a message', 
   assert.equal(r, '[docs true ["pdf" "png"] "This field is required" 3 "a.pdf" 2000 true "Only pdf, png files" 2 "b.png" none none "This field is required" 1 "a.pdf" true]');
 });
 
+test('a widget is an element the page defines: its tag, its properties, its value and its events', async () => {
+  const r = await ev(`
+    near: 12
+    root: view [form [widget <geo-map> place "Place" [zoom: near center: [40.4 -3.7]] required
+      on-change [append/only moves face/value] on-moved [append moves event/detail]]]
+    moves: copy []
+    w: first select first root/pane 'pane
+    out: reduce [w/style w/tag w/name w/props/zoom w/props/center validate-face w]
+    ui-input w [40.5 -3.6]
+    ui-event w 'on-moved [detail: "north"]
+    append out reduce [w/value validate-face w moves select form-values first root/pane 'place]
+    out`);
+  assert.equal(r, '[widget "geo-map" place 12 [40.4 -3.7] "This field is required" [40.5 -3.6] none [[40.5 -3.6] "north"] [40.5 -3.6]]');
+});
+
 test('a photo holds the image chosen, or the address of one kept elsewhere', async () => {
   const r = await ev(`
     root: view [form [photo face "Photo" required round  photo logo "Logo" accept ["svg"]]]

@@ -158,6 +158,16 @@ otherwise.
 A sound, with the browser's own controls: `audio %bell.m4a "Bell"`. It takes `loop`, `muted`, `autoplay` and
 `on-end`.
 
+(style-widget)=
+## widget
+
+An element that the page's JavaScript defines, as a face like any other: `widget <geo-map> place "Place"
+[zoom: 12]`. The tag names the element and comes first; the block sets its properties, and a second block is
+the action. Its value is the element's `value` property, both ways, as JSON; when the element sends `change`,
+the value is read back and `on-change` runs. Any other `on-xxx` listens to the element's event `xxx`, with the
+event's `detail` in `event/detail`. With a name it is a field of its form, so `required` and the rules apply.
+The theme's custom properties (`--tb-*`) reach it. See [A face in JavaScript](../ui/03-layout.md#a-face-in-javascript).
+
 (style-photo)=
 ## photo
 

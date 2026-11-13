@@ -37,6 +37,8 @@ face: make object! [
     inert: false        ; shown as it is, but neither it nor its children can be used
     linked: false       ; a tile that stands for something kept elsewhere: marked with an arrow
     round: false        ; an image: cut to a circle, as for a person's photo
+    tag: none           ; a widget: the name of the element it is, as the page's JavaScript defines it
+    props: none         ; a widget: the element's properties, an object
     poster: none        ; a video: the image shown before it plays
     captions: none      ; a video: its captions, a .vtt file, or a block of one per language [en %a.vtt es %b.vtt]
     looping: false      ; a video or a sound starts again when it ends (loop in the dialect)
@@ -90,7 +92,7 @@ face: make object! [
 styles: make map! []
 
 container-styles: [view column row form panel grid dialog scroll split toolbar desktop]
-input-styles: [field password number money date area rich check toggle choice radio upload photo lookup rows]
+input-styles: [field password number money date area rich check toggle choice radio upload photo lookup rows widget]
 data-styles: [table list tree chart]
 
 foreach [name base] [
@@ -98,7 +100,7 @@ foreach [name base] [
     title title  heading heading  text text  divider divider
     field field  password password  number number  money money  date date  area area  rich rich  check check  choice choice
     toggle toggle  radio radio  upload upload  photo photo  lookup lookup  progress progress  image image  backdrop backdrop  icon icon
-    video video  audio audio
+    video video  audio audio  widget widget
     button button  link link  tile tile  table table  list list  tabs tabs  tab tab
     toolbar toolbar  breadcrumb breadcrumb  tree tree  screens screens  screen screen  rows rows  entry entry
     canvas canvas  chart chart
@@ -241,6 +243,8 @@ build-faces: function [
                 find data-styles f/style [f/columns: columns-of b]
                 ; the first block holds the items, the second is the action
                 all [f/style = 'breadcrumb  none? f/data] [f/data: crumbs-of b]
+                ; widget <geo-map> [zoom: 12]: its properties; a second block is the action
+                all [f/style = 'widget  none? f/props] [f/props: make object! b]
                 f/style = 'canvas [f/draw: b]
                 f/style = 'tabs [f/pane: tabs-of b labels]
                 f/style = 'screens [f/data: screens-of b]
@@ -300,6 +304,8 @@ build-faces: function [
                 append out f
                 if label [label-face label labels global? f]
             )
+            ; widget <geo-map> place "Place": the element comes before the name
+            opt [if (f/style = 'widget) set v tag! (f/tag: to string! v)]
             opt [if (find input-styles f/style) set n word! if (field-name? n) (f/name: n)]
             ; chart bar income [...]: the kind comes before the label
             opt [if (f/style = 'chart) set n word! if (find chart-kinds n) (f/kind: n)]

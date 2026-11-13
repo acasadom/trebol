@@ -150,6 +150,53 @@ view [
 `autoplay` plays it as soon as it can, always without sound, since browsers let nothing else play on its own.
 `on-end` runs when it ends.
 
+## A face in JavaScript
+
+Sooner or later a screen needs something Trebol does not draw: a map, a code editor, a library someone else
+wrote. The web's way to package one is a custom element, and `widget` makes any of them a face. Here the
+workshop asks how a repair went, with `<star-rating>`, an element of some fifty lines of JavaScript that
+draws five stars:
+
+```trebol-ui
+import %star-rating.js
+view [
+    width small
+    panel "How did we do?" [
+        form [
+            widget <star-rating> stars "Your repair" required
+                on-delight [toast event/detail]
+            area comment "Anything to tell us?"
+            submit "Send" [toast reform ["Thanks for the" values/stars "stars"]]
+        ]
+    ]
+]
+```
+
+`import` of a `.js` file runs it, and the file defines the element. The tag names the element and comes before
+the face's name; a block after it sets the element's properties, as `widget <geo-map> place [zoom: 12]`.
+
+The face's value is the element's `value` property, both ways: Trebol sets it, and when the element sends a
+`change` event Trebol reads it back and runs `on-change`. With a name, the widget is a field of its form like
+any other: it is sent with the rest, and `required` and the rules check it. Any other event the element sends
+reaches the `on-` word of the same name with what it carries in `event/detail`: the element above sends
+`delight` for five stars.
+
+What the element needs to do is little, and it is the web's own way, not Trebol's:
+
+```text
+class StarRating extends HTMLElement {
+  get value() { ... }                        // what the face's value is
+  set value(v) { ... }                       // Trebol sets it
+  ... this.dispatchEvent(new Event('change'))                       // the person changed it
+  ... this.dispatchEvent(new CustomEvent('delight', { detail: 'five stars' }))
+}
+customElements.define('star-rating', StarRating);
+```
+
+Values cross as JSON does, so text, numbers, blocks and maps keep their shape. The theme's colors reach the
+element as CSS custom properties (`var(--tb-primary)`, `var(--tb-text)`, `var(--tb-border)`...), so it can
+look like the rest of the screen, in light and dark.
+
 ## What's next
 
 The workshop list above is three lines of text written by hand. The [next page](04-tables) makes it a

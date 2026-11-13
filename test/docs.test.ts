@@ -20,9 +20,9 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
-import { dirname, join, relative } from 'node:path';
+import { basename, dirname, join, relative } from 'node:path';
 import type { Server } from 'node:http';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { native, value, blockOf, K, ctxFind, intern, NONE, type Cell, type ObjectCell } from '../src/core/index.ts';
 import { drawSvg } from '../src/host/draw.ts';
 import { output, runSource, report, startHost, startUi } from '../src/host/index.ts';
@@ -107,7 +107,12 @@ async function typeIn(repl: Repl, code: string, where: string): Promise<void> {
 async function runApp(code: string, where: string): Promise<void> {
   let failed: ObjectCell | null = null;
   // Trebol's own files only: a live example runs in a page of its own, with nothing next to it to import
-  const loader = { base: 'file:///', read: (href: string) => readFile(fileURLToPath(href), 'utf8') };
+  const loader = {
+    base: 'file:///',
+    read: (href: string) => readFile(fileURLToPath(href), 'utf8'),
+    // its JavaScript is in docs/_media, which the site copies next to each live page
+    importJs: (href: string) => import(pathToFileURL(join(DOCS, '_media', basename(new URL(href).pathname))).href),
+  };
   const host = startHost({ onError: e => { failed = e; }, loader });
   await startUi(host);
   const before = shown;
@@ -123,6 +128,11 @@ async function runApp(code: string, where: string): Promise<void> {
   assert.ok(shown > before, `${where}: the app shows no view`);
   assert.deepEqual(drawErrors(root!), [], `${where}: a canvas cannot draw`);
 }
+
+// no DOM here: an example's custom element is defined, never drawn
+const g = globalThis as { HTMLElement?: unknown; customElements?: unknown };
+g.HTMLElement ??= class {};
+g.customElements ??= { define: () => {} };
 
 let supplier: Server | null = null;
 before(async () => {
