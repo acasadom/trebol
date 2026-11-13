@@ -21,7 +21,7 @@
     "./browser": "./src/host/browser.ts"
   },
   "bin": {
-    "trebol": "./dist/cli.js"
+    "trebol": "dist/cli.js"
   },
   "license": "Apache-2.0",
   "files": [
