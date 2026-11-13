@@ -727,7 +727,8 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
 .tb-scroll.tb-large { max-height: 640px; }
 .tb-scroll:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-focus-ring); }
 
-.tb-image { display: block; max-width: 100%; height: auto; border-radius: var(--tb-radius); }
+.tb-image { display: block; max-width: 100%; height: auto; border-radius: var(--tb-radius); object-fit: cover; }
+.tb-image.tb-round { aspect-ratio: 1; border-radius: 50%; }
 .tb-canvas { display: block; max-width: 100%; }
 .tb-canvas > svg { display: block; max-width: 100%; height: auto; overflow: visible; }
 .tb-canvas.tb-fill > svg { width: 100%; }

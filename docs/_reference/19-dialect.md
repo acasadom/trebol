@@ -108,6 +108,10 @@ Hidden on a narrow screen.
 
 Marks a tile with an arrow: it stands for something kept elsewhere, like a shortcut.
 
+## round
+
+Cuts an image to a circle, as for a person's photo: `image %ada.jpg "Ada" 48x48 round`.
+
 ## drag
 
 It can be dragged: it carries its value, or the row in a table, list or tree.

@@ -185,6 +185,13 @@ A flag.
 
 Marks a tile with an arrow: it stands for something kept elsewhere, like a shortcut.
 
+(word-round)=
+## round
+
+A flag.
+
+Cuts an image to a circle, as for a person's photo: `image %ada.jpg "Ada" 48x48 round`.
+
 (word-drag)=
 ## drag
 

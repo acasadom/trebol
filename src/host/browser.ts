@@ -3292,6 +3292,11 @@ function sync(m: Mounted): void {
       const src = str(f, 'value') ?? '';
       if (img.getAttribute('src') !== src) img.src = src;
       img.alt = t ?? '';
+      img.classList.toggle('tb-round', flag(f, 'round'));
+      // a size, as in Red: the image fills it, cut to fit
+      const ext = get(f, 'extent');
+      img.style.width = ext.t === K.Pair ? `${ext.x}px` : '';
+      img.style.height = ext.t === K.Pair ? `${ext.y}px` : '';
       return;
     }
     case 'table': case 'list': syncRows(m); return;

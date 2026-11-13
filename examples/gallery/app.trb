@@ -129,7 +129,10 @@ view compose/deep/only [
         ]
     ]
     panel "Image" [
-        image %wheel.svg "A bicycle wheel" small
+        row [
+            image %wheel.svg "A bicycle wheel" small
+            image %workshop.svg "The workshop at dusk" 64x64 round
+        ]
     ]
     panel "Backdrop" [
         backdrop %workshop.svg

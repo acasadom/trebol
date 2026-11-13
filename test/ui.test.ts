@@ -373,6 +373,13 @@ describe('components', () => {
       + '#(dark: true size: "M") [progress 40% none image %logo.png none icon none #search button none #plus]]');
   });
 
+  test('an image takes a size, as in Red, and can be round', async () => {
+    const r = await ev(`
+      i: first select view [image %ada.jpg "Ada" 48x48 round] 'pane
+      reduce [i/extent i/round i/text]`);
+    assert.equal(r, '[48x48 true "Ada"]');
+  });
+
   test('a backdrop takes its image from a file or an address', async () => {
     const r = await ev(`
       root: view [backdrop %entry.jpg  title "Hi"  panel [backdrop https://example.com/a.png  text "In"]]

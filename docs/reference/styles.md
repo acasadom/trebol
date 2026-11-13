@@ -159,7 +159,9 @@ A bar: its value is a percent or a number from 0 to 1; with `none`, it moves wit
 (style-image)=
 ## image
 
-An image, from a file or an address: `image %logo.png`.
+An image, from a file or an address: `image %logo.png`. Its text is what a screen reader says for it; without
+one it is decoration. `small`, `medium`, `large` and `fill` set its width, and a pair its size, which it fills,
+cut to fit: `image %ada.jpg "Ada" 48x48 round`. `round` cuts it to a circle, as for a person's photo.
 
 (style-backdrop)=
 ## backdrop
