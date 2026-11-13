@@ -145,6 +145,8 @@ function toKind(k: Kind, v: Cell): Cell | string {
       if (v.t === K.Binary) return { t: k, s: { data: codePoints(new TextDecoder().decode(new Uint8Array(v.s.data.slice(v.i)))) }, i: 0 };
       if (isAnyWord(v.t)) return { t: k, s: { data: codePoints(spell((v as WordCell).sym)) }, i: 0 };
       if (v.t === K.Char) return { t: k, s: { data: [v.v] }, i: 0 };
+      // the text itself, so to string! <a> is "a", as in R3; form gives "<a>"
+      if (isAnyString(v.t)) return { t: k, s: { data: (v as StringCell).s.data.slice((v as StringCell).i) }, i: 0 };
       return { t: k, s: { data: codePoints(textOf(v)) }, i: 0 };
     }
     case K.Binary:
