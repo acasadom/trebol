@@ -74,6 +74,32 @@ space goes between faces or which grey `muted` is. The theme decides all of it: 
 system's light or dark, a row too narrow for its faces wraps them onto the next line, and every button
 can be reached and pressed from the keyboard. A later page changes the theme; nothing in the views changes with it.
 
+## When a view has a mistake
+
+`view` reads its whole block before it shows anything. When something in it is not the dialect, a word
+mistyped or a rule without what it takes, nothing is shown and the error lists every problem at once, each
+with the line and column where it is and, when a word of the dialect is close, the one you may have meant:
+
+```text
+view [
+    title "Cog & Chain"
+    buton "Book a repair" [toast "Booked in"]
+    field name "Name" requird
+]
+```
+
+```text
+** User error: layout: 2 problems
+   app.trb:3:5  buton is not a style; did you mean button?
+   app.trb:4:23 requird is not a word of field; did you mean required?
+** Where: view
+** Near: [buton "Book a repair" [toast "Booked in"]]
+** At: app.trb:3:5
+```
+
+The browser shows it in its console (in Chrome, *View › Developer › JavaScript Console*). A view in the
+action of a button is read when the button is pressed, so its mistakes show up only then.
+
 ## Putting it on the web
 
 `trebol dev` is for writing the app. To put it on a web server, add a page called `index.html` next to

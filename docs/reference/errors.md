@@ -63,3 +63,22 @@ cause-error type id args
 - `type` (`word!`)
 - `id` (`word!`)
 - `args` (`any-value!`)
+
+(fn-loaded-at)=
+## loaded-at
+
+Where the value at the position of a block was loaded from, as file:line:col; none if it was made at run time.
+
+```text
+loaded-at block
+```
+
+- `block` (`any-block!`)
+
+The place an error's `At` names, for any value of a block: a dialect uses it to say where a problem in the
+block it reads is. A block made by code (`append`, `compose`, `reduce`) has no place for what was put in it.
+
+```trebol-console
+>> loaded-at next [bike saddle]
+== "1:22"
+```

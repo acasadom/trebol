@@ -14,8 +14,9 @@ import {
 import { bindSeries, copyDeep } from '../ctx.ts';
 import { isEqual, compare, foldCase } from '../compare.ts';
 import { pick } from '../access.ts';
-import { context, time, sameValue } from '../values.ts';
+import { context, time, sameValue, string } from '../values.ts';
 import { dateDiff } from './math.ts';
+import { sourceOf } from '../mold.ts';
 import {
   splice, itemsFor, lengthOf, at, clampIndex,
   type SeriesCell, type Item,
@@ -90,6 +91,11 @@ native('at', '["The series at a position, counted from where it is." series [ser
 native('index?', '["The position of the series, from 1." series [series!]]', (_t, f) => value(integer((f.args[0] as SeriesCell).i + 1)));
 native('head?', '["True if the series is at its head." series [series!]]', (_t, f) => value(logic((f.args[0] as SeriesCell).i === 0)));
 native('tail?', '["True if the series is at its tail." series [series!]]', (_t, f) => value(logic(lengthOf(f.args[0] as SeriesCell) === 0)));
+native('loaded-at', '["Where the value at the position of a block was loaded from, as file:line:col; none if it was made at run time." block [any-block!]]', (_t, f) => {
+  const b = f.args[0] as BlockCell;
+  const at = sourceOf(b.s, b.i);
+  return value(at === null ? NONE : string(at));
+});
 
 // --- editing ---------------------------------------------------------------------
 
@@ -153,6 +159,8 @@ native('copy', '["A copy of the series, map, object or bitset." value [series! m
     const b = s as BlockCell;
     const part: Series<Cell> = { data: b.s.data.slice(from, end) };
     if (b.s.nl) part.nl = b.s.nl.slice(from, end);
+    if (b.s.pos) part.pos = b.s.pos.slice(from, end);
+    if (b.s.file !== undefined) part.file = b.s.file;
     return value({ t: b.t, s: deep ? copyDeep(part) : part, i: 0 });
   }
   return value({ t: s.t, s: { data: (s.s.data as number[]).slice(from, end) }, i: 0 } as StringCell);

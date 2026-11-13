@@ -123,7 +123,7 @@ stylize: function [
     parse spec [some [
         set name set-word! set base word! set defaults block! (
             proto: select styles base
-            unless proto [do make error! rejoin ["stylize: unknown style " base]]
+            unless proto [do make error! rejoin ["stylize: unknown style " base ui-suggest base words-of styles]]
             poke styles to word! name make proto defaults
         )
     ]]
@@ -161,6 +161,128 @@ event-word?: func [w [word!]] [
     to logic! find/match form w "on-"
 ]
 
+; --- problems in a layout -------------------------------------------------------
+;
+; layout reads the whole block and makes one error of every problem it finds,
+; each with the place it was loaded from (loaded-at) and a word it may mean.
+
+; [place message ...] while a block is laid out; none otherwise, and then a problem is an error at once.
+ui-problems: none
+
+ui-problem: func [place [block!] message [string!]] [
+    either ui-problems [append ui-problems reduce [place message]] [ui-fail reduce [place message]]
+]
+
+; The faces of a block, as build-faces gives them, or an error with every problem in it.
+ui-build: function [spec [block!] labels [block!]] [
+    outer: ui-problems
+    set 'ui-problems copy []
+    out: try [build-faces spec labels]
+    found: ui-problems
+    set 'ui-problems outer
+    if error? out [do out]
+    unless empty? found [ui-fail found]
+    out
+]
+
+ui-fail: function [found [block!] /local place m] [
+    either 2 = length? found [
+        message: rejoin ["layout: " second found]
+    ] [
+        places: collect [foreach [place m] found [keep any [loaded-at place  ""]]]
+        wide: 0
+        foreach p places [wide: max wide length? p]
+        message: rejoin ["layout: " (length? found) / 2 " problems"]
+        i: 0
+        foreach [place m] found [
+            p: pick places i: i + 1
+            append message rejoin ["^/   " p  append/dup copy "" #" " wide + 1 - length? p  m]
+        ]
+    ]
+    e: make error! message
+    ; the first values from the place, one after another as near shows them
+    e/near: copy []
+    foreach v copy/part first found 3 [append/only e/near :v]
+    e/at: loaded-at first found
+    do e
+]
+
+; What a rule word takes, for a problem when what follows it is something else.
+ui-takes: [
+    min "a number, an amount or a date"  max "a number, an amount or a date"  length "two integers"
+    pattern "a block"  check "a block"  check-async "a block"  calc "a block"  accept "a block"
+    menu "a block"  sorted "a block"  known "a map"  links "a map"  match "the name of a field"
+    poster "a file or a url"  captions "a file, a url or a block"  width "small, medium, large or fill"
+    pad "a step from 0 to 7, none or wide"  gap "a step from 0 to 7, none or wide"  key "a text or a word"
+]
+
+; Every word the dialect knows, for ui-suggest.
+ui-dialect-words: does [
+    unique compose [
+        (words-of styles) (roles) (sizes) (aligns) (valigns) (flags) (chart-kinds) (simple-rules)
+        (rule-words) (media-flags) required global key
+    ]
+]
+
+; The word near enough to w to be what it meant (buton: button), or none.
+ui-nearest: function [w [word!] words [block!]] [
+    t: form w
+    most: either 4 < length? t [2] [1]
+    best: none
+    foreach c words [
+        d: ui-distance t form c
+        if all [d > 0  d <= most] [best: c  most: d - 1]
+    ]
+    best
+]
+
+; "; did you mean button?" for buton, when one of the words is near enough; "" otherwise.
+ui-suggest: function [w [word!] words [block!]] [
+    either best: ui-nearest w words [rejoin ["; did you mean " best "?"]] [""]
+]
+
+; Optimal string alignment distance: letters put in, taken out, changed, or two neighbours swapped.
+ui-distance: function [a [string!] b [string!]] [
+    n: length? b
+    before: none
+    prev: copy []
+    repeat j n + 1 [append prev j - 1]
+    repeat i length? a [
+        row: reduce [i]
+        repeat j n [
+            d: min min (pick prev j + 1) + 1  (last row) + 1  (pick prev j) + either (pick a i) = (pick b j) [0] [1]
+            if all [i > 1  j > 1  (pick a i) = (pick b j - 1)  (pick a i - 1) = (pick b j)] [
+                d: min d (pick before j - 1) + 1
+            ]
+            append row d
+        ]
+        before: prev
+        prev: row
+    ]
+    last prev
+]
+
+; A value as a problem shows it: its mold, cut when long.
+ui-shown: function [v] [
+    t: mold :v
+    either 30 < length? t [append copy/part t 27 "..."] [t]
+]
+
+; The style a word after a face means when it is a mistyped one (feild: field), or none.
+ui-meant-style: function [v] [
+    all [word? :v  s: ui-nearest v ui-dialect-words  select styles s  s]
+]
+
+; The problem with a value that follows a face and means nothing to it.
+ui-stray: function [f v] [
+    case [
+        all [word? :v  t: select ui-takes v] [rejoin [v " takes " t]]
+        s: ui-meant-style :v [rejoin [v " is not a style; did you mean " s "?"]]
+        word? :v [rejoin [v " is not a word of " f/style ui-suggest v ui-dialect-words]]
+        true [rejoin [f/style " does not take " ui-shown :v]]
+    ]
+]
+
 ; Labels (`search: field`, `table clients`) are local to the layout, as R3
 ; planned for its VID: each layout gets an object holding them, and the
 ; layout's blocks (its handlers too) are bound to it. `global search: field`
@@ -176,7 +298,7 @@ layout: function [
     spec: copy/deep spec
     labels: copy []
     either only [
-        out: build-faces spec labels
+        out: ui-build spec labels
     ] [
         ; on-xxx handlers and its width before the first face belong to the view itself
         events: copy []
@@ -185,7 +307,7 @@ layout: function [
             set ev word! if (event-word? ev) set b block! (append events reduce [ev b])
             | 'width set w ['small | 'medium | 'large | 'fill] (width: w)
         ] body:]
-        out: make select styles 'view [pane: build-faces body labels]
+        out: make select styles 'view [pane: ui-build body labels]
         unless empty? events [out/events: events]
         out/size: width
     ]
@@ -216,9 +338,11 @@ text-of: func [t] [either lit-word? :t [to word! t] [t]]
 ; The faces of a block of the dialect; labels collects [word face ...].
 build-faces: function [
     spec [block!] labels [block!]
-    /local label global? style-word f proto n s b w a i v ev p
+    /local label global? style-word f proto n s b w a i v ev p pos
 ] [
     out: copy []
+    ; what starts the next face
+    face-start: [set-word! | 'global | set w word! if (select styles w)]
     modifier: [
         set s [string! | map!] (either f/text [f/hint: s] [f/text: s])
         ; a word of the dictionary: button 'save (in a link, a lit-word is the screen)
@@ -227,7 +351,7 @@ build-faces: function [
             unless f/events [f/events: copy []]
             append f/events reduce [ev b]
         )
-        | set b block! (
+        | pos: set b block! (
             case [
                 ; grid [1 4 1] [...]: the weight of each column, then the children
                 all [f/style = 'grid  none? f/pane  not empty? b  parse b [some integer!]] [f/cols: b]
@@ -237,7 +361,7 @@ build-faces: function [
                     ; --- in a toolbar is a separator
                     f/pane: build-faces either f/style = 'toolbar [replace/all copy b '--- 'divider] [b] labels
                     if all [f/style = 'split  2 <> length? f/pane] [
-                        do make error! "layout: split takes two faces, one per pane"
+                        ui-problem pos "split takes two faces, one per pane"
                     ]
                 ]
                 find data-styles f/style [f/columns: columns-of b]
@@ -278,7 +402,7 @@ build-faces: function [
         | 'check-async set b block! (add-rule f reduce ['check-async b])
         | 'calc set b block! (f/calc: b  f/readonly: true)
         | 'width set w word! (f/size: w)
-        | set w ['pad | 'gap] [set n integer! | 'none (n: 0) | 'wide (n: 6)] (poke f w spacing n)
+        | pos: set w ['pad | 'gap] [set n integer! | 'none (n: 0) | 'wide (n: 6)] (poke f w spacing n pos)
         | 'menu set b block! (f/menu: menu-of b)
         | 'key set s string! (f/shortcut: s)
         | 'key set w word! (f/key: w)
@@ -292,14 +416,12 @@ build-faces: function [
         ; money price "Price" EUR
         | set w word! if (all [f/style = 'money  parse form w [3 letter]]) (f/currency: to word! uppercase form w)
     ]
-    unless parse spec [
-        any [
-            (label: none  global?: false)
-            opt ['global (global?: true)]
-            opt [set label set-word!]
-            set style-word word! (
-                proto: select styles style-word
-                unless proto [do make error! rejoin ["layout: unknown style " style-word]]
+    parse spec [any [
+        (label: none  global?: false)
+        opt ['global (global?: true)]
+        opt [set label set-word!]
+        [
+            set style-word word! if (proto: select styles style-word) (
                 f: make proto []
                 append out f
                 if label [label-face label labels global? f]
@@ -311,25 +433,39 @@ build-faces: function [
             opt [if (f/style = 'chart) set n word! if (find chart-kinds n) (f/kind: n)]
             ; table clients [...] is the same as clients: table [...]
             opt [if (find data-styles f/style) set n word! if (all [field-name? n  n <> 'key]) (label-face n labels global? f)]
-            any modifier
+            any [
+                modifier
+                ; a mistyped style starts a face of its own: what follows it is that face's
+                | pos: not face-start skip (ui-problem pos ui-stray f first pos) opt [
+                    if (ui-meant-style first pos) any [not face-start skip]
+                ]
+            ]
             (if f/style = 'rows [rows-fill f])
+            ; not a style: a problem, then on to the next face
+        |   pos: skip (
+                w: first pos
+                ui-problem pos case [
+                    not word? :w [rejoin ["a face starts with a style, not " ui-shown :w]]
+                    find ui-dialect-words w [rejoin [w " is not a style; it goes after one"]]
+                    true [rejoin [w " is not a style" ui-suggest w words-of styles]]
+                ]
+            ) any [not face-start skip]
         ]
-    ] [
-        do make error! "layout: cannot read the layout"
-    ]
+    ]]
     out
 ]
 
-spacing: func [n [integer!]] [
-    unless all [n >= 0  n <= 7] [do make error! "layout: pad and gap take a step from 0 to 7"]
-    n
+spacing: func [n [integer!] place [block!]] [
+    if all [n >= 0  n <= 7] [return n]
+    ui-problem place rejoin [first place " takes a step from 0 to 7"]
+    0
 ]
 
 ; [name "Name" email] -> [name "Name" email "email"]
 ; A column of images keeps what it is with its label: [photo "" image round] -> [photo ["" image round]]
-columns-of: function [spec [block!] /local w label kind] [
+columns-of: function [spec [block!] /local w label kind p] [
     out: copy []
-    unless parse spec [any [
+    parse spec [any [
         set w word! (label: form w  kind: none) opt [set label text-rule]
         opt ['image (kind: copy [image]) opt ['round (append kind 'round)]]
         (
@@ -337,43 +473,41 @@ columns-of: function [spec [block!] /local w label kind] [
             append out w
             append/only out either kind [head insert/only kind label] [label]
         )
-    ]] [
-        do make error! "layout: table columns are words, each with an optional label, then image or image round"
-    ]
+        | p: skip (ui-problem p "table columns are words, each with an optional label, then image or image round") to end
+    ]]
     out
 ]
 
 ; [name desc] -> [name desc], checked
 sort-order: function [b [block!]] [
-    unless parse b [word! ['asc | 'desc]] [
-        do make error! "layout: sorted takes a column and asc or desc"
-    ]
+    unless parse b [word! ['asc | 'desc]] [ui-problem b "sorted takes a column and asc or desc"]
     copy b
 ]
 
 ; ["General" [...] "Advanced" [...]] -> a tab face per pair
-tabs-of: function [spec [block!] labels [block!]] [
+tabs-of: function [spec [block!] labels [block!] /local p] [
     out: copy []
-    unless parse spec [any [set label text-rule set b block! (
-        label: text-of label
-        append out make select styles 'tab [text: label pane: build-faces b labels]
-    )]] [
-        do make error! "layout: tabs take a label and a block per tab"
-    ]
+    parse spec [any [
+        set label text-rule set b block! (
+            label: text-of label
+            append out make select styles 'tab [text: label pane: build-faces b labels]
+        )
+        | p: skip (ui-problem p "tabs take a label and a block per tab") to end
+    ]]
     out
 ]
 
 ; [home "Home" [...] client "Client" [id] [...]] -> [name title args body ...]
-screens-of: function [spec [block!] /local n t a b] [
+screens-of: function [spec [block!] /local n t a b p] [
     out: copy []
-    unless parse spec [some [
+    if empty? spec [ui-problem spec "screens take a name, a title, an optional block of arguments and a block per screen"]
+    parse spec [any [
         set n word! set t text-rule (a: copy []) opt [ahead [block! block!] set a block!] set b block! (
-            foreach w a [unless word? w [do make error! "layout: the arguments of a screen are words"]]
-            append out reduce [n text-of t a b]
+            forall a [unless word? first a [ui-problem a "the arguments of a screen are words"]]
+            append out reduce [n text-of t head a b]
         )
-    ]] [
-        do make error! "layout: screens take a name, a title, an optional block of arguments and a block per screen"
-    ]
+        | p: skip (ui-problem p "screens take a name, a title, an optional block of arguments and a block per screen") to end
+    ]]
     out
 ]
 
@@ -386,24 +520,24 @@ menu-item: make object! [
 ]
 
 ; As in Red: ["Edit" edit #trash "Delete" delete --- "Move to" ["Top" top]] -> menu items
-menu-of: function [spec [block!] /local i label w b] [
+menu-of: function [spec [block!] /local i label w b p] [
     out: copy []
-    unless parse spec [any [
+    parse spec [any [
         '--- (append out make menu-item [divider: true])
         | (i: none) opt [set i issue!] set label text-rule (label: text-of label) [
             set b block! (append out make menu-item [text: label icon: i items: menu-of b])
             | set w word! (append out make menu-item [text: label icon: i id: w])
         ]
-    ]] [
-        do make error! "layout: a menu takes a label and a word per item, a block for a submenu, or ---"
-    ]
+        | p: skip (ui-problem p "a menu takes a label and a word per item, a block for a submenu, or ---") to end
+    ]]
     out
 ]
 
 ; ["Home" home "Clients" clients "Ada"]: a label and a word per item; the last one may have no word
-crumbs-of: function [spec [block!] /local label w] [
-    unless parse spec [any [set label [string! | map!] set w [word! | path!]] opt [string! | map!]] [
-        do make error! "layout: a breadcrumb takes a label and a word per item; only the last may have no word"
+crumbs-of: function [spec [block!] /local label w p] [
+    parse spec [
+        any [set label [string! | map!] set w [word! | path!]] opt [string! | map!]
+        [end | p: (ui-problem p "a breadcrumb takes a label and a word per item; only the last may have no word")]
     ]
     copy spec
 ]
@@ -473,7 +607,7 @@ enter-screen: function [f route [block!] /local ev b] [
     ; on-xxx handlers before the first face belong to the screen
     events: copy []
     parse spec [any [set ev word! if (event-word? ev) set b block! (append events reduce [ev b])] body:]
-    s: make select styles 'screen [text: def/2  pane: build-faces body labels]
+    s: make select styles 'screen [text: def/2  pane: ui-build body labels]
     unless empty? events [s/events: events]
     words: copy []
     repeat i length? def/3 [append words reduce [to set-word! pick def/3 i  pick route i + 1]]
@@ -749,7 +883,7 @@ rows-entry: function [f data] [
     labels: copy []
     set 'last-entry last-entry + 1
     e: make select styles 'entry [owner: f  value: last-entry]
-    e/pane: build-faces spec labels
+    e/pane: ui-build spec labels
     bind-labels spec labels copy []
     foreach g named-faces e [
         if f/readonly [g/readonly: true]

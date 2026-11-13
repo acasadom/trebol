@@ -144,6 +144,77 @@ describe('layout', () => {
   test('unknown styles are an error', async () => {
     await assert.rejects(runSource(host, 'view [nonsense "x"]'));
   });
+
+  // the error a layout makes: its message, near and at
+  async function problems(src: string): Promise<string[]> {
+    try {
+      await runSource(host, src, 'app.trb');
+    } catch (e) {
+      const err = e as ObjectCell;
+      return [form(errorField(err, 'message')), mold(errorField(err, 'near')), form(errorField(err, 'at'))];
+    }
+    return assert.fail(`${src}\n  lays out with no problem`);
+  }
+
+  test('a layout gives every problem in it at once, each with its place and a word it may mean', async () => {
+    assert.deepEqual(await problems(`view [
+    title "Cog & Chain"
+    buton "Save"
+    field name "Name" requird
+    feild bike "Bike"
+    number price "Price" min "x"
+    text "ok" 1.5
+    table [name 1]
+    panel pad 9 []
+]`), [
+      `layout: 7 problems
+   app.trb:3:5  buton is not a style; did you mean button?
+   app.trb:4:23 requird is not a word of field; did you mean required?
+   app.trb:5:5  feild is not a style; did you mean field?
+   app.trb:6:26 min takes a number, an amount or a date
+   app.trb:7:15 text does not take 1.5
+   app.trb:8:17 table columns are words, each with an optional label, then image or image round
+   app.trb:9:11 pad takes a step from 0 to 7`,
+      '[buton "Save" field]', 'app.trb:3:5']);
+    // one problem is the message itself
+    assert.deepEqual(await problems('view [button "Go" hiden]'),
+      ['layout: hiden is not a word of button; did you mean hidden?', '[hiden]', 'app.trb:1:19']);
+    assert.deepEqual(await problems('view [text "a" loop]'), ['layout: loop is not a word of text', '[loop]', 'app.trb:1:16']);
+    assert.deepEqual(await problems('view ["Hello" text "a"]'),
+      ['layout: a face starts with a style, not "Hello"', '["Hello" text "a"]', 'app.trb:1:7']);
+    assert.deepEqual((await problems('view [menu ["A" a]]'))[0], 'layout: menu is not a style; it goes after one');
+    assert.deepEqual((await problems('view [button "a" menu ["A"]]'))[0],
+      'layout: a menu takes a label and a word per item, a block for a submenu, or ---');
+    assert.deepEqual((await problems('view [tabs ["A" [text "a"] "B" 1]]')).slice(0, 2),
+      ['layout: tabs take a label and a block per tab', '["B" 1]']);
+    assert.deepEqual((await problems('view [split [text "a"]]'))[0], 'layout: split takes two faces, one per pane');
+    assert.deepEqual((await problems('view [table [a] sorted [a up]]'))[0], 'layout: sorted takes a column and asc or desc');
+    assert.deepEqual((await problems('view [breadcrumb ["A" a "B" "C"]]')).slice(0, 2),
+      ['layout: a breadcrumb takes a label and a word per item; only the last may have no word', '["C"]']);
+    assert.deepEqual((await problems('view [screens [home "Home" [1] [text "a"]]]')).slice(0, 2),
+      ['layout: the arguments of a screen are words', '[1]']);
+    // the faces of a screen are laid out when it is shown, and checked then
+    assert.deepEqual((await problems('view [screens [home "Home" [txt "a"]]]'))[0], 'layout: txt is not a style; did you mean text?');
+    // problems inside a block of faces, and in a layout/only
+    assert.deepEqual((await problems('layout/only [panel [button "a" big]]'))[0], 'layout: big is not a word of button');
+    // a block made at run time has no place to give
+    assert.deepEqual(await problems('view compose [(to word! "buton") "Save"]'),
+      ['layout: buton is not a style; did you mean button?', '[buton "Save"]', 'app.trb:1:1']);
+    assert.deepEqual(await problems(`stylize [big: buton []]`).then(p => p[0]), 'stylize: unknown style buton; did you mean button?');
+  });
+
+  test('an error in code a layout runs is that error, and a later layout still collects its own problems', async () => {
+    assert.deepEqual(await problems('view [choice "A" [1 + "x"]]'), ['+ does not allow string! for its b argument', '[1 + "x"]', 'app.trb:1:19']);
+    assert.equal((await problems('view [text "a" oops]'))[0], 'layout: oops is not a word of text');
+    assert.equal(await ev('length? layout/only [text "a" text "b"]'), '2');
+  });
+
+  test('loaded-at gives where a value of a block was loaded from', async () => {
+    assert.equal(mold(await runSource(host, 'b: [\n  a  b]  reduce [loaded-at b  loaded-at next b  loaded-at tail b  loaded-at append copy [] 1]', 'x.trb')),
+      '["x.trb:2:3" "x.trb:2:6" none none]');
+    assert.equal(await ev('loaded-at next copy [a b]'), '"1:24"');
+    assert.equal(await ev('loaded-at next second copy/deep [a [b c]]'), '"1:39"');
+  });
 });
 
 describe('validation', () => {

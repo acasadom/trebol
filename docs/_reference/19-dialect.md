@@ -8,6 +8,12 @@ A few things are written without a word of their own: `global` before a label ma
 program and not only of the layout; `---` separates the items of a menu or the buttons of a toolbar; a word of
 three capital letters after `money` is its currency, `EUR`.
 
+`layout` (and `view`, which calls it) reads the whole block before it shows anything, and a value it cannot
+place is a problem: an unknown word, a rule word without what it takes (`min "x"`), a block that is not what
+its face takes. It gives one error with every problem in the block, each with its file, line and column, and
+the word it may have meant when one is close: `buton is not a style; did you mean button?`. The faces of a
+screen or of a row of `rows` are laid out, and checked, when they are first shown.
+
 ## primary
 
 The color of the main thing to do: a button that stands out. A `submit` is primary by itself.
