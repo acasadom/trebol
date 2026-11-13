@@ -54,7 +54,8 @@ export async function buildDist(out: string): Promise<void> {
     outfile: join(out, 'cli.js'),
     platform: 'node',
     target: 'node22',
-    banner: { js: '#!/usr/bin/env -S node --disable-warning=ExperimentalWarning' },
+    // ws, which the tutorial's supplier uses, is CommonJS and requires Node's modules
+    banner: { js: "#!/usr/bin/env -S node --disable-warning=ExperimentalWarning\nimport { createRequire } from 'node:module';\nconst require = createRequire(import.meta.url);" },
   });
 }
 

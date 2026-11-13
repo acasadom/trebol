@@ -92,3 +92,27 @@ test('a page reloads when a file it asked for changes, not for another one in th
     await dev.close();
   }
 });
+
+test('the API can take WebSockets, and its open streams do not keep the server from closing', async () => {
+  const dev = await startDev({ root: mkdtempSync(join(tmpdir(), 'trebol-app-')), port: 0, api: join(import.meta.dirname, '..', 'examples', 'api.ts') });
+  const base = `localhost:${dev.port}`;
+  const events = await fetch(`http://${base}/api/activity`);
+  const reader = events.body!.getReader();
+  const next = async (): Promise<unknown> => JSON.parse(new TextDecoder().decode((await reader.read()).value).replace(/^data: /, ''));
+  assert.deepEqual(await next(), { online: 0, note: null });
+  const open = (name: string): Promise<WebSocket> => new Promise((ok, fail) => {
+    const ws = new WebSocket(`ws://${base}/api/chat?name=${name}`);
+    ws.onopen = () => ok(ws);
+    ws.onerror = () => fail(new Error('cannot open'));
+  });
+  const ana = await open('Ana');
+  assert.deepEqual(await next(), { online: 1, note: 'Ana joined' });
+  const luis = await open('Luis');
+  assert.deepEqual(await next(), { online: 2, note: 'Luis joined' });
+  const heard = new Promise<string>(ok => { luis.onmessage = ev => ok(String(ev.data)); });
+  ana.send(JSON.stringify({ text: ' hola ' }));
+  assert.deepEqual(JSON.parse(await heard), { name: 'Ana', text: 'hola' });
+  const refused = new WebSocket(`ws://${base}/elsewhere`);
+  await new Promise(ok => { refused.onerror = ok; });
+  await dev.close();
+});

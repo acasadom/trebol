@@ -9,8 +9,13 @@
 //
 // Records need a name and an email; anything else answers 422 with a
 // message. The data lives only as long as the server.
+//
+// The live example's chat and its events are in live/server.ts.
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { handleLive } from './live/server.ts';
+
+export { handleUpgrade } from './live/server.ts';
 
 interface Client { id: number; name: string; email: string; phone: string; kind: string }
 
@@ -49,6 +54,7 @@ function clientFrom(body: Record<string, unknown> | null, id: number): Client | 
 
 /** Answers a request under /api; returns false when the path is not an API path. */
 export async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): Promise<boolean> {
+  if (handleLive(req, res, url)) return true;
   const path = url.pathname;
   const m = /^\/api\/clients(?:\/(\d+))?\/?$/.exec(path);
   if (m === null) {

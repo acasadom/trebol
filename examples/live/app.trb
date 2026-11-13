@@ -1,0 +1,50 @@
+Trebol [title: "Live"]
+
+; A chat over a WebSocket, and who is in it over server-sent events, from
+; the server in server.ts that `npm run dev` runs. Open the page in two tabs
+; and talk to yourself.
+
+chat: none
+
+join-chat: func [who] [
+    chat: open-socket rejoin ["/api/chat?name=" enhex who]
+    on-message chat [
+        append said/data value
+        said/data: said/data
+    ]
+    on-close chat [
+        toast/role "The chat closed" 'warning
+        joining/hidden: false
+        talking/hidden: true
+    ]
+    joining/hidden: true
+    talking/hidden: false
+]
+
+activity: open-events "/api/activity"
+on-message activity [
+    online/text: rejoin [value/online either value/online = 1 [" person"] [" people"] " in the chat"]
+    if value/note [toast value/note]
+]
+
+view [
+    title "Live"
+    text muted "What one tab says, every tab hears. Open this page twice."
+    global online: text muted "Connecting…"
+    global joining: form [
+        field who "Your name" required
+        submit "Join" [join-chat values/who]
+    ]
+    global talking: panel hidden [
+        global list said [name "Name" text "Message"]
+        form [
+            field text "Message" required
+            submit "Send" [
+                send chat make map! reduce ['text values/text]
+                set-values face/form none
+            ]
+        ]
+    ]
+]
+
+said/data: copy []

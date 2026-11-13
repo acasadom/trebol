@@ -11,9 +11,12 @@
 // needs no HTML at all.
 //
 // An app can bring its own backend: `api` names a module whose `handleApi`
-// answers requests (see examples/api.ts).
+// answers requests, and whose `handleUpgrade`, if it has one, takes the
+// requests to open a WebSocket (see examples/api.ts).
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
+import type { Socket } from 'node:net';
+import type { Duplex } from 'node:stream';
 import { readFile, stat } from 'node:fs/promises';
 import { readFileSync, watch, type FSWatcher } from 'node:fs';
 import { join, extname, normalize, resolve, sep } from 'node:path';
@@ -23,12 +26,15 @@ import { stripTypeScriptTypes } from 'node:module';
 /** Answers a request; returns false to let the dev server serve files. */
 export type ApiHandler = (req: IncomingMessage, res: ServerResponse, url: URL) => Promise<boolean>;
 
+/** Takes a request to open a WebSocket; returns false to refuse it. */
+export type UpgradeHandler = (req: IncomingMessage, socket: Duplex, head: Buffer, url: URL) => boolean;
+
 export interface DevOptions {
   /** Folder served as the site root (default: the current directory). */
   root?: string;
   /** Port to listen on; 0 picks a free one (default 5173). */
   port?: number;
-  /** Path of a module exporting `handleApi` (see ApiHandler). */
+  /** Path of a module exporting `handleApi` and maybe `handleUpgrade` (see ApiHandler, UpgradeHandler). */
   api?: string;
 }
 
@@ -92,9 +98,11 @@ function inside(dir: string, urlPath: string): string | null {
 /** Starts the dev server; resolves once it listens. */
 export async function startDev(options: DevOptions = {}): Promise<Dev> {
   const root = normalize(resolve(options.root ?? '.'));
-  const api: ApiHandler | null = options.api !== undefined
-    ? ((await import(pathToFileURL(resolve(options.api)).href)) as { handleApi: ApiHandler }).handleApi
+  const mod = options.api !== undefined
+    ? (await import(pathToFileURL(resolve(options.api)).href)) as { handleApi: ApiHandler; handleUpgrade?: UpgradeHandler }
     : null;
+  const api = mod?.handleApi ?? null;
+  const upgrade = mod?.handleUpgrade ?? null;
   const map = importMap();
   const clients = new Set<ServerResponse>();
   // only what a page asked for can change that page: a database in the folder cannot
@@ -146,6 +154,16 @@ export async function startDev(options: DevOptions = {}): Promise<Dev> {
     }
   });
 
+  server.on('upgrade', (req: IncomingMessage, socket: Duplex, head: Buffer) => {
+    if (upgrade === null || !upgrade(req, socket, head, new URL(req.url ?? '/', 'http://x'))) socket.destroy();
+  });
+  // open WebSockets and event streams of the API would keep close() waiting
+  const sockets = new Set<Socket>();
+  server.on('connection', s => {
+    sockets.add(s);
+    s.on('close', () => sockets.delete(s));
+  });
+
   let pending: NodeJS.Timeout | null = null;
   const reload = (file: string | null): void => {
     if (file !== null && !asked.has(join(root, file))) return;
@@ -166,6 +184,7 @@ export async function startDev(options: DevOptions = {}): Promise<Dev> {
     close: () => {
       for (const w of watchers) w.close();
       for (const c of clients) c.end();
+      for (const s of sockets) s.destroy();
       return new Promise<void>(r => server.close(() => r()));
     },
   };

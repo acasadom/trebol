@@ -4,6 +4,7 @@
 //   trebol                    the interactive console (a script when stdin is not a terminal)
 //   trebol file.trb           runs a script
 //   trebol dev [folder] [--port 5173] [--api api.ts]
+//   trebol supplier           the parts supplier of the language tutorial, on port 8089
 //
 // `dev` serves the folder (default: the current one) with live reload; see
 // dev.ts. An app gets the command from its dependency on the package.
@@ -11,7 +12,7 @@
 import { readFileSync } from 'node:fs';
 import { consoleHost, runScript, startRepl } from './console.ts';
 
-const USAGE = 'usage: trebol [file.trb] | trebol dev [folder] [--port n] [--api file]';
+const USAGE = 'usage: trebol [file.trb] | trebol dev [folder] [--port n] [--api file] | trebol supplier';
 
 const [command, ...rest] = process.argv.slice(2);
 if (command === undefined) {
@@ -23,6 +24,10 @@ if (command === undefined) {
   if (!(await runScript(consoleHost(), readFileSync(0, 'utf8')))) process.exitCode = 1;
 } else if (command === 'dev') {
   await dev(rest);
+} else if (command === 'supplier' && rest.length === 0) {
+  const { startSupplier, SUPPLIER_PORT } = await import('../docs/_servers/supplier.ts');
+  await startSupplier();
+  console.log(`The supplier answers on http://localhost:${SUPPLIER_PORT}/parts (Ctrl+C to stop)`);
 } else if (rest.length === 0 && !command.startsWith('-')) {
   if (!(await runScript(consoleHost(), readFileSync(command, 'utf8'), command))) process.exitCode = 1;
 } else {

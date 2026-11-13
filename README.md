@@ -82,7 +82,7 @@ Rebol; and guides to how Trebol is built.
 | `src/host` | the world: tasks, network, files, the console, the DOM and the theme |
 | `src/ui` | the UI dialect, written in Trebol |
 | `test` | tests in TypeScript, and the language suites in Trebol (`test/trebol`) |
-| `examples` | sample apps: `signup`, `clients`, `gallery`, `designer` |
+| `examples` | sample apps: `signup`, `clients`, `gallery`, `live`, `designer` |
 | `docs` | the documentation site |
 | `tools` | the `trebol` command, the console, the documentation builders |
 

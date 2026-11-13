@@ -6,10 +6,10 @@ This page asks the supplier questions, sends it an order, and then does what a b
 questions at once, and keeps working while the answers come.
 
 The supplier is a small program that comes with Trebol and answers in JSON, as most services on the web do.
-Start it in a second terminal and leave it running:
+Start it in a second terminal, in the shop's folder, and leave it running:
 
 ```sh
-npm run supplier
+npx trebol supplier
 ```
 
 ## Asking
@@ -163,6 +163,52 @@ check 2
 check 3
 == none
 ```
+
+## When the server speaks first
+
+With `fetch`, the counter asks and the supplier answers, once. Some news comes without asking: the day's
+delivery is packed, then on the road, then at the door. `open-events` opens a stream of **server-sent events**,
+news that only the server sends, and `on-message` runs a block for each piece, with the news in `value`. A JSON
+piece comes as a map, as with `fetch`. `on-close` runs when the server ends the stream:
+
+```trebol-console
+>> news: open-events http://localhost:8089/deliveries
+== #[handle!]
+>> on-message news [print ["the delivery is" value/step]]
+== #[handle!]
+>> on-close news [print "no more news today"]
+== #[handle!]
+>> wait 1
+the delivery is packed
+the delivery is on the road
+the delivery is delivered
+no more news today
+== none
+```
+
+A **WebSocket** goes both ways, and stays open: the shop can ask the supplier's order desk again and again
+without a new request each time. `open-socket` waits until it is open; `send` sends a value (a map or a block
+goes as JSON), and the desk's answers come to `on-message` like the news did. `close-stream` hangs up:
+
+```trebol-console
+>> desk: open-socket ws://localhost:8089/desk
+== #[handle!]
+>> on-message desk [print [value/part "in stock:" value/stock]]
+== #[handle!]
+>> send desk #(ask: "bell")
+== #[handle!]
+>> send desk #(ask: "chain")
+== #[handle!]
+>> wait 1
+bell in stock: 12
+chain in stock: 40
+== none
+>> close-stream desk
+== #[handle!]
+```
+
+The handlers are tasks too: they run while the program goes on, the same as `spawn`'s. `examples/live` in
+Trebol's source puts both on a screen: a chat over a WebSocket, and who is in it over server-sent events.
 
 ## What's next
 

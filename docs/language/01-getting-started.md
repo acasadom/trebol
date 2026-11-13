@@ -97,12 +97,13 @@ The header can hold more than a title, as you will see later, but `Trebol []` is
 
 ## The trebol command
 
-`npx trebol` does one of three things, by what follows it:
+`npx trebol` does one of these things, by what follows it:
 
 ```sh
 npx trebol                         # the console
 npx trebol shop.trb                # runs a script
 npx trebol dev [folder]            # serves an app (the second tutorial)
+npx trebol supplier                # the parts supplier of page 12, on port 8089
 ```
 
 In the console, a line that leaves a block, a paren or a string open is not run yet: the prompt turns into
