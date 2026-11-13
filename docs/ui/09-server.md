@@ -214,6 +214,17 @@ view [
 ]
 ```
 
+A `photo` field sends the same way, and its bar fills too. Its value is an object only when the person chose
+a new image; otherwise it is the address the server already has, or `none`. In the submit of a form with
+`pic: photo picture "Photo"`:
+
+```trebol
+; docs-test: skip
+if object? values/picture [
+    fetch/with "/api/customers/42/picture" [multipart: reduce ['picture values/picture/file] progress: pic]
+]
+```
+
 With a body, the count is first of the bytes sent and then of the bytes received; without one, of the bytes
 received. `total` is `none` when the server does not say how many bytes come, and then a progress face moves
 without saying how far. The block runs at most ten times a second, and always once at the end, when `total`

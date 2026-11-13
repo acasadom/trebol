@@ -36,14 +36,14 @@ fetch: func [
 ]
 
 show-progress: func [
-    "Shows how far a request went on a face: a progress bar's value, or the bar of an upload."
+    "Shows how far a request went on a face: a progress bar's value, or the bar of an upload or a photo."
     face [object!]
     done [integer! none!] "Bytes done; none once the request is over"
     total [integer! none!] "Bytes in all, when known"
     /local part
 ][
     part: either all [done total total > 0] [done / to decimal! total] [none]
-    either 'upload = select face 'style [face/sent: part] [if done [face/value: part]]
+    either find [upload photo] select face 'style [face/sent: part] [if done [face/value: part]]
 ]
 
 save: func [

@@ -896,6 +896,26 @@ test('upload fields keep a block of chosen files; refused ones give a message', 
   assert.equal(r, '[docs true ["pdf" "png"] "This field is required" 3 "a.pdf" 2000 true "Only pdf, png files" 2 "b.png" none none "This field is required" 1 "a.pdf" true]');
 });
 
+test('a photo holds the image chosen, or the address of one kept elsewhere', async () => {
+  const r = await ev(`
+    root: view [form [photo face "Photo" required round  photo logo "Logo" accept ["svg"]]]
+    p: first select first root/pane 'pane
+    l: second select first root/pane 'pane
+    out: reduce [p/style p/name p/round validate-face p]
+    ui-files p test-files []
+    append out reduce [object? p/value p/value/name handle? p/value/file validate-face p]
+    p/touched: false
+    ui-remove-file p 1
+    append out reduce [p/value p/touched]
+    set-values first root/pane make map! [face: "https://example.com/ada.jpg"]
+    append out reduce [p/value select form-values first root/pane 'face]
+    ui-files l [] ["c.png"]
+    ui-files p [] ["c.pdf"]
+    append out reduce [validate-face l validate-face p]
+    out`);
+  assert.equal(r, '[photo face true "This field is required" true "a.pdf" true none none true "https://example.com/ada.jpg" "https://example.com/ada.jpg" "Only svg files" "Only images"]');
+});
+
 test('dates are read in the order of the language', () => {
   const cases: [string, string, string | null][] = [
     ['3/11/2026', 'es', '2026-11-03'], ['11/3/2026', 'en', '2026-11-03'], ['3-11-26', 'es', '2026-11-03'],

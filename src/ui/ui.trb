@@ -44,7 +44,7 @@ face: make object! [
     error: none         ; current message, shown once the face is touched
     touched: false
     pending: false      ; an asynchronous check is running
-    sent: none          ; an upload: how far its files went up, 0-1; none hides the bar
+    sent: none          ; an upload or photo: how far its files went up, 0-1; none hides the bar
     async-error: none   ; result of the last asynchronous check
     action: none        ; the block after the face: click, change
     events: none        ; [on-change [...] on-select [...]]
@@ -60,9 +60,9 @@ face: make object! [
     built: none         ; rows: what its rows were last made from
     owner: none         ; a row of rows: the rows face it belongs to
     typed: none         ; what the user typed in a number, money or date field when it is not one;
-                        ; in an upload, the names of the files it refused
+                        ; in an upload or photo, the names of the files it refused
     multiple: false     ; an upload or a lookup takes more than one
-    accept: none        ; the files an upload takes: ["pdf" "image/*"]
+    accept: none        ; the files an upload takes: ["pdf" "image/*"]; a photo, images unless told
     pane: none
     columns: none       ; table, list and tree: [field "Label" ...]; a column of images, [field ["Label" image round]]
     data: none          ; table, list and tree: a block of map! or object! rows (a tree's
@@ -85,14 +85,14 @@ face: make object! [
 styles: make map! []
 
 container-styles: [view column row form panel grid dialog scroll split toolbar desktop]
-input-styles: [field password number money date area rich check toggle choice radio upload lookup rows]
+input-styles: [field password number money date area rich check toggle choice radio upload photo lookup rows]
 data-styles: [table list tree chart]
 
 foreach [name base] [
     view column  column column  row row  form form  panel panel  grid grid  scroll scroll  desktop desktop
     title title  heading heading  text text  divider divider
     field field  password password  number number  money money  date date  area area  rich rich  check check  choice choice
-    toggle toggle  radio radio  upload upload  lookup lookup  progress progress  image image  backdrop backdrop  icon icon
+    toggle toggle  radio radio  upload upload  photo photo  lookup lookup  progress progress  image image  backdrop backdrop  icon icon
     button button  link link  tile tile  table table  list list  tabs tabs  tab tab
     toolbar toolbar  breadcrumb breadcrumb  tree tree  screens screens  screen screen  rows rows  entry entry
     canvas canvas  chart chart
@@ -887,6 +887,7 @@ validate-face: function [
     ]
     if f/typed [
         if f/style = 'upload [return message 'accept reduce [list-of f/accept]]
+        if f/style = 'photo [return either f/accept [message 'accept reduce [list-of f/accept]] [message 'images []]]
         return message select [number number money amount date date] f/style []
     ]
     if blank? :v [
@@ -1028,6 +1029,7 @@ changed: function [f] [
 
 ; An upload's value is none or a block of objects [name size type file];
 ; file is a handle the host keeps, read with read-file or sent with multipart.
+; A photo's is none, the object of the image chosen, or the address of one kept elsewhere.
 ui-files: function [
     "Called by the host when the user chooses or drops files: name size type file for each, and the names it refused."
     f files [block!] refused [block!]
@@ -1036,7 +1038,11 @@ ui-files: function [
         foreach [n s t h] files [keep make object! [name: n size: s type: t file: h]]
     ]
     unless empty? chosen [
-        f/value: either f/multiple [append copy any [f/value []] chosen] [copy/part chosen 1]
+        f/value: case [
+            f/style = 'photo [first chosen]
+            f/multiple [append copy any [f/value []] chosen]
+            true [copy/part chosen 1]
+        ]
     ]
     f/typed: either empty? refused [none] [refused]
     f/touched: true
@@ -1044,12 +1050,15 @@ ui-files: function [
 ]
 
 ui-remove-file: function [
-    "Called by the host when the user removes the file at a position of an upload."
+    "Called by the host when the user removes the file at a position of an upload, or a photo's."
     f index [integer!]
 ] [
-    files: remove at copy f/value index
-    f/value: either empty? head files [none] [head files]
+    f/value: either f/style = 'photo [none] [
+        files: remove at copy f/value index
+        either empty? head files [none] [head files]
+    ]
     f/typed: none
+    f/touched: true
     changed f
 ]
 

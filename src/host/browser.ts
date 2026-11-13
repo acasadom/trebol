@@ -20,7 +20,7 @@ import { logic,
   type Cell, type MapCell, type ObjectCell, type BlockCell, type WordCell, type StringCell, type Ctx, type Sym,
 } from '../core/index.ts';
 import { mapAt, startHost, startUi, runSource, report, shown, translate, uiText, activeLanguage, editLocal, readLocal, readDate, weekStart, fileSize, LOCAL_KINDS, type Host } from './index.ts';
-import { spawn, taskResult } from './scheduler.ts';
+import { spawn, taskResult, handleOf } from './scheduler.ts';
 import { themeCss, DEFAULT_THEME, LOOKS, THEME_WORDS, type ThemeParams } from './theme.ts';
 import { iconNode } from './icons.ts';
 import { parseMd, printMd, safeHref, type Block, type Inline } from './markdown.ts';
@@ -244,6 +244,8 @@ function build(face: ObjectCell): HTMLElement {
     node = buildRadio(face, m);
   } else if (style === 'upload') {
     node = buildUpload(face, m);
+  } else if (style === 'photo') {
+    node = buildPhoto(face, m);
   } else if (style === 'lookup') {
     node = buildLookup(face, m);
   } else if (style === 'rich') {
@@ -1358,37 +1360,14 @@ function buildUpload(face: ObjectCell, m: Mounted): HTMLElement {
   error.setAttribute('aria-live', 'polite');
   choose.setAttribute('aria-describedby', error.id);
   const list = el('ul', 'tb-upload-list');
-  // how far the files went up, while a fetch with progress: the upload sends them
-  label.id = `${id}-label`;
-  const track = el('div', 'tb-progress tb-upload-progress');
-  track.setAttribute('role', 'progressbar');
-  track.setAttribute('aria-valuemin', '0');
-  track.setAttribute('aria-valuemax', '100');
-  track.setAttribute('aria-labelledby', label.id);
-  track.hidden = true;
-  track.append(el('div', 'tb-progress-bar'));
+  const track = sentBar(label, id);
   choose.addEventListener('click', () => picker.click());
   picker.addEventListener('change', () => {
     const files = [...(picker.files ?? [])];
     picker.value = '';
     if (files.length > 0) chooseFiles(face, files);
   });
-  const hasFiles = (ev: DragEvent): boolean => ev.dataTransfer?.types.includes('Files') === true;
-  zone.addEventListener('dragover', ev => {
-    if (!hasFiles(ev) || choose.disabled) return;
-    ev.preventDefault();
-    ev.dataTransfer!.dropEffect = 'copy';
-    zone.classList.add('tb-drop-over');
-  });
-  zone.addEventListener('dragleave', ev => {
-    if (!zone.contains(ev.relatedTarget as Node | null)) zone.classList.remove('tb-drop-over');
-  });
-  zone.addEventListener('drop', ev => {
-    zone.classList.remove('tb-drop-over');
-    if (!hasFiles(ev) || choose.disabled) return;
-    ev.preventDefault();
-    chooseFiles(face, [...ev.dataTransfer!.files]);
-  });
+  dropFiles(face, zone, choose);
   zone.append(choose, hint, picker);
   control.append(zone, list, track, error);
   wrap.append(label, control);
@@ -1399,10 +1378,169 @@ function buildUpload(face: ObjectCell, m: Mounted): HTMLElement {
   return wrap;
 }
 
-/** The accept list of an upload: extensions ("pdf") and types ("image/*"). */
+/** The accept list of an upload: extensions ("pdf") and types ("image/*"); a photo takes images unless told. */
 function acceptList(face: ObjectCell): string[] {
   const a = get(face, 'accept');
+  if (a.t !== K.Block && word(face, 'style') === 'photo') return ['image/*'];
   return a.t === K.Block ? a.s.data.slice(a.i).map(x => form(x).trim().toLowerCase()).filter(x => x !== '') : [];
+}
+
+/** The picker's accept attribute for an accept list. */
+function pickerAccept(list: string[]): string {
+  return list.map(x => (x.includes('/') || x.startsWith('.') ? x : `.${x}`)).join(',');
+}
+
+/** Lets a zone take files dropped on it, unless its button is disabled. */
+function dropFiles(face: ObjectCell, zone: HTMLElement, button: HTMLButtonElement): void {
+  const hasFiles = (ev: DragEvent): boolean => ev.dataTransfer?.types.includes('Files') === true;
+  zone.addEventListener('dragover', ev => {
+    if (!hasFiles(ev) || button.disabled) return;
+    ev.preventDefault();
+    ev.dataTransfer!.dropEffect = 'copy';
+    zone.classList.add('tb-drop-over');
+  });
+  zone.addEventListener('dragleave', ev => {
+    if (!zone.contains(ev.relatedTarget as Node | null)) zone.classList.remove('tb-drop-over');
+  });
+  zone.addEventListener('drop', ev => {
+    zone.classList.remove('tb-drop-over');
+    if (!hasFiles(ev) || button.disabled) return;
+    ev.preventDefault();
+    chooseFiles(face, [...ev.dataTransfer!.files]);
+  });
+}
+
+/** The bar of how far the files went up, while a fetch with progress sends them. */
+function sentBar(label: HTMLElement, id: string): HTMLElement {
+  label.id = `${id}-label`;
+  const track = el('div', 'tb-progress tb-upload-progress');
+  track.setAttribute('role', 'progressbar');
+  track.setAttribute('aria-valuemin', '0');
+  track.setAttribute('aria-valuemax', '100');
+  track.setAttribute('aria-labelledby', label.id);
+  track.hidden = true;
+  track.append(el('div', 'tb-progress-bar'));
+  return track;
+}
+
+function syncSent(m: Mounted): void {
+  const track = m.el.querySelector<HTMLElement>('.tb-upload-progress')!;
+  const sent = get(m.face, 'sent');
+  const part = fraction(sent) ?? 0;
+  track.hidden = sent.t === K.None;
+  track.setAttribute('aria-valuenow', String(Math.round(part * 100)));
+  (track.firstChild as HTMLElement).style.width = `${part * 100}%`;
+}
+
+// A photo: the image itself, a button to choose one and another to take it away. The
+// image chosen shows from the browser's memory; one kept elsewhere, from its address.
+
+/** The address that shows each chosen file, made once and freed when the photo shows another. */
+const shownUrls = new WeakMap<HTMLElement, { blob: Blob; url: string }>();
+
+function buildPhoto(face: ObjectCell, m: Mounted): HTMLElement {
+  const id = `tb-${nextId++}`;
+  const wrap = el('div', 'tb-field');
+  const label = el('label', 'tb-label');
+  label.htmlFor = id;
+  const control = el('div', 'tb-control');
+  const zone = el('div', 'tb-photo');
+  // the frame opens the picker for a pointer; the keyboard has the button
+  const frame = el('div', 'tb-photo-frame');
+  frame.addEventListener('click', () => { if (!choose.disabled) picker.click(); });
+  const picker = el('input');
+  picker.type = 'file';
+  picker.hidden = true;
+  picker.tabIndex = -1;
+  const actions = el('div', 'tb-photo-actions');
+  const choose = el('button', 'tb-button');
+  choose.type = 'button';
+  choose.id = id;
+  const svg = icon('upload');
+  if (svg !== null) choose.append(svg);
+  choose.append(el('span'));
+  const remove = el('button', 'tb-button tb-photo-remove');
+  remove.type = 'button';
+  remove.addEventListener('click', () => {
+    choose.focus();
+    void fire('ui-remove-file', face, int(1));
+  });
+  const error = el('div', 'tb-error');
+  error.id = `${id}-error`;
+  error.setAttribute('aria-live', 'polite');
+  choose.setAttribute('aria-describedby', error.id);
+  choose.addEventListener('click', () => picker.click());
+  picker.addEventListener('change', () => {
+    const files = [...(picker.files ?? [])];
+    picker.value = '';
+    if (files.length > 0) chooseFiles(face, files);
+  });
+  dropFiles(face, zone, choose);
+  actions.append(choose, remove);
+  zone.append(frame, actions, picker);
+  control.append(zone, sentBar(label, id), error);
+  wrap.append(label, control);
+  m.label = label;
+  m.error = error;
+  m.button = choose;
+  m.box = frame;
+  return wrap;
+}
+
+/** What a photo shows: the image chosen, or the address of one kept elsewhere; null for none. */
+function photoSrc(frame: HTMLElement, v: Cell): string | null {
+  const kept = shownUrls.get(frame);
+  const file = v.t === K.Object ? handleOf<Blob>(get(v as ObjectCell, 'file'), 'file') : null;
+  if (file !== null && kept !== undefined && kept.blob === file) return kept.url;
+  if (kept !== undefined) {
+    URL.revokeObjectURL(kept.url);
+    shownUrls.delete(frame);
+  }
+  if (file !== null) {
+    const url = URL.createObjectURL(file);
+    shownUrls.set(frame, { blob: file, url });
+    return url;
+  }
+  return v.t === K.String || v.t === K.Url || v.t === K.File ? form(v) : null;
+}
+
+function syncPhoto(m: Mounted, err: string | null): void {
+  const f = m.face;
+  const t = str(f, 'text') ?? '';
+  m.label!.textContent = t;
+  m.label!.classList.toggle('tb-required', required(f));
+  const readonly = flag(f, 'readonly');
+  const choose = m.button!;
+  choose.disabled = flag(f, 'disabled') || readonly;
+  choose.setAttribute('aria-invalid', err !== null ? 'true' : 'false');
+  const frame = m.box!;
+  frame.classList.toggle('tb-round', flag(f, 'round'));
+  frame.classList.toggle('tb-photo-pick', !choose.disabled);
+  const src = photoSrc(frame, get(f, 'value'));
+  let img = frame.querySelector('img');
+  if (src === null) {
+    if (img !== null || frame.firstChild === null) {
+      const svg = icon(flag(f, 'round') ? 'user' : 'image');
+      frame.replaceChildren(...(svg !== null ? [svg] : []));
+    }
+  } else {
+    if (img === null) {
+      img = el('img') as HTMLImageElement;
+      frame.replaceChildren(img);
+    }
+    if (img.getAttribute('src') !== src) img.src = src;
+    img.alt = t;
+  }
+  (choose.lastChild as HTMLElement).textContent = own(src === null ? 'choose-photo' : 'change-photo');
+  const remove = m.el.querySelector<HTMLButtonElement>('.tb-photo-remove')!;
+  remove.textContent = own('remove-photo');
+  remove.hidden = src === null || readonly;
+  remove.disabled = choose.disabled;
+  // read only, there is nothing to choose: only the photo is left
+  (m.el.querySelector('.tb-photo-actions') as HTMLElement).hidden = readonly;
+  (m.el.querySelector('input[type="file"]') as HTMLInputElement).accept = pickerAccept(acceptList(f));
+  m.error!.textContent = err ?? '';
+  syncSent(m);
 }
 
 function accepts(file: File, list: string[]): boolean {
@@ -1451,7 +1589,7 @@ function syncUpload(m: Mounted, err: string | null): void {
   (zone.querySelector('.tb-upload-hint') as HTMLElement).textContent = own(many ? 'drop-files' : 'drop-file');
   const picker = zone.querySelector('input') as HTMLInputElement;
   picker.multiple = many;
-  picker.accept = acceptList(f).map(x => (x.includes('/') || x.startsWith('.') ? x : `.${x}`)).join(',');
+  picker.accept = pickerAccept(acceptList(f));
   m.error!.textContent = err ?? '';
   const v = get(f, 'value');
   const files = v.t === K.Block ? v.s.data.slice(v.i).filter(x => x.t === K.Object) as ObjectCell[] : [];
@@ -1496,11 +1634,7 @@ function syncUpload(m: Mounted, err: string | null): void {
   });
   m.box!.replaceChildren(...items);
   m.box!.hidden = items.length === 0;
-  const track = m.el.querySelector<HTMLElement>('.tb-upload-progress')!;
-  const sent = fraction(get(f, 'sent'));
-  track.hidden = get(f, 'sent').t === K.None;
-  track.setAttribute('aria-valuenow', String(Math.round((sent ?? 0) * 100)));
-  (track.firstChild as HTMLElement).style.width = `${(sent ?? 0) * 100}%`;
+  syncSent(m);
 }
 
 // A lookup: a field where the user types and chooses among what on-search finds, as in
@@ -3244,6 +3378,7 @@ function sync(m: Mounted): void {
 
   if (style === 'radio') return syncRadio(m, err);
   if (style === 'upload') return syncUpload(m, err);
+  if (style === 'photo') return syncPhoto(m, err);
   if (style === 'lookup') return syncLookup(m, err);
   if (style === 'rich') return syncRich(m, err);
   if (m.input !== null) {

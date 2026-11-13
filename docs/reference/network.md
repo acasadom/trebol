@@ -39,7 +39,7 @@ A network failure, a timeout and, without `full`, an answer with an HTTP error a
 (fn-show-progress)=
 ## show-progress
 
-Shows how far a request went on a face: a progress bar's value, or the bar of an upload.
+Shows how far a request went on a face: a progress bar's value, or the bar of an upload or a photo.
 
 ```text
 show-progress face done total

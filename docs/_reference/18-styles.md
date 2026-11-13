@@ -118,6 +118,13 @@ over its options.
 A button to choose files, which is also a place to drop them. Its value is a block of objects with the `name`,
 `size`, `type` and `file` of each; `multiple` takes more than one, `accept ["pdf" "image/*"]` says which.
 
+## photo
+
+An image and the buttons to choose another or remove it; clicking the image or dropping one on it chooses
+too. Its value is `none`, the address of an image kept elsewhere (as a record from the server has it), or the
+image chosen: an object with its `name`, `size`, `type` and `file`, as an upload's. It takes images unless
+`accept` says otherwise; `round` makes it a circle: `photo picture "Photo" round`.
+
 ## lookup
 
 A field that searches as the person types: its `on-search` gives what was found, and the person picks one, or

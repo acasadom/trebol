@@ -751,6 +751,16 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
 .tb-progress-label[hidden] { display: none; }
 .tb-progress { height: 8px; border-radius: 4px; background: var(--tb-border); overflow: hidden; }
 .tb-upload-progress { height: 6px; }
+.tb-photo { display: flex; flex-wrap: wrap; align-items: center; gap: var(--tb-space-4); margin: calc(-1 * var(--tb-space-2)); padding: var(--tb-space-2); border: 1px dashed transparent; border-radius: var(--tb-radius-lg); transition: border-color var(--tb-fast) var(--tb-ease), background var(--tb-fast) var(--tb-ease); }
+.tb-photo.tb-drop-over { border-color: var(--tb-primary); background: var(--tb-primary-soft); }
+.tb-photo-frame { flex: none; width: 96px; height: 96px; display: grid; place-items: center; overflow: hidden; border: var(--tb-line) solid var(--tb-border); border-radius: var(--tb-radius-lg); background: var(--tb-bg); color: var(--tb-muted); }
+.tb-photo-frame.tb-photo-pick { cursor: pointer; }
+.tb-photo-frame.tb-round { border-radius: 50%; }
+.tb-photo-frame > img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.tb-photo-frame > .tb-icon { width: 32px; height: 32px; }
+.tb-invalid .tb-photo-frame { border-color: var(--tb-danger); }
+.tb-photo-actions { display: flex; flex-wrap: wrap; gap: var(--tb-space-2); }
+.tb-photo-actions[hidden], .tb-photo-remove[hidden] { display: none; }
 .tb-upload-progress[hidden] { display: none; }
 .tb-progress-bar { height: 100%; width: 0; border-radius: inherit; background: var(--tb-primary); transition: width 300ms var(--tb-ease); }
 .tb-success .tb-progress-bar { background: var(--tb-success); }

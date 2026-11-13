@@ -104,6 +104,31 @@ view [
 Pick a Sunday and leave the field. A `check` runs whenever its value changes, so keep it quick; a rule
 that has to ask a server is a `check-async`, which a later page uses.
 
+## A photo
+
+`photo` shows an image and lets the person choose another: with its button, by clicking the image, or by
+dropping one on it. On a phone, the button offers the camera too. `round` makes it a circle, as for a
+person:
+
+```trebol-ui
+view [
+    title "Customer"
+    global card: form [
+        photo picture "Photo" round
+        field name "Name" required
+        submit "Save" [saved/text: mold values]
+    ]
+    saved: text muted "Nothing saved yet."
+]
+
+set-values card #(name: "Ada Lovelace" picture: "ada.svg")
+```
+
+A record that has a photo gives its address, as it comes from the server, and the field shows it. When the
+person chooses another, the value becomes that image, an object with its `name`, `size`, `type` and `file`,
+the same as one file of an `upload`; the [server page](09-server) sends it. Removing it leaves `none`. It takes
+images only, unless `accept` says otherwise.
+
 ## What's next
 
 A form on its own fills the page from side to side. The [next page](03-layout) arranges the counter

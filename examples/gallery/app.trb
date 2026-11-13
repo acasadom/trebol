@@ -68,6 +68,7 @@ view compose/deep/only [
             money price "Price" EUR min 0
             date due "Due date" min 1-Nov-2026
             upload docs "Attachments" multiple accept ["pdf" "png"]
+            photo picture "Photo" round
             radio size "Size" ["Small" "Medium" "Large"] required
             toggle alerts "Email alerts"
             area notes "Notes"
