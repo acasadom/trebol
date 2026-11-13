@@ -97,8 +97,10 @@ view [
 ** At: app.trb:3:5
 ```
 
-The browser shows it in its console (in Chrome, *View › Developer › JavaScript Console*). A view in the
-action of a button is read when the button is pressed, so its mistakes show up only then.
+`trebol dev` shows it on the page, over the app, with every other error the app does not catch, such as one in
+the action of a button; *Close* puts it away. On any other server the page shows nothing of it, and the error is
+in the browser's console (in Chrome, *View › Developer › JavaScript Console*). A view in the action of a
+button is read when the button is pressed, so its mistakes show up only then.
 
 ## Putting it on the web
 

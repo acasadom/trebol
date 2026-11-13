@@ -222,8 +222,43 @@ function fire(fn: string, face: ObjectCell, ...args: Cell[]): Promise<Cell> {
   const quote: Cell = { t: K.Word, sym: intern('quote'), bind: host.rt.lib };
   const call: Cell[] = [{ t: K.Word, sym: intern(fn), bind: host.rt.user }, face, ...args.flatMap(a => ACTIVE.has(a.t) ? [quote, a] : [a])];
   const t = taskResult(spawn(host.sch, { data: call }, 0));
-  t.catch(e => console.error(report(e as ObjectCell)));
+  t.catch(e => showError(report(e as ObjectCell)));
   return t;
+}
+
+/** The panel of errors trebol dev shows on the page; null until the first one. */
+let devErrors: HTMLElement | null = null;
+
+/**
+ * An error nobody caught: in the console and, when trebol dev serves the page (it adds
+ * `<meta name="trebol-dev">`), also on the page, so a broken app is not a blank page.
+ */
+function showError(message: string): void {
+  console.error(message);
+  if (document.querySelector('meta[name="trebol-dev"]') === null) return;
+  if (devErrors === null || !devErrors.isConnected) {
+    // a manual popover sits in the top layer, above open dialogs
+    const panel = el('section', 'tb-dev-errors');
+    panel.popover = 'manual';
+    panel.setAttribute('role', 'alert');
+    panel.setAttribute('aria-label', 'Trebol error');
+    const head = el('header');
+    const title = el('span');
+    title.textContent = 'Trebol error';
+    const close = el('button', 'tb-button');
+    close.type = 'button';
+    close.textContent = 'Close';
+    close.addEventListener('click', () => panel.remove());
+    panel.addEventListener('keydown', ev => { if (ev.key === 'Escape') panel.remove(); });
+    head.append(title, close);
+    panel.append(head);
+    document.body.append(panel);
+    panel.showPopover();
+    devErrors = panel;
+  }
+  const pre = el('pre');
+  pre.textContent = message;
+  devErrors.append(pre);
 }
 
 function el<T extends keyof HTMLElementTagNameMap>(tag: T, cls?: string): HTMLElementTagNameMap[T] {
@@ -4071,7 +4106,7 @@ native('apply-theme', '["Changes the look of the whole screen." spec [object!]]'
 
 async function boot(): Promise<void> {
   setTheme(DEFAULT_THEME);
-  host = startHost();
+  host = startHost({ onError: e => showError(report(e)) });
   host.sch.afterPump = syncDirty;
   document.addEventListener('keydown', onKeyDown, true);
   document.addEventListener('keydown', onReorderKey);
@@ -4101,7 +4136,7 @@ async function boot(): Promise<void> {
     try {
       await runSource(host, code, url);
     } catch (e) {
-      console.error(e instanceof Error ? e.message : report(e as ObjectCell));
+      showError(e instanceof Error ? e.message : report(e as ObjectCell));
     }
   }
 }

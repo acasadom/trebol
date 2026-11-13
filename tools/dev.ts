@@ -79,6 +79,9 @@ const APP_PAGE = `<!doctype html>
 // reloads its frames too.
 const RELOAD = `<script>if (window === top) new EventSource('/__reload').onmessage = () => location.reload();</script>`;
 
+/** Tells the browser host it runs under trebol dev. */
+const DEV_MARK = '<meta name="trebol-dev">';
+
 /** `trebol/x` for every export of the package, pointing under /@trebol/ to its source, which is served stripped. */
 function importMap(): string {
   const pkg = JSON.parse(readFileSync(join(TREBOL, 'package.json'), 'utf8')) as { exports: Record<string, { source: string }> };
@@ -142,8 +145,8 @@ export async function startDev(options: DevOptions = {}): Promise<Dev> {
       const ext = extname(path);
       if (ext === '.ts') body = stripTypeScriptTypes(body.toString(), { mode: 'strip' });
       if (ext === '.html') {
-        // the import map must come before any module script
-        body = body.toString().replace(/<head[^>]*>/i, h => h + map);
+        // the import map must come before any module script; the mark has the page show its errors
+        body = body.toString().replace(/<head[^>]*>/i, h => h + map + DEV_MARK);
         // ?static leaves out live reload (headless screenshots wait for the page to go idle)
         if (!url.searchParams.has('static')) body = body.replace('</body>', `${RELOAD}</body>`);
       }

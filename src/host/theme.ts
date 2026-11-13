@@ -1137,6 +1137,40 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
 .tb-toast.tb-warning::before { background: var(--tb-warning); }
 .tb-toast.tb-danger { background: var(--tb-danger); color: var(--tb-on-danger); }
 
+/* under trebol dev, the errors the app does not catch */
+.tb-dev-errors {
+  position: fixed;
+  inset: var(--tb-space-4) var(--tb-space-4) auto;
+  width: auto;
+  max-width: 960px;
+  max-height: calc(100vh - 2 * var(--tb-space-4));
+  margin: 0 auto;
+  overflow: auto;
+  box-sizing: border-box;
+  padding: var(--tb-space-4) var(--tb-space-5);
+  border: 1px solid var(--tb-border);
+  border-left: 4px solid var(--tb-danger);
+  border-radius: var(--tb-radius);
+  background: var(--tb-surface);
+  color: var(--tb-text);
+  box-shadow: var(--tb-shadow-3);
+  font-family: var(--tb-font);
+}
+.tb-dev-errors header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tb-space-3);
+  margin-bottom: var(--tb-space-3);
+  font-weight: 600;
+}
+.tb-dev-errors pre {
+  margin: 0 0 var(--tb-space-3);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 13px/1.6 ui-monospace, Menlo, Consolas, monospace;
+}
+
 @media (max-width: 640px) {
   .tb-wide-only { display: none !important; }
   .tb-view:has(.tb-fit) { height: auto; }
