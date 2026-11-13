@@ -2348,7 +2348,8 @@ function syncRich(m: Mounted, err: string | null): void {
 
 // --- tables and lists ---------------------------------------------------------------
 
-interface Column { sym: Sym; word: Cell; label: string }
+/** A column; `image` when it shows each row's picture, `round` when cut to a circle. */
+interface Column { sym: Sym; word: Cell; label: string; image: boolean; round: boolean }
 
 function columns(face: ObjectCell): Column[] {
   const c = get(face, 'columns');
@@ -2357,9 +2358,30 @@ function columns(face: ObjectCell): Column[] {
   const d = c.s.data;
   for (let i = c.i; i + 1 < d.length; i += 2) {
     const w = d[i]!;
-    if (w.t === K.Word) out.push({ sym: (w as WordCell).sym, word: w, label: translate(d[i + 1]!, host.rt) });
+    if (w.t !== K.Word) continue;
+    // a column of images keeps its label in a block with what it is: ["Photo" image round]
+    const spec = d[i + 1]!;
+    const parts = spec.t === K.Block ? (spec as BlockCell).s.data.slice((spec as BlockCell).i) : [spec];
+    const has = (name: string): boolean => parts.some(p => p.t === K.Word && canon((p as WordCell).sym) === canon(intern(name)));
+    out.push({ sym: (w as WordCell).sym, word: w, label: translate(parts[0] ?? NONE, host.rt), image: has('image'), round: has('round') });
   }
   return out;
+}
+
+/** The picture of a row in a column of images, from an address or a file; without one, an empty place for it. */
+function thumb(box: Element, v: Cell, round: boolean): void {
+  const src = v.t === K.String || v.t === K.Url || v.t === K.File ? form(v) : '';
+  const old = box.querySelector<HTMLElement>(':scope > .tb-thumb');
+  let pic = old;
+  if (src === '' ? pic?.tagName !== 'SPAN' : pic?.tagName !== 'IMG') {
+    // decoration: the row's text says who or what it is
+    pic = el(src === '' ? 'span' : 'img', 'tb-thumb');
+    if (src !== '') (pic as HTMLImageElement).alt = '';
+    if (old !== null) old.replaceWith(pic);
+    else box.prepend(pic);
+  }
+  if (src !== '' && pic!.getAttribute('src') !== src) (pic as HTMLImageElement).src = src;
+  pic!.classList.toggle('tb-round', round);
 }
 
 function sameRow(a: Cell, b: Cell): boolean {
@@ -2584,7 +2606,9 @@ function newTableRow(cols: Column[]): HTMLElement {
 
 function newListItem(): HTMLElement {
   const li = el('li');
-  li.append(el('span', 'tb-list-primary'), el('span', 'tb-list-secondary'));
+  const texts = el('span', 'tb-list-texts');
+  texts.append(el('span', 'tb-list-primary'), el('span', 'tb-list-secondary'));
+  li.append(texts);
   return li;
 }
 
@@ -2596,15 +2620,23 @@ function fillRow(item: HTMLElement, row: Cell, cols: Column[], table: boolean): 
     cols.forEach((c, i) => {
       const v = rowField(row, c.sym);
       const td = item.children[i]!;
+      if (c.image) {
+        td.classList.add('tb-thumb-cell');
+        return thumb(td, v, c.round);
+      }
       set(td, cellText(v));
       td.classList.toggle('tb-num', NUMERIC.has(v.t));
     });
     return;
   }
-  // a list shows its first column, then the others on a quieter line
-  const [first, ...rest] = cols.map(c => cellText(rowField(row, c.sym)));
-  set(item.children[0]!, first ?? '');
-  set(item.children[1]!, rest.filter(Boolean).join(' · '));
+  // a list shows its picture first, then its first column, and the others on a quieter line
+  const pic = cols.find(c => c.image);
+  if (pic !== undefined) thumb(item, rowField(row, pic.sym), pic.round);
+  else item.querySelector(':scope > .tb-thumb')?.remove();
+  const [first, ...rest] = cols.filter(c => !c.image).map(c => cellText(rowField(row, c.sym)));
+  const texts = item.querySelector(':scope > .tb-list-texts')!;
+  set(texts.children[0]!, first ?? '');
+  set(texts.children[1]!, rest.filter(Boolean).join(' · '));
 }
 
 function handlerFor(face: ObjectCell, name: string): boolean {

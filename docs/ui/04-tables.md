@@ -149,6 +149,27 @@ workshop/data: bookings
 A list suits a narrow column beside a form, or a phone; a table suits the screen where the rows are the
 work.
 
+## Pictures
+
+A column followed by `image` shows each row's picture instead of its text: the field holds the picture's
+address, as it comes from the server, or a file. `image round` cuts it to a circle, as for people. A list
+puts the picture first, before the row's text; a table shows it in its column, small:
+
+```trebol-ui
+customers: [
+    #(photo: "ada.svg" name: "Ada Lovelace" bike: "Road")
+    #(photo: "grace.svg" name: "Grace Hopper" bike: "City")
+]
+
+view [
+    global list people [photo image round  name "Name"  bike "Bike"]
+    global table shop [photo "" image  name "Name"  bike "Bike"]
+]
+
+people/data: customers
+shop/data: customers
+```
+
 ## Adding rows
 
 The rows belong to the program; the table only shows them. To add one, add it to the block and give the

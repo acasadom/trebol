@@ -21,7 +21,7 @@ view compose/deep/only [
         ]
     ]
     people-pane: split [
-        global list people [name "Name" job "Job"] on-select [
+        global list people [photo image round name "Name" job "Job"] on-select [
             person/text: row/name
             about/text: row/about
             people-pane/value: 2
@@ -175,8 +175,8 @@ mode: 'auto
 retheme: does [theme compose [look: (look) mode: (mode)]]
 
 people/data: [
-    #(id: 1 name: "Ada Lovelace" job: "Analyst" about: "Wrote the first program for the Analytical Engine.")
-    #(id: 2 name: "Grace Hopper" job: "Admiral" about: "Built the first compiler and popularised COBOL.")
+    #(id: 1 photo: %ada.svg name: "Ada Lovelace" job: "Analyst" about: "Wrote the first program for the Analytical Engine.")
+    #(id: 2 photo: %grace.svg name: "Grace Hopper" job: "Admiral" about: "Built the first compiler and popularised COBOL.")
     #(id: 3 name: "Alan Turing" job: "Mathematician" about: "Defined computability with the Turing machine.")
 ]
 

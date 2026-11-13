@@ -64,7 +64,7 @@ face: make object! [
     multiple: false     ; an upload or a lookup takes more than one
     accept: none        ; the files an upload takes: ["pdf" "image/*"]
     pane: none
-    columns: none       ; table, list and tree: [field "Label" ...]
+    columns: none       ; table, list and tree: [field "Label" ...]; a column of images, [field ["Label" image round]]
     data: none          ; table, list and tree: a block of map! or object! rows (a tree's
                         ; have their own in `children`); breadcrumb: its items
     key: 'id            ; the row field that identifies a row
@@ -306,10 +306,19 @@ spacing: func [n [integer!]] [
 ]
 
 ; [name "Name" email] -> [name "Name" email "email"]
-columns-of: function [spec [block!]] [
+; A column of images keeps what it is with its label: [photo "" image round] -> [photo ["" image round]]
+columns-of: function [spec [block!] /local w label kind] [
     out: copy []
-    unless parse spec [any [set w word! (label: form w) opt [set label text-rule] (append out reduce [w text-of label])]] [
-        do make error! "layout: table columns are words, each with an optional label"
+    unless parse spec [any [
+        set w word! (label: form w  kind: none) opt [set label text-rule]
+        opt ['image (kind: copy [image]) opt ['round (append kind 'round)]]
+        (
+            label: text-of label
+            append out w
+            append/only out either kind [head insert/only kind label] [label]
+        )
+    ]] [
+        do make error! "layout: table columns are words, each with an optional label, then image or image round"
     ]
     out
 ]

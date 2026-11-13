@@ -380,6 +380,13 @@ describe('components', () => {
     assert.equal(r, '[48x48 true "Ada"]');
   });
 
+  test('a column of a table or list can show each row\'s picture', async () => {
+    const r = await ev(`
+      root: view [table people [photo "" image round  logo image  name "Name"]  list l [pic image  name]]
+      reduce [select first root/pane 'columns  select second root/pane 'columns]`);
+    assert.equal(r, '[[photo ["" image round] logo ["logo" image] name "Name"] [pic ["pic" image] name "name"]]');
+  });
+
   test('a backdrop takes its image from a file or an address', async () => {
     const r = await ev(`
       root: view [backdrop %entry.jpg  title "Hi"  panel [backdrop https://example.com/a.png  text "In"]]

@@ -182,11 +182,13 @@ its header; its `data` is a block of maps or objects. On a narrow screen, each r
 rows be chosen; `sortable` or `on-sort` let the headers sort them; `totals` is a row shown at the foot.
 Among the rows, `[head 1 "Title"]` is the title of a group, the width of the table, and `[foot 1 row]` its
 subtotals; level 2 is indented. Neither is chosen or sorted: `sortable` sorts the rows inside each group. A
-list shows them too.
+list shows them too. A column followed by `image` shows each row's picture, from the address or file in its
+field, and `image round` cuts it to a circle: `table people [photo "" image round name "Name"]`.
 
 ## list
 
-The same rows as a table, as a list: the first field stands out and the rest go on a second line.
+The same rows as a table, as a list: the first field stands out and the rest go on a second line. The picture of
+a column of images goes first.
 
 ## tabs
 
