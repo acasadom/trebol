@@ -26,7 +26,7 @@ import { iconNode } from './icons.ts';
 import { parseMd, printMd, safeHref, type Block, type Inline } from './markdown.ts';
 import { fileHandle } from './net.ts';
 import { drawSvg, type El } from './draw.ts';
-import { rowField, groupRow, sortGroups } from './rows.ts';
+import { rowField, groupRow, sortGroups, rowWindow, DRAW_ALL_UP_TO } from './rows.ts';
 import { chartSvg, SERIES_COLORS, pieColor, type ChartKind, type Series } from './chart.ts';
 
 // --- reading faces -----------------------------------------------------------------
@@ -181,6 +181,12 @@ interface Mounted {
   box: HTMLElement | null;
   /** Rows of a table or list, by key. */
   rows: Map<string, HTMLElement> | null;
+  /** A table or list: all its rows, in the order shown, with their keys; only some may be drawn. */
+  items: { row: Cell; k: string }[];
+  /** A table or list: the rows drawn, [first, end), and about how tall each is. */
+  first: number;
+  end: number;
+  rowHeight: number;
   /** Shown instead of the rows when there are none. */
   empty: HTMLElement | null;
   /** The tab button of a tab face. */
@@ -233,7 +239,7 @@ function build(face: ObjectCell): HTMLElement {
   const m: Mounted = {
     face, el: null!, input: null, label: null, error: null, kids: get(face, 'pane'),
     box: null, rows: null, empty: null, button: null, radios: null, open: null, shown: undefined,
-    typing: 0, typed: null,
+    typing: 0, typed: null, items: [], first: 0, end: 0, rowHeight: 0,
   };
   let node: HTMLElement;
   if (INPUTS.has(style)) {
@@ -523,6 +529,11 @@ function sourceAt(start: Element): Source | null {
       const reorder = flag(m.face, 'reorder') && hostSorted(m.face) === null;
       if (!flag(m.face, 'drag') && !reorder) return null;
       const group = e.parentElement!;
+      if (m.open === null) {
+        // a table or list may not draw its first rows
+        const index = m.first + Array.prototype.indexOf.call(group.children, e);
+        return { face: m.face, el: e as HTMLElement, payload: row, within: reorder ? m : null, index, group: null };
+      }
       const index = Array.prototype.indexOf.call(group.children, e);
       return { face: m.face, el: e as HTMLElement, payload: row, within: reorder ? m : null, index, group };
     }
@@ -563,7 +574,12 @@ function insertionAt(m: Mounted, x: number, y: number): number {
     const r = e.getBoundingClientRect();
     if ((across ? x : y) > (across ? r.left + r.width / 2 : r.top + r.height / 2)) i++;
   }
-  return i;
+  return m.first + i;
+}
+
+/** How many things a container places: all the rows of a table or list, drawn or not. */
+function slotCount(m: Mounted): number {
+  return isData(m) && m.open === null ? m.items.length : slots(m).length;
 }
 
 let line: HTMLElement | null = null;
@@ -588,8 +604,9 @@ function indicate(t: Target | null): void {
   const across = horizontal(t.m);
   const all = t.group !== undefined ? Array.from(t.group.children) : slots(t.m);
   const box = (t.group ?? t.m.box ?? t.m.el).getBoundingClientRect();
-  const before = all[t.index]?.getBoundingClientRect();
-  const after = all[t.index - 1]?.getBoundingClientRect();
+  const at = t.group !== undefined ? t.index : t.index - t.m.first;
+  const before = all[at]?.getBoundingClientRect();
+  const after = all[at - 1]?.getBoundingClientRect();
   line.classList.toggle('tb-across', across);
   if (across) {
     const at = before && after ? (after.right + before.left) / 2 : before ? before.left - 3 : after ? after.right + 3 : box.left + 8;
@@ -620,7 +637,7 @@ async function reorder(m: Mounted, from: number, to: number, group?: HTMLElement
   await fire('ui-reorder', m.face, int(from + 1), int(to + 1), parent);
   syncDirty();
   if (!had) return;
-  const e = (group !== undefined ? Array.from(group.children) as HTMLElement[] : slots(m))[to];
+  const e = group !== undefined ? group.children[to] as HTMLElement | undefined : slots(m)[to - m.first];
   const focusable = e?.matches('[tabindex], button, a, input, textarea, select') ? e : e?.querySelector<HTMLElement>('[tabindex], button, a, input, textarea, select');
   (focusable ?? null)?.focus();
 }
@@ -635,7 +652,7 @@ function moveTargets(face: ObjectCell, payload: Cell): MenuEntry[] {
     if (str(z.face, 'text') === null && z.el.querySelector('.tb-drop-zone') !== null) continue;
     out.push({
       text: str(z.face, 'text') ?? word(z.face, 'style') ?? '',
-      run: () => void fire('ui-drop', z.face, payload, face, int(slots(z).length + 1), NONE),
+      run: () => void fire('ui-drop', z.face, payload, face, int(slotCount(z) + 1), NONE),
     });
   }
   return out;
@@ -716,7 +733,7 @@ function onReorderKey(ev: KeyboardEvent): void {
   const src = sourceAt(at);
   if (src === null || src.within === null) return;
   const to = src.index + (ev.key === 'ArrowUp' ? -1 : 1);
-  if (to < 0 || to >= (src.group !== null ? src.group.children.length : slots(src.within).length)) return;
+  if (to < 0 || to >= (src.group !== null ? src.group.children.length : slotCount(src.within))) return;
   ev.preventDefault();
   seenKeys.add(ev);
   const group = src.group ?? undefined;
@@ -2723,7 +2740,16 @@ function buildRows(face: ObjectCell, style: string, m: Mounted): HTMLElement {
     const totals = newTableRow(cols);
     totals.className = 'tb-totals';
     foot.append(totals);
-    table.append(head, box, foot);
+    // the room of the rows not drawn, above and below the ones drawn
+    const room = (): HTMLElement => {
+      const b = el('tbody', 'tb-room');
+      b.setAttribute('aria-hidden', 'true');
+      const r = el('tr');
+      r.append(el('td'));
+      b.append(r);
+      return b;
+    };
+    table.append(head, room(), box, room(), foot);
     wrap.append(table);
   } else {
     box = el('ul', 'tb-list');
@@ -2749,35 +2775,72 @@ function buildRows(face: ObjectCell, style: string, m: Mounted): HTMLElement {
   return wrap;
 }
 
-/** Creates, updates, moves or removes only the rows whose key changed. */
+/** The rows of a table or list in the order shown, with their keys; then draws them. */
 function syncRows(m: Mounted): void {
   const f = m.face;
-  const box = m.box!;
-  const table = box.tagName === 'TBODY';
-  const cols = columns(f);
   const data = get(f, 'data');
   let rows = data.t === K.Block ? data.s.data.slice(data.i) : [];
-  if (table) {
-    syncHead(f, box.parentElement as HTMLTableElement, cols);
+  if (m.box!.tagName === 'TBODY') {
+    syncHead(f, m.box!.parentElement as HTMLTableElement, columns(f));
     const order = hostSorted(f);
     if (order !== null) rows = sortGroups(rows, order.sym, order.desc, activeLanguage(host.rt), cellText);
   }
   const keyWord = get(f, 'key');
   const key = keyWord.t === K.Word || keyWord.t === K.LitWord ? (keyWord as WordCell).sym : intern('id');
+  const seen = new Set<string>();
+  m.items = rows.map((row, i) => {
+    const group = groupRow(row);
+    let k: string;
+    if (group !== null) k = `${group.kind}#${i}`;
+    else {
+      const id = rowField(row, key);
+      k = id.t === K.None ? `#${i}` : `${id.t}:${form(id)}`;
+      if (seen.has(k)) k = `${k}#${i}`;
+    }
+    seen.add(k);
+    return { row, k };
+  });
+  drawRows(m);
+  m.empty!.textContent = str(f, 'text') ?? own('empty');
+  m.empty!.hidden = rows.length > 0;
+}
+
+/** Tables and lists with too many rows to draw them all. */
+const longRows = new Set<Mounted>();
+/** While printing, every row is drawn. */
+let printing = false;
+
+/** The rows to draw: all of them, or those near the screen. */
+function rowsToDraw(m: Mounted): { first: number; end: number } {
+  const count = m.items.length;
+  if (count <= DRAW_ALL_UP_TO || printing) return { first: 0, end: count };
+  // where the first row would be: the rows drawn start below the room of those that are not
+  const top = m.box!.getBoundingClientRect().top - m.first * m.rowHeight;
+  const now = m.end > m.first ? { first: m.first, end: m.end } : undefined;
+  return rowWindow(count, m.rowHeight || 48, -top, innerHeight, now);
+}
+
+/** Creates, updates, moves or removes only the rows drawn whose key changed. */
+function drawRows(m: Mounted, again = true): void {
+  const f = m.face;
+  const box = m.box!;
+  const table = box.tagName === 'TBODY';
+  const cols = columns(f);
   const selected = get(f, 'selected');
   const selectable = handlerFor(f, 'on-select');
   box.parentElement!.classList.toggle('tb-selectable', selectable);
+  const { first, end } = rowsToDraw(m);
+  const count = m.items.length;
   const old = m.rows!;
   const next = new Map<string, HTMLElement>();
   let cursor = box.firstChild;
-  rows.forEach((row, i) => {
+  for (let i = first; i < end; i++) {
+    const { row, k } = m.items[i]!;
     const group = groupRow(row);
+    let item = old.get(k);
     if (group !== null) {
       // a group's head or foot: kept by its place, never chosen, dragged or sorted
-      const k = `${group.kind}#${i}`;
-      let item = old.get(k);
       if (item === undefined) item = group.kind === 'head' ? newGroupHead(cols, table) : table ? newTableRow(cols) : newListItem();
-      next.set(k, item);
       item.className = `tb-group-${group.kind} tb-level-${group.level}`;
       if (group.kind === 'head') {
         const t = translate(group.value, host.rt);
@@ -2785,31 +2848,116 @@ function syncRows(m: Mounted): void {
         if (cell.textContent !== t) cell.textContent = t;
         if (table) (cell as HTMLTableCellElement).colSpan = Math.max(1, cols.length);
       } else fillRow(item, group.value, cols, table);
-      if (item !== cursor) box.insertBefore(item, cursor);
-      else cursor = cursor.nextSibling;
-      return;
+    } else {
+      if (item === undefined) item = table ? newTableRow(cols) : newListItem();
+      rowOf.set(item, row);
+      fillRow(item, row, cols, table);
+      if (selectable) item.tabIndex = 0;
+      else item.removeAttribute('tabindex');
+      const on = selected.t !== K.None && sameRow(selected, row);
+      item.classList.toggle('tb-selected', on);
+      if (selectable) item.setAttribute('aria-selected', on ? 'true' : 'false');
+      else item.removeAttribute('aria-selected');
     }
-    const id = rowField(row, key);
-    let k = id.t === K.None ? `#${i}` : `${id.t}:${form(id)}`;
-    if (next.has(k)) k = `${k}#${i}`;
-    let item = old.get(k);
-    if (item === undefined) item = table ? newTableRow(cols) : newListItem();
     next.set(k, item);
-    rowOf.set(item, row);
-    fillRow(item, row, cols, table);
-    if (selectable) item.tabIndex = 0;
-    else item.removeAttribute('tabindex');
-    const on = selected.t !== K.None && sameRow(selected, row);
-    item.classList.toggle('tb-selected', on);
-    if (selectable) item.setAttribute('aria-selected', on ? 'true' : 'false');
-    else item.removeAttribute('aria-selected');
+    // with rows left undrawn, each says where it is among all of them
+    if (count > end - first) {
+      item.setAttribute(table ? 'aria-rowindex' : 'aria-posinset', String(table ? i + 2 : i + 1));
+      if (!table) item.setAttribute('aria-setsize', String(count));
+    } else {
+      item.removeAttribute(table ? 'aria-rowindex' : 'aria-posinset');
+      item.removeAttribute('aria-setsize');
+    }
     if (item !== cursor) box.insertBefore(item, cursor);
     else cursor = cursor.nextSibling;
-  });
+  }
   for (const [k, item] of old) if (next.get(k) !== item) item.remove();
   m.rows = next;
-  m.empty!.textContent = str(f, 'text') ?? own('empty');
-  m.empty!.hidden = rows.length > 0;
+  m.first = first;
+  m.end = end;
+  if (table) {
+    if (count > end - first) box.parentElement!.setAttribute('aria-rowcount', String(count + 1));
+    else box.parentElement!.removeAttribute('aria-rowcount');
+  }
+  if (count <= DRAW_ALL_UP_TO) {
+    longRows.delete(m);
+    room(m, 0, 0);
+    if (table) keepColumns(box.parentElement as HTMLTableElement, false);
+    return;
+  }
+  longRows.add(m);
+  if (table) keepColumns(box.parentElement as HTMLTableElement, true);
+  // how tall a row is, from those drawn; the room of the others follows it
+  const drawn = end - first;
+  const h = box.getBoundingClientRect().height - (table ? 0 : parseFloat(box.style.paddingTop || '0') + parseFloat(box.style.paddingBottom || '0'));
+  if (drawn > 0 && h > 0) m.rowHeight = h / drawn;
+  room(m, first * m.rowHeight, (count - end) * m.rowHeight);
+  // a first guess of the height may have drawn the wrong rows
+  if (again) {
+    const want = rowsToDraw(m);
+    if (want.first !== first || want.end !== end) drawRows(m, false);
+  }
+}
+
+/**
+ * A long table keeps the widths its columns first took, as shares of its width,
+ * so they do not change with the rows drawn while it scrolls.
+ */
+function keepColumns(table: HTMLTableElement, keep: boolean): void {
+  const ths = Array.from(table.tHead!.rows[0]!.cells);
+  if (!keep) {
+    table.classList.remove('tb-fixed');
+    for (const th of ths) th.style.width = '';
+    return;
+  }
+  if (table.classList.contains('tb-fixed')) return;
+  const widths = ths.map(th => th.getBoundingClientRect().width);
+  const all = widths.reduce((a, b) => a + b, 0);
+  // on a narrow screen the rows are cards and the headers take no room: later
+  if (all === 0) return;
+  ths.forEach((th, i) => { th.style.width = `${(widths[i]! / all) * 100}%`; });
+  table.classList.add('tb-fixed');
+}
+
+/** Sets the room of the rows not drawn above and below those drawn. */
+function room(m: Mounted, above: number, below: number): void {
+  const box = m.box!;
+  if (box.tagName === 'TBODY') {
+    for (const [b, px] of [[box.previousElementSibling, above], [box.nextElementSibling, below]] as const) {
+      const td = (b as HTMLElement).querySelector('td')!;
+      td.style.height = `${px}px`;
+      (b as HTMLElement).hidden = px === 0;
+    }
+    return;
+  }
+  box.style.paddingTop = above > 0 ? `${above}px` : '';
+  box.style.paddingBottom = below > 0 ? `${below}px` : '';
+}
+
+let rowsFrame = 0;
+
+/** On a scroll or a resize, the long tables and lists draw the rows now near the screen. */
+function onRowsMoved(): void {
+  if (rowsFrame !== 0 || longRows.size === 0) return;
+  rowsFrame = requestAnimationFrame(() => {
+    rowsFrame = 0;
+    for (const m of longRows) {
+      if (!m.box!.isConnected) { longRows.delete(m); continue; }
+      const want = rowsToDraw(m);
+      if (want.first !== m.first || want.end !== m.end) drawRows(m);
+    }
+  });
+}
+
+/** Printing draws every row, and the screen goes back to drawing some after. */
+function onPrint(on: boolean): void {
+  printing = on;
+  for (const m of longRows) {
+    if (!m.box!.isConnected) continue;
+    // all the rows cover the screen, but are not to be kept
+    if (!on) m.end = m.first;
+    drawRows(m);
+  }
 }
 
 /** Headers in the active language; in a sortable table each is a button, with an arrow on the sorted one. */
@@ -3927,6 +4075,11 @@ async function boot(): Promise<void> {
   host.sch.afterPump = syncDirty;
   document.addEventListener('keydown', onKeyDown, true);
   document.addEventListener('keydown', onReorderKey);
+  // a scroll anywhere: the page, a scroll face, a dialog
+  document.addEventListener('scroll', onRowsMoved, { capture: true, passive: true });
+  addEventListener('resize', onRowsMoved);
+  addEventListener('beforeprint', () => onPrint(true));
+  addEventListener('afterprint', () => onPrint(false));
   document.addEventListener('pointerdown', onPointerDown);
   document.addEventListener('pointermove', onPointerMove, { passive: false });
   document.addEventListener('pointerup', () => endDrag(true));

@@ -66,6 +66,14 @@ Dates sort as dates and amounts as amounts, not as the text they show. Sorting c
 shows: `bookings` keeps its order. `sortable` is for a table that has all its rows; one that shows a page
 of thousands asks the server for them in order instead, with `on-sort`.
 
+## Many rows
+
+A table or a list can hold thousands of rows. Past two hundred, it draws only the ones near the screen and
+leaves room for the rest, drawing others as the page scrolls, so ten thousand rows open as fast as fifty.
+Nothing changes for the program: `data` has every row, and sorting, choosing, moving rows and printing work
+on all of them. A row that is not drawn is not found with the browser's search, so a long table is better
+with a field to search it.
+
 ## Groups
 
 Rows can come in groups, each with a title above it and its subtotals below. Between the rows of `data` go

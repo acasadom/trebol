@@ -79,3 +79,33 @@ function sortRows(rows: Cell[], col: Sym, desc: boolean, language: string, shows
     })
     .map(x => x.row);
 }
+
+// --- drawing only the rows near the screen ---------------------------------------------
+
+/** From this many rows on, a table or list draws only the ones near the screen. */
+export const DRAW_ALL_UP_TO = 200;
+/** Rows drawn beyond each edge of the screen, so a short scroll needs no new rows. */
+const BEYOND = 30;
+/** Rows drawn at least, even when the rows are all out of sight. */
+const AT_LEAST = 60;
+
+/**
+ * The rows to draw, [first, end), of `count` rows each about `height` pixels tall,
+ * when the screen shows from `top` to `top + seen` pixels measured from the first
+ * row's top. The rows drawn now, `now`, are kept while they cover what is seen.
+ */
+export function rowWindow(count: number, height: number, top: number, seen: number, now?: { first: number; end: number }): { first: number; end: number } {
+  const h = Math.max(1, height);
+  const clamp = (n: number): number => Math.min(count, Math.max(0, n));
+  const from = clamp(Math.floor(top / h));
+  const to = clamp(Math.ceil((top + seen) / h));
+  if (now !== undefined && now.end <= count && now.end - now.first >= Math.min(count, AT_LEAST) &&
+      now.first <= from && to <= now.end) return now;
+  let first = clamp(from - BEYOND);
+  let end = clamp(to + BEYOND);
+  if (end - first < AT_LEAST) {
+    if (first === 0 || end < count) end = clamp(first + AT_LEAST);
+    first = clamp(end - AT_LEAST);
+  }
+  return { first, end };
+}

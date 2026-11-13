@@ -802,6 +802,10 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
 .tb-table tbody tr:last-child td { border-bottom: 0; }
 .tb-table .tb-num { text-align: right; font-variant-numeric: tabular-nums; }
 .tb-table-wrap:has(tbody:empty) thead { display: none; }
+/* the room of the rows a long table does not draw */
+.tb-table .tb-room[hidden] { display: none; }
+.tb-table.tb-fixed { table-layout: fixed; }
+.tb-table .tb-room :is(tr, td) { padding: 0; border: 0; margin: 0; background: none; box-shadow: none; }
 .tb-table th:has(> .tb-sort) { padding: 0; }
 .tb-sort {
   display: flex;
@@ -829,8 +833,8 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
   border-top: var(--tb-line) solid var(--tb-border);
   border-bottom: 0;
 }
-.tb-selectable tbody tr:not(.tb-group-head, .tb-group-foot), .tb-selectable .tb-list > li:not(.tb-group-head, .tb-group-foot) { cursor: pointer; transition: background var(--tb-fast) var(--tb-ease); }
-.tb-selectable tbody tr:not(.tb-group-head, .tb-group-foot):hover, .tb-selectable .tb-list > li:not(.tb-group-head, .tb-group-foot):hover { background: var(--tb-bg); }
+.tb-selectable tbody:not(.tb-room) tr:not(.tb-group-head, .tb-group-foot), .tb-selectable .tb-list > li:not(.tb-group-head, .tb-group-foot) { cursor: pointer; transition: background var(--tb-fast) var(--tb-ease); }
+.tb-selectable tbody:not(.tb-room) tr:not(.tb-group-head, .tb-group-foot):hover, .tb-selectable .tb-list > li:not(.tb-group-head, .tb-group-foot):hover { background: var(--tb-bg); }
 .tb-selectable tbody tr:focus-visible, .tb-selectable .tb-list > li:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--tb-focus); }
 .tb-table tr.tb-selected, .tb-list > li.tb-selected { background: var(--tb-primary-soft); }
 /* the head and foot of a group in the rows: a title the width of the row, and its subtotals */
