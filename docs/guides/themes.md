@@ -25,6 +25,13 @@ not depend on the hue. `theme.ts` has a `contrast()` function, and the tests run
 look and both modes: every text color meets WCAG AA on its background. A theme cannot make text you cannot
 read.
 
+An image behind the faces (`backdrop`) is a background nobody can foresee, so the theme puts a veil of the
+page's color over it. `scrimAlpha()` finds the least opacity at which the text still meets AA on the worst
+image there is, all black or all white, blending as browsers do; it comes to between 55% and 74% depending
+on the look and the mode, and the stylesheet gets it as `--tb-scrim`. Muted text would need a veil almost
+opaque, so on a backdrop it takes the color of the text instead. The tests check the veil for every look and
+hue.
+
 ## How it reaches the page
 
 The theme is compiled once into CSS custom properties on `:root`, plus a fixed stylesheet for the

@@ -126,6 +126,9 @@ view [
 You never have to choose an image that suits the text. The theme lays a veil of the page's color over it,
 just as strong as it takes for text on it to read well on any image, in light and dark.
 
+An `image` among the faces is a picture in its own place instead: `image %logo.svg "Cog & Chain" 48x48`
+gives its size, which it fills, cut to fit, and `round` cuts it to a circle, as for a person's photo.
+
 ## Video and sound
 
 `video` and `audio` play with the browser's own controls, which already work with the keyboard, on a phone

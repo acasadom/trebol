@@ -31,8 +31,8 @@ like any other value.
 - **Tasks that never block**: `fetch`, `wait` and the rest pause only the task that asked, anywhere, even in
   the middle of a `parse`. HTTP, WebSocket and server-sent events are built in.
 - **The UI dialect**: forms with validation, tables, lists, dialogs, toasts, tabs, menus, trees, screens with
-  their own links, languages, drawings with Red's draw dialect, and charts, in nine looks and five skins, all
-  from a theme of a few parameters. No CSS.
+  their own links, languages, drawings with Red's draw dialect, charts, images behind the screen, photos,
+  video and sound, in nine looks and five skins, all from a theme of a few parameters. No CSS.
 - **A console** like Rebol's, and a development server that reloads on save.
 
 ## Getting started
@@ -52,6 +52,9 @@ npm install trebol
 npx trebol                # the console: >> 1 + 2 * 3  == 9
 npx trebol dev my-app     # serves the folder my-app, with its app.trb, at http://localhost:5173/
 ```
+
+A JavaScript program can run Trebol too, through `trebol/host` and `trebol/core`; see
+[using Trebol from JavaScript](https://acasadom.github.io/trebol/guides/architecture.html#using-trebol-from-javascript).
 
 ## Working on Trebol
 

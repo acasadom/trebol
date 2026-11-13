@@ -92,5 +92,31 @@ form, a phone form, light or dark, and in nine looks, without changing a word of
 | `test/` | tests in TypeScript, and `test/trebol/*.trb`, the language suites in Trebol |
 | `tools/` | the console, `trebol dev`, the documentation builders, `r3check` |
 
-There is no build step. Node runs the TypeScript files directly (it strips the types as it loads them),
-and `trebol dev` strips them on the fly for the browser.
+There is no build step while working on Trebol. Node runs the TypeScript files directly (it strips the types
+as it loads them), and `trebol dev` strips them on the fly for the browser.
+
+The npm package is built once, when it is packed (`tools/build.ts`), because Node strips no types inside
+`node_modules`:
+
+| File | What it is |
+| --- | --- |
+| `dist/trebol.js` | the browser runtime in one module, with the UI dialect inside: what a page loads from a CDN |
+| `dist/cli.js` | the `trebol` command |
+| `dist/lib/` | `src/` as JavaScript with its type declarations, one file per module, behind `trebol/core`, `trebol/host` and `trebol/browser` |
+
+## Using Trebol from JavaScript
+
+A program can run Trebol itself. `trebol/host` starts a runtime and runs source in it; `trebol/core` has the
+values and `mold`:
+
+```js
+import { startHost, runSource } from 'trebol/host';
+import { mold } from 'trebol/core';
+
+const host = startHost();
+console.log(mold(await runSource(host, 'reduce [1 + 2 * 3 now/year > 2000]')));   // [9 true]
+```
+
+`startUi(host)` loads the UI dialect into it as well, so `layout` builds faces without a page. In a page
+built with a bundler, `import 'trebol/browser'` does what the CDN script does: it runs the page's
+`text/trebol` scripts.
