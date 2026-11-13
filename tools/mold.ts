@@ -1,7 +1,7 @@
 // Loads a .trb file (or stdin) and prints it back with mold.
 // Useful to check how the lexer reads something:
 //
-//   npm run mold -- examples/load-tour.trb
+//   npm run mold -- examples/signup/app.trb
 //   echo '[a: 1 b: "two"]' | npm run mold
 //   npm run mold -- --all file.trb     (construction syntax for exact round trip)
 
