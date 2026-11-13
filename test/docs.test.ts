@@ -13,7 +13,7 @@
 //   own, with the UI dialect loaded, and must draw its view without an error.
 //   As in the browser, the workshop's pretend server answers its requests to /api/.
 //
-// The tutorial's parts supplier (examples/supplier.ts) runs while the pages do,
+// The tutorial's parts supplier (docs/_servers/supplier.ts) runs while the pages do,
 // unless one already answers on its port.
 
 import { test, before, after } from 'node:test';
@@ -27,8 +27,8 @@ import { native, value, blockOf, K, ctxFind, intern, NONE, type Cell, type Objec
 import { drawSvg } from '../src/host/draw.ts';
 import { output, runSource, report, startHost, startUi } from '../src/host/index.ts';
 import { Repl, consoleHost, PROMPT, MORE } from '../tools/console.ts';
-import { startSupplier } from '../examples/supplier.ts';
-import { installWorkshop } from '../examples/workshop.ts';
+import { startSupplier } from '../docs/_servers/supplier.ts';
+import { installWorkshop } from '../docs/_servers/workshop.ts';
 
 const DOCS = fileURLToPath(new URL('../docs/', import.meta.url));
 

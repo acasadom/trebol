@@ -7,7 +7,7 @@
 // pointed at the .js one, so any static server can serve them (a .ts file is
 // not served as JavaScript). The documentation's live examples load
 // _trebol/host/browser.js this way, and _trebol/workshop.js, the pretend server
-// of the UI tutorial (examples/workshop.ts), which answers their requests to /api/.
+// of the UI tutorial (docs/_servers/workshop.ts), which answers their requests to /api/.
 
 import { cpSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -15,7 +15,7 @@ import { stripTypeScriptTypes } from 'node:module';
 
 const SRC = join(import.meta.dirname, '..', 'src');
 const PARTS = ['core', 'host', 'ui'];
-const WORKSHOP = join(import.meta.dirname, '..', 'examples', 'workshop.ts');
+const WORKSHOP = join(import.meta.dirname, '..', 'docs', '_servers', 'workshop.ts');
 
 /** A module's JavaScript: types stripped, relative `.ts` imports made `.js`. */
 export function toJs(ts: string): string {
