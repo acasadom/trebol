@@ -99,8 +99,23 @@ view [
 
 `trebol dev` shows it on the page, over the app, with every other error the app does not catch, such as one in
 the action of a button; *Close* puts it away. On any other server the page shows nothing of it, and the error is
-in the browser's console (in Chrome, *View › Developer › JavaScript Console*). A view in the action of a
-button is read when the button is pressed, so its mistakes show up only then.
+in the browser's console (in Chrome, *View › Developer › JavaScript Console*).
+
+A view in the action of a button is read when the button is pressed, so its mistakes show up only then.
+`npx trebol check` finds them before: it reads `app.trb` (or the files you name) without running it, lays out
+every block after `view` and `layout`, and the faces of every screen, and lists what it finds the same way:
+
+```sh
+npx trebol check
+```
+
+```text
+app.trb:3:5   buton is not a style; did you mean button?
+app.trb:4:23  requird is not a word of field; did you mean required?
+```
+
+It ends with an error status when there is a problem, so a script that publishes the app can stop there. In a
+`view compose [...]`, the parens hold values that only running the app gives, and `check` takes them on trust.
 
 ## Putting it on the web
 

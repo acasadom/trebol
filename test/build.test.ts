@@ -37,6 +37,10 @@ test('the installed command runs a script and serves an app', async () => {
 
   mkdirSync(join(project, 'app'));
   writeFileSync(join(project, 'app', 'app.trb'), 'view [text "hi"]');
+  // check finds the UI dialect inside the bundle
+  const checked = spawnSync(process.execPath, [cli, 'check'], { encoding: 'utf8', cwd: join(project, 'app') });
+  assert.equal(checked.stdout, 'No problems.\n');
+  assert.equal(checked.status, 0);
   const dev = spawn(process.execPath, [cli, 'dev', 'app', '--port', '0'], { cwd: project });
   try {
     const line = await new Promise<string>((ok, fail) => {

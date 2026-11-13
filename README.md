@@ -51,6 +51,7 @@ page on save, install it with Node.js 22.18 or later:
 npm install trebol
 npx trebol                # the console: >> 1 + 2 * 3  == 9
 npx trebol dev my-app     # serves the folder my-app, with its app.trb, at http://localhost:5173/
+npx trebol check my-app/app.trb   # the mistakes in its views, without running it
 ```
 
 `node_modules/trebol/editors/vscode` is an extension that colors `.trb` files in Visual Studio Code: copy it

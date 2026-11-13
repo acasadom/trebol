@@ -3,7 +3,7 @@ Trebol [
     exports: [
         face styles stylize layout view theme looks open close toast confirm print-page
         validate-face field-error form-values set-values ui-pane ui-input ui-files ui-remove-file ui-lookup-search ui-lookup-pick ui-lookup-remove ui-blur ui-click ui-select ui-sort ui-close ui-event ui-menu ui-drop ui-reorder ui-crumb ui-expand
-        go go-back go-forward can-go-back? can-go-forward? ui-route set-language ui-rows
+        go go-back go-forward can-go-back? can-go-forward? ui-route set-language ui-rows ui-check
     ]
 ]
 
@@ -181,8 +181,69 @@ ui-build: function [spec [block!] labels [block!]] [
     found: ui-problems
     set 'ui-problems outer
     if error? out [do out]
-    unless empty? found [ui-fail found]
+    unless empty? found [either ui-checking [append ui-checking found] [ui-fail found]]
     out
+]
+
+; While ui-check runs: the problems of every block, and no code of the program is run.
+ui-checking: none
+
+; It lays out each block after view or layout (styles of stylize first), and the
+; faces of each screen and row of rows, which a running app lays out only when shown.
+ui-check: function [
+    "Every problem in the layouts of a program, without running it: [place message ...]"
+    code [block!]
+    /local b p
+] [
+    set 'ui-checking copy []
+    blocks: copy []
+    ; the blocks after view, layout and stylize, in code and in the blocks inside it
+    walk: function [code] [
+        parse code [any [
+            p: ['view | 'layout | 'stylize | path! if (find [view layout] first first p)]
+            ; view compose [...]: its parens stand for values check cannot know
+            opt ['compose | path! if ('compose = first first next p)]
+            set b block! (
+                append/only blocks reduce [first p b]
+                walk b
+            )
+            | set b [block! | paren!] (walk b)
+            | skip
+        ]]
+    ]
+    walk code
+    attempt-at: func [place body] [
+        if error? r: try body [append ui-checking reduce [place form r/message]]
+    ]
+    foreach p blocks [if 'stylize = first p [attempt-at next p [stylize copy/deep second p]]]
+    foreach p blocks [
+        unless 'stylize = first p [
+            attempt-at next p [
+                faces: all-faces layout second p
+                ; screens and rows lay these out when shown
+                while [not empty? faces] [
+                    f: take faces
+                    later: copy []
+                    if f/style = 'screens [foreach [n t a b] f/data [append/only later b]]
+                    if all [f/style = 'rows  f/template] [append/only later f/template]
+                    foreach b later [
+                        spec: copy/deep b
+                        parse spec [any [set w word! if (event-word? w) block!] body:]
+                        foreach g ui-build body copy [] [append faces all-faces g]
+                    ]
+                ]
+            ]
+        ]
+    ]
+    ; a screen or rows laid out twice (rows with min) gives its problems twice
+    found: copy []
+    seen: copy []
+    foreach [p m] ui-checking [
+        k: rejoin [any [loaded-at p ""] " " m]
+        unless find seen k [append seen k  append found reduce [p m]]
+    ]
+    set 'ui-checking none
+    found
 ]
 
 ui-fail: function [found [block!] /local place m] [
@@ -344,7 +405,9 @@ build-faces: function [
     ; what starts the next face
     face-start: [set-word! | 'global | set w word! if (select styles w)]
     modifier: [
-        set s [string! | map!] (either f/text [f/hint: s] [f/text: s])
+        ; ui-check reads view compose [...] with its parens in it: menu (looks)
+        if (ui-checking) opt [set w word! if (select ui-takes w)] some paren!
+        | set s [string! | map!] (either f/text [f/hint: s] [f/text: s])
         ; a word of the dictionary: button 'save (in a link, a lit-word is the screen)
         | if (f/style <> 'link) set v lit-word! (v: to word! v  either f/text [f/hint: v] [f/text: v])
         | set ev word! if (event-word? ev) set b block! (
@@ -368,7 +431,7 @@ build-faces: function [
                 ; the first block holds the items, the second is the action
                 all [f/style = 'breadcrumb  none? f/data] [f/data: crumbs-of b]
                 ; widget <geo-map> [zoom: 12]: its properties; a second block is the action
-                all [f/style = 'widget  none? f/props] [f/props: make object! b]
+                all [f/style = 'widget  none? f/props] [f/props: either ui-checking [make object! []] [make object! b]]
                 f/style = 'canvas [f/draw: b]
                 f/style = 'tabs [f/pane: tabs-of b labels]
                 f/style = 'screens [f/data: screens-of b]
@@ -421,7 +484,9 @@ build-faces: function [
         opt ['global (global?: true)]
         opt [set label set-word!]
         [
-            set style-word word! if (proto: select styles style-word) (
+            ; a face that compose puts in: check takes what follows as words of a face it cannot know
+            if (ui-checking) paren! (f: make face []) any modifier
+        |   set style-word word! if (proto: select styles style-word) (
                 f: make proto []
                 append out f
                 if label [label-face label labels global? f]
@@ -545,6 +610,7 @@ crumbs-of: function [spec [block!] /local label w p] [
 ; The options of a choice or radio: each reduced, and so are those of a group,
 ; a title followed by a block: ["Bikes" ["Road" "City"] "Other"].
 options-of: function [spec [block!]] [
+    if ui-checking [return copy spec]
     opts: reduce spec
     forall opts [if block? first opts [change/only opts reduce first opts]]
     opts

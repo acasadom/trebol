@@ -103,6 +103,7 @@ The header can hold more than a title, as you will see later, but `Trebol []` is
 npx trebol                         # the console
 npx trebol shop.trb                # runs a script
 npx trebol dev [folder]            # serves an app (the second tutorial)
+npx trebol check [app.trb ...]     # the mistakes in an app's views, without running it
 npx trebol supplier                # the parts supplier of page 12, on port 8089
 ```
 
