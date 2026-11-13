@@ -67,10 +67,12 @@ npm run build        # dist/trebol.js and dist/cli.js, what the npm package runs
 
 ## Documentation
 
-`npm run docs:serve` builds the documentation and serves it at http://localhost:8000/. It has two tutorials,
+The documentation is at <https://acasadom.github.io/trebol/>. It has two tutorials,
 one for the language and one for the screens, where every example is run by the test suite and every UI
 example is the real app running under its code; a reference of every function; a guide for people who know
 Rebol; and guides to how Trebol is built.
+
+`npm run docs:serve` builds it from `docs/` and serves it at http://localhost:8000/.
 
 ## Layout
 
