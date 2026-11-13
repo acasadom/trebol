@@ -9,6 +9,9 @@ view compose/deep/only [
         button #settings "Look" menu (looks) on-menu [look: event/picked retheme]
         button "Mode" menu ["Light" light "Dark" dark "Auto" auto] on-menu [mode: event/picked retheme]
         button "Dialog" [open edit]
+        button "Confirm" [
+            either confirm/role "Delete the draft?" 'danger [toast/role "Deleted" 'danger] [toast "Kept"]
+        ]
     ]
     global edit: dialog "Edit client" [
         form [
@@ -55,12 +58,21 @@ view compose/deep/only [
         form [
             field #search "Search" "Name or email"
             field name "Name" required
+            password secret "Password"
+            lookup client "Client" on-search [
+                collect [
+                    foreach p people/data [if find p/name event/query [keep make map! reduce ['value p/id 'text p/name]]]
+                ]
+            ]
             choice kind "Kind" ["Person" "Company"]
             money price "Price" EUR min 0
             date due "Due date" min 1-Nov-2026
             upload docs "Attachments" multiple accept ["pdf" "png"]
             radio size "Size" ["Small" "Medium" "Large"] required
             toggle alerts "Email alerts"
+            area notes "Notes"
+            global story: rich about "About"
+            rows lines "Lines" min 1 [field part "Part" number qty "Qty"]
             check terms "I accept the terms" required
             submit "Save" [toast/role "Saved" 'success]
             button "Reset" [set-values face/form none]
@@ -84,6 +96,11 @@ view compose/deep/only [
         text muted narrow-only "You are on a narrow screen."
         text muted wide-only "You are on a wide screen."
         row gap 1 [button "Tight" button "Row" button "Gap 1"]
+        divider
+        row [
+            column [text "A column" text muted "one under another"]
+            column [text "Another" text muted "beside it"]
+        ]
         log: scroll small "Activity" pad 3 [
             text "Ada signed in"
             text "Grace added a client"
@@ -111,11 +128,21 @@ view compose/deep/only [
             ]
         ]
     ]
+    panel "Image" [
+        image %wheel.svg "A bicycle wheel" small
+    ]
     panel "Charts" [
         global chart bar income "Income by month" [month "Month" repairs "Repairs" parts "Parts"]
         grid 2 [
             global chart line visits small "Bikes in" [day "Day" bikes "Bikes"]
             global chart pie jobs small "Jobs" [job "Job" count "Count"]
+        ]
+    ]
+    panel "Desktop" [
+        desktop menu ["New folder" new] on-menu [toast "New folder"] [
+            tile #folder "Reports" [toast "Reports"]
+            tile #user "Clients" [toast "Clients"]
+            tile #folder "Archive" linked [toast "Archive"]
         ]
     ]
     panel "Icons" [
@@ -132,6 +159,8 @@ view compose/deep/only [
         ]
     ]
 ]
+
+story/value: "Fixes **brakes** and *gears*."
 
 look: 'minimal
 mode: 'auto
