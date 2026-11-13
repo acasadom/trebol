@@ -37,6 +37,11 @@ face: make object! [
     inert: false        ; shown as it is, but neither it nor its children can be used
     linked: false       ; a tile that stands for something kept elsewhere: marked with an arrow
     round: false        ; an image: cut to a circle, as for a person's photo
+    poster: none        ; a video: the image shown before it plays
+    captions: none      ; a video: its captions, a .vtt file, or a block of one per language [en %a.vtt es %b.vtt]
+    looping: false      ; a video or a sound starts again when it ends (loop in the dialect)
+    silent: false       ; a video or a sound plays without its sound (muted in the dialect)
+    autoplay: false     ; a video or a sound plays on its own, always silent, as browsers allow
     drag: false         ; can be dragged: carries its value, or the row in a table, list or tree
     drop: false         ; accepts drops (on-drop)
     reorder: false      ; its children or rows can be moved around (on-reorder)
@@ -93,6 +98,7 @@ foreach [name base] [
     title title  heading heading  text text  divider divider
     field field  password password  number number  money money  date date  area area  rich rich  check check  choice choice
     toggle toggle  radio radio  upload upload  photo photo  lookup lookup  progress progress  image image  backdrop backdrop  icon icon
+    video video  audio audio
     button button  link link  tile tile  table table  list list  tabs tabs  tab tab
     toolbar toolbar  breadcrumb breadcrumb  tree tree  screens screens  screen screen  rows rows  entry entry
     canvas canvas  chart chart
@@ -131,7 +137,9 @@ flags: [fill fit hidden disabled readonly inert narrow-only wide-only linked rou
 chart-kinds: [bar line area pie]
 simple-rules: [required email url integer]
 letter: charset [#"a" - #"z" #"A" - #"Z"]
-rule-words: [min max length pattern match check check-async calc width pad gap menu accept known links sorted]
+rule-words: [min max length pattern match check check-async calc width pad gap menu accept known links sorted poster captions]
+media-styles: [video audio]
+media-flags: [loop muted autoplay]   ; of a video or a sound
 
 ; Words that never name a field. email, url and integer are rules too,
 ; but also common field names, so the first word after an input style names it.
@@ -253,6 +261,12 @@ build-faces: function [
         | 'length set a integer! set n integer! (add-rule f reduce ['length a n])
         | 'pattern set b block! (add-rule f reduce ['pattern b])
         | 'accept set b block! (f/accept: b)
+        | 'poster set v [file! | url!] (f/poster: v)
+        | 'captions set v [file! | url! | block!] (f/captions: v)
+        ; muted names a role elsewhere, and loop a function, so a video keeps them in fields of its own
+        | set w word! if (all [find media-flags w  find media-styles f/style]) (
+            poke f select [muted silent loop looping autoplay autoplay] w true
+        )
         | 'known set v map! (f/known: v)
         | 'links set v map! (f/links: v)
         | 'match set w word! (add-rule f reduce ['match w])

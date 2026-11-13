@@ -30,7 +30,7 @@ What needs care: amber.
 
 ## muted
 
-Less to the eye: grey.
+Less to the eye: grey. On a video or a sound, it plays without its sound until the person turns it on.
 
 ## small
 
@@ -235,6 +235,24 @@ menu. Each item is a text and the word that `on-menu` receives in `event/picked`
 
 `sorted [due desc]`: the order a table shows, by a column, `asc` or `desc`.
 
+## poster
+
+`poster %intro.jpg`: the image a video shows before it plays.
+
+## captions
+
+`captions %intro.vtt`: a video's captions, in WebVTT, in the active language; `captions [en %en.vtt es %es.vtt]`
+gives one per language, and the one shown follows the active language.
+
+## loop
+
+A video or a sound starts again when it ends.
+
+## autoplay
+
+A video or a sound plays as soon as it can, and always without its sound: browsers let nothing else play on
+its own.
+
 ## on-change
 
 When its value changes; on `screens`, after entering each screen.
@@ -251,6 +269,10 @@ When it is double-clicked.
 
 When something is dropped on it: `event/dropped` is what, `event/source` the face it came from, and
 `event/index` where among the children or rows it goes.
+
+## on-end
+
+When a video or a sound reaches its end; with `loop`, never.
 
 ## on-enter
 

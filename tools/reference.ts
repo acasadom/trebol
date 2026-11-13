@@ -194,7 +194,7 @@ function wordLists(): Map<string, string[]> {
 /** The lists of ui.trb the dialect reads words from, and what a word of each is. */
 const WORD_LISTS: Record<string, string> = {
   roles: 'A role', sizes: 'A size', aligns: 'An alignment of the children', valigns: 'A vertical alignment of a row\'s children',
-  flags: 'A flag', 'simple-rules': 'A rule', 'rule-words': 'A word followed by its value', 'chart-kinds': 'A kind of chart',
+  flags: 'A flag', 'media-flags': 'A flag of a video or a sound', 'simple-rules': 'A rule', 'rule-words': 'A word followed by its value', 'chart-kinds': 'A kind of chart',
 };
 
 /** The events a face can have a handler for: the ones the dialect and the host run. */

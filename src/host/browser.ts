@@ -321,6 +321,14 @@ function build(face: ObjectCell): HTMLElement {
       }
       case 'progress': node = buildProgress(m); break;
       case 'image': node = el('img', 'tb-image'); break;
+      case 'video': case 'audio': {
+        const media = el(style, `tb-${style}`) as HTMLMediaElement;
+        media.controls = true;
+        media.preload = 'metadata';
+        if (media instanceof HTMLVideoElement) media.playsInline = true;
+        node = media;
+        break;
+      }
       case 'backdrop': {
         // decoration behind its container: screen readers skip it
         node = el('div', 'tb-backdrop');
@@ -397,6 +405,7 @@ function listen(m: Mounted, style: string): void {
     node.addEventListener('pointerleave', () => fireEvent(f, 'on-over', [['away?', TRUE]]));
   }
   if (handlerFor(f, 'on-dbl-click')) node.addEventListener('dblclick', () => fireEvent(f, 'on-dbl-click'));
+  if (handlerFor(f, 'on-end')) node.addEventListener('ended', () => fireEvent(f, 'on-end'));
   if (handlerFor(f, 'on-key')) {
     if (style === 'view') viewKeys = f;
     else node.addEventListener('keydown', ev => {
@@ -1434,6 +1443,59 @@ function syncSent(m: Mounted): void {
 
 // A photo: the image itself, a button to choose one and another to take it away. The
 // image chosen shows from the browser's memory; one kept elsewhere, from its address.
+
+// A video or a sound: the browser's own player. Captions are one track per language;
+// the active language's is the one shown, and it follows set-language.
+
+/** A video's captions as [language, address] pairs: a file alone is in the active language. */
+function captionTracks(f: ObjectCell): [string, string][] {
+  const c = get(f, 'captions');
+  if (c.t === K.File || c.t === K.Url || c.t === K.String) return [[activeLanguage(host.rt), form(c)]];
+  if (c.t !== K.Block) return [];
+  const d = c.s.data.slice(c.i);
+  const out: [string, string][] = [];
+  for (let i = 0; i + 1 < d.length; i += 2) out.push([form(d[i]!), form(d[i + 1]!)]);
+  return out;
+}
+
+function syncMedia(m: Mounted): void {
+  const f = m.face;
+  const media = m.el as HTMLMediaElement;
+  const src = str(f, 'value') ?? '';
+  if (media.getAttribute('src') !== src) media.src = src;
+  const t = str(f, 'text');
+  if (t !== null) media.setAttribute('aria-label', t);
+  else media.removeAttribute('aria-label');
+  media.loop = flag(f, 'looping');
+  // browsers only let what plays on its own do so without sound
+  const auto = flag(f, 'autoplay');
+  media.muted = flag(f, 'silent') || auto;
+  media.autoplay = auto;
+  if (!(media instanceof HTMLVideoElement)) return;
+  const poster = str(f, 'poster') ?? '';
+  if (media.getAttribute('poster') !== poster) media.poster = poster;
+  const lang = activeLanguage(host.rt);
+  const tracks = captionTracks(f);
+  const names = new Intl.DisplayNames([lang], { type: 'language' });
+  const now = Array.from(media.querySelectorAll('track'));
+  if (now.map(x => `${x.srclang} ${x.getAttribute('src')}`).join('|') !== tracks.map(([l, s]) => `${l} ${s}`).join('|')) {
+    media.replaceChildren(...tracks.map(([l, s]) => {
+      const track = el('track') as HTMLTrackElement;
+      track.kind = 'captions';
+      track.srclang = l;
+      track.src = s;
+      return track;
+    }));
+  }
+  // the captions shown, if any, follow the active language
+  const showing = Array.from(media.textTracks).some(x => x.mode === 'showing');
+  const pick = tracks.findIndex(([l]) => l === lang);
+  media.querySelectorAll('track').forEach((track, i) => {
+    track.label = names.of(track.srclang) ?? track.srclang;
+    track.default = i === Math.max(0, pick);
+    if (showing) track.track.mode = i === Math.max(0, pick) ? 'showing' : 'disabled';
+  });
+}
 
 /** The address that shows each chosen file, made once and freed when the photo shows another. */
 const shownUrls = new WeakMap<HTMLElement, { blob: Blob; url: string }>();
@@ -3454,6 +3516,7 @@ function sync(m: Mounted): void {
     case 'canvas': syncCanvas(m); return;
     case 'chart': syncChart(m); return;
     case 'icon': syncIcon(m); return;
+    case 'video': case 'audio': syncMedia(m); return;
     case 'image': {
       const img = m.el as HTMLImageElement;
       const src = str(f, 'value') ?? '';

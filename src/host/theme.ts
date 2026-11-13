@@ -729,6 +729,13 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
 
 .tb-image { display: block; max-width: 100%; height: auto; border-radius: var(--tb-radius); object-fit: cover; }
 .tb-image.tb-round { aspect-ratio: 1; border-radius: 50%; }
+.tb-video { display: block; width: 100%; max-width: 100%; height: auto; aspect-ratio: auto 16 / 9; border-radius: var(--tb-radius); }
+.tb-audio { display: block; width: 100%; max-width: 480px; }
+:is(.tb-video, .tb-audio).tb-small { width: 320px; }
+:is(.tb-video, .tb-audio).tb-medium { width: 480px; }
+.tb-video.tb-large { width: 720px; }
+:is(.tb-video, .tb-audio).tb-fill { max-width: none; }
+:is(.tb-video, .tb-audio):focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-focus-ring); }
 .tb-canvas { display: block; max-width: 100%; }
 .tb-canvas > svg { display: block; max-width: 100%; height: auto; overflow: visible; }
 .tb-canvas.tb-fill > svg { width: 100%; }

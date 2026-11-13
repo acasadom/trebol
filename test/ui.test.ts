@@ -387,6 +387,19 @@ describe('components', () => {
     assert.equal(r, '[[photo ["" image round] logo ["logo" image] name "Name"] [pic ["pic" image] name "name"]]');
   });
 
+  test('a video and a sound take a poster, captions, loop, muted, autoplay and on-end', async () => {
+    const r = await ev(`
+      root: view [
+        video %intro.mp4 "Intro" poster %intro.jpg captions [en %en.vtt es %es.vtt] loop muted on-end [done: true]
+        audio %bell.m4a autoplay small
+        text "Quiet" muted
+      ]
+      v: first root/pane  a: second root/pane  t: third root/pane
+      reduce [v/style v/value v/text v/poster v/captions v/looping v/silent v/role v/events/1
+        a/style a/autoplay a/silent a/size t/role]`);
+    assert.equal(r, '[video %intro.mp4 "Intro" %intro.jpg [en %en.vtt es %es.vtt] true true none on-end audio true false small muted]');
+  });
+
   test('a backdrop takes its image from a file or an address', async () => {
     const r = await ev(`
       root: view [backdrop %entry.jpg  title "Hi"  panel [backdrop https://example.com/a.png  text "In"]]

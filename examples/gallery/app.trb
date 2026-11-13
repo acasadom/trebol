@@ -135,6 +135,11 @@ view compose/deep/only [
             image %workshop.svg "The workshop at dusk" 64x64 round
         ]
     ]
+    panel "Video and sound" [
+        video %workshop.webm "The workshop" poster %workshop.svg captions [en %workshop-en.vtt es %workshop-es.vtt]
+            on-end [toast "Thanks for watching"]
+        audio %ready.m4a "Your bike is ready"
+    ]
     panel "Backdrop" [
         backdrop %workshop.svg
         heading "Open every day"

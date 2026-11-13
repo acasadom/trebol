@@ -118,6 +118,18 @@ over its options.
 A button to choose files, which is also a place to drop them. Its value is a block of objects with the `name`,
 `size`, `type` and `file` of each; `multiple` takes more than one, `accept ["pdf" "image/*"]` says which.
 
+## video
+
+A video, with the browser's own controls: `video %intro.mp4 "Introduction"`. Its text is what a screen reader
+says for it. It takes `poster`, `captions`, `loop`, `muted`, `autoplay` and `on-end` (see
+[the words of the dialect](dialect.md)), and as wide as it can be unless `small`, `medium` or `large` says
+otherwise.
+
+## audio
+
+A sound, with the browser's own controls: `audio %bell.m4a "Bell"`. It takes `loop`, `muted`, `autoplay` and
+`on-end`.
+
 ## photo
 
 An image and the buttons to choose another or remove it; clicking the image or dropping one on it chooses

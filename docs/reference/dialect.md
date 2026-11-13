@@ -48,9 +48,9 @@ What needs care: amber.
 (word-muted)=
 ## muted
 
-A role.
+A role; a flag of a video or a sound.
 
-Less to the eye: grey.
+Less to the eye: grey. On a video or a sound, it plays without its sound until the person turns it on.
 
 (word-small)=
 ## small
@@ -405,6 +405,36 @@ A word followed by its value.
 
 `sorted [due desc]`: the order a table shows, by a column, `asc` or `desc`.
 
+(word-poster)=
+## poster
+
+A word followed by its value.
+
+`poster %intro.jpg`: the image a video shows before it plays.
+
+(word-captions)=
+## captions
+
+A word followed by its value.
+
+`captions %intro.vtt`: a video's captions, in WebVTT, in the active language; `captions [en %en.vtt es %es.vtt]`
+gives one per language, and the one shown follows the active language.
+
+(word-loop)=
+## loop
+
+A flag of a video or a sound.
+
+A video or a sound starts again when it ends.
+
+(word-autoplay)=
+## autoplay
+
+A flag of a video or a sound.
+
+A video or a sound plays as soon as it can, and always without its sound: browsers let nothing else play on
+its own.
+
 (word-on-change)=
 ## on-change
 
@@ -433,6 +463,13 @@ An event: the block after it runs when it happens.
 
 When something is dropped on it: `event/dropped` is what, `event/source` the face it came from, and
 `event/index` where among the children or rows it goes.
+
+(word-on-end)=
+## on-end
+
+An event: the block after it runs when it happens.
+
+When a video or a sound reaches its end; with `loop`, never.
 
 (word-on-enter)=
 ## on-enter

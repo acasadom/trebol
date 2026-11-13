@@ -126,6 +126,27 @@ view [
 You never have to choose an image that suits the text. The theme lays a veil of the page's color over it,
 just as strong as it takes for text on it to read well on any image, in light and dark.
 
+## Video and sound
+
+`video` and `audio` play with the browser's own controls, which already work with the keyboard, on a phone
+and in full screen. A video can show an image before it plays and captions as it does, one file per
+language; the captions shown follow the language of the page:
+
+```trebol-ui
+view [
+    video %workshop.webm "The workshop" poster %workshop.svg captions [en %workshop-en.vtt es %workshop-es.vtt]
+        on-end [toast "Thanks for watching"]
+    row [
+        text "When a bike is ready, the counter hears:"
+        audio %ready.m4a "Your bike is ready" small
+    ]
+]
+```
+
+`loop` starts it again when it ends, `muted` plays it without sound until the person turns it on, and
+`autoplay` plays it as soon as it can, always without sound, since browsers let nothing else play on its own.
+`on-end` runs when it ends.
+
 ## What's next
 
 The workshop list above is three lines of text written by hand. The [next page](04-tables) makes it a
