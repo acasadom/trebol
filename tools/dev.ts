@@ -79,12 +79,12 @@ const APP_PAGE = `<!doctype html>
 // reloads its frames too.
 const RELOAD = `<script>if (window === top) new EventSource('/__reload').onmessage = () => location.reload();</script>`;
 
-/** `trebol/x` for every export of the package, pointing under /@trebol/. */
+/** `trebol/x` for every export of the package, pointing under /@trebol/ to its source, which is served stripped. */
 function importMap(): string {
-  const pkg = JSON.parse(readFileSync(join(TREBOL, 'package.json'), 'utf8')) as { exports: Record<string, string> };
+  const pkg = JSON.parse(readFileSync(join(TREBOL, 'package.json'), 'utf8')) as { exports: Record<string, { source: string }> };
   const imports: Record<string, string> = {};
-  for (const [name, path] of Object.entries(pkg.exports)) {
-    imports[`trebol${name.slice(1)}`] = PREFIX + path.slice(2);
+  for (const [name, paths] of Object.entries(pkg.exports)) {
+    imports[`trebol${name.slice(1)}`] = PREFIX + paths.source.slice(2);
   }
   return `<script type="importmap">${JSON.stringify({ imports })}</script>`;
 }

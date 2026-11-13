@@ -10,10 +10,17 @@
 //
 // out/cli.js is the `trebol` command. Node does not strip the types of a .ts
 // file under node_modules, so an installed package cannot run tools/cli.ts.
+//
+// out/lib/ is what `import 'trebol/core'` (and host, browser) loads: src/ as
+// JavaScript with its type declarations, one file per module, so core and host
+// share one core. The UI dialect's .trb files go next to it, where the host
+// looks for them.
 
 import { build, type BuildOptions, type Plugin } from 'esbuild';
-import { readFileSync } from 'node:fs';
+import { cpSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 
 const ROOT = join(import.meta.dirname, '..');
 const SOURCES = 'trebol:sources';
@@ -37,8 +44,11 @@ addBuiltIn(I18N_SOURCE, ${text('i18n.trb')});`,
   },
 };
 
-/** Builds trebol.js and cli.js into out. The sources module is imported first, so it runs before the boot. */
+/** Builds trebol.js, cli.js and lib/ into out. The sources module is imported first, so it runs before the boot. */
 export async function buildDist(out: string): Promise<void> {
+  const tsc = createRequire(import.meta.url).resolve('typescript/bin/tsc');
+  execFileSync(process.execPath, [tsc, '-p', join(ROOT, 'tsconfig.build.json'), '--outDir', join(out, 'lib')], { stdio: 'inherit' });
+  cpSync(join(ROOT, 'src', 'ui'), join(out, 'lib', 'ui'), { recursive: true });
   const common: BuildOptions = { bundle: true, format: 'esm', plugins: [sources], logLevel: 'warning', legalComments: 'none' };
   await build({
     ...common,

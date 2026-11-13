@@ -1,0 +1,12 @@
+{
+  // The JavaScript and type declarations of the package's exports (see tools/build.ts).
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "rewriteRelativeImportExtensions": true,
+    "rootDir": "src",
+    "outDir": "dist/lib"
+  },
+  "include": ["src"]
+}

@@ -53,6 +53,29 @@ test('the installed command runs a script and serves an app', async () => {
   }
 });
 
+test('the installed package is imported from Node, with its types', async () => {
+  const { project } = await installed();
+  writeFileSync(join(project, 'package.json'), '{"type": "module"}');
+  writeFileSync(join(project, 'main.ts'), `import { mold, load } from 'trebol/core';
+import { startHost, startUi, runSource } from 'trebol/host';
+const host = startHost();
+await startUi(host);
+const face = await runSource(host, 'select layout [field name "Name"] ' + "'pane");
+const n: string = mold(load('1 + 2'));
+console.log(n, mold(face).length > 0);
+`);
+  const run = spawnSync(process.execPath, ['--disable-warning=ExperimentalWarning', 'main.ts'], { encoding: 'utf8', cwd: project });
+  assert.equal(run.stderr, '');
+  assert.equal(run.stdout, '[1 + 2] true\n');
+  // a project that checks its types finds Trebol's
+  writeFileSync(join(project, 'tsconfig.json'), JSON.stringify({ compilerOptions: {
+    target: 'ES2022', module: 'NodeNext', moduleResolution: 'NodeNext', strict: true, noEmit: true,
+    types: [], lib: ['ES2022', 'DOM'],
+  }, files: ['main.ts'] }));
+  const tsc = spawnSync(process.execPath, [join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc'), '-p', project], { encoding: 'utf8' });
+  assert.equal(tsc.stdout + tsc.stderr, '');
+});
+
 test('the browser runtime is one module with the UI dialect inside', async () => {
   const { pkg } = await installed();
   const js = readFileSync(join(pkg, 'dist', 'trebol.js'), 'utf8');

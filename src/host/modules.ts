@@ -42,10 +42,17 @@ export function setLoader(rt: Runtime, loader: Loader): void {
 }
 
 export function defaultLoader(): Loader {
-  const g = globalThis as { location?: { href: string } };
+  type ReadFile = (path: URL, encoding: 'utf8') => Promise<string>;
+  const g = globalThis as {
+    location?: { href: string };
+    process?: { getBuiltinModule?: (name: string) => { readFile: ReadFile } | undefined };
+  };
   return {
     base: g.location?.href ?? 'file:///',
     read: async href => {
+      // in Node, fetch opens no file: URL; asking Node for its module keeps a browser bundle free of it
+      const fs = href.startsWith('file:') ? g.process?.getBuiltinModule?.('node:fs/promises') : undefined;
+      if (fs !== undefined) return fs.readFile(new URL(href), 'utf8');
       const res = await fetch(href);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.text();

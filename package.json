@@ -16,9 +16,21 @@
   },
   "type": "module",
   "exports": {
-    "./core": "./src/core/index.ts",
-    "./host": "./src/host/index.ts",
-    "./browser": "./src/host/browser.ts"
+    "./core": {
+      "types": "./dist/lib/core/index.d.ts",
+      "source": "./src/core/index.ts",
+      "default": "./dist/lib/core/index.js"
+    },
+    "./host": {
+      "types": "./dist/lib/host/index.d.ts",
+      "source": "./src/host/index.ts",
+      "default": "./dist/lib/host/index.js"
+    },
+    "./browser": {
+      "types": "./dist/lib/host/browser.d.ts",
+      "source": "./src/host/browser.ts",
+      "default": "./dist/lib/host/browser.js"
+    }
   },
   "bin": {
     "trebol": "dist/cli.js"
