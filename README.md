@@ -53,6 +53,9 @@ npx trebol                # the console: >> 1 + 2 * 3  == 9
 npx trebol dev my-app     # serves the folder my-app, with its app.trb, at http://localhost:5173/
 ```
 
+`node_modules/trebol/editors/vscode` is an extension that colors `.trb` files in Visual Studio Code: copy it
+into `~/.vscode/extensions/trebol` and restart VS Code.
+
 A JavaScript program can run Trebol too, through `trebol/host` and `trebol/core`; see
 [using Trebol from JavaScript](https://acasadom.github.io/trebol/guides/architecture.html#using-trebol-from-javascript).
 
@@ -66,6 +69,7 @@ npm run check        # type check and every test
 npm run trb          # the console
 npm run dev          # the examples, at http://localhost:5173/examples/signup/
 npm run build        # dist/trebol.js and dist/cli.js, what the npm package runs
+npm run grammar      # the editor grammar, editors/vscode/syntaxes/trebol.tmLanguage.json
 ```
 
 A release is a tag: `npm version minor` (or `patch`) and `git push --follow-tags`. The `release` workflow checks
@@ -91,6 +95,7 @@ Rebol; and guides to how Trebol is built.
 | `examples` | sample apps: `signup`, `clients`, `gallery`, `live`, `designer` |
 | `docs` | the documentation site |
 | `tools` | the `trebol` command, the console, the documentation builders |
+| `editors` | the Visual Studio Code extension and its TextMate grammar |
 
 ## Thanks
 

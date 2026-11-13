@@ -1,0 +1,42 @@
+{
+  "name": "trebol",
+  "displayName": "Trebol",
+  "description": "Syntax highlighting for Trebol (.trb files)",
+  "version": "0.1.0",
+  "publisher": "acasadom",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/acasadom/trebol",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/acasadom/trebol.git",
+    "directory": "editors/vscode"
+  },
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "trebol",
+        "aliases": [
+          "Trebol",
+          "trebol"
+        ],
+        "extensions": [
+          ".trb"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "trebol",
+        "scopeName": "source.trebol",
+        "path": "./syntaxes/trebol.tmLanguage.json"
+      }
+    ]
+  }
+}

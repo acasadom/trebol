@@ -125,6 +125,27 @@ port, and `--api api.ts` lets a module of yours answer requests before the files
 `handleApi(req, res, url)` answers the ones it knows and gives `false` for the rest, so an app can bring a
 small server of its own while it is being written.
 
+## Colors in the editor
+
+Trebol comes with an extension for [Visual Studio Code](https://code.visualstudio.com) that colors `.trb`
+files: comments, strings, numbers, money and dates, words being set, datatypes and the words that decide and
+repeat each get a color of their own, and `;` comments a line out (Ctrl+/ or Cmd+/). Copy it into VS Code's
+extensions folder and restart VS Code:
+
+```sh
+cp -R node_modules/trebol/editors/vscode ~/.vscode/extensions/trebol
+```
+
+On Windows the folder is `%USERPROFILE%\.vscode\extensions`. The extension holds a TextMate grammar
+(`syntaxes/trebol.tmLanguage.json`), the format most editors read, so others can use it too.
+
+GitHub has no colors of its own for Trebol yet. A line in a `.gitattributes` file at the top of your
+repository has it color `.trb` files as Rebol, which reads them well:
+
+```text
+*.trb linguist-language=Rebol
+```
+
 ## What's next
 
 So far the shop has a name and some numbers. In [the next step](02-values) it gets prices, a tax rate

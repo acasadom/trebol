@@ -1,0 +1,237 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Trebol",
+  "scopeName": "source.trebol",
+  "fileTypes": [
+    "trb"
+  ],
+  "patterns": [
+    {
+      "include": "#value"
+    }
+  ],
+  "repository": {
+    "value": {
+      "patterns": [
+        {
+          "include": "#comment"
+        },
+        {
+          "include": "#string"
+        },
+        {
+          "include": "#braced"
+        },
+        {
+          "include": "#hash"
+        },
+        {
+          "include": "#tag"
+        },
+        {
+          "include": "#file"
+        },
+        {
+          "include": "#scalar"
+        },
+        {
+          "include": "#word"
+        },
+        {
+          "include": "#path"
+        },
+        {
+          "include": "#bracket"
+        }
+      ]
+    },
+    "comment": {
+      "match": ";.*$",
+      "name": "comment.line.semicolon.trebol"
+    },
+    "escape": {
+      "match": "\\^(?:\\([^)]*\\)|.)",
+      "name": "constant.character.escape.trebol"
+    },
+    "string": {
+      "begin": "\"",
+      "end": "\"|$",
+      "name": "string.quoted.double.trebol",
+      "patterns": [
+        {
+          "include": "#escape"
+        }
+      ]
+    },
+    "braced": {
+      "begin": "\\{",
+      "end": "\\}",
+      "name": "string.quoted.other.braces.trebol",
+      "patterns": [
+        {
+          "include": "#escape"
+        },
+        {
+          "include": "#braced-inner"
+        }
+      ]
+    },
+    "braced-inner": {
+      "begin": "\\{",
+      "end": "\\}",
+      "patterns": [
+        {
+          "include": "#escape"
+        },
+        {
+          "include": "#braced-inner"
+        }
+      ]
+    },
+    "hash": {
+      "patterns": [
+        {
+          "match": "#\"(?:\\^(?:\\([^)]*\\)|.)|[^\"])\"",
+          "name": "constant.character.trebol"
+        },
+        {
+          "begin": "(?<![^\\s\\[\\](){}\"])(?:2|16|64)?#\\{",
+          "end": "\\}",
+          "name": "constant.other.binary.trebol"
+        },
+        {
+          "match": "#[\\[(]",
+          "name": "punctuation.definition.construction.trebol"
+        },
+        {
+          "match": "(?<![^\\s\\[\\](){}\"])(?:#[^\\s\\[\\](){}\";]+)(?=[\\s\\[\\](){}\";]|$)",
+          "name": "constant.other.issue.trebol"
+        }
+      ]
+    },
+    "tag": {
+      "begin": "<(?=[A-Za-z/!?])",
+      "end": ">",
+      "name": "entity.name.tag.trebol",
+      "patterns": [
+        {
+          "begin": "\"",
+          "end": "\""
+        },
+        {
+          "begin": "'",
+          "end": "'"
+        }
+      ]
+    },
+    "file": {
+      "patterns": [
+        {
+          "begin": "%\"",
+          "end": "\"|$",
+          "name": "string.quoted.double.file.trebol"
+        },
+        {
+          "match": "(?<![^\\s\\[\\](){}\"])(?:%(?!%?:?(?:[\\s\\[\\](){}\";]|$))[^\\s\\[\\](){}\";]+)(?=[\\s\\[\\](){}\";]|$)",
+          "name": "string.unquoted.file.trebol"
+        }
+      ]
+    },
+    "scalar": {
+      "patterns": [
+        {
+          "match": "(?<![^\\s\\[\\](){}\"])(?:[A-Za-z][A-Za-z0-9+.\\-]*:[^\\s\\[\\](){}\";]+)(?=[\\s\\[\\](){}\";]|$)",
+          "name": "markup.underline.link.url.trebol"
+        },
+        {
+          "match": "(?<![^\\s\\[\\](){}\"])(?:[^@/\\s\\[\\](){}\";][^@\\s\\[\\](){}\";]*@[^@\\s\\[\\](){}\";]*)(?=[\\s\\[\\](){}\";]|$)",
+          "name": "string.unquoted.email.trebol"
+        },
+        {
+          "match": "(?<![^\\s\\[\\](){}\"])(?:[+-]?(?:[A-Za-z]{3})?\\$[+-]?(?:\\d[\\d']*(?:[.,]\\d*)?|[.,]\\d+))(?=[\\s\\[\\](){}\";]|$)",
+          "name": "constant.numeric.money.trebol"
+        },
+        {
+          "match": "(?<![^\\s\\[\\](){}\"])(?:\\d+([-/])(?:[A-Za-z]+|\\d+)\\1\\d+(?:[/T][^\\s\\[\\](){}\";]+)?)(?=[\\s\\[\\](){}\";]|$)",
+          "name": "constant.numeric.date.trebol"
+        },
+        {
+          "match": "(?<![^\\s\\[\\](){}\"])(?:[+-]?\\d+:\\d+(?::\\d+(?:[.,]\\d+)?)?)(?=[\\s\\[\\](){}\";]|$)",
+          "name": "constant.numeric.time.trebol"
+        },
+        {
+          "match": "(?<![^\\s\\[\\](){}\"])(?:\\d+(?:\\.\\d+){2,11})(?=[\\s\\[\\](){}\";]|$)",
+          "name": "constant.numeric.tuple.trebol"
+        },
+        {
+          "match": "(?<![^\\s\\[\\](){}\"])(?:[+-]?(?:\\d[\\d']*(?:[.,]\\d*)?|[.,]\\d+)(?:[eE][+-]?\\d+)?[xX][+-]?(?:\\d[\\d']*(?:[.,]\\d*)?|[.,]\\d+)(?:[eE][+-]?\\d+)?)(?=[\\s\\[\\](){}\";]|$)",
+          "name": "constant.numeric.pair.trebol"
+        },
+        {
+          "match": "(?<![^\\s\\[\\](){}\"])(?:[+-]?(?:\\d[\\d']*(?:[.,]\\d*)?|[.,]\\d+)(?:[eE][+-]?\\d+)?%)(?=[\\s\\[\\](){}\";]|$)",
+          "name": "constant.numeric.percent.trebol"
+        },
+        {
+          "match": "(?<![^\\s\\[\\](){}\"])(?:[+-]?\\d[\\d']*)(?=[\\s\\[\\](){}\";]|$)",
+          "name": "constant.numeric.integer.trebol"
+        },
+        {
+          "match": "(?<![^\\s\\[\\](){}\"])(?:[+-]?(?:\\d[\\d']*(?:[.,]\\d*)?|[.,]\\d+)(?:[eE][+-]?\\d+)?)(?=[\\s\\[\\](){}\";]|$)",
+          "name": "constant.numeric.decimal.trebol"
+        }
+      ]
+    },
+    "word": {
+      "patterns": [
+        {
+          "match": "(?<![^\\s\\[\\](){}\"])(?:(?![+-]?\\.?\\d)[^\\s@#$%^,:'/\\\\\"()\\[\\]{};]+(?:/[^\\s\\[\\](){}\";/]+)*:)(?=[\\s\\[\\](){}\";]|$)",
+          "name": "entity.name.variable.set-word.trebol"
+        },
+        {
+          "match": "(?<![^\\s\\[\\](){}\"])(?::(?![+-]?\\.?\\d)[^\\s@#$%^,:'/\\\\\"()\\[\\]{};]+(?:/[^\\s\\[\\](){}\";/]+)*)(?=[\\s\\[\\](){}\";]|$)",
+          "name": "variable.other.get-word.trebol"
+        },
+        {
+          "match": "(?<![^\\s\\[\\](){}\"])(?:'(?![+-]?\\.?\\d)[^\\s@#$%^,:'/\\\\\"()\\[\\]{};]+(?:/[^\\s\\[\\](){}\";/]+)*)(?=[\\s\\[\\](){}\";]|$)",
+          "name": "constant.other.symbol.lit-word.trebol"
+        },
+        {
+          "match": "(?<![^\\s\\[\\](){}\"])(?:(?:\\+|-|\\*|\\*\\*|\\/|\\/\\/|%|%%|=|==|<>|!=|<|>|<=|>=|=\\?|and|or|xor))(?=[\\s\\[\\](){}\";]|$)",
+          "name": "keyword.operator.trebol"
+        },
+        {
+          "match": "(?<![^\\s\\[\\](){}\"])(?:/(?![+-]?\\.?\\d)[^\\s@#$%^,:'/\\\\\"()\\[\\]{};]+)(?=[\\s\\[\\](){}\";]|$)",
+          "name": "variable.parameter.refinement.trebol"
+        },
+        {
+          "match": "(?<![^\\s\\[\\](){}\"])(?:(?![+-]?\\.?\\d)[^\\s@#$%^,:'/\\\\\"()\\[\\]{};]+!)(?=[\\s\\[\\](){}\";/]|$)",
+          "name": "support.type.datatype.trebol"
+        },
+        {
+          "match": "(?<![^\\s\\[\\](){}\"])(?:(?i:true|false|none|yes|no|on|off))(?=[\\s\\[\\](){}\";/]|$)",
+          "name": "constant.language.trebol"
+        },
+        {
+          "match": "(?<![^\\s\\[\\](){}\"])(?:(?i:if|either|unless|case|switch|while|until|loop|repeat|foreach|forall|forskip|forever|break|continue|return|exit|throw|catch|try|attempt|do|func|function|does|has|closure))(?=[\\s\\[\\](){}\";/]|$)",
+          "name": "keyword.control.trebol"
+        }
+      ]
+    },
+    "path": {
+      "match": "(?<=[^\\s\\[\\](){}\";]|\\))/",
+      "name": "punctuation.separator.path.trebol"
+    },
+    "bracket": {
+      "patterns": [
+        {
+          "match": "[\\[\\]]",
+          "name": "punctuation.section.block.trebol"
+        },
+        {
+          "match": "[()]",
+          "name": "punctuation.section.paren.trebol"
+        }
+      ]
+    }
+  }
+}
