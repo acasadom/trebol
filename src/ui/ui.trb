@@ -85,6 +85,7 @@ face: make object! [
     extent: none        ; a canvas: the size of its drawing space, a pair
     form: none          ; the enclosing form, if any
     root: none          ; the view this face belongs to
+    place: none         ; where the face was written, file:line:col; none if made at run time
     submit: false
 ]
 
@@ -488,8 +489,9 @@ build-faces: function [
         [
             ; a face that compose puts in: check takes what follows as words of a face it cannot know
             if (ui-checking) paren! (f: make face []) any modifier
-        |   set style-word word! if (proto: select styles style-word) (
+        |   pos: set style-word word! if (proto: select styles style-word) (
                 f: make proto []
+                f/place: loaded-at pos
                 append out f
                 if label [label-face label labels global? f]
             )

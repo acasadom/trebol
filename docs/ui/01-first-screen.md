@@ -101,6 +101,14 @@ view [
 the action of a button; *Close* puts it away. On any other server the page shows nothing of it, and the error is
 in the browser's console (in Chrome, *View › Developer › JavaScript Console*).
 
+`trebol dev` also gives the page its own dev tools: the small *Trebol* button in the corner, or Ctrl+`, opens a
+panel at the bottom with three tabs. *Faces* shows the faces on the screen as a tree; *Pick* and a click on one
+shows what it holds (its text, value, error, rules, events) and the line where you wrote it, a link that opens
+the file in VS Code. *Console* runs Trebol against the app as it runs, with `face` being the face picked:
+`face/text: "Hello"` changes it on the screen, and what `print` writes shows there too. *Log* lists what happened,
+newest last: the events of each face, each request with its status and time, toasts, errors. A page that
+`trebol build` writes has none of it.
+
 A view in the action of a button is read when the button is pressed, so its mistakes show up only then.
 `npx trebol check` finds them before: it reads `app.trb` (or the files you name) without running it, lays out
 every block after `view` and `layout`, and the faces of every screen, and lists what it finds the same way:

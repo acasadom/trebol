@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, normalize } from 'node:path';
 import { startDev } from '../tools/dev.ts';
 
 test('an app folder loads Trebol by name and brings its own API', async () => {
@@ -50,8 +50,8 @@ test('a folder with only an app.trb is served as that app', async () => {
     assert.match(page, /<script type="text\/trebol" src="app.trb"><\/script>/);
     // a frame never listens for reloads: frames would use up the browser's six connections to the server
     assert.match(page, /if \(window === top\) new EventSource\('\/__reload'\)/);
-    // the browser host shows errors on the page only under trebol dev
-    assert.match(page, /<meta name="trebol-dev">/);
+    // the browser host shows errors and its dev tools only under trebol dev; the folder makes links to the source
+    assert.ok(page.includes(`<meta name="trebol-dev" content="${normalize(app)}">`));
     assert.equal(await (await fetch(`${base}/app.trb`)).text(), 'view [title "Hi"]');
     assert.equal((await fetch(`${base}/empty/`)).status, 404);
   } finally {

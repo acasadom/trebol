@@ -230,6 +230,12 @@ describe('layout', () => {
     assert.equal(await ev('loaded-at next copy [a b]'), '"1:24"');
     assert.equal(await ev('loaded-at next second copy/deep [a [b c]]'), '"1:39"');
   });
+
+  test('a face keeps where it was written, for the dev tools', async () => {
+    assert.equal(mold(await runSource(host, 'v: layout [\n  text "a"\n  row [button "b"]]  reduce [v/pane/1/place  v/pane/2/pane/1/place]', 'x.trb')),
+      '["x.trb:2:3" "x.trb:3:8"]');
+    assert.equal(await ev('first reduce [get in first layout/only compose [(to word! "text") "a"] \'place]'), 'none');
+  });
 });
 
 describe('validation', () => {

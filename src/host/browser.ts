@@ -30,6 +30,8 @@ import { fileHandle } from './net.ts';
 import { drawSvg, type El } from './draw.ts';
 import { rowField, groupRow, sortGroups, rowWindow, DRAW_ALL_UP_TO } from './rows.ts';
 import { chartSvg, SERIES_COLORS, pieColor, type ChartKind, type Series } from './chart.ts';
+import { devLog } from './devlog.ts';
+import { startDevtools, inDevtools } from './devtools.ts';
 
 // --- reading faces -----------------------------------------------------------------
 
@@ -228,6 +230,7 @@ function fire(fn: string, face: ObjectCell, ...args: Cell[]): Promise<Cell> {
   // a word, path or paren given as data (a dropped `date`) is quoted, so it is passed, not evaluated
   const quote: Cell = { t: K.Word, sym: intern('quote'), bind: host.rt.lib };
   const call: Cell[] = [{ t: K.Word, sym: intern(fn), bind: host.rt.user }, face, ...args.flatMap(a => ACTIVE.has(a.t) ? [quote, a] : [a])];
+  devLog.event(fn, face, args);
   const t = taskResult(spawn(host.sch, { data: call }, 0));
   t.catch(e => showError(report(e as ObjectCell)));
   return t;
@@ -242,6 +245,7 @@ let devErrors: HTMLElement | null = null;
  */
 function showError(message: string): void {
   console.error(message);
+  devLog.note('error', message);
   if (document.querySelector('meta[name="trebol-dev"]') === null) return;
   if (devErrors === null || !devErrors.isConnected) {
     // a manual popover sits in the top layer, above open dialogs
@@ -773,6 +777,7 @@ function onPointerMove(ev: PointerEvent): void {
 
 /** Alt+Up and Alt+Down move the focused row or child inside a reorderable container. */
 function onReorderKey(ev: KeyboardEvent): void {
+  if (inDevtools(ev.target)) return;
   if (!ev.altKey || ev.ctrlKey || ev.metaKey || (ev.key !== 'ArrowUp' && ev.key !== 'ArrowDown')) return;
   const at = document.activeElement;
   if (at === null) return;
@@ -1195,6 +1200,7 @@ function shortcutLabel(spec: string): string {
 
 /** Shortcuts beat the browser's own keys; the view's on-key gets keys nobody handled. */
 function onKeyDown(ev: KeyboardEvent): void {
+  if (inDevtools(ev.target)) return;
   const modal = Array.from(document.querySelectorAll('dialog[open]')).pop();
   for (const m of shortcuts) {
     if (!m.el.isConnected) { shortcuts.delete(m); continue; }
@@ -1210,6 +1216,7 @@ function onKeyDown(ev: KeyboardEvent): void {
 }
 
 function onViewKey(ev: KeyboardEvent): void {
+  if (inDevtools(ev.target)) return;
   if (viewKeys === null || seenKeys.has(ev) || keyCell(ev) === null) return;
   fireEvent(viewKeys, 'on-key', keyWords(ev));
 }
@@ -1308,7 +1315,8 @@ function buildInput(face: ObjectCell, style: string, m: Mounted): HTMLElement {
   if (style === 'money') input.addEventListener('focus', () => {
     if (!flag(face, 'readonly')) input.value = editLocal(get(face, 'value'), activeLanguage(host.rt));
   });
-  input.addEventListener('blur', () => void fire('ui-blur', face));
+  // going to the dev tools is not leaving the field: it shows no error for it
+  input.addEventListener('blur', ev => { if (!inDevtools((ev as FocusEvent).relatedTarget)) void fire('ui-blur', face); });
   const iconWord = style === 'area' || style === 'choice' ? null : iconName(face);
   const svg = iconWord !== null ? icon(iconWord) : null;
   if (style === 'date') {
@@ -2582,7 +2590,7 @@ function buildRich(face: ObjectCell, m: Mounted): HTMLElement {
   });
   box.addEventListener('drop', ev => ev.preventDefault());
   wrap.addEventListener('focusout', ev => {
-    if (!wrap.contains(ev.relatedTarget as Node | null)) void fire('ui-blur', face);
+    if (!wrap.contains(ev.relatedTarget as Node | null) && !inDevtools(ev.relatedTarget)) void fire('ui-blur', face);
   });
 
   let saved: Range | null = null;
@@ -3695,6 +3703,7 @@ native('show-toast', '["Shows a short message at the edge of the screen." messag
   const t = el('div', kind !== null ? `tb-toast tb-${kind}` : 'tb-toast');
   if (kind === 'danger') t.setAttribute('role', 'alert');
   const message = text(f.args[0] as StringCell);
+  devLog.note('toast', kind !== null ? `${kind}: ${message}` : message);
   const box = toasts;
   const dismiss = (): void => {
     t.remove();
@@ -4007,7 +4016,10 @@ function react(): void {
   const ht = runNow(host.sch, { data: [{ t: K.Word, sym: intern('ui-react'), bind: host.rt.user }, faces] }, 0);
   const warn = (t: HostTask) => {
     if (t.state !== 'done' || t.result.t !== K.Block) return;
-    for (const c of (t.result as BlockCell).s.data) console.warn(`Trebol: ${text(c as StringCell)}`);
+    for (const c of (t.result as BlockCell).s.data) {
+      console.warn(`Trebol: ${text(c as StringCell)}`);
+      devLog.note('warning', text(c as StringCell));
+    }
   };
   if (ht.state === 'done') warn(ht);
   else if (ht.state !== 'failed') {
@@ -4251,6 +4263,7 @@ async function boot(): Promise<void> {
   host.sch.afterPump = () => {
     react();
     syncDirty();
+    devLog.repainted();
   };
   document.addEventListener('keydown', onKeyDown, true);
   document.addEventListener('keydown', onReorderKey);
@@ -4268,6 +4281,25 @@ async function boot(): Promise<void> {
   // a touch drag must not scroll the page
   document.addEventListener('touchmove', ev => { if (dragging?.on) ev.preventDefault(); }, { passive: false });
   document.addEventListener('keydown', onViewKey);
+  const devMark = document.querySelector('meta[name="trebol-dev"]');
+  if (devMark !== null) {
+    startDevtools({
+      host,
+      root: devMark.getAttribute('content'),
+      faceOf: e => {
+        const m = byNode.get(e);
+        return m !== undefined && m.el === e ? m.face : null;
+      },
+      faceAt: e => {
+        const m = mountedAbove(e);
+        return m === undefined ? null : { face: m.face, el: m.el };
+      },
+      nodeOf: face => {
+        const e = byCtx.get(face.ctx)?.el;
+        return e?.isConnected === true ? e : null;
+      },
+    });
+  }
   startHistory();
   window.addEventListener('hashchange', () => {
     if (undoing !== null) {

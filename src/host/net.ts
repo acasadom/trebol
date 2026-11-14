@@ -12,6 +12,7 @@ import {
 } from '../core/index.ts';
 import { schedulerOf, spawn, spawnHandler, makeHandle, handleOf, type Scheduler } from './scheduler.ts';
 import { cancellers } from './natives.ts';
+import { devLog } from './devlog.ts';
 
 // --- files -----------------------------------------------------------------------
 //
@@ -340,11 +341,15 @@ native('http-request', '["Sends an HTTP request; used by fetch." url [url! strin
   const watch = field(opts, 'progress');
   const shown = watch === null ? null : progressOf(t, watch);
   const p = (async (): Promise<Cell> => {
+    const started = Date.now();
+    let status: number | null = null;
+    let problem: string | null = null;
     try {
       const init: RequestInit = { method: verb, headers, body, credentials, signal: ctl.signal };
       const res = shown !== null && typeof XMLHttpRequest !== 'undefined'
         ? await sendXhr(url, init, shown.tell)
         : await sendFetch(url, init, shown === null ? null : shown.tell);
+      status = res.status;
       const type = res.headers.find(([k]) => k === 'content-type')?.[1] ?? '';
       const data = decodeBody(type, res.bytes);
       if (full) {
@@ -363,12 +368,14 @@ native('http-request', '["Sends an HTTP request; used by fetch." url [url! strin
       return data;
     } catch (e) {
       if ((e as Cell).t === K.Error) throw e;
+      problem = timedOut ? 'timed out' : ctl.signal.aborted ? 'cancelled' : (e as Error).message;
       if (timedOut) throw makeError('access', 'timeout', `request to ${url} timed out`);
       if (ctl.signal.aborted) throw makeError('access', 'cancelled', `request to ${url} was cancelled`);
       throw makeError('access', 'network', `cannot reach ${url}: ${(e as Error).message}`);
     } finally {
       if (timer !== null) clearTimeout(timer);
       shown?.end();
+      devLog.request(verb, url, status, Date.now() - started, problem);
     }
   })();
   return { k: 'await', p };
