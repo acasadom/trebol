@@ -20,9 +20,10 @@
   dialect without a browser (its faces, validation and events, with `show` captured), the theme's
   contrast, the tools.
 - **Screen tests, in Trebol.** `trebol test` runs an app's `app.test.trb` without a browser: each test starts
-  the app anew and clicks, types, chooses and checks the screen as a person would, with the server's answers
-  written in the test (the [last page of the UI tutorial](../ui/11-testing.md)). Trebol uses it on
-  `examples/clients` and on a fixture that covers every word and how each failure is told; the words are in
+  the app anew and clicks, types, chooses, presses keys, picks from menus, drags, attaches files, answers
+  questions and checks the screen as a person would, with the server's answers written in the test (the
+  [last page of the UI tutorial](../ui/11-testing.md)). Trebol uses it on `examples/clients` and on fixtures
+  in `test/fixtures/screens` that cover every word and how each failure is told; the words are in
   `src/ui/test.trb` and their host, which keeps the view, the notices and the history, in `tools/test.ts`.
 - **A round trip on random values.** `test/roundtrip-fuzz.test.ts` makes thousands of random values, nested
   blocks, maps, objects, dates, money, odd strings, and checks that `load mold/all x` gives `x` back. It is
