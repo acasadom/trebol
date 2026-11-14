@@ -1,0 +1,23 @@
+Trebol [title: "Screen tests of pick-menu"]
+
+"pick-menu"
+[
+    pick-menu "Actions" "Export"
+    see "Picked export"
+]
+[
+    pick-menu "Actions" ["Send to" "Luis"]
+    see "Picked luis"
+]
+[
+    pick-menu "Notes" "Clear"
+    see "Notes cleared"
+]
+[
+    pick-menu "Lugo" "Remove"
+    see "remove Luis Gil"
+]
+[pick-menu "Actions" "Print"]
+[pick-menu "Actions" "Send to"]
+[pick-menu "Nothing yet" "Copy"]
+[pick-menu "Off" "Never"]

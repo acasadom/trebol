@@ -1,6 +1,6 @@
 Trebol [
     title: "Screen tests: what a user does, without a browser"
-    exports: [serve reply click type choose press say see test-answer test-route]
+    exports: [serve reply click type choose pick-menu press say see test-answer test-route]
 ]
 
 ; `trebol test` runs every block of an app.test.trb on the app started anew,
@@ -270,6 +270,44 @@ choose: function [
         ]
     ]
     do make error! rejoin ["choose: " mold what " has no option " mold option]
+]
+
+pick-menu: function [
+    "Chooses an item of the menu a button opens, of the context menu of a face, or of the row of a table or list that shows a text."
+    what [string! word!] "What the face or row shows, or a face's name"
+    item [string! block!] {The item's text; ["Move to" "Top"] for one in a submenu}
+    /local f p row i
+] [
+    on: none  row: none
+    if string? what [
+        ; foreach keeps its words to itself
+        foreach [f p] test-shown [
+            if all [find [table list] f/style  block? f/data  f/menu] [
+                foreach r f/data [if find test-cells f r what [on: f  row: r  break]]
+                if row [break]
+            ]
+        ]
+    ]
+    either on [f: on] [
+        f: first test-face 'pick-menu collect [foreach [f p] test-shown [keep f/style]] what
+        unless block? f/menu [do make error! rejoin ["pick-menu: " mold what " has no menu"]]
+    ]
+    if any [f/disabled  f/inert] [do make error! rejoin ["pick-menu: " mold what " cannot be used now"]]
+    items: f/menu
+    texts: either block? item [item] [reduce [item]]
+    forall texts [
+        found: none
+        foreach i items [if all [not i/divider  (first texts) = test-text i/text] [found: i  break]]
+        unless found [do make error! rejoin ["pick-menu: the menu of " mold what " has no " mold first texts]]
+        either tail? next texts [
+            if found/items [do make error! rejoin ["pick-menu: " mold first texts " opens a submenu"]]
+        ] [
+            unless found/items [do make error! rejoin ["pick-menu: " mold first texts " has no submenu"]]
+            items: found/items
+        ]
+    ]
+    ui-menu f found row
+    true
 ]
 
 ; The face a face is in, among the faces on show.

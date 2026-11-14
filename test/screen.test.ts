@@ -130,3 +130,27 @@ test('press runs the shortcut of a button, else on-key; Enter sends a form and E
     '8 tests, 2 failed.',
   ]);
 });
+
+test('pick-menu chooses an item of a button, a face or a row of a table, and of a submenu', async () => {
+  const { lines } = await ran(['test/fixtures/screens/menus.test.trb']);
+  const at = (l: string): string => l.replace(/\S*test\/fixtures\/screens\//g, '');
+  assert.deepEqual(lines.map(at).filter(l => !/\*\* (Where|Near):/.test(l)), [
+    'ok    menus.test.trb:4:1  pick-menu',
+    'ok    menus.test.trb:8:1  pick-menu',
+    'ok    menus.test.trb:12:1  pick-menu',
+    'ok    menus.test.trb:16:1  pick-menu',
+    'FAIL  menus.test.trb:20:1  pick-menu',
+    '        ** User error: pick-menu: the menu of "Actions" has no "Print"',
+    '        ** At: menus.test.trb:20:2',
+    'FAIL  menus.test.trb:21:1  pick-menu',
+    '        ** User error: pick-menu: "Send to" opens a submenu',
+    '        ** At: menus.test.trb:21:2',
+    'FAIL  menus.test.trb:22:1  pick-menu',
+    '        ** User error: pick-menu: "Nothing yet" has no menu',
+    '        ** At: menus.test.trb:22:2',
+    'FAIL  menus.test.trb:23:1  pick-menu',
+    '        ** User error: pick-menu: "Off" cannot be used now',
+    '        ** At: menus.test.trb:23:2',
+    '8 tests, 4 failed.',
+  ]);
+});

@@ -1,0 +1,13 @@
+Trebol [title: "Menus of a button, a face and the rows of a table"]
+
+view [
+    said: text "Nothing yet"
+    button "Actions" menu ["Export" export --- "Send to" ["Ana" ana "Luis" luis]]
+        on-menu [said/text: rejoin ["Picked " event/picked]]
+    panel "Notes" menu ["Clear" clear] on-menu [said/text: "Notes cleared"] [text "Some notes"]
+    global table clients [name "Name" city "City"] menu ["Edit" edit "Remove" remove]
+        on-menu [said/text: rejoin [event/picked " " face/selected/name]]
+    button "Off" disabled menu ["Never" never]
+]
+
+clients/data: [#(name: "Ana Ruiz" city: "Madrid") #(name: "Luis Gil" city: "Lugo")]
