@@ -125,7 +125,7 @@ draw
 
 ### U
 
-[`union`](#fn-union) · [`unique`](#fn-unique) · [`unless`](#fn-unless) · [`unset`](#fn-unset) · [`unset?`](#fn-unset-3f) · [`until`](#fn-until) · [`uppercase`](#fn-uppercase) · [`url?`](#fn-url-3f) · [`use`](#fn-use)
+[`union`](#fn-union) · [`unique`](#fn-unique) · [`unless`](#fn-unless) · [`unsaved`](#fn-unsaved) · [`unsaved?`](#fn-unsaved-3f) · [`unset`](#fn-unset) · [`unset?`](#fn-unset-3f) · [`until`](#fn-until) · [`uppercase`](#fn-uppercase) · [`url?`](#fn-url-3f) · [`use`](#fn-use)
 
 ### V
 

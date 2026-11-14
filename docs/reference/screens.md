@@ -164,6 +164,32 @@ True if a screen of this page lies ahead of the current one: the user went back 
 can-go-forward?
 ```
 
+(fn-unsaved)=
+## unsaved
+
+Marks the screen on show as having changes not saved, or not: leaving it asks first, and so does closing the page.
+
+```text
+unsaved on
+```
+
+- `on` (`logic!`)
+
+Leaving a screen marked `unsaved yes` asks first: «Leave without saving?», translated, with the `danger`
+role, unless the screen has an `on-leave` of its own that decides. While the mark is on, the browser also asks
+before the page is closed or reloaded, with its own words, since no browser lets a page give that text. The
+mark is put on and taken off by code, `unsaved no` once the changes are saved; a screen entered anew starts
+without it.
+
+(fn-unsaved-3f)=
+## unsaved?
+
+True if the screen on show has changes not saved (unsaved).
+
+```text
+unsaved?
+```
+
 (fn-form-values)=
 ## form-values
 

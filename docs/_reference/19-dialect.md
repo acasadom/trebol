@@ -296,6 +296,12 @@ When it gets the focus.
 
 When a key is pressed: `event/key` says which.
 
+## on-leave
+
+On a screen of `screens`: before the page leaves it, by `go`, back or forward, the browser's buttons or a
+link. `false` (or `'continue`, as Red's `on-close`) keeps the screen; anything else lets the page go. It may
+wait for a dialog first. Without it, a screen marked with `unsaved yes` asks the user.
+
 ## on-menu
 
 When an item of its menu is chosen: `event/picked` is its word.

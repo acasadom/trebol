@@ -505,6 +505,15 @@ An event: the block after it runs when it happens.
 
 When a key is pressed: `event/key` says which.
 
+(word-on-leave)=
+## on-leave
+
+An event: the block after it runs when it happens.
+
+On a screen of `screens`: before the page leaves it, by `go`, back or forward, the browser's buttons or a
+link. `false` (or `'continue`, as Red's `on-close`) keeps the screen; anything else lets the page go. It may
+wait for a dialog first. Without it, a screen marked with `unsaved yes` asks the user.
+
 (word-on-menu)=
 ## on-menu
 

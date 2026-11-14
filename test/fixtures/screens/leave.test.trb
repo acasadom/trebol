@@ -1,0 +1,14 @@
+Trebol [title: "Screen tests of on-leave"]
+
+"on-leave"
+[
+    click "Edit"
+    click "Back"
+    see "Home page"
+    click "Edit"
+    click "Keep me here"
+    click "Back"
+    see "Edit page"
+    click "Home"
+    see "Edit page"
+]

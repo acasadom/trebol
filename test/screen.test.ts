@@ -81,6 +81,11 @@ test('going back goes one step, as the browser does', async () => {
   assert.ok(passed, lines.join('\n'));
 });
 
+test('on-leave keeps the screen when the user goes back or follows a link', async () => {
+  const { passed, lines } = await ran(['test/fixtures/screens/leave.test.trb']);
+  assert.ok(passed, lines.join('\n'));
+});
+
 test('the tests of the examples pass', async () => {
   const files = (await findTests(join(ROOT, 'examples'))).map(f => relative(ROOT, f));
   assert.ok(files.includes('examples/clients/app.test.trb'));

@@ -79,6 +79,14 @@ native('set-route', '["Puts a screen and arguments in the address bar." route [b
   }
   return value(r);
 });
+// a screen that stays puts back the link the last step left
+let stepped = 0;
+native('route-undo', '["Puts back the link the page had before the last change." ]', () => {
+  page.at -= stepped;
+  stepped = 0;
+  return value(NONE);
+});
+native('set-unsaved', '["Whether the browser asks before closing the page." on [logic!]]', (_t, f) => value(f.args[0]!));
 native('route-steps', '["How many steps back and forward the history has." ]', () =>
   value(blockOf(K.Block, [page.at, page.history.length - 1 - page.at].map(n => ({ t: K.Integer, v: n }) as Cell))));
 
@@ -87,6 +95,7 @@ function step(f: Parameters<Parameters<typeof native>[2]>[1], by: number): Retur
   const to = page.at + by;
   if (to < 0 || to >= page.history.length || page.host === null) return value({ t: K.Logic, v: false });
   page.at = to;
+  stepped = by;
   const host = page.host;
   // the native is called again with the result once the screen is shown
   f.phase = 1;

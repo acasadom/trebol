@@ -59,6 +59,11 @@ native('set-route', '[route [block!] replace [logic!]]', (_t, f) => {
   return value(f.args[0]!);
 });
 
+let undos = 0;
+native('route-undo', '[]', () => { undos++; return value(NONE); });
+let marks: boolean[] = [];
+native('set-unsaved', '[on [logic!]]', (_t, f) => { marks.push(f.args[0]!.t === K.Logic && f.args[0]!.v); return value(f.args[0]!); });
+
 // two files as an upload's host gives them: name size type file
 native('test-files', '[]', () => value(blockOf(K.Block, ['a.pdf', 'b.png'].flatMap((n, i) =>
   [string(n), { t: K.Integer, v: 1000 * (i + 1) } as Cell, string('application/pdf'), fileHandle(new File(['x'], n))]))));
@@ -737,6 +742,52 @@ describe('components', () => {
       append seen reduce [main/entering main/value]
       seen`);
     assert.equal(r, '[true false false true false false [slow]]');
+  });
+
+  test('on-leave runs before leaving a screen by go or the link, and false or continue keep it', async () => {
+    link = ['home'];
+    undos = 0;
+    const r = await ev(`
+      seen: copy []
+      answer: false
+      view [global main: screens [
+        home "Home" [on-leave [append seen 'leave  answer] text "x"]
+        other "Other" [text "y"]
+      ]]
+      go 'other
+      append/only seen copy main/value
+      ui-route main ["other"]
+      append/only seen copy main/value
+      answer: 'continue
+      go 'other
+      append/only seen copy main/value
+      answer: none
+      go 'other
+      append/only seen copy main/value
+      seen`);
+    assert.equal(r, '[leave [home] leave [home] leave [home] leave [other]]');
+    assert.equal(undos, 1);
+  });
+
+  test('unsaved marks the screen: leaving asks, no stays, and a new screen starts unmarked', async () => {
+    link = ['home'];
+    asked = [];
+    marks = [];
+    undos = 0;
+    const r = await ev(`
+      view [global main: screens [home "Home" [text "x"] other "Other" [text "y"]]]
+      unsaved yes
+      a: unsaved?
+      go 'other
+      b: reduce [main/value unsaved?]
+      unsaved yes
+      ui-route main ["home"]
+      reduce [a b main/value unsaved?]`);
+    // the first question is answered yes (it went), the second no (it stayed)
+    assert.equal(r, '[true [[other] false] [other] true]');
+    assert.deepEqual(asked, ['"Leave without saving?" "Leave" "Stay" danger', '"Leave without saving?" "Leave" "Stay" danger']);
+    assert.equal(undos, 1);
+    assert.deepEqual(marks, [false, true, false, true]);
   });
 
   test('go-back asks the page to go back, or goes to the screen given when it came from outside', async () => {

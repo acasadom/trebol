@@ -4041,9 +4041,14 @@ function startHistory(): void {
   history.replaceState({ ...here }, '');
 }
 
+/** Where the page stood before the link last changed, so route-undo can return; set while it returns. */
+let before = { depth: 0, top: 0 };
+let undoing: { depth: number; top: number } | null = null;
+
 /** The link changed: back or forward lands on an entry the page made; a link or a typed address makes a new one, a step ahead. */
 function landHistory(): void {
   const state = history.state as { depth?: number } | null;
+  before = { ...here };
   if (typeof state?.depth === 'number') here = { depth: state.depth, top: here.top };
   else here = { depth: here.depth + 1, top: here.depth + 1 };
   history.replaceState({ ...here }, '');
@@ -4059,6 +4064,24 @@ native('set-route', '["Puts a screen and arguments in the address bar." route [b
   // a new screen after going back drops the ones ahead, as the browser does
   here = { depth: here.depth + 1, top: here.depth + 1 };
   history.pushState({ ...here }, '', href);
+  return value(f.args[0]!);
+});
+
+// A screen that does not let the page leave puts its link back: back for a new entry,
+// the other way for back or forward. The link that comes back is not a change of screen.
+native('route-undo', '["Puts back the link the page had before the last change." ]', () => {
+  const by = before.depth - here.depth;
+  if (by === 0) return value(NONE);
+  undoing = before;
+  history.go(by);
+  return value(NONE);
+});
+
+// While the screen on show has changes not saved, the browser asks before closing or
+// reloading the page, with its own words: no browser lets a page give its text.
+let unsaved = false;
+native('set-unsaved', '["Whether the browser asks before closing the page." on [logic!]]', (_t, f) => {
+  unsaved = f.args[0]!.t === K.Logic && f.args[0]!.v;
   return value(f.args[0]!);
 });
 
@@ -4196,6 +4219,7 @@ async function boot(): Promise<void> {
   // a scroll anywhere: the page, a scroll face, a dialog
   document.addEventListener('scroll', onRowsMoved, { capture: true, passive: true });
   addEventListener('resize', onRowsMoved);
+  addEventListener('beforeunload', ev => { if (unsaved) ev.preventDefault(); });
   addEventListener('beforeprint', () => onPrint(true));
   addEventListener('afterprint', () => onPrint(false));
   document.addEventListener('pointerdown', onPointerDown);
@@ -4208,6 +4232,12 @@ async function boot(): Promise<void> {
   document.addEventListener('keydown', onViewKey);
   startHistory();
   window.addEventListener('hashchange', () => {
+    if (undoing !== null) {
+      here = undoing;
+      undoing = null;
+      history.replaceState({ ...here }, '');
+      return;
+    }
     landHistory();
     if (screensFace !== null) void fire('ui-route', screensFace, routeBlock());
   });

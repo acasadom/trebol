@@ -3,7 +3,7 @@ Trebol [
     exports: [
         face styles stylize layout view theme looks open close toast confirm print-page
         validate-face field-error form-values set-values insert-text ui-pane ui-input ui-files ui-remove-file ui-lookup-search ui-lookup-pick ui-lookup-remove ui-blur ui-click ui-select ui-sort ui-close ui-event ui-menu ui-drop ui-reorder ui-crumb ui-expand
-        go go-back go-forward can-go-back? can-go-forward? ui-route set-language ui-rows ui-check
+        go go-back go-forward can-go-back? can-go-forward? unsaved unsaved? ui-route set-language ui-rows ui-check
     ]
 ]
 
@@ -653,6 +653,7 @@ view: function [
 ; of the screen name and its arguments as strings, as they come in the link.
 
 router: none        ; the screens face of the page
+marked: false       ; the screen on show has changes not saved (unsaved)
 page: none          ; the root face of the view on show
 
 ; The [name title args body] of the screen a route names, or none.
@@ -680,6 +681,9 @@ enter-screen: function [f route [block!] /local ev b] [
     bind-labels spec labels words
     f/value: copy route
     f/entering: true
+    ; a screen starts with nothing to save
+    set 'marked false
+    set-unsaved false
     f/pane: reduce [s]
     ui-pane f
     s
@@ -697,6 +701,21 @@ run-enter: function [s] [
         if h: handler-for router 'on-change [run-handler router h]
     ]
     if error? :r [do :r]
+]
+
+; Whether the screen on show lets the page leave it: its on-leave says, false or
+; 'continue (as Red's on-close) to stay; with no on-leave, a screen with unsaved
+; changes asks the user. Both may wait for a dialog.
+may-leave?: function [/local s h r] [
+    unless all [router  s: first router/pane] [return true]
+    if h: handler-for s 'on-leave [
+        r: run-handler s h
+        return not any [false = :r  'continue = :r]
+    ]
+    any [
+        not marked
+        confirm/with/role select i18n/ui 'leave-unsaved reduce [select i18n/ui 'leave select i18n/ui 'stay] 'danger
+    ]
 ]
 
 ; Shows the screen of a link given as a block of strings; a link that names no
@@ -720,6 +739,7 @@ go: function [
     if block? target [foreach a reduce next target [append route form a]]
     if path? target [foreach a next to block! target [append route form a]]
     unless find-screen router route [do make error! rejoin ["go: no screen for " mold route]]
+    unless may-leave? [exit]
     set-route route false
     run-enter enter-screen router route
 ]
@@ -749,6 +769,20 @@ can-go-forward?: function [
     0 < second route-steps
 ]
 
+unsaved: function [
+    "Marks the screen on show as having changes not saved, or not: leaving it asks first, and so does closing the page."
+    on [logic!]
+] [
+    set 'marked on
+    set-unsaved on
+]
+
+unsaved?: function [
+    "True if the screen on show has changes not saved (unsaved)."
+] [
+    marked
+]
+
 ui-route: function [
     "Called by the host when the page's link changes: back, forward or a link."
     f parts [block!]
@@ -756,6 +790,8 @@ ui-route: function [
     route: copy parts
     unless empty? route [route/1: attempt [to word! route/1]]
     if route = f/value [exit]
+    ; the link has changed already: staying puts the screen's link back
+    unless may-leave? [route-undo  exit]
     run-enter follow-link f parts
 ]
 

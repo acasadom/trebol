@@ -113,6 +113,46 @@ For buttons of its own, a screen can ask whether there is anywhere to go: `can-g
 `can-go-forward?` say whether a screen of the app lies behind or ahead, and `go-forward` goes ahead.
 `on-change` on `screens` runs after every screen is entered, the place to turn such buttons on and off.
 
+## Leaving with changes not saved
+
+A screen where the user edits something can say so with `unsaved yes`, and `unsaved no` once it is saved.
+While it is marked, leaving it asks first, whichever way the user goes: a button that calls `go`, the
+browser's back, a link. Closing or reloading the page asks too, in the browser's own words.
+
+```trebol-ui
+view [
+    screens [
+        home "Home" [title "Bookings" link "New booking" 'edit]
+        edit "New booking" [
+            field name "Name" on-change [unsaved yes]
+            button "Save" [unsaved no  toast "Saved"]
+            link "Back to the list" 'home
+        ]
+    ]
+]
+```
+
+For a question of its own, a screen gives `on-leave` at the top of its block, as `on-enter`. It runs before
+the page leaves it, may wait for a dialog, and keeps the screen if it gives `false`:
+
+```trebol-ui
+save-booking: does [unsaved no  toast "Saved"]
+view [
+    screens [
+        home "Home" [title "Bookings" link "New booking" 'edit]
+        edit "New booking" [
+            on-leave [
+                either unsaved? [
+                    either confirm/with "Save before leaving?" ["Save" "Stay"] [save-booking  true] [false]
+                ] [true]
+            ]
+            field name "Name" on-change [unsaved yes]
+            link "Back to the list" 'home
+        ]
+    ]
+]
+```
+
 ## What's next
 
 The shop's screens look the way Trebol's default look draws them. The [next page](07-themes) changes that: colors,

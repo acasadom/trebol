@@ -1,0 +1,14 @@
+Trebol [title: "A screen that may not let the user leave"]
+
+view [
+    screens [
+        home "Home" [title "Home page" link "Edit" 'edit]
+        edit "Edit" [
+            on-leave [not keep/value]
+            title "Edit page"
+            keep: check "Keep me here"
+            button "Back" [go-back 'home]
+            link "Home" 'home
+        ]
+    ]
+]

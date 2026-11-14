@@ -62,6 +62,7 @@ function drawErrors(face: ObjectCell): string[] {
 native('apply-theme', '[spec [object!]]', (_t, f) => value(f.args[0]!));
 native('route', '[]', () => value(blockOf(K.Block, [])));
 native('set-route', '[route [block!] replace [logic!]]', (_t, f) => value(f.args[0]!));
+native('set-unsaved', '[on [logic!]]', (_t, f) => value(f.args[0]!));
 native('repaint', '[]', () => value(blockOf(K.Block, [])));
 
 function pages(dir: string): string[] {

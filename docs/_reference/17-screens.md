@@ -38,6 +38,16 @@ the top of the page; it must be on the screen, or it is an error. Toasts and clo
 
 ## can-go-forward?
 
+## unsaved
+
+Leaving a screen marked `unsaved yes` asks first: «Leave without saving?», translated, with the `danger`
+role, unless the screen has an `on-leave` of its own that decides. While the mark is on, the browser also asks
+before the page is closed or reloaded, with its own words, since no browser lets a page give that text. The
+mark is put on and taken off by code, `unsaved no` once the changes are saved; a screen entered anew starts
+without it.
+
+## unsaved?
+
 ## form-values
 
 ## set-values
