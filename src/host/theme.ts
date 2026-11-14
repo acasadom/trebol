@@ -748,6 +748,41 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
 .tb-chart-swatch { width: 12px; height: 12px; border-radius: 3px; background: var(--tb-swatch); }
 .tb-chart-empty { margin: 0; color: var(--tb-muted); }
 .tb-chart-caption[hidden], .tb-chart-plot[hidden], .tb-chart-legend[hidden], .tb-chart-empty[hidden] { display: none; }
+.tb-orbit { position: relative; align-self: stretch; width: 100%; min-width: 0; height: 480px; border-radius: var(--tb-radius);
+  background: radial-gradient(ellipse at 50% 45%, color-mix(in oklch, var(--tb-primary) 7%, transparent) 0%, transparent 70%); }
+.tb-orbit.tb-small { height: 320px; }
+.tb-orbit.tb-large { height: 640px; }
+.tb-orbit.tb-fit { height: auto; min-height: 320px; }
+.tb-orbit > svg { display: block; position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; user-select: none; touch-action: none; outline: none; }
+.tb-orbit > svg.tb-orbit-panning { cursor: grabbing; }
+.tb-orbit > svg:focus-visible { box-shadow: inset 0 0 0 3px var(--tb-focus-ring); border-radius: var(--tb-radius); }
+.tb-orbit-node { cursor: pointer; outline: none; }
+.tb-orbit-focus { cursor: default; }
+.tb-orbit-body { vector-effect: non-scaling-stroke; transition: stroke-width .2s; }
+.tb-orbit-node:hover .tb-orbit-body, .tb-orbit-node:focus-visible .tb-orbit-body { stroke-width: 3; }
+.tb-orbit-node:focus-visible .tb-orbit-body { stroke: var(--tb-focus); }
+.tb-orbit-halo { opacity: .55; transition: opacity .25s; pointer-events: none; }
+.tb-orbit-node:hover .tb-orbit-halo, .tb-orbit-node:focus-visible .tb-orbit-halo { opacity: 1; }
+.tb-orbit-node text { pointer-events: none; fill: var(--tb-text); text-anchor: middle; dominant-baseline: middle; font-family: var(--tb-font); }
+.tb-orbit-node .tb-orbit-count { fill: var(--tb-muted); }
+.tb-orbit-line, .tb-orbit-step { fill: none; vector-effect: non-scaling-stroke; pointer-events: none; }
+.tb-orbit-line { stroke-width: 1; }
+.tb-orbit-step { stroke-linecap: round; }
+.tb-orbit-spin { animation: tb-orbit-spin 60s linear infinite; }
+.tb-orbit-spin.tb-orbit-rev { animation-direction: reverse; animation-duration: 90s; }
+.tb-orbit-spin.tb-orbit-fast { animation-duration: 24s; }
+@keyframes tb-orbit-spin { to { transform: rotate(360deg); } }
+.tb-orbit-now { animation: tb-orbit-pulse 1.8s ease-in-out infinite; }
+@keyframes tb-orbit-pulse { 50% { opacity: .35; } }
+.tb-orbit-edge { fill: none; pointer-events: none; }
+.tb-orbit-edge-solid, .tb-orbit-edge-dashed { stroke: var(--tb-accent); stroke-width: 1.4; stroke-opacity: .7; }
+.tb-orbit-edge-dashed { stroke-dasharray: 5 5; }
+.tb-orbit-edge-faint { stroke: var(--tb-muted); stroke-width: 1; stroke-opacity: .35; }
+.tb-orbit-edge-trail { stroke: var(--tb-muted); stroke-width: 1; stroke-opacity: .5; stroke-dasharray: 2 6; }
+.tb-orbit-label { font-size: 11px; font-family: var(--tb-font); fill: var(--tb-muted); text-anchor: middle; pointer-events: none;
+  paint-order: stroke; stroke: var(--tb-bg); stroke-width: 3px; letter-spacing: .02em; }
+.tb-orbit-label.tb-orbit-later { visibility: hidden; }
+.tb-orbit-label.tb-orbit-later.tb-orbit-shown { visibility: visible; }
 .tb-image.tb-small { width: 96px; }
 .tb-image.tb-medium { width: 240px; }
 .tb-image.tb-large { width: 480px; }

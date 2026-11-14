@@ -362,7 +362,7 @@ A word followed by its value.
 
 `text is [rejoin ["Hello, " name/value]]`: the face shows what the block gives, worked out when the face is
 shown and again whenever something the block reads changes. It sets the face's main facet: `data` for a
-table, list, tree or chart, `draw` for a canvas, `value` for a field and the rest of the inputs, a progress, an
+table, list, tree, chart or orbit, `draw` for a canvas, `value` for a field and the rest of the inputs, a progress, an
 image, a video or a sound, and `text` for everything else. Unlike `calc`, a field with `is` can still be typed
 in; what it reads changing gives it the block's value again.
 
@@ -467,6 +467,14 @@ A flag of a video or a sound.
 
 A video or a sound plays as soon as it can, and always without its sound: browsers let nothing else play on
 its own.
+
+(word-on-back)=
+## on-back
+
+An event: the block after it runs when it happens.
+
+On an orbit: when the person steps back to a node of the trail, by picking it or with Escape. `value` is
+its id.
 
 (word-on-change)=
 ## on-change

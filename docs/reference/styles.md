@@ -225,6 +225,39 @@ percents show as they do in a table. A pie shows the first series. `stacked` put
 chart on top of each other, and `small`, `medium` or `large` sets its height. The string is its caption.
 Setting `data` redraws it, and a screen reader reads the same numbers as a table.
 
+(style-orbit)=
+## orbit
+
+One node of a graph in the middle and its neighbours on rings around it, joined by their edges:
+
+```trebol-ui
+view [
+    orbit "Organization" [
+        focus plenary
+        nodes [plenary "Plenary" [primary count 9]  ana "Ana Ruiz" [accent]  town "Town council"]
+        edges [plenary ana "Members"]
+        trail [town]
+    ] [print value]
+]
+```
+
+`focus` is the node in the middle; `nodes` gives each node an id (a word, an integer, a string or an issue), a
+title, and a block of hints if it has any: a role or a color word, `many` for one that stands for many (a second
+ring), `dashed` for a shortcut, `count n` for how many it holds (small moons and a number), and `steps n at k`
+for a ring of n steps with the k-th the current one. `edges` gives two ids, a label and `[solid]`, `[dashed]` or
+`[faint]` if they have them; an edge between two neighbours bends around the middle. `trail` lists the nodes
+the person came from, the most recent last; the last few show to one side, joined by a dotted line. Every node
+given that is neither the focus nor in the trail is a neighbour; past 30, a bubble pages through them, and past
+18, edge labels show only while the pointer is on a bubble.
+
+Picking a neighbour sets `value` to its id and runs the action; picking a node of the trail, or Escape, runs
+`on-back` instead, or the action when there is no `on-back`. The face never fetches anything: the action
+sets `data` again, with the node picked in the middle, and the bubbles that stay move to their new places,
+the new ones grow from the one picked and the rest fade. Dragging moves the view and a double click centres
+it again; Ctrl and the wheel, or a pinch, zoom, and so does the wheel alone when `fit` makes it fill the
+window. Tab goes through the neighbours and Enter picks one; a screen reader reads the node in the middle,
+then each neighbour as a link with the label of its edge. `small`, `medium` or `large` sets its height.
+
 (style-icon)=
 ## icon
 

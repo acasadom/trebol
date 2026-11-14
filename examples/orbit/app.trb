@@ -1,0 +1,87 @@
+Trebol [title: "Town council"]
+
+; A town council as a graph: what it has and who belongs to what. The orbit
+; shows one thing with what it is linked to around it; picking a neighbour goes
+; there, and the way back stays to one side.
+
+things: [
+    town     "Town council"             [primary]
+    plenary  "Plenary"                  [primary many count 9]
+    board    "Local government board"   [primary count 5]
+    mayor    "Mayor"                    [accent]
+    ana      "Ana Ruiz"                 [accent]
+    luis     "Luis Pardo"               [accent]
+    marta    "Marta Ibáñez Roldán"      [accent]
+    areas    "Areas"                    [teal many count 2]
+    works    "Public works"             [teal]
+    culture  "Culture"                  [teal]
+    permit   "Building permit 2026/14"  [orange steps 5 at 3]
+]
+
+links: [
+    town plenary "Has"
+    town board "Has"
+    town areas "Has"
+    plenary ana "Members"
+    plenary luis "Members"
+    plenary marta "Members"
+    board mayor "Chaired by"
+    board marta "Members"
+    mayor ana "Held by" [dashed]
+    areas works "Has" [faint]
+    areas culture "Has" [faint]
+    works luis "Led by" [dashed]
+    works permit "Handles"
+    culture marta "Led by" [dashed]
+    luis marta "Works with"
+]
+
+here: 'town
+trail: copy []
+
+; What the orbit shows around a thing: it, what it is linked to, and the trail.
+around: function [id /local a b label look] [
+    near: copy []
+    edges: copy []
+    parse links [any [
+        set a word! set b word! set label string! (look: none) opt [set look block!] (
+            if any [a = id  b = id] [
+                append near either a = id [b] [a]
+                append edges reduce [a b label]
+                if look [append/only edges look]
+            ]
+        )
+    ]]
+    ; links between two neighbours are drawn too, as arcs
+    parse links [any [
+        set a word! set b word! set label string! (look: none) opt [set look block!] (
+            if all [a <> id  b <> id  find near a  find near b] [
+                append edges reduce [a b label]
+                if look [append/only edges look]
+            ]
+        )
+    ]]
+    nodes: copy []
+    foreach n unique compose [(id) (near) (trail)] [
+        p: find things n
+        append nodes reduce [n p/2]
+        append/only nodes p/3
+    ]
+    compose/only [focus (id) nodes (nodes) edges (edges) trail (copy trail)]
+]
+
+; Going to a thing: back along the trail if it is there, else one step further.
+visit: func [id] [
+    either p: find trail id [clear p] [append trail here]
+    here: id
+    map/data: around here
+    where/text: select things here
+]
+
+view [
+    title "Town council"
+    text muted "Pick a bubble to go there. Escape goes back; drag to move, Ctrl and the wheel to zoom."
+    global where: heading "Town council"
+    global map: orbit "Organization" fit [] [visit value]
+]
+map/data: around here

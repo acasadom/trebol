@@ -132,7 +132,7 @@ test-cells: function [f row /local w label] [
 ]
 
 ; Every text on show: of faces, values, errors and rows, and the notices shown.
-test-texts: function [/local f p] [
+test-texts: function [/local f p t] [
     out: copy []
     foreach [f p] test-shown [
         foreach t reduce [test-text f/text  test-text f/hint  f/error] [if string? t [append out t]]
@@ -158,9 +158,27 @@ test-texts: function [/local f p] [
         if all [find [table list] f/style  block? f/data] [
             foreach row f/data [append out test-cells f row]
         ]
+        ; the title of every node of an orbit, its focus too
+        if all [f/style = 'orbit  block? f/data] [
+            parse any [select f/data 'nodes  []] [any [skip set t skip (append out test-text t) opt block!]]
+        ]
     ]
     append out shown-toasts
     append out shown-questions
+    out
+]
+
+; The nodes of an orbit as [id title back ...]: its neighbours, and its trail with back true.
+test-orbit-nodes: function [f /local id t] [
+    out: copy []
+    unless block? f/data [return out]
+    focus: select f/data 'focus
+    trail: any [select f/data 'trail  []]
+    parse any [select f/data 'nodes  []] [any [
+        set id skip set t skip opt block! (
+            unless id = focus [append out reduce [id  test-text t  to logic! find trail id]]
+        )
+    ]]
     out
 ]
 
@@ -189,11 +207,23 @@ test-face: function [action [word!] styles [block!] what /local f p] [
 text-styles: [field password number money date area rich]
 
 click: function [
-    "Clicks a button, link, tile, check, toggle or tab, or the row of a table or list that shows a text."
+    "Clicks a button, link, tile, check, toggle or tab, the row of a table or list that shows a text, or a node of an orbit."
     what [string! word!] "What it shows, or a field's name"
-    /local f p row
+    /local f p row id t back
 ] [
     if string? what [
+        ; a neighbour of an orbit, or a node of its trail
+        foreach [f p] test-shown [
+            if f/style = 'orbit [
+                foreach [id t back] test-orbit-nodes f [
+                    if t = what [
+                        if any [f/disabled  f/inert] [do make error! rejoin ["click: " mold what " cannot be used now"]]
+                        ui-orbit f id back
+                        return true
+                    ]
+                ]
+            ]
+        ]
         ; a row of a table or list
         foreach [f p] test-shown [
             if all [find [table list] f/style  block? f/data] [

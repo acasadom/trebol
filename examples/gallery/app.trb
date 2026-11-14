@@ -156,6 +156,20 @@ view compose/deep/only [
             global chart pie jobs small "Jobs" [job "Job" count "Count"]
         ]
     ]
+    panel "Orbit" [
+        orbit "Workshop" small [
+            focus road
+            nodes [
+                road "Road bike" [teal count 2]
+                ada "Ada Lovelace" [accent]
+                brake "Rear brake" [orange steps 3 at 2]
+                chain "Chain" [orange dashed]
+                shop "Cog & Chain"
+            ]
+            edges [ada road "Rides"  road brake "Repair"  road chain "Repair" [dashed]  brake chain "Same order" [faint]]
+            trail [shop]
+        ] [toast rejoin ["Picked " value]]
+    ]
     panel "Desktop" [
         desktop menu ["New folder" new] on-menu [toast "New folder"] [
             tile #folder "Reports" [toast "Reports"]

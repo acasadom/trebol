@@ -664,6 +664,31 @@ describe('components', () => {
       went`), 'client/42');
   });
 
+  test('an orbit keeps its block; picking a node runs its action, stepping back runs on-back', async () => {
+    const r = await ev(`
+      log: copy []
+      root: view [
+          global around: orbit "Organization" [
+              focus pleno
+              nodes [pleno "Pleno" [primary count 9]  marta "Marta" [accent]  "x-1" #(en: "Other" es: "Otro")]
+              edges [pleno marta "Members"  marta pleno "Holder" [dashed]]
+              trail [town]
+          ] [append log reduce ['in value]] on-back [append log reduce ['back value]]
+          global plain: orbit [focus a nodes [a "A" b "B"] trail [z]] [append log reduce ['picked value]]
+      ]
+      ui-orbit around 'marta false
+      ui-orbit around 'town true
+      ui-orbit plain 'z true
+      around/data: [focus marta]
+      reduce [log  first around/data  around/value]`);
+    assert.equal(r, '[[in marta back town picked z] focus town]');
+    await assert.rejects(runSource(host, 'view [orbit [focus a nodes [a "A" b] edges [a b "L" [wavy]] colour red]]'), (e: ObjectCell) => {
+      const m = form(errorField(e, 'message'));
+      for (const p of ['nodes takes an id and a title for each', 'edges takes two ids for each', 'an orbit takes focus id']) assert.ok(m.includes(p), m);
+      return true;
+    });
+  });
+
   test('a tree selects nodes, expands them lazily, and reorders among siblings', async () => {
     const r = await ev(`
       log: copy []

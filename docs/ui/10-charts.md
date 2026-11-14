@@ -1,7 +1,8 @@
 # 10. Drawings and charts
 
 Cog & Chain wants its logo on the screen, and the owner wants to see at a glance how the months went. This
-page draws both: a picture with Red's draw dialect, and charts made straight from rows, as a table is.
+page draws both: a picture with Red's draw dialect, and charts made straight from rows, as a table is. Then
+it walks through who rides what with an orbit.
 
 ## A drawing
 
@@ -128,6 +129,76 @@ reader reads every chart as a table of the same numbers. A chart with no rows sa
 
 `chart/data: rows` draws it again, so a chart that follows a server is a `fetch` and an assignment, as the
 workshop board was on the last page.
+
+## Moving through a graph
+
+Some things are not rows but a web: customers ride bikes, bikes have repairs, repairs need parts. An `orbit`
+shows one of them in the middle and what it is linked to around it. Picking a bubble goes there, and the way
+back stays to one side:
+
+```trebol-ui
+things: [
+    shop    "Cog & Chain"    [primary]
+    ada     "Ada Lovelace"   [accent]
+    grace   "Grace Hopper"   [accent]
+    road    "Road bike"      [teal count 2]
+    cargo   "Cargo bike"     [teal]
+    brake   "Rear brake"     [orange steps 3 at 2]
+    chain   "Chain"          [orange]
+]
+links: [
+    shop ada "Customer"  shop grace "Customer"
+    ada road "Rides"  grace cargo "Rides"
+    road brake "Repair"  road chain "Repair"
+]
+here: 'shop
+trail: copy []
+
+around: function [id] [
+    edges: copy []
+    near: copy []
+    foreach [a b label] links [
+        if find reduce [a b] id [
+            append edges reduce [a b label]
+            append near either a = id [b] [a]
+        ]
+    ]
+    nodes: copy []
+    foreach [n title hints] things [
+        if find compose [(id) (near) (trail)] n [append nodes reduce [n title hints]]
+    ]
+    compose/only [focus (id) nodes (nodes) edges (edges) trail (copy trail)]
+]
+
+visit: func [id] [
+    either p: find trail id [clear p] [append trail here]
+    here: id
+    graph/data: around here
+]
+
+view [
+    heading "Who and what"
+    global graph: orbit "Workshop" [] [visit value]
+]
+graph/data: around here
+```
+
+The orbit's block says what it shows. `focus` is the node in the middle. `nodes` gives each one an id, a
+title and a few hints: a role or a color, `count` for how many it holds (the small moons), `many` for one
+that stands for many, `dashed` for a shortcut, and `steps 3 at 2` for a ring of steps with the second the
+current one, as the brake's repair is half done. `edges` joins two ids with a label, and `trail` lists where
+the person came from.
+
+The orbit never fetches anything. Picking a bubble sets its `value` to the id and runs the action, and the
+action gives it a new block; the orbit moves from what it showed to what it is given, so the bubbles that stay
+glide to their places and the new ones grow from the one picked. Here the graph is two blocks, but `around`
+could just as well be a `fetch`. Picking a node of the trail, or pressing Escape, runs `on-back` if the orbit
+has one, and the action otherwise.
+
+Drag to move the view and double-click to centre it again; Ctrl and the wheel zoom. With `fit`, the orbit
+takes the height the window has left, and then the wheel alone zooms. Tab goes through the bubbles and Enter
+picks one, and a screen reader reads each as a link: "Ada Lovelace, Customer". A test clicks them by their
+title, `click "Road bike"`, and `see` finds the titles on show.
 
 ## What's next
 

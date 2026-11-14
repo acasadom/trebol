@@ -1,0 +1,15 @@
+Trebol [title: "Screen tests of the town council"]
+
+"moving through the graph"
+[see "Town council"  see "Plenary"  see/not "Ana Ruiz"]
+[
+    click "Plenary"
+    see "Ana Ruiz"  see/not "Areas"
+    click "Marta Ibáñez Roldán"
+    see "Culture"
+    ; the trail goes back the way it came
+    click "Plenary"
+    see "Luis Pardo"
+    click "Town council"
+    see "Areas"  see/not "Ana Ruiz"
+]
