@@ -37,6 +37,10 @@ function fresh(host: Host | null = null) {
     unanswered: [] as string[],
     /** Errors of tasks nobody waited for: a handler that failed. */
     errors: [] as string[],
+    /** What the user says to the next questions of confirm, from say; yes when none is left. */
+    answers: [] as boolean[],
+    /** The questions confirm has asked. */
+    asked: [] as string[],
   };
 }
 
@@ -64,8 +68,16 @@ native('show-toast', '["Shows a short message at the edge of the screen." messag
   return value(f.args[0]!);
 });
 native('shown-toasts', '["The notices the page has shown." ]', () => value(strings(page.toasts)));
-// the user says yes
-native('show-confirm', '["Asks a question in a small dialog; true when the user says yes." question [string!] yes [string! none!] no [string! none!] kind [word! none!]]', () => value(TRUE));
+// the user says what say told, or yes
+native('show-confirm', '["Asks a question in a small dialog; true when the user says yes." question [string!] yes [string! none!] no [string! none!] kind [word! none!]]', (_t, f) => {
+  page.asked.push(text(f.args[0] as StringCell));
+  return value({ t: K.Logic, v: page.answers.shift() ?? true });
+});
+native('test-say', '["Sets what the user says to the next question of confirm." yes [logic!]]', (_t, f) => {
+  page.answers.push(f.args[0]!.t === K.Logic && f.args[0]!.v);
+  return value(TRUE);
+});
+native('shown-questions', '["The questions confirm has asked." ]', () => value(strings(page.asked)));
 
 native('route', '["The screen and arguments in the address bar." ]', () => value(strings(page.history[page.at]!)));
 native('set-route', '["Puts a screen and arguments in the address bar." route [block!] replace [logic!]]', (_t, f) => {
@@ -207,7 +219,7 @@ async function runOne(file: string, source: string, start: number, prelude: numb
     if (app !== null) await runSource(host, await readFile(app, 'utf8'), relative(process.cwd(), app) || app);
     const test = s.data[at] as BlockCell;
     const got = await taskResult(spawn(host.sch, test.s, test.i));
-    const problems = [...unanswered(), ...page.errors];
+    const problems = [...unanswered(), ...page.errors, ...unasked()];
     if (got.t !== K.Logic || !got.v) problems.push(`the test gave ${mold(got)}, not true`);
     return problems.length > 0 ? problems.join('\n') : null;
   } catch (e) {
@@ -218,6 +230,7 @@ async function runOne(file: string, source: string, start: number, prelude: numb
 }
 
 const unanswered = (): string[] => page.unanswered.map(r => `serve has no answer for ${r}`);
+const unasked = (): string[] => page.answers.map(a => `say ${a ? 'yes' : 'no'}: no question was asked`);
 
 /** Every *.test.trb under a folder, but in node_modules and hidden folders. */
 export async function findTests(root: string): Promise<string[]> {

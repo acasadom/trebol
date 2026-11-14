@@ -115,7 +115,8 @@ translated.
 | `click "Book in"` | clicks a button, link, tile, check, toggle or tab; or the row of a table or list that shows that text |
 | `type "Customer" "Luis Gil"` | types in a field and leaves it; `""` empties it |
 | `choose "Bike" "City"` | chooses an option of a choice, radio or lookup, by the text it shows |
-| `see "Booked in."` | checks that the text is on the screen: in a face, a field, a row, a message or a notice |
+| `say no` | answers no to the next question of `confirm`; with nothing said, the answer is yes |
+| `see "Booked in."` | checks that the text is on the screen: in a face, a field, a row, a message, a notice or a question asked |
 | `see/not "Booked in."` | checks that it is not |
 
 Each of them gives `true`, so a test whose last step is one of them passes when every step does. A test can
@@ -123,7 +124,21 @@ end in any other check instead, as long as it gives `true`: after `click "Ana Ru
 `board/selected/id = 1`.
 
 Only what is on show counts, as for a person: a dialog until it opens, the faces of a tab until it is chosen,
-a screen until the app goes to it. The screen is a wide one. A `confirm` is answered yes.
+a screen until the app goes to it. The screen is a wide one.
+
+A `confirm` is answered yes, unless `say no` comes before the step that asks it; each `say` answers one
+question, and one that no question took fails the test, since the app did not ask what the test expected:
+
+```text
+"keeping a booking"
+[
+    click "Ana Ruiz"
+    say no
+    click "Remove"
+    see "Remove the booking of Ana Ruiz?"
+    see "Ana Ruiz"
+]
+```
 
 ## What the server answers
 

@@ -97,3 +97,16 @@ test('the tests of the examples pass', async () => {
   const { passed, lines } = await ran(files);
   assert.ok(passed, lines.join('\n'));
 });
+
+test('say answers the next confirm, and an answer no question took fails the test', async () => {
+  const { lines } = await ran(['test/fixtures/screens/confirm.test.trb']);
+  const at = (l: string): string => l.replace(/\S*test\/fixtures\/screens\//g, '');
+  assert.deepEqual(lines.map(at), [
+    'ok    confirm.test.trb:4:1  say',
+    'ok    confirm.test.trb:8:1  say',
+    'ok    confirm.test.trb:15:1  say',
+    'FAIL  confirm.test.trb:22:1  say',
+    '        say no: no question was asked',
+    '4 tests, 1 failed.',
+  ]);
+});

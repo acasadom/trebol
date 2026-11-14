@@ -1,0 +1,22 @@
+Trebol [title: "Screen tests of say"]
+
+"say"
+[
+    click "Remove"
+    see "Removed"
+]
+[
+    say no
+    click "Remove"
+    see "Remove Ana Ruiz?"
+    see "Ana Ruiz"
+    see/not "Removed"
+]
+[
+    say no
+    say yes
+    click "Remove"
+    click "Remove"
+    see "Removed"
+]
+[say no]

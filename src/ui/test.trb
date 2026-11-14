@@ -1,6 +1,6 @@
 Trebol [
     title: "Screen tests: what a user does, without a browser"
-    exports: [serve reply click type choose see test-answer test-route]
+    exports: [serve reply click type choose say see test-answer test-route]
 ]
 
 ; `trebol test` runs every block of an app.test.trb on the app started anew,
@@ -156,6 +156,7 @@ test-texts: function [/local f p] [
         ]
     ]
     append out shown-toasts
+    append out shown-questions
     out
 ]
 
@@ -268,6 +269,13 @@ choose: function [
         ]
     ]
     do make error! rejoin ["choose: " mold what " has no option " mold option]
+]
+
+say: func [
+    "Says how the user answers the next question of confirm, which is yes when nothing is said; a test that leaves one unasked fails."
+    yes [logic!] "yes or no"
+] [
+    test-say yes
 ]
 
 see: function [

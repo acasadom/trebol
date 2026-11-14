@@ -1,0 +1,7 @@
+Trebol [title: "A question before removing"]
+
+view [
+    title "Clients"
+    t: text "Ana Ruiz"
+    button "Remove" [if confirm "Remove Ana Ruiz?" [t/text: "Removed"]]
+]
