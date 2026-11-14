@@ -92,6 +92,7 @@ ui/07-themes
 ui/08-languages
 ui/09-server
 ui/10-charts
+ui/11-testing
 ```
 
 ```{toctree}

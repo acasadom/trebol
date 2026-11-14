@@ -1,0 +1,280 @@
+Trebol [
+    title: "Screen tests: what a user does, without a browser"
+    exports: [serve reply click type choose see test-answer test-route]
+]
+
+; `trebol test` runs every block of an app.test.trb on the app started anew,
+; with no browser: the host keeps the view these words act on. Faces are found
+; by what the user sees, a label, the text of a button or a hint, or by their
+; name; only faces on show count, so a closed dialog or another tab is not there.
+
+; --- answers of the server ------------------------------------------------------
+
+; [method path handler ...] of every serve
+test-routes: copy []
+
+serve: function [
+    "Answers the requests of the app: a method, a path and a block that gives the answer, for each; a later serve comes first."
+    routes [block!] {GET "/api/clients/:id" [...]: the block sees body, query and the :words of the path}
+    /local m p b pos
+] [
+    new: copy []
+    parse routes [any [
+        set m ['GET | 'POST | 'PUT | 'PATCH | 'DELETE] set p string! set b block! (append new reduce [m p b])
+        | pos: skip (do make error! rejoin ["serve takes a method, a path and a block, not " mold/flat first pos])
+    ]]
+    ; a later serve, as one in a test, answers before those it follows
+    insert test-routes new
+    true
+]
+
+reply: func [
+    "An answer of serve with its status: reply 422 #(errors: ...)."
+    status [integer!]
+    data [any-type!]
+] [
+    make object! [reply-status: status  reply-data: :data]
+]
+
+; The words a path gives: "/api/clients/:id" and "/api/clients/42" -> [id: "42"]; none if they do not match.
+test-match: function [pattern [string!] path [string!]] [
+    want: split pattern #"/"
+    got: split path #"/"
+    if (length? want) <> length? got [return none]
+    words: copy []
+    repeat i length? want [
+        w: pick want i  g: pick got i
+        case [
+            #":" = first w [append words reduce [to set-word! next w  dehex g]]
+            w <> g [return none]
+        ]
+    ]
+    words
+]
+
+test-answer: function [
+    "Called by the host for each request of the app: its status and its body as JSON, or none when serve has no answer for it."
+    method [word!] url [string!] body [string! none!]
+] [
+    path: url
+    query: make map! []
+    if q: find url #"?" [
+        path: copy/part url q
+        foreach part split next q #"&" [
+            kv: split part #"="
+            poke query to word! dehex first kv  either second kv [dehex second kv] [""]
+        ]
+    ]
+    foreach [m pattern b] test-routes [
+        if all [m = method  words: test-match pattern path] [
+            data: all [body  any [attempt [load-json body]  body]]
+            append words compose/only [body: (data) query: (query)]
+            r: do bind copy/deep b make object! words
+            return either all [object? :r  in r 'reply-status] [
+                reduce [r/reply-status  to-json :r/reply-data]
+            ] [
+                reduce [200  to-json :r]
+            ]
+        ]
+    ]
+    none
+]
+
+; --- the faces on show ----------------------------------------------------------
+
+; [face parent ...] of the faces the user sees, in their order on the page
+test-shown: function [] [
+    out: copy []
+    if v: shown-view [test-walk v none out]
+    out
+]
+
+test-walk: function [f parent out] [
+    ; on a wide screen, as the tests see it
+    if any [f/hidden  f/narrow-only] [exit]
+    append out reduce [f parent]
+    unless block? f/pane [exit]
+    either f/style = 'tabs [
+        ; the label of every tab, the faces of the one chosen
+        repeat i length? f/pane [
+            t: pick f/pane i
+            append out reduce [t f]
+            if all [i = f/value  block? t/pane] [foreach c t/pane [test-walk c t out]]
+        ]
+    ] [
+        foreach c f/pane [test-walk c f out]
+    ]
+]
+
+test-route: function [
+    "Called by the host when the page goes back or forward: the screens on show follow the link."
+    parts [block!]
+    /local f p
+] [
+    foreach [f p] test-shown [if f/style = 'screens [return ui-route f parts]]
+]
+
+; What a text of the interface shows: a string, a text per language or a word of the dictionary.
+test-text: func [t] [either any [none? :t  logic? :t] [none] [tr t]]
+
+; The cells of a row of a table or list, as shown.
+test-cells: function [f row /local w label] [
+    collect [
+        foreach [w label] any [f/columns []] [
+            v: select row w
+            unless none? :v [keep either string? :v [v] [localize :v]]
+        ]
+    ]
+]
+
+; Every text on show: of faces, values, errors and rows, and the notices shown.
+test-texts: function [/local f p] [
+    out: copy []
+    foreach [f p] test-shown [
+        foreach t reduce [test-text f/text  test-text f/hint  f/error] [if string? t [append out t]]
+        v: f/value
+        case [
+            string? :v [append out v]
+            find [number money date] f/style [if v [append out localize v]]
+        ]
+        if all [f/style = 'lookup  v] [
+            foreach one either block? v [v] [reduce [v]] [
+                append out either t: all [f/known  select f/known one] [test-text t] [form one]
+            ]
+        ]
+        if all [find [choice radio] f/style  v] [
+            foreach o any [f/options []] [
+                if all [map? o  (form v) = form o/value] [append out test-text o/text]
+            ]
+        ]
+        if all [find [table list] f/style  block? f/data] [
+            foreach row f/data [append out test-cells f row]
+        ]
+    ]
+    append out shown-toasts
+    out
+]
+
+; What a face is called: its label, hint or the text it shows.
+test-called?: function [f what] [
+    either word? what [f/name = what] [
+        any [what = test-text f/text  what = test-text f/hint]
+    ]
+]
+
+; The one face on show of some styles called what; an error naming the action if there is none or more than one.
+test-face: function [action [word!] styles [block!] what /local f p] [
+    found: copy []
+    foreach [f p] test-shown [
+        if all [find styles f/style  test-called? f what] [append found reduce [f p]]
+    ]
+    if empty? found [do make error! rejoin [action ": nothing on the screen is " mold what]]
+    if 2 < length? found [do make error! rejoin [action ": " (length? found) / 2 " faces on the screen are " mold what]]
+    f: first found
+    if any [f/disabled  f/inert  f/readonly] [do make error! rejoin [action ": " mold what " cannot be used now"]]
+    found
+]
+
+; --- what the user does ---------------------------------------------------------
+
+text-styles: [field password number money date area rich]
+
+click: function [
+    "Clicks a button, link, tile, check, toggle or tab, or the row of a table or list that shows a text."
+    what [string! word!] "What it shows, or a field's name"
+    /local f p row
+] [
+    if string? what [
+        ; a row of a table or list
+        foreach [f p] test-shown [
+            if all [find [table list] f/style  block? f/data] [
+                foreach row f/data [
+                    if find test-cells f row what [
+                        if any [f/disabled  f/inert] [do make error! rejoin ["click: " mold what " cannot be used now"]]
+                        ui-select f row
+                        return true
+                    ]
+                ]
+            ]
+        ]
+    ]
+    found: test-face 'click [button link tile check toggle tab] what
+    f: first found
+    switch/default f/style [
+        check toggle [ui-input f not f/value  ui-blur f]
+        tab [
+            tabs: second found
+            ui-input tabs index? find tabs/pane f
+        ]
+        link [
+            case [
+                f/action [ui-click f]
+                any [word? f/value  path? f/value] [go f/value]
+            ]
+        ]
+    ] [ui-click f]
+    true
+]
+
+type: function [
+    "Types a text in a field, then leaves it; an empty text clears it."
+    what [string! word!] "Its label or hint, or its name"
+    text [any-type!] "What to type; a number or date is typed as written"
+] [
+    f: first test-face 'type text-styles what
+    text: either string? :text [text] [form :text]
+    ui-input f either empty? text [none] [text]
+    ui-blur f
+    true
+]
+
+choose: function [
+    "Chooses an option of a choice, radio or lookup by the text it shows."
+    what [string! word!] "Its label, or its name"
+    option [string!]
+    /local o
+] [
+    f: first test-face 'choose [choice radio lookup] what
+    if f/style = 'lookup [
+        ui-lookup-search f option
+        foreach o any [f/options []] [
+            if option = test-text o/text [
+                ui-lookup-pick f o
+                ui-blur f
+                return true
+            ]
+        ]
+        do make error! rejoin ["choose: " mold what " finds no " mold option]
+    ]
+    ; a group of options is a title then a block of them
+    options: collect [
+        opts: any [f/options []]
+        forall opts [
+            case [
+                block? first opts [keep first opts]
+                not block? pick opts 2 [keep/only first opts]
+            ]
+        ]
+    ]
+    foreach o options [
+        if option = either map? o [test-text o/text] [form o] [
+            ui-input f form either map? o [o/value] [o]
+            ui-blur f
+            return true
+        ]
+    ]
+    do make error! rejoin ["choose: " mold what " has no option " mold option]
+]
+
+see: function [
+    "True if a text is on the screen, in a face, a field, a row or a notice; an error otherwise."
+    text [string!]
+    /not "True if it is not on the screen"
+] [
+    there: false
+    foreach t test-texts [if find t text [there: true  break]]
+    if there = to logic! not [
+        do make error! rejoin ["see: " mold text either not [" is on the screen"] [" is not on the screen"]]
+    ]
+    true
+]

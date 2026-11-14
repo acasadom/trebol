@@ -194,8 +194,10 @@ export function startHost(opts: HostOptions = {}): Host {
 export const UI_SOURCE = new URL('../ui/ui.trb', import.meta.url).href;
 /** URL of the languages module (i18n, tr, translated). */
 export const I18N_SOURCE = new URL('../ui/i18n.trb', import.meta.url).href;
+/** URL of the words of screen tests (click, type, see...), which `trebol test` loads. */
+export const TEST_SOURCE = new URL('../ui/test.trb', import.meta.url).href;
 // Trebol's own code: its errors point at the program's call (see LIBRARY_FILES).
-LIBRARY_FILES.add('host').add(UI_SOURCE).add(I18N_SOURCE);
+LIBRARY_FILES.add('host').add(UI_SOURCE).add(I18N_SOURCE).add(TEST_SOURCE);
 
 /** Loads languages and the UI dialect (view, layout, stylize, theme...) into the user context. */
 export function startUi(host: Host): Promise<Cell> {

@@ -1,0 +1,73 @@
+Trebol [title: "Clients: screen tests"]
+
+; What the server knows when each test starts.
+people: [
+    #(id: 1 name: "Ada Lovelace" email: "ada@example.com" phone: "555 0101" kind: "Person")
+    #(id: 2 name: "Acme Ltd" email: "hello@acme.example" phone: none kind: "Company")
+]
+next-id: 3
+
+serve [
+    GET "/api/clients" [people]
+    POST "/api/clients" [
+        client: copy body
+        client/id: next-id
+        next-id: next-id + 1
+        append people client
+        client
+    ]
+    PUT "/api/clients/:id" [
+        foreach c people [if c/id = to integer! id [client: c]]
+        foreach [k v] body [poke client k v]
+        client
+    ]
+    DELETE "/api/clients/:id" [
+        remove-each c people [c/id = to integer! id]
+        none
+    ]
+]
+
+"listing"
+[see "Ada Lovelace"  see "hello@acme.example"]
+
+"searching filters as you type"
+[
+    type "Search" "acme"
+    see "Acme Ltd"
+    see/not "Ada Lovelace"
+]
+
+"adding a client"
+[
+    click "New client"
+    type "Name" "Grace Hopper"
+    type "Email" "grace@example.com"
+    choose "Kind" "Person"
+    click "Save"
+    see "Client added"
+    see "Grace Hopper"
+]
+
+"a client needs a valid email"
+[
+    click "New client"
+    type "Name" "Nobody"
+    type "Email" "nope"
+    see "Enter a valid email address"
+]
+
+"editing and deleting"
+[
+    click "Ada Lovelace"
+    see "Edit client"
+    type "Phone" "555 0199"
+    click "Save"
+    see "Client updated"
+    see "555 0199"
+]
+[
+    click "Acme Ltd"
+    click "Delete"
+    see "Acme Ltd was deleted"
+    see/not "hello@acme.example"
+]

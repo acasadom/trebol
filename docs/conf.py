@@ -53,3 +53,4 @@ def setup(app):
     # Trebol is Rebol's language, so Rebol's highlighter reads it well.
     app.add_lexer("trebol", RebolLexer)
     app.add_lexer("trebol-console", TrebolConsoleLexer)
+    app.add_lexer("trebol-test", RebolLexer)

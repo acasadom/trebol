@@ -1,0 +1,31 @@
+Trebol [title: "Screens for the screen tests"]
+
+view [
+    screens [
+        home "Home" [
+            title "Welcome"
+            link "Settings" 'settings
+            button "Load" [data: fetch "/api/note?q=a%20b"  note/text: data/text]
+            button "Ask" [if confirm "Sure?" [note/text: "Said yes"]]
+            button "Boom" [no-such-word]
+            global note: text "-"
+            tabs [
+                "General" [text "General body"]
+                "Advanced" [check dark "Dark mode" toggle beta "Beta" [note/text: either face/value ["Beta on"] ["Beta off"]]]
+            ]
+        ]
+        settings "Settings" [
+            title "Settings page"
+            radio size "Size" ["Small" "Big"] [note/text: value]
+            choice pet "Pet" ["Animals" [#(value: 1 text: "Cat") #(value: 2 text: "Dog")]] [note/text: value]
+            lookup who "Who" known #(7 "Seven" 8 "Eight") on-search [reduce [#(value: 7 text: "Seven") #(value: 8 text: "Eight")]]
+            global note: text "-"
+            form [
+                field name "Name" "Your name" required
+                number age "Age" min 18
+                submit "Save" [toast "Saved"]
+            ]
+            button "Back" [go-back 'home]
+        ]
+    ]
+]

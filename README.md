@@ -52,6 +52,7 @@ npm install trebol
 npx trebol                # the console: >> 1 + 2 * 3  == 9
 npx trebol dev my-app     # serves the folder my-app, with its app.trb, at http://localhost:5173/
 npx trebol check my-app/app.trb   # the mistakes in its views, without running it
+npx trebol test my-app            # its screen tests (app.test.trb), without a browser
 ```
 
 `node_modules/trebol/editors/vscode` is an extension that colors `.trb` files in Visual Studio Code: copy it

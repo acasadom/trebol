@@ -1,0 +1,56 @@
+Trebol [title: "Screen tests of the fixture"]
+
+serve [
+    GET "/api/note" [make map! reduce ['text rejoin ["Note " query/q]]]
+]
+
+"screens and tabs"
+[
+    see "General body"
+    see/not "Settings page"
+    click "Advanced"
+    see/not "General body"
+    click "Beta"
+    see "Beta on"
+    click "Settings"
+    see "Settings page"
+    click "Back"
+    see "Welcome"
+]
+
+"choices"
+[
+    click "Settings"
+    choose "Size" "Big"
+    see "Big"
+    choose 'pet "Dog"
+    see "2"
+    choose "Who" "Eight"
+    see "Eight"
+]
+
+"forms"
+[
+    click "Settings"
+    type "Your name" "Ana"
+    type 'age 12
+    see "Must be at least 18"
+    type "Age" "21"
+    click "Save"
+    see "Saved"
+]
+
+"the server and the user's answers"
+[click "Load"  see "Note a b"]
+[click "Ask"  see "Said yes"]
+
+"what fails"
+[click "Nothing"]
+[click "Settings"  click "Save"]
+[type "Welcome" "x"]
+[click "Settings"  choose "Size" "Huge"]
+[see "Goodbye"]
+[see/not "Welcome"]
+[click "Boom"]
+[serve [GET "/api/note" [reply 500 none]]  click "Load"]
+[1 + 1]

@@ -12,13 +12,17 @@
 // - ```trebol-ui blocks are apps, shown live under their code: each runs on its
 //   own, with the UI dialect loaded, and must draw its view without an error.
 //   As in the browser, the workshop's pretend server answers its requests to /api/.
+// - ```trebol-test blocks are screen tests of the last ```trebol-ui app before
+//   them: `trebol test` runs them, as app.test.trb next to it, and all must pass.
 //
 // The tutorial's parts supplier (docs/_servers/supplier.ts) runs while the pages do,
 // unless one already answers on its port.
 
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { spawnSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { basename, dirname, join, relative } from 'node:path';
 import type { Server } from 'node:http';
@@ -31,6 +35,7 @@ import { startSupplier } from '../docs/_servers/supplier.ts';
 import { installWorkshop } from '../docs/_servers/workshop.ts';
 
 const DOCS = fileURLToPath(new URL('../docs/', import.meta.url));
+const ROOT = join(DOCS, '..');
 
 // what the browser host does, done here without a page: a view is drawn, nothing more
 let shown = 0;
@@ -71,7 +76,7 @@ interface Block { lang: string; code: string; line: number }
 
 function blocks(md: string): Block[] {
   const found: Block[] = [];
-  const re = /^```(trebol|trebol-console|trebol-ui|js)[ \t]*\n([\s\S]*?)^```[ \t]*$/gm;
+  const re = /^```(trebol|trebol-console|trebol-ui|trebol-test|js)[ \t]*\n([\s\S]*?)^```[ \t]*$/gm;
   for (let m = re.exec(md); m; m = re.exec(md)) {
     found.push({ lang: m[1]!, code: m[2]!, line: md.slice(0, m.index).split('\n').length });
   }
@@ -129,6 +134,15 @@ async function runApp(code: string, where: string): Promise<void> {
   assert.deepEqual(drawErrors(root!), [], `${where}: a canvas cannot draw`);
 }
 
+/** Runs a page's screen tests on its app with `trebol test`, in a process of its own: its host is not this file's. */
+function runScreenTests(app: string, tests: string, where: string): void {
+  const dir = mkdtempSync(join(tmpdir(), 'trebol-docs-test-'));
+  writeFileSync(join(dir, 'app.trb'), app);
+  writeFileSync(join(dir, 'app.test.trb'), tests);
+  const run = spawnSync(process.execPath, [join(ROOT, 'tools', 'cli.ts'), 'test'], { cwd: dir, encoding: 'utf8' });
+  assert.equal(run.status, 0, `${where}: the screen tests fail:\n${run.stdout}${run.stderr}`);
+}
+
 // no DOM here: an example's custom element is defined, never drawn
 const g = globalThis as { HTMLElement?: unknown; customElements?: unknown };
 g.HTMLElement ??= class {};
@@ -149,11 +163,15 @@ for (const page of pages(DOCS)) {
   test(`docs: ${name}`, async () => {
     const md = readFileSync(page, 'utf8');
     const repl = new Repl(consoleHost(dirname(page)));
+    let app = '';
     for (const b of blocks(md)) {
       const where = `${name}:${b.line}`;
       const file = /^(?:;|\/\/) file: (\S+)\n/.exec(b.code);
       if (b.lang === 'trebol-ui') {
         await runApp(b.code, where);
+        app = b.code;
+      } else if (b.lang === 'trebol-test') {
+        runScreenTests(app, b.code, where);
       } else if (b.lang === 'trebol-console') {
         await typeIn(repl, b.code, where);
       } else if (file !== null) {

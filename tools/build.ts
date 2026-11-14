@@ -36,9 +36,10 @@ const sources: Plugin = {
         resolveDir: ROOT,
         loader: 'js',
         contents: `import { addBuiltIn } from './src/host/modules.ts';
-import { UI_SOURCE, I18N_SOURCE } from './src/host/index.ts';
+import { UI_SOURCE, I18N_SOURCE, TEST_SOURCE } from './src/host/index.ts';
 addBuiltIn(UI_SOURCE, ${text('ui.trb')});
-addBuiltIn(I18N_SOURCE, ${text('i18n.trb')});`,
+addBuiltIn(I18N_SOURCE, ${text('i18n.trb')});
+addBuiltIn(TEST_SOURCE, ${text('test.trb')});`,
       };
     });
   },

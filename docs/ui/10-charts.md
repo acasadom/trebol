@@ -129,9 +129,7 @@ reader reads every chart as a table of the same numbers. A chart with no rows sa
 `chart/data: rows` draws it again, so a chart that follows a server is a `fetch` and an assignment, as the
 workshop board was on the last page.
 
-## Where to go from here
+## What's next
 
-The screens of this tutorial are the pieces of a whole app: forms, tables, dialogs, screens with links, a
-theme, two languages and a server. `examples/clients` puts them together in a list of
-clients that are added, searched, changed and removed on a server. In Trebol's folder, `npm run dev` serves it,
-server included, on http://localhost:5173/examples/clients/.
+The app draws now. The [last page](11-testing) makes sure it keeps doing what it does: tests that click, type
+and check the screen as a person would, after every change.

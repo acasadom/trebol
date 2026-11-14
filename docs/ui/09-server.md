@@ -232,4 +232,4 @@ is known: `done` and `total` are then the bytes that came.
 
 ## What's next
 
-The bookings live on a server now. The last page draws: the shop's logo, and its takings as charts.
+The bookings live on a server now. The next page draws: the shop's logo, and its takings as charts.

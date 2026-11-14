@@ -41,6 +41,11 @@ test('the installed command runs a script and serves an app', async () => {
   const checked = spawnSync(process.execPath, [cli, 'check'], { encoding: 'utf8', cwd: join(project, 'app') });
   assert.equal(checked.stdout, 'No problems.\n');
   assert.equal(checked.status, 0);
+  // and so does test, with the words of screen tests
+  writeFileSync(join(project, 'app', 'app.test.trb'), 'Trebol []\n"greeting"\n[see "hi"]\n');
+  const tested = spawnSync(process.execPath, [cli, 'test'], { encoding: 'utf8', cwd: join(project, 'app') });
+  assert.equal(tested.stdout, 'ok    app.test.trb:3:1  greeting\n1 test, all passed.\n');
+  assert.equal(tested.status, 0);
   const dev = spawn(process.execPath, [cli, 'dev', 'app', '--port', '0'], { cwd: project });
   try {
     const line = await new Promise<string>((ok, fail) => {
