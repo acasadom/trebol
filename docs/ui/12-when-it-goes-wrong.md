@@ -20,15 +20,16 @@ view [
 
 ```text
 ** Script error: book-in has no value
-** Where: ui-click
+** Where: action of button "Book in"
 ** Near: [book-in]
 ** At: http://localhost:5173/app.trb:5:27
 ```
 
 Read it from the top. The first line is what went wrong: `book-in` is a word that holds nothing, mistyped
 or never defined. *Near* is the code around the place, as you wrote it. *At* is the file, line and column:
-line 5, column 27, where `book-in` starts. *Where* names the function that was running; `ui-click` is
-Trebol running the action of a button, and it matters less than *At*.
+line 5, column 27, where `book-in` starts. *Where* says what was running: the action of the button *Book in*.
+An error inside a function of yours names that function instead, and an error in an event names it with its
+face: `on-change of field email "Email"`.
 
 The other errors you will meet most read the same way:
 

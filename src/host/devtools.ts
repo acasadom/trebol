@@ -11,7 +11,7 @@
 
 import {
   K, NONE, load, LoadError, bindSeries, scriptStart, mold, form, ctxFind, intern, spell,
-  type Cell, type ObjectCell, type WordCell, type BlockCell, type Ctx,
+  type Cell, type ObjectCell, type WordCell, type BlockCell, type Ctx, type Runtime,
 } from '../core/index.ts';
 import { spawn, taskResult } from './scheduler.ts';
 import { output, report, translate, type Host } from './index.ts';
@@ -114,12 +114,12 @@ function short(s: string, most = 80): string {
   return line.length > most ? line.slice(0, most - 1) + '…' : line;
 }
 
-/** How a face is named in the tree and the log: its style, name and text. */
-function faceRef(face: ObjectCell): string {
+/** How a face is named in the tree, the log and errors: its style, name and text (`field email "Email"`). */
+export function faceRef(face: ObjectCell, rt: Runtime): string {
   const style = wordText(get(face, 'style')) ?? 'face';
   const name = wordText(get(face, 'name'));
   const t = get(face, 'text');
-  const shown = t.t === K.None ? null : t.t === K.String || t.t === K.Map || t.t === K.Word ? translate(t, side.host.rt) : form(t);
+  const shown = t.t === K.None ? null : t.t === K.String || t.t === K.Map || t.t === K.Word ? translate(t, rt) : form(t);
   return [style, name, shown !== null && shown !== '' ? `"${short(shown, 40)}"` : null].filter(x => x !== null).join(' ');
 }
 
@@ -318,7 +318,7 @@ function hook(): void {
       rest = [];
     }
     const shown = rest.length > 0 && rest[0]!.t !== K.Object ? ' ' + short(mold(rest[0]!), 60) : '';
-    log('event', `${what} · ${faceRef(face)}${shown}`, `${fn} ${faceKey(face)}`);
+    log('event', `${what} · ${faceRef(face, side.host.rt)}${shown}`, `${fn} ${faceKey(face)}`);
   };
   devLog.request = (verb, url, status, ms, problem) => {
     let where = url;
@@ -354,7 +354,7 @@ function refresh(): void {
     drawTree();
     drawDetail();
   }
-  consoleFace.textContent = picked !== null ? `face: ${faceRef(picked)}` : 'face: none (pick one in Faces)';
+  consoleFace.textContent = picked !== null ? `face: ${faceRef(picked, side.host.rt)}` : 'face: none (pick one in Faces)';
 }
 
 // --- faces ---------------------------------------------------------------------------
@@ -395,7 +395,7 @@ function drawTree(): void {
   const top = tree.scrollTop;
   tree.replaceChildren();
   for (const { face, el: node, depth } of facesOnPage()) {
-    const row = button('tb-dev-node', faceRef(face), () => pick(face));
+    const row = button('tb-dev-node', faceRef(face, side.host.rt), () => pick(face));
     row.style.paddingLeft = `${8 + depth * 14}px`;
     if (face.ctx === picked?.ctx) row.setAttribute('aria-current', 'true');
     if ((node as HTMLElement).offsetParent === null && getComputedStyle(node).position !== 'fixed') row.classList.add('tb-dev-unseen');
@@ -412,7 +412,7 @@ function drawDetail(): void {
     return;
   }
   const f = picked;
-  const title = el('h3', undefined, faceRef(f));
+  const title = el('h3', undefined, faceRef(f, side.host.rt));
   detail.append(title);
   const where = placeOf(f);
   if (where !== null) {

@@ -31,7 +31,7 @@ import { drawSvg, type El } from './draw.ts';
 import { rowField, groupRow, sortGroups, rowWindow, DRAW_ALL_UP_TO } from './rows.ts';
 import { chartSvg, SERIES_COLORS, pieColor, type ChartKind, type Series } from './chart.ts';
 import { devLog } from './devlog.ts';
-import { startDevtools, inDevtools } from './devtools.ts';
+import { startDevtools, inDevtools, faceRef } from './devtools.ts';
 
 // --- reading faces -----------------------------------------------------------------
 
@@ -225,6 +225,26 @@ let nextId = 1;
 
 const ACTIVE: ReadonlySet<number> = new Set([K.Word, K.SetWord, K.GetWord, K.Paren, K.Path, K.SetPath, K.GetPath, K.Function, K.Native]);
 
+/** The handler each UI event function runs, to name it in an error; the others go by their own name. */
+const HANDLERS: Record<string, string> = {
+  'ui-click': 'action', 'ui-input': 'on-change', 'ui-files': 'on-change', 'ui-remove-file': 'on-change',
+  'ui-lookup-pick': 'on-change', 'ui-lookup-remove': 'on-change', 'ui-lookup-search': 'on-search',
+  'ui-select': 'on-select', 'ui-sort': 'on-sort', 'ui-drop': 'on-drop', 'ui-menu': 'on-menu',
+  'ui-reorder': 'on-reorder', 'ui-expand': 'on-expand', 'ui-close': 'on-close',
+};
+
+/**
+ * An error of a UI event function says where in the app it happened: `action of button "Save"`, not the
+ * name of Trebol's own function (ui-click) that ran it.
+ */
+function whereInApp(e: ObjectCell, fn: string, face: ObjectCell, args: Cell[]): void {
+  const i = ctxFind(e.ctx, intern('where'));
+  const w = i < 0 ? null : e.ctx.vals[i]!;
+  if (w === null || w.t !== K.Word || spell((w as WordCell).sym) !== fn) return;
+  const ev = fn === 'ui-event' && args[0] !== undefined && args[0].t === K.LitWord ? spell((args[0] as WordCell).sym) : null;
+  e.ctx.vals[i] = string(`${ev ?? HANDLERS[fn] ?? fn.replace(/^ui-/, '')} of ${faceRef(face, host.rt)}`);
+}
+
 /**
  * Runs a UI event function (ui-input, ui-blur, ui-click) as a new task. An error is shown and gives none, so
  * what the caller does next (focus the first problem, blur) still runs and nothing is left unhandled.
@@ -235,6 +255,7 @@ function fire(fn: string, face: ObjectCell, ...args: Cell[]): Promise<Cell> {
   const call: Cell[] = [{ t: K.Word, sym: intern(fn), bind: host.rt.user }, face, ...args.flatMap(a => ACTIVE.has(a.t) ? [quote, a] : [a])];
   devLog.event(fn, face, args);
   return taskResult(spawn(host.sch, { data: call }, 0)).catch((e: unknown) => {
+    if ((e as Cell).t === K.Error) whereInApp(e as ObjectCell, fn, face, args);
     showError(report(e as ObjectCell));
     return NONE;
   });
