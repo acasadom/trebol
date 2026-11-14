@@ -1,0 +1,9 @@
+Trebol [title: "Screen tests of going back"]
+
+"back goes one step"
+[
+    click "Next"
+    click "Next"
+    click "Back"
+    see "Second page"
+]

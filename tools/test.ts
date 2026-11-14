@@ -83,16 +83,18 @@ native('route-steps', '["How many steps back and forward the history has." ]', (
   value(blockOf(K.Block, [page.at, page.history.length - 1 - page.at].map(n => ({ t: K.Integer, v: n }) as Cell))));
 
 /** Goes by steps in the history, and waits for the screen of the link it lands on, as the browser's back does. */
-function step(by: number): ReturnType<Parameters<typeof native>[2]> {
+function step(f: Parameters<Parameters<typeof native>[2]>[1], by: number): ReturnType<Parameters<typeof native>[2]> {
   const to = page.at + by;
   if (to < 0 || to >= page.history.length || page.host === null) return value({ t: K.Logic, v: false });
   page.at = to;
   const host = page.host;
+  // the native is called again with the result once the screen is shown
+  f.phase = 1;
   const t = spawn(host.sch, { data: [word(host, 'test-route'), strings(page.history[to]!)] }, 0);
   return { k: 'await', p: taskResult(t).then(() => ({ t: K.Logic, v: true }) as Cell) };
 }
-native('route-back', '["Goes one step back in the history." ]', () => step(-1));
-native('route-forward', '["Goes one step forward in the history." ]', () => step(1));
+native('route-back', '["Goes one step back in the history." ]', (_t, f, v) => (f.phase === 1 ? value(v!) : step(f, -1)));
+native('route-forward', '["Goes one step forward in the history." ]', (_t, f, v) => (f.phase === 1 ? value(v!) : step(f, 1)));
 
 /** The app's requests, answered by test-answer from what serve was given. */
 async function answer(input: string | URL | Request, init: RequestInit = {}): Promise<Response> {

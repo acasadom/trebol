@@ -1,0 +1,9 @@
+Trebol [title: "Three screens one after another"]
+
+view [
+    screens [
+        one "One" [title "First page" link "Next" 'two]
+        two "Two" [title "Second page" link "Next" 'three]
+        three "Three" [title "Third page" button "Back" [go-back 'one]  button "Forward" [go-forward]]
+    ]
+]
