@@ -435,7 +435,7 @@ build-faces: function [
                 f/style = 'canvas [f/draw: b]
                 f/style = 'tabs [f/pane: tabs-of b labels]
                 f/style = 'screens [f/data: screens-of b]
-                find [choice radio] f/style [f/options: options-of b]
+                all [find [choice radio] f/style  none? f/options] [f/options: options-of b]
                 true [f/action: b]
             ]
         )

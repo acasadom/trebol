@@ -134,6 +134,16 @@ describe('layout', () => {
     assert.equal(r, '[3 ["Person" "Company"]]');
   });
 
+  test('a second block after the options of a choice or radio is its action, not run while laid out', async () => {
+    const r = await ev(`ran: false
+      root: view [radio size "Size" ["S" "L"] [ran: value] choice c "C" ["a"] [ran: true]]
+      r: first root/pane
+      a: reduce [ran r/options block? r/action]
+      ui-input r "L"
+      append a ran`);
+    assert.equal(r, '[false ["S" "L"] true "L"]');
+  });
+
   test('a title followed by a block is a group of options, reduced like the rest', async () => {
     const r = await ev(`city: "City"
       root: view [choice bike "Bike" ["Adults" ["Road" city] #(en: "Children" es: "Niños") ["Child's"] "Other"]]
