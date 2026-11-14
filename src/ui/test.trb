@@ -1,6 +1,6 @@
 Trebol [
     title: "Screen tests: what a user does, without a browser"
-    exports: [serve reply click type choose pick-menu press say see test-answer test-route]
+    exports: [serve reply click type choose pick-menu drag press say see test-answer test-route]
 ]
 
 ; `trebol test` runs every block of an app.test.trb on the app started anew,
@@ -307,6 +307,72 @@ pick-menu: function [
         ]
     ]
     ui-menu f found row
+    true
+]
+
+; [face row index ...] of the rows of the tables and lists on show that show a text.
+test-rows: function [what /local f p] [
+    out: copy []
+    if string? what [
+        foreach [f p] test-shown [
+            if all [find [table list] f/style  block? f/data] [
+                repeat i length? f/data [
+                    if find test-cells f pick f/data i what [append out reduce [f  pick f/data i  i]]
+                ]
+            ]
+        ]
+    ]
+    out
+]
+
+drag: function [
+    "Drags a face, or the row of a table or list that shows a text, onto another: in a list that can be reordered it takes that place, else it is dropped on it."
+    what [string! word!] "What the face or row shows, or a face's name"
+    onto [string! word!] "The place it goes: a face, or the row it goes before"
+    /local f p row i
+] [
+    shown: test-shown
+    styles: collect [foreach [f p] shown [keep f/style]]
+    ; what is dragged: its face, what it carries, where it is, and the face it moves in
+    either not empty? rows: test-rows what [
+        set [from payload index] rows
+        ; rows the user sorted by a header are not in the order of their data
+        sorted: all [from/sortable  from/sorted  not all [from/events  select from/events 'on-sort]]
+        within: all [from/reorder  not sorted  from]
+        unless any [from/drag  within] [do make error! rejoin ["drag: the rows of " mold what " cannot be dragged"]]
+    ] [
+        set [from p] test-face 'drag styles what
+        payload: from/value
+        within: all [p  p/reorder  not find [table list tree] p/style  p]
+        index: all [within  index? find/same within/pane from]
+        unless any [from/drag  within] [do make error! rejoin ["drag: " mold what " cannot be dragged"]]
+    ]
+    ; moved to another place among its own
+    if within [
+        place: none
+        either find [table list] within/style [
+            foreach [f row i] test-rows onto [if same? f within [place: i  break]]
+        ] [
+            foreach c within/pane [if all [not c/hidden  test-called? c onto] [place: index? find/same within/pane c  break]]
+        ]
+        if place [
+            ui-reorder within index place none
+            return true
+        ]
+    ]
+    ; dropped on a face, or before a row of one
+    zone: none
+    ; foreach keeps its words to itself
+    foreach [f row i] test-rows onto [if f/drop [zone: f  at: i  break]]
+    either zone [
+        if same? zone from [do make error! rejoin ["drag: " mold what " is already in " mold onto]]
+    ] [
+        zone: first test-face 'drag styles onto
+        unless zone/drop [do make error! rejoin ["drag: " mold onto " takes nothing dropped"]]
+        if test-inside? zone from shown [do make error! rejoin ["drag: " mold what " cannot go into itself"]]
+        at: 1 + length? either find [table list tree] zone/style [any [zone/data []]] [any [zone/pane []]]
+    ]
+    ui-drop zone :payload from at none
     true
 ]
 

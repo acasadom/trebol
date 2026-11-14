@@ -154,3 +154,24 @@ test('pick-menu chooses an item of a button, a face or a row of a table, and of 
     '8 tests, 4 failed.',
   ]);
 });
+
+test('drag moves a row or a face to the place of another, or drops it on a face or before a row', async () => {
+  const { lines } = await ran(['test/fixtures/screens/drag.test.trb']);
+  const at = (l: string): string => l.replace(/\S*test\/fixtures\/screens\//g, '');
+  assert.deepEqual(lines.map(at).filter(l => !/\*\* (Where|Near):/.test(l)), [
+    'ok    drag.test.trb:4:1  drag',
+    'ok    drag.test.trb:9:1  drag',
+    'ok    drag.test.trb:13:1  drag',
+    'ok    drag.test.trb:17:1  drag',
+    'ok    drag.test.trb:21:1  drag',
+    'ok    drag.test.trb:25:1  drag',
+    'FAIL  drag.test.trb:29:1  drag',
+    '        ** User error: drag: "Still" cannot be dragged',
+    '        ** At: drag.test.trb:29:2',
+    'FAIL  drag.test.trb:30:1  drag',
+    '        ** User error: drag: "Still" takes nothing dropped',
+    '        ** At: drag.test.trb:30:2',
+    'ok    drag.test.trb:31:1  drag',
+    '9 tests, 2 failed.',
+  ]);
+});

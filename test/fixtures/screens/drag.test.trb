@@ -1,0 +1,34 @@
+Trebol [title: "Screen tests of drag"]
+
+"drag"
+[
+    drag "Rest" "Write"
+    see "Moved 3 to 1"
+    todo/data/1/task = "Rest"
+]
+[
+    drag "Write" "Rest"
+    todo/data/3/task = "Write"
+]
+[
+    drag "Shop" "Inbox"
+    see "Inbox got Shop from list"
+]
+[
+    drag "Shop" "Call"
+    see "Later got Shop at 2"
+]
+[
+    drag "Blue" "Red"
+    see "Card 3 to 1"
+]
+[
+    drag "Red" "Trash"
+    see "Trash got none at 1"
+]
+[drag "Still" "Inbox"]
+[drag "Shop" "Still"]
+[
+    drag "Write" "Inbox"
+    see "Inbox got Write from table"
+]

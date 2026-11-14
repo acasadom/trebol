@@ -1,0 +1,21 @@
+Trebol [title: "Dragging rows and faces, to reorder or to drop"]
+
+view [
+    said: text "Nothing yet"
+    global table todo [task "Task"] reorder
+        on-reorder [said/text: rejoin ["Moved " event/from " to " event/to]]
+    global list done [task "Done"] drag
+    row [
+        tile "Inbox" drop on-drop [said/text: rejoin ["Inbox got " event/dropped/task " from " event/source/style]]
+        tile "Trash" drop on-drop [said/text: rejoin ["Trash got " mold event/dropped " at " event/index]]
+    ]
+    global list later [task "Later"] drop on-drop [said/text: rejoin ["Later got " event/dropped/task " at " event/index]]
+    cards: row reorder on-reorder [said/text: rejoin ["Card " event/from " to " event/to]] [
+        tile "Red" tile "Green" tile "Blue"
+    ]
+    text "Still"
+]
+
+todo/data: [#(task: "Write") #(task: "Read") #(task: "Rest")]
+done/data: [#(task: "Shop")]
+later/data: [#(task: "Paint") #(task: "Call")]
