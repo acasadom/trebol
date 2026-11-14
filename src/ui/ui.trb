@@ -3,7 +3,7 @@ Trebol [
     exports: [
         face styles stylize layout view theme looks open close toast confirm print-page
         validate-face field-error form-values set-values insert-text ui-pane ui-input ui-files ui-remove-file ui-lookup-search ui-lookup-pick ui-lookup-remove ui-blur ui-click ui-select ui-sort ui-close ui-event ui-menu ui-drop ui-reorder ui-crumb ui-expand
-        go go-back go-forward can-go-back? can-go-forward? unsaved unsaved? ui-route set-language ui-rows ui-check
+        go go-back go-forward can-go-back? can-go-forward? unsaved unsaved? ui-route set-language ui-rows ui-check ui-react
     ]
 ]
 
@@ -62,7 +62,7 @@ face: make object! [
     links: none         ; a lookup: the screen each value links to when readonly, a map
     query: none         ; a lookup: the text last searched for
     currency: none      ; a money field's currency code: EUR
-    calc: none          ; a formula: the value comes from it and the user cannot change it
+    reactions: none     ; react, is and calc: a block of reaction objects
     template: none      ; rows: the block of the fields of one row
     built: none         ; rows: what its rows were last made from
     owner: none         ; a row of rows: the rows face it belongs to
@@ -139,7 +139,7 @@ flags: [fill fit hidden disabled readonly inert narrow-only wide-only linked rou
 chart-kinds: [bar line area pie]
 simple-rules: [required email url integer]
 letter: charset [#"a" - #"z" #"A" - #"Z"]
-rule-words: [min max length pattern match check check-async calc width pad gap menu accept known links sorted poster captions]
+rule-words: [min max length pattern match check check-async calc react is width pad gap menu accept known links sorted poster captions]
 media-styles: [video audio]
 media-flags: [loop muted autoplay]   ; of a video or a sound
 
@@ -271,7 +271,7 @@ ui-fail: function [found [block!] /local place m] [
 ; What a rule word takes, for a problem when what follows it is something else.
 ui-takes: [
     min "a number, an amount or a date"  max "a number, an amount or a date"  length "two integers"
-    pattern "a block"  check "a block"  check-async "a block"  calc "a block"  accept "a block"
+    pattern "a block"  check "a block"  check-async "a block"  calc "a block"  react "a block, after later or not"  is "a block"  accept "a block"
     menu "a block"  sorted "a block"  known "a map"  links "a map"  match "the name of a field"
     poster "a file or a url"  captions "a file, a url or a block"  width "small, medium, large or fill"
     pad "a step from 0 to 7, none or wide"  gap "a step from 0 to 7, none or wide"  key "a text or a word"
@@ -399,7 +399,7 @@ text-of: func [t] [either lit-word? :t [to word! t] [t]]
 ; The faces of a block of the dialect; labels collects [word face ...].
 build-faces: function [
     spec [block!] labels [block!]
-    /local label global? style-word f proto n s b w a i v ev p pos
+    /local label global? style-word f proto n s b w a i v ev p pos later
 ] [
     out: copy []
     ; what starts the next face
@@ -463,7 +463,9 @@ build-faces: function [
         | 'match set w word! (add-rule f reduce ['match w])
         | 'check set b block! (add-rule f reduce ['check b])
         | 'check-async set b block! (add-rule f reduce ['check-async b])
-        | 'calc set b block! (f/calc: b  f/readonly: true)
+        | 'calc set b block! (add-reaction f 'calc b false  f/readonly: true)
+        | 'is set b block! (add-reaction f 'is b false)
+        | 'react (later: false) opt ['later (later: true)] set b block! (add-reaction f 'react b later)
         | 'width set w word! (f/size: w)
         | pos: set w ['pad | 'gap] [set n integer! | 'none (n: 0) | 'wide (n: 6)] (poke f w spacing n pos)
         | 'menu set b block! (f/menu: menu-of b)
@@ -1092,23 +1094,168 @@ ui-rows: function [
     refresh-form any [f/form f/root]
 ]
 
-; Gives calculated fields their value, again while one depends on another.
-recalc: function [scope] [
-    faces: own-faces scope
-    loop 5 [
-        again: false
-        foreach f faces [
-            if f/calc [
-                v: attempt [run-handler f f/calc]
-                unless :v = f/value [
-                    f/value: :v
-                    store-around f
-                    again: true
-                ]
+; --- reactions -------------------------------------------------------------------
+;
+; `react [...]` after a face runs the block when the face is shown, and again
+; whenever a facet it reads changes: `total/text`, `face/value`, `values/qty`.
+; Which facets it reads is found by reading the block, not by running it. The
+; host checks them at the end of each round, before it repaints, against what
+; they were when the block last ran. `is [...]` gives the face's main facet what
+; the block gives, and `calc [...]` its value, which the user cannot change.
+
+reaction: make object! [
+    kind: 'react        ; react, is or calc
+    body: none
+    later: false        ; runs on a change only, not when the face is shown
+    sources: none       ; the [face facet ...] it reads, found the first time it is checked
+    targets: none       ; the [face facet ...] it sets, so that it runs before what reads them
+    last: none          ; what its sources were when it last ran
+]
+
+add-reaction: function [f k b l] [
+    unless f/reactions [f/reactions: copy []]
+    append f/reactions make reaction [kind: k  body: b  later: l]
+]
+
+value-styles: append copy input-styles [progress image video audio]
+
+; The facet `is` sets: data for a table, list, tree or chart, a canvas's draw,
+; an input's value, and text for the rest.
+main-facet: func [f] [
+    case [
+        find data-styles f/style ['data]
+        f/style = 'canvas ['draw]
+        find value-styles f/style ['value]
+        true ['text]
+    ]
+]
+
+face?: func [v] [all [object? :v  in v 'style  in v 'pane]]
+
+; Puts in out the face and facet a path names: name/facet (a label), face/facet
+; (the face itself), values/field (the value of the field of that name).
+react-path: function [f p out [block!]] [
+    w: first p
+    unless all [word? :w  word? pick p 2] [exit]
+    facet: second p
+    g: case [
+        w = 'face [f]
+        w = 'values [facet: 'value  attempt [find-named f second p]]
+        true [attempt [get w]]
+    ]
+    if all [face? :g  in g facet] [append out reduce [g facet]]
+]
+
+react-scan: function [f b [block! paren!] sources [block!] targets [block!] /local v] [
+    foreach v b [
+        case [
+            any [block? :v  paren? :v] [react-scan f v sources targets]
+            any [path? :v  get-path? :v] [react-path f v sources]
+            set-path? :v [react-path f v targets]
+        ]
+    ]
+]
+
+react-now: function [r /local g facet] [
+    out: copy []
+    foreach [g facet] r/sources [append/only out select g facet]
+    out
+]
+
+; Faces compare by content, so finding one in a block needs same?.
+find-same: function [b [block!] v] [
+    foreach x b [if same? x v [return true]]
+    false
+]
+
+react-due?: func [r] [not strict-equal? r/last react-now r]
+
+; True if a reaction sets something b reads.
+feeds?: function [a b /local g m h n] [
+    foreach [g m] a/targets [
+        foreach [h n] b/sources [if all [same? g h  m = n] [return true]]
+    ]
+    false
+]
+
+react-run: function [f r] [
+    if r/kind = 'react [
+        run-handler f r/body
+        exit
+    ]
+    m: either r/kind = 'calc ['value] [main-facet f]
+    ; a formula that fails, or lacks a value, leaves the field empty
+    v: either r/kind = 'calc [attempt [run-handler f r/body]] [run-handler f r/body]
+    unless strict-equal? :v select f m [
+        poke f m :v
+        if m = 'value [store-around f]
+    ]
+]
+
+ui-react: function [
+    "Called by the host at the end of each round: runs the reactions of the faces whose facets they read changed. Gives the cycles it cut, as texts."
+    faces [block! object!] "The faces, or a face to take every face in it"
+    /local f r
+] [
+    if object? faces [faces: all-faces faces]
+    fs: copy []
+    rs: copy []
+    foreach f faces [
+        foreach r any [select f 'reactions []] [
+            unless r/sources [
+                r/sources: copy []
+                r/targets: copy []
+                react-scan f r/body r/sources r/targets
+                if r/kind <> 'react [append r/targets reduce [f either r/kind = 'calc ['value] [main-facet f]]]
+                ; none is never a list of values: due, so it runs when shown
+                r/last: either r/later [react-now r] [none]
+            ]
+            append fs f
+            append rs r
+        ]
+    ]
+    cut: copy []
+    failed: none
+    ; a second cascade, for what the forms changed after the first (an error, a disabled submit)
+    loop 2 [
+        ran: copy []
+        forever [
+            due: copy []
+            repeat i length? rs [if all [not find ran i  react-due? pick rs i] [append due i]]
+            if empty? due [break]
+            ; the first that no other one due feeds; if they all feed each other, the first
+            i: first due
+            foreach j due [
+                ok: true
+                foreach k due [if all [k <> j  feeds? pick rs k pick rs j] [ok: false  break]]
+                if ok [i: j  break]
+            ]
+            r: pick rs i
+            e: try [react-run pick fs i r  none]
+            if all [error? :e  not failed] [failed: :e]
+            r/last: react-now r
+            append ran i
+        ]
+        if empty? ran [break]
+        ; what reads again what changed after it ran is in a cycle: it waits for the next change
+        foreach i ran [
+            r: pick rs i
+            if react-due? r [
+                where: loaded-at r/body
+                append cut rejoin [either where [rejoin [where " "]] [""] r/kind ": left out, what it reads changed again after it ran (a cycle)"]
+                r/last: react-now r
             ]
         ]
-        unless again [break]
+        scopes: copy []
+        foreach i ran [
+            f: pick fs i
+            s: any [f/form f/root]
+            if all [s  not find-same scopes s] [append scopes s]
+        ]
+        foreach s scopes [refresh-form s]
     ]
+    if failed [do :failed]
+    cut
 ]
 
 ; --- validation ------------------------------------------------------------------
@@ -1223,7 +1370,6 @@ refresh-form: function [scope] [
     ; the fields of a row count for the form its rows are in
     while [all [scope  scope/style = 'entry]] [scope: any [scope/form scope/root]]
     unless all [scope  find [form view] scope/style] [exit]
-    recalc scope
     ok: true
     faces: own-faces scope
     foreach f faces [

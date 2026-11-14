@@ -20,7 +20,7 @@ import { logic,
   type Cell, type MapCell, type ObjectCell, type BlockCell, type WordCell, type StringCell, type Ctx, type Sym,
 } from '../core/index.ts';
 import { mapAt, startHost, startUi, runSource, report, shown, translate, uiText, activeLanguage, editLocal, readLocal, readDate, weekStart, fileSize, LOCAL_KINDS, type Host } from './index.ts';
-import { spawn, taskResult, handleOf } from './scheduler.ts';
+import { spawn, runNow, taskResult, handleOf, type HostTask } from './scheduler.ts';
 import { themeCss, DEFAULT_THEME, LOOKS, THEME_WORDS, type ThemeParams } from './theme.ts';
 import { iconNode } from './icons.ts';
 import { interCss } from './fonts.ts';
@@ -214,6 +214,11 @@ const rowOf = new WeakMap<Element, Cell>();
 const byCtx = new WeakMap<Ctx, Mounted>();
 /** Contexts of mounted faces written since the last repaint (filled by the core). */
 const dirty: Ctx[] = [];
+/** Mounted faces with react, is or calc; and whether one came since reactions last ran. */
+const reactors = new Set<Mounted>();
+let newReactor = false;
+/** The ui-react still running because a reaction waits (a fetch); the next one waits for it. */
+let reacting: HostTask | null = null;
 let nextId = 1;
 
 const ACTIVE: ReadonlySet<number> = new Set([K.Word, K.SetWord, K.GetWord, K.Paren, K.Path, K.SetPath, K.GetPath, K.Function, K.Native]);
@@ -418,6 +423,10 @@ function build(face: ObjectCell): HTMLElement {
   if (m.input !== null) byNode.set(m.input, m);
   byCtx.set(face.ctx, m);
   face.ctx.watch = dirty;
+  if (get(face, 'reactions').t === K.Block) {
+    reactors.add(m);
+    newReactor = true;
+  }
   listen(m, style);
   sync(m);
   return node;
@@ -3986,6 +3995,32 @@ function setExtra(e: HTMLElement, cls: string[]): void {
   e.dataset['tb'] = cls.join(' ');
 }
 
+/**
+ * Runs the reactions whose facets changed in this round, at once, so the repaint
+ * that follows shows them: ui-react, given the faces on the page that have any.
+ */
+function react(): void {
+  for (const m of reactors) if (!m.el.isConnected && comingScreen?.contains(m.el) !== true) reactors.delete(m);
+  if (reacting !== null || reactors.size === 0 || (dirty.length === 0 && !newReactor)) return;
+  newReactor = false;
+  const faces = blockOf(K.Block, [...reactors].map(m => m.face));
+  const ht = runNow(host.sch, { data: [{ t: K.Word, sym: intern('ui-react'), bind: host.rt.user }, faces] }, 0);
+  const warn = (t: HostTask) => {
+    if (t.state !== 'done' || t.result.t !== K.Block) return;
+    for (const c of (t.result as BlockCell).s.data) console.warn(`Trebol: ${text(c as StringCell)}`);
+  };
+  if (ht.state === 'done') warn(ht);
+  else if (ht.state !== 'failed') {
+    reacting = ht;
+    ht.watchers.push(t => {
+      reacting = null;
+      // what changed while it waited is checked at the end of this round
+      newReactor = true;
+      warn(t);
+    });
+  }
+}
+
 function syncDirty(): void {
   for (const ctx of dirty) {
     ctx.dirty = false;
@@ -4213,7 +4248,10 @@ async function boot(): Promise<void> {
   }
   setTheme(DEFAULT_THEME);
   host = startHost({ onError: e => showError(report(e)) });
-  host.sch.afterPump = syncDirty;
+  host.sch.afterPump = () => {
+    react();
+    syncDirty();
+  };
   document.addEventListener('keydown', onKeyDown, true);
   document.addEventListener('keydown', onReorderKey);
   // a scroll anywhere: the page, a scroll face, a dialog

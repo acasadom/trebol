@@ -134,50 +134,76 @@ function finish(sch: Scheduler, ht: HostTask, state: HostTask['state']): void {
   for (const w of ht.watchers.splice(0)) w(ht);
 }
 
+/** Runs one slice of a ready task; true if it yielded and has more to do. */
+function slice(sch: Scheduler, ht: HostTask): boolean {
+  const r = run(ht.task, SLICE);
+  switch (r.k) {
+    case 'done':
+      ht.result = r.v;
+      finish(sch, ht, 'done');
+      break;
+    case 'error':
+      ht.error = r.e;
+      finish(sch, ht, 'failed');
+      break;
+    case 'yield':
+      return true;
+    case 'await':
+      ht.state = 'waiting';
+      r.p.then(
+        v => {
+          if (ht.state !== 'waiting') return;
+          ht.abort = null;
+          resume(ht.task, v);
+          ht.state = 'ready';
+          sch.ready.push(ht);
+          schedule(sch);
+        },
+        (e: unknown) => {
+          if (ht.state !== 'waiting') return;
+          ht.abort = null;
+          resumeError(ht.task, asError(e));
+          ht.state = 'ready';
+          sch.ready.push(ht);
+          schedule(sch);
+        },
+      );
+      break;
+  }
+  return false;
+}
+
 /** Runs ready tasks, one slice each, until none is ready; then yields. */
 function pump(sch: Scheduler): void {
   sch.pumping = false;
   const batch = sch.ready.splice(0);
   for (const ht of batch) {
-    if (ht.state !== 'ready') continue;
-    const r = run(ht.task, SLICE);
-    switch (r.k) {
-      case 'done':
-        ht.result = r.v;
-        finish(sch, ht, 'done');
-        break;
-      case 'error':
-        ht.error = r.e;
-        finish(sch, ht, 'failed');
-        break;
-      case 'yield':
-        sch.ready.push(ht);
-        break;
-      case 'await':
-        ht.state = 'waiting';
-        r.p.then(
-          v => {
-            if (ht.state !== 'waiting') return;
-            ht.abort = null;
-            resume(ht.task, v);
-            ht.state = 'ready';
-            sch.ready.push(ht);
-            schedule(sch);
-          },
-          (e: unknown) => {
-            if (ht.state !== 'waiting') return;
-            ht.abort = null;
-            resumeError(ht.task, asError(e));
-            ht.state = 'ready';
-            sch.ready.push(ht);
-            schedule(sch);
-          },
-        );
-        break;
-    }
+    if (ht.state === 'ready' && slice(sch, ht)) sch.ready.push(ht);
   }
   sch.afterPump?.();
   if (sch.ready.length > 0) schedule(sch);
+}
+
+/** Slices a task started with `runNow` may take before it waits its turn like the others. */
+const NOW_SLICES = 10;
+
+/**
+ * Starts a task and runs it at once, before any other, until it ends or waits;
+ * a long one goes on in turn with the rest. The browser host runs reactions
+ * this way, between a round and the repaint that follows it.
+ */
+export function runNow(sch: Scheduler, s: Series<Cell>, i = 0): HostTask {
+  const task = newTask(sch.rt, s, i);
+  const ht: HostTask = { id: nextId++, task, state: 'ready', result: UNSET, error: null, abort: null, watchers: [] };
+  sch.byTask.set(task, ht);
+  sch.live++;
+  let more = true;
+  for (let n = 0; more && n < NOW_SLICES; n++) more = slice(sch, ht);
+  if (more) {
+    sch.ready.push(ht);
+    schedule(sch);
+  }
+  return ht;
 }
 
 /** A rejected promise's reason as a Trebol error!. */

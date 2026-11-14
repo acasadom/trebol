@@ -1,0 +1,12 @@
+Trebol [title: "Screen tests of react, is and calc"]
+
+"react"
+[see "Fill in hours and parts"  see/not "Ready tomorrow"]
+[
+    type "Hours" "2"  type "Parts" "15"
+    see "The customer pays €75.00"
+    click "Rush job"
+    see "Ready tomorrow"
+]
+; a cycle is cut: a and b change once each
+[click "Loop"  see "2ab"  see "2a"]

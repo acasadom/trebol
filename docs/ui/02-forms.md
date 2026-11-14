@@ -104,6 +104,37 @@ view [
 Pick a Sunday and leave the field. A `check` runs whenever its value changes, so keep it quick; a rule
 that has to ask a server is a `check-async`, which a later page uses.
 
+## Faces that follow others
+
+Some faces only show what others hold: the price of the repair, worked out from the hours and the parts, or
+a line that sums up the booking. `calc` gives a field a formula, `is` gives any face one, and `react` runs a
+block of your own:
+
+```trebol-ui
+view [
+    title "Quote"
+    form [
+        number hours "Hours" min 0
+        money parts "Parts" EUR min 0
+        money total "Total" EUR calc [values/hours * 30 + values/parts]
+        text muted is [
+            either values/total [rejoin ["The customer pays " localize values/total]] ["Fill in hours and parts"]
+        ]
+        check rush "Rush job"
+        text warning hidden react [face/hidden: not values/rush  face/text: "Ready tomorrow, 20% more"]
+        submit "Send quote" [toast "Quote sent"]
+    ]
+]
+```
+
+Type the hours and the parts. Each of these blocks runs when its face is shown and again whenever something it
+reads changes, and Trebol tells what it reads by looking at it: `values/hours`, `face/hidden`, or a face's
+label and facet, as in `search/text`. A block that reads what another one sets runs after it, so the line
+below the total follows the total. `calc` makes the field read only: its value is the formula's, and a
+formula that cannot be worked out yet, because a field is empty, leaves it empty. `is` sets what the face
+shows, its `value` for a field and its `text` for a text; `react` sets whatever it likes, and `react later`
+waits for the first change instead of running when shown.
+
 ## A photo
 
 `photo` shows an image and lets the person choose another: with its button, by clicking the image, or by

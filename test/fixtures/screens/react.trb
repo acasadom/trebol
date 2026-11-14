@@ -1,0 +1,18 @@
+Trebol [title: "Reactions: calc, is, react and a cycle"]
+view [
+    title "Quote"
+    form [
+        number hours "Hours" min 0
+        money parts "Parts" EUR min 0
+        money total "Total" EUR calc [values/hours * 30 + values/parts]
+        text muted is [
+            either values/total [rejoin ["The customer pays " localize values/total]] ["Fill in hours and parts"]
+        ]
+        check rush "Rush job"
+        text warning hidden react [face/hidden: not values/rush  face/text: "Ready tomorrow, 20% more"]
+        submit "Send quote" [toast "Quote sent"]
+    ]
+    a: text "1" react later [b/text: rejoin [face/text "a"]]
+    b: text react later [a/text: rejoin [face/text "b"]]
+    button "Loop" [a/text: "2"]
+]

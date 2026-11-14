@@ -351,8 +351,35 @@ it is checking.
 
 A word followed by its value.
 
-`calc [values/qty * values/price]`: the value is the formula's, worked out again whenever the values it reads
-change; the person cannot change it.
+`calc [values/qty * values/price]`: the value is the formula's, worked out again whenever what it reads
+changes, as with [`is`](#word-is); the person cannot change it. A formula that fails, or lacks a value,
+leaves the field empty, with no message.
+
+(word-is)=
+## is
+
+A word followed by its value.
+
+`text is [rejoin ["Hello, " name/value]]`: the face shows what the block gives, worked out when the face is
+shown and again whenever something the block reads changes. It sets the face's main facet: `data` for a
+table, list, tree or chart, `draw` for a canvas, `value` for a field and the rest of the inputs, a progress, an
+image, a video or a sound, and `text` for everything else. Unlike `calc`, a field with `is` can still be typed
+in; what it reads changing gives it the block's value again.
+
+(word-react)=
+## react
+
+A word followed by its value.
+
+`react [face/disabled: not values/email]`: the block runs when the face is shown and again whenever something
+it reads changes; `face` is the face it follows. `react later [...]` runs only on a change, not when shown.
+What a block reads is found by reading it, not by running it: every path in it, also inside its inner blocks,
+that starts with a face's label (`total/text`), with `face` (`face/value`) or with `values` (`values/qty`, the
+value of the field of that name). It runs at the end of the round in which that changed, before the screen is
+drawn again, once per change however many of the things it reads changed. A reaction that sets what another
+reads runs first, whatever the order of the faces. Changing a series in place (`append name/value "x"`) is not
+a change: give the facet a new value, as elsewhere. Two reactions that set what the other reads would never
+end: the second time round one of them is left out, and the console says where it is.
 
 (word-width)=
 ## width

@@ -86,6 +86,11 @@ test('on-leave keeps the screen when the user goes back or follows a link', asyn
   assert.ok(passed, lines.join('\n'));
 });
 
+test('react, is and calc follow what they read, between the steps of a test', async () => {
+  const { passed, lines } = await ran(['test/fixtures/screens/react.test.trb']);
+  assert.ok(passed, lines.join('\n'));
+});
+
 test('the tests of the examples pass', async () => {
   const files = (await findTests(join(ROOT, 'examples'))).map(f => relative(ROOT, f));
   assert.ok(files.includes('examples/clients/app.test.trb'));

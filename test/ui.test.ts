@@ -1195,21 +1195,53 @@ test('rows: a field made of rows the user adds and removes', async () => {
     ui-click last r/pane  e: first r/pane  ui-input e/pane/1 "x"  n`), '2');
 });
 
+// Without a browser there are no rounds: `ui-react v` is what the host does after each one.
 test('calc: a field whose value comes from a formula', async () => {
   const f = `v: view [form [number qty "Qty"  number price "Price"  number total "Total" calc [values/qty * values/price]  number twice calc [values/total * 2]]]
-    f: v/pane/1  q: f/pane/1  p: f/pane/2  t: f/pane/3  `;
+    f: v/pane/1  q: f/pane/1  p: f/pane/2  t: f/pane/3  react: does [ui-react v]  react  `;
   assert.equal(await ev(f + 'reduce [t/readonly t/value]'), '[true none]');
-  assert.equal(await ev(f + 'ui-input q "2"  ui-input p "3"  reduce [t/value f/pane/4/value]'), '[6 12]');
-  assert.equal(await ev(f + 'ui-input q "2"  ui-input p "3"  ui-input q none  t/value'), 'none');
+  assert.equal(await ev(f + 'ui-input q "2"  ui-input p "3"  react  reduce [t/value f/pane/4/value]'), '[6 12]');
+  assert.equal(await ev(f + 'ui-input q "2"  ui-input p "3"  react  ui-input q none  react  reduce [t/value f/pane/4/value]'), '[none none]');
   // in a row, values is the row, and the total of the rows follows
   const r = `v: view [form [
       rows items [number qty  number price  number total calc [values/qty * values/price]]
       number sum calc [s: 0  foreach x any [values/items []] [s: s + any [x/total 0]]  s]
     ]]
-    f: v/pane/1  r: f/pane/1  ui-click last r/pane  ui-click last r/pane  `;
+    f: v/pane/1  r: f/pane/1  ui-click last r/pane  ui-click last r/pane  ui-react v  `;
   assert.equal(await ev(r + `a: r/pane/1/pane  b: r/pane/2/pane
-    ui-input a/1 "2"  ui-input a/2 "3"  ui-input b/1 "4"  ui-input b/2 "5"
+    ui-input a/1 "2"  ui-input a/2 "3"  ui-input b/1 "4"  ui-input b/2 "5"  ui-react v
     reduce [a/3/value b/3/value f/pane/2/value]`), '[6 20 26]');
+});
+
+test('react and is: a face follows the facets its block reads', async () => {
+  const v = `n: 0  v: view [
+      name: field "Name"
+      greeting: text is [either name/value [rejoin ["Hello, " name/value]] ["Nobody"]]
+      shout: text react [n: n + 1  face/text: uppercase copy any [greeting/text ""]]
+      button "Clear" react later [face/disabled: not name/value]
+    ]
+    nm: v/pane/1  g: v/pane/2  s: v/pane/3  b: v/pane/4  react: does [ui-react v]  `;
+  // when shown: is and react run, react later does not
+  assert.equal(await ev(v + 'react  reduce [g/text s/text n b/disabled]'), '["Nobody" "NOBODY" 1 false]');
+  // a change runs what reads it, and what reads that, in the same round; nothing changed, nothing runs
+  assert.equal(await ev(v + 'react  ui-input nm "ada"  react  r: reduce [g/text s/text n]  react  append r n'),
+    '["Hello, ada" "HELLO, ADA" 2 2]');
+  assert.equal(await ev(v + 'react  ui-input nm "ada"  react  ui-input nm none  react  b/disabled'), 'true');
+  // the order follows what feeds what, whatever the order of the faces
+  assert.equal(await ev(`v: view [
+      b: text is [rejoin [a/text "+"]]
+      c: text is [rejoin [a/text b/text]]
+      a: text "x"
+    ]
+    ui-react v  v/pane/3/text: "y"  ui-react v  reduce [v/pane/1/text v/pane/2/text]`), '["y+" "yy+"]');
+  // a cycle is cut and said
+  assert.match(await ev(`v: view [
+      a: text "1" react [b/text: rejoin [face/text "a"]]
+      b: text react [a/text: rejoin [face/text "b"]]
+    ]
+    ui-react v`), /react: left out, what it reads changed again after it ran \(a cycle\)/);
+  // an error in a reaction reaches the host, after the others ran
+  assert.match(await ev(`v: view [t: text is [1 / 0]  u: text is ["ok"]]  e: try [ui-react v]  reduce [v/pane/2/text e/id]`), /"ok"/);
 });
 
 test('a lookup keeps what was chosen, and only the answer to the last search', async () => {

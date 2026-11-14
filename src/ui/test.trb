@@ -82,10 +82,14 @@ test-answer: function [
 
 ; --- the faces on show ----------------------------------------------------------
 
-; [face parent ...] of the faces the user sees, in their order on the page
+; [face parent ...] of the faces the user sees, in their order on the page; first
+; the reactions run, as the browser runs them at the end of each round
 test-shown: function [] [
     out: copy []
-    if v: shown-view [test-walk v none out]
+    if v: shown-view [
+        foreach cycle ui-react v [print cycle]
+        test-walk v none out
+    ]
     out
 ]
 
