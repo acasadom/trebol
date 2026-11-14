@@ -706,6 +706,16 @@ describe('components', () => {
     await assert.rejects(runSource(host, 'view [screens [home "Home" [1] []]]'));
   });
 
+  test('a form on a screen entered later starts with its submit disabled until its fields are valid', async () => {
+    const r = await ev(`
+      view [screens [home "Home" [text "h"] edit "Edit" [global f: form [field name "Name" required submit "Save" [x: 1]]]]]
+      go 'edit
+      a: select last f/pane 'disabled
+      ui-input first f/pane "Ana"
+      reduce [a select last f/pane 'disabled]`);
+    assert.equal(r, '[true false]');
+  });
+
   test('a screen is not shown until its on-enter ends, also if it fails or goes elsewhere', async () => {
     link = ['home'];
     const r = await ev(`

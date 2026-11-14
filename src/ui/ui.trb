@@ -765,7 +765,10 @@ ui-pane: function [
 ] [
     inner: either find [form entry] f/style [f] [f/form]
     foreach c any [f/pane []] [attach c f/root inner]
-    if f/root [refresh-form any [inner f/root]]
+    unless f/root [exit]
+    refresh-form any [inner f/root]
+    ; and the forms among the new faces, whose submits start disabled until their fields are valid
+    foreach c any [f/pane []] [foreach g all-faces c [if g/style = 'form [refresh-form g]]]
 ]
 
 open: func [
