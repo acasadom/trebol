@@ -225,15 +225,19 @@ let nextId = 1;
 
 const ACTIVE: ReadonlySet<number> = new Set([K.Word, K.SetWord, K.GetWord, K.Paren, K.Path, K.SetPath, K.GetPath, K.Function, K.Native]);
 
-/** Runs a UI event function (ui-input, ui-blur, ui-click) as a new task. */
+/**
+ * Runs a UI event function (ui-input, ui-blur, ui-click) as a new task. An error is shown and gives none, so
+ * what the caller does next (focus the first problem, blur) still runs and nothing is left unhandled.
+ */
 function fire(fn: string, face: ObjectCell, ...args: Cell[]): Promise<Cell> {
   // a word, path or paren given as data (a dropped `date`) is quoted, so it is passed, not evaluated
   const quote: Cell = { t: K.Word, sym: intern('quote'), bind: host.rt.lib };
   const call: Cell[] = [{ t: K.Word, sym: intern(fn), bind: host.rt.user }, face, ...args.flatMap(a => ACTIVE.has(a.t) ? [quote, a] : [a])];
   devLog.event(fn, face, args);
-  const t = taskResult(spawn(host.sch, { data: call }, 0));
-  t.catch(e => showError(report(e as ObjectCell)));
-  return t;
+  return taskResult(spawn(host.sch, { data: call }, 0)).catch((e: unknown) => {
+    showError(report(e as ObjectCell));
+    return NONE;
+  });
 }
 
 /** The panel of errors trebol dev shows on the page; null until the first one. */
