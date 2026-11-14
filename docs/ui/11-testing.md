@@ -115,6 +115,8 @@ translated.
 | `click "Book in"` | clicks a button, link, tile, check, toggle or tab; or the row of a table or list that shows that text |
 | `type "Customer" "Luis Gil"` | types in a field and leaves it; `""` empties it |
 | `choose "Bike" "City"` | chooses an option of a choice, radio or lookup, by the text it shows |
+| `press "Ctrl+S"` | presses a key: the button or link with that `key` as its shortcut, or else the view's `on-key` |
+| `press/on "Enter" "Customer"` | presses it with the cursor in a face: its `on-key`, or the nearest one around it; Enter in a field of a form clicks its submit, Escape closes a dialog |
 | `say no` | answers no to the next question of `confirm`; with nothing said, the answer is yes |
 | `see "Booked in."` | checks that the text is on the screen: in a face, a field, a row, a message, a notice or a question asked |
 | `see/not "Booked in."` | checks that it is not |

@@ -110,3 +110,23 @@ test('say answers the next confirm, and an answer no question took fails the tes
     '4 tests, 1 failed.',
   ]);
 });
+
+test('press runs the shortcut of a button, else on-key; Enter sends a form and Escape closes a dialog', async () => {
+  const { lines } = await ran(['test/fixtures/screens/keys.test.trb']);
+  const at = (l: string): string => l.replace(/\S*test\/fixtures\/screens\//g, '');
+  assert.deepEqual(lines.map(at).filter(l => !/\*\* (Where|Near):/.test(l)), [
+    'ok    keys.test.trb:4:1  press',
+    'ok    keys.test.trb:8:1  press',
+    'ok    keys.test.trb:12:1  press',
+    'ok    keys.test.trb:17:1  press',
+    'ok    keys.test.trb:21:1  press',
+    'ok    keys.test.trb:28:1  press',
+    'FAIL  keys.test.trb:35:1  press',
+    '        ** User error: press: "Ctrl+O" cannot be used now',
+    '        ** At: keys.test.trb:35:2',
+    'FAIL  keys.test.trb:36:1  press',
+    '        ** User error: press: "Ctrl+Nothing" is not a key',
+    '        ** At: keys.test.trb:36:2',
+    '8 tests, 2 failed.',
+  ]);
+});

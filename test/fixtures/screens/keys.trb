@@ -1,0 +1,21 @@
+Trebol [title: "Keys, shortcuts and Enter in a form"]
+
+view [
+    on-key [if event/key = 'F2 [said/text: "F2 on the page"]]
+    title "Notes"
+    said: text "Nothing yet"
+    button "Save" key "Ctrl+S" [said/text: "Saved"]
+    button "Off" key "Ctrl+O" disabled
+    search: field "Search" on-key [
+        if event/key = #"^[" [face/value: none]
+        if all [event/key = #"k"  event/ctrl?] [said/text: "Ctrl+K in Search"]
+    ]
+    form [
+        field email "Email" required
+        submit "Sign in" [said/text: rejoin ["Signed in as " values/email]]
+    ]
+    button "Ask" [ask/hidden: false]
+    ask: dialog "A question" hidden [
+        button "Inside" key "Ctrl+S" [said/text: "Saved inside"]
+    ]
+]

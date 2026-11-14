@@ -1,6 +1,6 @@
 Trebol [
     title: "Screen tests: what a user does, without a browser"
-    exports: [serve reply click type choose say see test-answer test-route]
+    exports: [serve reply click type choose press say see test-answer test-route]
 ]
 
 ; `trebol test` runs every block of an app.test.trb on the app started anew,
@@ -204,13 +204,14 @@ click: function [
         ]
     ]
     found: test-face 'click [button link tile check toggle tab] what
-    f: first found
+    test-activate first found second found
+]
+
+; Does what a click on a face does; parent is the face it is in.
+test-activate: function [f parent] [
     switch/default f/style [
         check toggle [ui-input f not f/value  ui-blur f]
-        tab [
-            tabs: second found
-            ui-input tabs index? find tabs/pane f
-        ]
+        tab [ui-input parent index? find parent/pane f]
         link [
             case [
                 f/action [ui-click f]
@@ -269,6 +270,103 @@ choose: function [
         ]
     ]
     do make error! rejoin ["choose: " mold what " has no option " mold option]
+]
+
+; The face a face is in, among the faces on show.
+test-parent: function [f shown /local g p] [
+    foreach [g p] shown [if same? g f [return p]]
+    none
+]
+
+; Is f inside the face outer (or outer itself)?
+test-inside?: function [f outer shown] [
+    while [f] [
+        if same? f outer [return true]
+        f: test-parent f shown
+    ]
+    false
+]
+
+; "Ctrl+Shift+K" -> [ctrl shift alt key] as the browser compares them: Ctrl and Cmd are one, names as
+; the browser gives them, a letter in lower case
+test-keys: function [spec [string!] /local k] [
+    parts: split lowercase copy spec #"+"
+    foreach k parts [trim k]
+    k: take/last parts
+    if empty? k [k: "+"]
+    k: any [select ["esc" "escape" "del" "delete" "up" "arrowup" "down" "arrowdown" "left" "arrowleft" "right" "arrowright" "space" " "] k  k]
+    any-of: func [names] [not empty? intersect parts names]
+    reduce [any-of ["ctrl" "control" "cmd" "meta"]  any-of ["shift"]  any-of ["alt" "option"]  k]
+]
+
+; The key of "Ctrl+S" as on-key gets it in event/key: a char (#"s", #"^M" for Enter) or a word ('left, 'F2).
+test-key: function [spec [string!]] [
+    k: last split spec #"+"
+    if empty? k [k: "+"]
+    shift: find spec "shift+"
+    case [
+        c: select ["enter" #"^M" "escape" #"^[" "esc" #"^[" "tab" #"^-" "backspace" #"^H" "space" #" "] k [c]
+        1 = length? k [either shift [uppercase first k] [lowercase first k]]
+        w: select [
+            "left" left "arrowleft" left "right" right "arrowright" right "up" up "arrowup" up "down" down "arrowdown" down
+            "home" home "end" end "pageup" page-up "pagedown" page-down "insert" insert "delete" delete "del" delete
+        ] k [w]
+        parse k [#"F" some digit] [to word! uppercase copy k]
+        true [do make error! rejoin ["press: " mold spec " is not a key"]]
+    ]
+]
+
+digit: charset "0123456789"
+
+press: function [
+    "Presses a key, as Enter or Ctrl+S: the button or link with it as its shortcut, or else the on-key of the face with the cursor, or of the view."
+    key [string!] {"Enter", "Escape", "Ctrl+S", "Shift+Tab", "a"}
+    /on "With the cursor in a face"
+    what [string! word!] "Its label, hint or text, or its name"
+    /local f p
+] [
+    shown: test-shown
+    want: test-keys key
+    ; a dialog on show keeps the rest of the page out of reach
+    dialog: none
+    foreach [f p] shown [if f/style = 'dialog [dialog: f]]
+    foreach [f p] shown [
+        if all [
+            f/shortcut
+            find [button link] f/style
+            want = test-keys f/shortcut
+            any [none? dialog  test-inside? f dialog shown]
+        ] [
+            if any [f/disabled  f/inert] [do make error! rejoin ["press: " mold key " cannot be used now"]]
+            return test-activate f p
+        ]
+    ]
+    at: none
+    if on [at: first test-face 'press collect [foreach [f p] shown [keep f/style]] what]
+    k: test-key key
+    fields: reduce [
+        quote key: either word? k [to lit-word! k] [k]
+        quote ctrl?: to logic! find key "ctrl+"  quote shift?: to logic! find key "shift+"  quote alt?: to logic! find key "alt+"
+        quote meta?: to logic! any [find key "cmd+"  find key "meta+"]
+    ]
+    ; the face with the cursor or the nearest around it that has an on-key, or the view
+    f: any [at  shown-view]
+    while [all [f  not all [f/events  select f/events 'on-key]]] [f: either at [test-parent f shown] [none]]
+    if f [ui-event f 'on-key fields]
+    case [
+        ; Enter in a one-line field of a form clicks its submit, if it can be clicked
+        all [at  k = #"^M"  find [field password number money date] at/style  at/form  at/form/style = 'form] [
+            foreach [f p] test-shown [
+                if all [f/submit  same? f/form at/form] [
+                    unless any [f/disabled  f/inert] [ui-click f]
+                    break
+                ]
+            ]
+        ]
+        ; Escape closes the dialog on show
+        all [k = #"^["  dialog] [ui-close dialog]
+    ]
+    true
 ]
 
 say: func [

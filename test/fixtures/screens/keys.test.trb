@@ -1,0 +1,36 @@
+Trebol [title: "Screen tests of press"]
+
+"press"
+[
+    press "Ctrl+S"
+    see "Saved"
+]
+[
+    press "F2"
+    see "F2 on the page"
+]
+[
+    type "Search" "bikes"
+    press/on "Escape" "Search"
+    see/not "bikes"
+]
+[
+    press/on "Ctrl+K" "Search"
+    see "Ctrl+K in Search"
+]
+[
+    press/on "Enter" "Email"
+    see "Nothing yet"
+    type "Email" "ana@x.es"
+    press/on "Enter" "Email"
+    see "Signed in as ana@x.es"
+]
+[
+    click "Ask"
+    press "Ctrl+S"
+    see "Saved inside"
+    press "Escape"
+    see/not "A question"
+]
+[press "Ctrl+O"]
+[press "Ctrl+Nothing"]
