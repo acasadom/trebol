@@ -3,7 +3,8 @@
 //   node tools/build.ts [out]          (default: dist)
 //
 // out/trebol.js is the browser runtime in one module, with the UI dialect
-// (src/ui/*.trb) inside, so a page needs nothing else:
+// (src/ui/*.trb) inside, so a page needs nothing else but the Inter font
+// files it loads from out/fonts/:
 //
 //   <script type="module" src=".../trebol.js"></script>
 //   <script type="text/trebol" src="app.trb"></script>
@@ -45,20 +46,33 @@ addBuiltIn(TEST_SOURCE, ${text('test.trb')});`,
   },
 };
 
-/** Builds trebol.js, cli.js and lib/ into out. The sources module is imported first, so it runs before the boot. */
+const common: BuildOptions = { bundle: true, format: 'esm', plugins: [sources], logLevel: 'warning', legalComments: 'none' };
+
+/** trebol.js: the sources module is imported first, so it runs before the boot. */
+const browserRuntime: BuildOptions = {
+  ...common,
+  stdin: { contents: `import '${SOURCES}'; import './src/host/browser.ts';`, resolveDir: ROOT, loader: 'js' },
+  platform: 'browser',
+  target: 'es2022',
+  minify: true,
+};
+
+/** The text of trebol.js, built from src/ without writing it (`trebol build` run from a checkout of Trebol). */
+export async function runtimeJs(): Promise<string> {
+  const r = await build({ ...browserRuntime, write: false });
+  return r.outputFiles![0]!.text;
+}
+
+/** Builds trebol.js (with Inter in fonts/ next to it), cli.js and lib/ into out. */
 export async function buildDist(out: string): Promise<void> {
   const tsc = createRequire(import.meta.url).resolve('typescript/bin/tsc');
   execFileSync(process.execPath, [tsc, '-p', join(ROOT, 'tsconfig.build.json'), '--outDir', join(out, 'lib')], { stdio: 'inherit' });
   cpSync(join(ROOT, 'src', 'ui'), join(out, 'lib', 'ui'), { recursive: true });
-  const common: BuildOptions = { bundle: true, format: 'esm', plugins: [sources], logLevel: 'warning', legalComments: 'none' };
-  await build({
-    ...common,
-    stdin: { contents: `import '${SOURCES}'; import './src/host/browser.ts';`, resolveDir: ROOT, loader: 'js' },
-    outfile: join(out, 'trebol.js'),
-    platform: 'browser',
-    target: 'es2022',
-    minify: true,
-  });
+  // the host looks for the fonts next to its module: dist/trebol.js and dist/lib/host/browser.js
+  const fonts = join(ROOT, 'src', 'host', 'fonts');
+  cpSync(fonts, join(out, 'fonts'), { recursive: true });
+  cpSync(fonts, join(out, 'lib', 'host', 'fonts'), { recursive: true });
+  await build({ ...browserRuntime, outfile: join(out, 'trebol.js') });
   await build({
     ...common,
     stdin: { contents: `import '${SOURCES}'; import './tools/cli.ts';`, resolveDir: ROOT, loader: 'js' },

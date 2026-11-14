@@ -1,10 +1,10 @@
 // The built package (tools/build.ts): installed under node_modules, where Node
-// runs no TypeScript, the `trebol` command still runs scripts and serves apps,
-// and the browser runtime is one file with the UI dialect inside.
+// runs no TypeScript, the `trebol` command still runs scripts, serves and builds
+// apps, and the browser runtime is one file with the UI dialect inside.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
@@ -46,6 +46,12 @@ test('the installed command runs a script and serves an app', async () => {
   const tested = spawnSync(process.execPath, [cli, 'test'], { encoding: 'utf8', cwd: join(project, 'app') });
   assert.equal(tested.stdout, 'ok    app.test.trb:3:1  greeting\n1 test, all passed.\n');
   assert.equal(tested.status, 0);
+  // build puts the bundled runtime in the page
+  const built = spawnSync(process.execPath, [cli, 'build'], { encoding: 'utf8', cwd: join(project, 'app') });
+  assert.equal(built.stderr, '');
+  assert.match(built.stdout, /^trebol build: build\/index\.html \(\d+ KB, 1 \.trb inside\)\n$/);
+  const page = readFileSync(join(project, 'app', 'build', 'index.html'), 'utf8');
+  assert.ok(page.includes(readFileSync(join(pkg, 'dist', 'trebol.js'), 'utf8').slice(0, 2000)));
   const dev = spawn(process.execPath, [cli, 'dev', 'app', '--port', '0'], { cwd: project });
   try {
     const line = await new Promise<string>((ok, fail) => {
@@ -57,6 +63,8 @@ test('the installed command runs a script and serves an app', async () => {
     const js = await fetch(`${base}/@trebol/src/host/browser.ts`);
     assert.equal(js.status, 200);
     assert.doesNotMatch(await js.text(), /import type/);
+    const font = await fetch(`${base}/@trebol/src/host/fonts/inter-latin.woff2`);
+    assert.equal(font.headers.get('content-type'), 'font/woff2');
   } finally {
     dev.kill();
   }
@@ -91,6 +99,8 @@ test('the browser runtime is one module with the UI dialect inside', async () =>
   // the one dynamic import is the app's own: import %x.js, by an address known only when it runs
   assert.doesNotMatch(js, /^import\b|\bimport\s*\(\s*["'`]|\bfrom\s*["']/m);
   assert.equal(js.match(/\bimport\s*\(/g)?.length, 1);
+  // with Inter next to it, and next to the host of trebol/browser
+  for (const dir of ['fonts', join('lib', 'host', 'fonts')]) assert.ok(existsSync(join(pkg, 'dist', dir, 'inter-latin.woff2')), dir);
   for (const name of ['ui.trb', 'i18n.trb']) {
     const first = readFileSync(join(ROOT, 'src', 'ui', name), 'utf8').split('\n')[0]!;
     assert.ok(js.includes(JSON.stringify(first).slice(1, -1)), `${name} is inside`);

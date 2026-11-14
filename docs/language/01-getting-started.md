@@ -105,6 +105,7 @@ npx trebol shop.trb                # runs a script
 npx trebol dev [folder]            # serves an app (the second tutorial)
 npx trebol check [app.trb ...]     # the mistakes in an app's views, without running it
 npx trebol test [folder ...]       # the screen tests of the apps (app.test.trb), without a browser
+npx trebol build [folder]          # the app as one page to put on the web, in folder/build
 npx trebol supplier                # the parts supplier of page 12, on port 8089
 ```
 

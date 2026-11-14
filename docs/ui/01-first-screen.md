@@ -119,7 +119,25 @@ It ends with an error status when there is a problem, so a script that publishes
 
 ## Putting it on the web
 
-`trebol dev` is for writing the app. To put it on a web server, add a page called `index.html` next to
+`trebol dev` is for writing the app. To put it on the web, build it:
+
+```sh
+npx trebol build
+```
+
+That writes `build/index.html`, one page with all of Trebol, the Inter font and every `.trb` file of the
+folder inside it (but the tests, `app.test.trb`). The images, sounds, videos, JavaScript modules and data files
+(`.csv`, `.json` and the like) are copied next to it, in the same folders; the rest of the folder, like a
+backend or `package.json`, stays out. Copy the `build` folder to any server that serves plain files, and that
+is the app. The page even opens from the disk with a double click, with no server, as long as the app imports
+no JavaScript module (the browser loads those only from a server). `trebol build other-folder --out site`
+builds another folder into `site`. A second build replaces the folder of the first; a folder it did not make
+is left alone, with an error.
+
+The page has the fonts its own text needs: Latin always, Cyrillic, Greek and Vietnamese only when some `.trb`
+file has one of their letters. Other letters show in the system font.
+
+You can also keep the files apart and let a CDN bring Trebol. Add a page called `index.html` next to
 `app.trb`:
 
 ```html
@@ -137,8 +155,9 @@ It ends with an error status when there is a problem, so a script that publishes
 ```
 
 and copy the two files to any server that serves plain files. The first `script` brings all of Trebol in one
-file; the second runs the app. To serve Trebol from your own server instead, copy
-`node_modules/trebol/dist/trebol.js` next to the page and write `src="trebol.js"`.
+file, which loads Inter from the `fonts` folder next to it; the second runs the app. To serve Trebol from your
+own server instead, copy `node_modules/trebol/dist/trebol.js` and `node_modules/trebol/dist/fonts` next to the
+page and write `src="trebol.js"`.
 
 ## What's next
 

@@ -118,6 +118,11 @@ export function addBuiltIn(href: string, src: string): void {
   builtIn.set(href, src);
 }
 
+/** The source built in under a URL, or undefined. */
+export function builtInText(href: string): string | undefined {
+  return builtIn.get(href);
+}
+
 function readText(loader: Loader, href: string, path: Cell): Promise<Cell> {
   const src = builtIn.get(href);
   if (src !== undefined) return Promise.resolve(string(src));

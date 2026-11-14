@@ -23,6 +23,8 @@ import { mapAt, startHost, startUi, runSource, report, shown, translate, uiText,
 import { spawn, taskResult, handleOf } from './scheduler.ts';
 import { themeCss, DEFAULT_THEME, LOOKS, THEME_WORDS, type ThemeParams } from './theme.ts';
 import { iconNode } from './icons.ts';
+import { interCss } from './fonts.ts';
+import { addBuiltIn, builtInText } from './modules.ts';
 import { parseMd, printMd, appendText, safeHref, type Block, type Inline } from './markdown.ts';
 import { fileHandle } from './net.ts';
 import { drawSvg, type El } from './draw.ts';
@@ -4173,6 +4175,19 @@ native('apply-theme', '["Changes the look of the whole screen." spec [object!]]'
 // --- boot --------------------------------------------------------------------------
 
 async function boot(): Promise<void> {
+  // a page of trebol build has the app's files inside, by their path from the page, and its own fonts
+  const files = document.getElementById('trebol-files');
+  if (files !== null) {
+    for (const [path, src] of Object.entries(JSON.parse(files.textContent ?? '{}') as Record<string, string>)) {
+      addBuiltIn(new URL(path, location.href).href, src);
+    }
+  }
+  if (document.querySelector('style[data-tb-fonts]') === null) {
+    const fonts = el('style');
+    fonts.dataset['tbFonts'] = '';
+    fonts.textContent = interCss(file => new URL(`fonts/${file}`, import.meta.url).href);
+    document.head.append(fonts);
+  }
   setTheme(DEFAULT_THEME);
   host = startHost({ onError: e => showError(report(e)) });
   host.sch.afterPump = syncDirty;
@@ -4200,7 +4215,7 @@ async function boot(): Promise<void> {
   for (const s of Array.from(document.querySelectorAll<HTMLScriptElement>('script[type="text/trebol"]'))) {
     const src = s.getAttribute('src');
     const url = src !== null ? new URL(src, location.href).href : location.href;
-    const code = src !== null ? await (await fetch(url)).text() : s.textContent ?? '';
+    const code = src !== null ? builtInText(url) ?? await (await fetch(url)).text() : s.textContent ?? '';
     try {
       await runSource(host, code, url);
     } catch (e) {

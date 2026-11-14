@@ -6,15 +6,17 @@
 //   trebol dev [folder] [--port 5173] [--api api.ts]
 //   trebol check [file.trb ...]  the problems in the layouts of the files (default: app.trb), without running them
 //   trebol test [file.test.trb|folder ...]  the screen tests (default: every *.test.trb under the current folder)
+//   trebol build [folder] [--out dir]  the app as one page to publish (default: folder/build); see bundle.ts
 //   trebol supplier           the parts supplier of the language tutorial, on port 8089
 //
 // `dev` serves the folder (default: the current one) with live reload; see
 // dev.ts. An app gets the command from its dependency on the package.
 
 import { readFileSync } from 'node:fs';
+import { relative } from 'node:path';
 import { consoleHost, runScript, startRepl } from './console.ts';
 
-const USAGE = 'usage: trebol [file.trb] | trebol dev [folder] [--port n] [--api file] | trebol check [file.trb ...] | trebol test [file.test.trb|folder ...] | trebol supplier';
+const USAGE = 'usage: trebol [file.trb] | trebol dev [folder] [--port n] [--api file] | trebol check [file.trb ...] | trebol test [file.test.trb|folder ...] | trebol build [folder] [--out dir] | trebol supplier';
 
 const [command, ...rest] = process.argv.slice(2);
 if (command === undefined) {
@@ -38,6 +40,8 @@ if (command === undefined) {
   } else if (!(await test(files))) {
     process.exitCode = 1;
   }
+} else if (command === 'build') {
+  await buildCommand(rest);
 } else if (command === 'supplier' && rest.length === 0) {
   const { startSupplier, SUPPLIER_PORT } = await import('../docs/_servers/supplier.ts');
   await startSupplier();
@@ -70,4 +74,34 @@ async function dev(args: string[]): Promise<void> {
   const { startDev } = await import('./dev.ts');
   const server = await startDev({ root, port, api });
   console.log(`trebol dev: http://localhost:${server.port}/`);
+}
+
+async function buildCommand(args: string[]): Promise<void> {
+  let folder: string | undefined;
+  let out: string | undefined;
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (a === '--out' && i + 1 < args.length) out = args[++i];
+    else if (folder === undefined && !a.startsWith('-')) folder = a;
+    else {
+      console.error(USAGE);
+      process.exit(1);
+    }
+  }
+  const { buildApp } = await import('./bundle.ts');
+  try {
+    const b = await buildApp(folder ?? '.', out);
+    const kb = Math.round(b.size / 1024);
+    const copied = b.copied.length === 0 ? '' : `, ${b.copied.length} file${b.copied.length === 1 ? '' : 's'} copied next to it`;
+    console.log(`trebol build: ${shortPath(b.page)} (${kb} KB, ${b.sources.length} .trb inside${copied})`);
+  } catch (e) {
+    console.error(`trebol build: ${(e as Error).message}`);
+    process.exitCode = 1;
+  }
+}
+
+/** A path from the current folder when it is inside it, else the whole path. */
+function shortPath(path: string): string {
+  const r = relative('.', path);
+  return r.startsWith('..') ? path : r;
 }
