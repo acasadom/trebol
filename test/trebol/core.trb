@@ -119,6 +119,8 @@ Trebol [
 [out: copy "" foreach c "abc" [append out c] out = "abc"]
 [n: 0 while [n < 100] [n: n + 1 if n = 7 [break]] n = 7]
 [(loop 3 [break/return 9]) = 9]
+[unset? loop 3 [break]]
+[unset? foreach x [1 2] [if x = 2 [break]]]
 [s: 0 repeat i 4 [if i = 2 [continue] s: s + i] s = 8]
 
 "errors"

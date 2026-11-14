@@ -311,7 +311,7 @@ native('until', '["Evaluates the block until it gives true." body [block!]]', (_
 });
 
 native('break', '["Leaves the loop it is in." /return value [any-value!]]', (_t, f) =>
-  ({ k: 'throw', e: { kind: T.Break, v: f.args[0]!.t === K.Logic ? f.args[1]! : NONE, name: null } }));
+  ({ k: 'throw', e: { kind: T.Break, v: f.args[0]!.t === K.Logic ? f.args[1]! : UNSET, name: null } }));
 
 native('continue', '["Goes on with the next turn of the loop it is in." ]', () => ({ k: 'throw', e: { kind: T.Continue, v: UNSET, name: null } }));
 
