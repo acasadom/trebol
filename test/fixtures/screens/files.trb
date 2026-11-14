@@ -1,0 +1,16 @@
+Trebol [title: "Files chosen for an upload and a photo, and sent"]
+
+view [
+    said: text "Nothing yet"
+    global papers: upload "Papers" multiple accept ["pdf" "image/*"]
+    global one: upload "One paper"
+    global pic: photo "Photo"
+    button "Send" [
+        answer: fetch/with "/api/papers" [
+            multipart: collect [foreach file papers/value [keep reduce ['paper file/file]]]
+            progress: papers
+        ]
+        said/text: answer
+    ]
+    button "Read" [said/text: rejoin ["Read " length? read-file one/value/1/file " bytes"]]
+]

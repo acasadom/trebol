@@ -11,22 +11,24 @@
 
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { STATUS_CODES } from 'node:http';
-import { dirname, join, relative, resolve } from 'node:path';
+import { basename, dirname, extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
-  K, NONE, TRUE, load, LoadError, intern, ctxFind, bindSeries, scriptStart, native, value, string, text, blockOf, form, mold, spell,
+  K, NONE, TRUE, makeError, load, LoadError, intern, ctxFind, bindSeries, scriptStart, native, value, string, text, blockOf, form, mold, spell,
   sourceOf, type Cell, type BlockCell, type ObjectCell, type StringCell, type WordCell,
 } from '../src/core/index.ts';
-import { startHost, startUi, runSource, report, TEST_SOURCE, type Host } from '../src/host/index.ts';
+import { startHost, startUi, runSource, report, fileHandle, TEST_SOURCE, type Host } from '../src/host/index.ts';
 import { spawn, taskResult } from '../src/host/scheduler.ts';
 import { appendText } from '../src/host/markdown.ts';
 
 /** What the page of the test running has shown and been asked. */
 let page = fresh();
 
-function fresh(host: Host | null = null) {
+function fresh(host: Host | null = null, dir = '.') {
   return {
     host,
+    /** The folder of the test file: where the files attach takes are. */
+    dir,
     /** The view on show. */
     view: NONE as Cell,
     toasts: [] as string[],
@@ -79,6 +81,33 @@ native('test-say', '["Sets what the user says to the next question of confirm." 
 });
 native('shown-questions', '["The questions confirm has asked." ]', () => value(strings(page.asked)));
 
+/** The type a browser gives a file by its extension. */
+const TYPES: Record<string, string> = {
+  '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.gif': 'image/gif', '.webp': 'image/webp',
+  '.svg': 'image/svg+xml', '.avif': 'image/avif', '.pdf': 'application/pdf', '.txt': 'text/plain', '.csv': 'text/csv',
+  '.json': 'application/json', '.md': 'text/markdown', '.html': 'text/html', '.zip': 'application/zip',
+  '.mp4': 'video/mp4', '.webm': 'video/webm', '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.wav': 'audio/wav',
+  '.doc': 'application/msword', '.xls': 'application/vnd.ms-excel',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  '.odt': 'application/vnd.oasis.opendocument.text', '.ods': 'application/vnd.oasis.opendocument.spreadsheet',
+};
+
+// a file of the disk as the user would choose it: name, size, type and the handle the app reads
+native('test-file', '["A file next to the test as an upload gets it: its name, size, type and file." file [file!]]', (_t, f, v) => {
+  if (f.phase === 1) return value(v!);
+  const path = resolve(page.dir, text(f.args[0] as StringCell));
+  const p = readFile(path).then(
+    bytes => {
+      const file = new File([bytes], basename(path), { type: TYPES[extname(path).toLowerCase()] ?? '' });
+      return blockOf(K.Block, [string(file.name), { t: K.Integer, v: file.size } as Cell, string(file.type), fileHandle(file)]) as Cell;
+    },
+    () => { throw makeError('access', 'read', `attach: there is no file ${relative(process.cwd(), path) || path}`); },
+  );
+  f.phase = 1;
+  return { k: 'await', p };
+});
+
 native('route', '["The screen and arguments in the address bar." ]', () => value(strings(page.history[page.at]!)));
 native('set-route', '["Puts a screen and arguments in the address bar." route [block!] replace [logic!]]', (_t, f) => {
   const r = f.args[0] as BlockCell;
@@ -122,7 +151,7 @@ async function answer(input: string | URL | Request, init: RequestInit = {}): Pr
   const host = page.host!;
   const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
   const method = (init.method ?? 'GET').toUpperCase();
-  const body = typeof init.body === 'string' ? string(init.body) : NONE;
+  const body = typeof init.body === 'string' ? string(init.body) : init.body instanceof FormData || init.body instanceof URLSearchParams ? string(formJson(init.body)) : NONE;
   const call = [word(host, 'test-answer'), { t: K.LitWord, sym: intern(method), bind: host.rt.user } as Cell, string(url), body];
   const got = await taskResult(spawn(host.sch, { data: call }, 0));
   if (got.t !== K.Block) {
@@ -131,6 +160,17 @@ async function answer(input: string | URL | Request, init: RequestInit = {}): Pr
   }
   const [status, json] = got.s.data.slice(got.i) as [{ v: number }, StringCell];
   return new Response(text(json), { status: status.v, statusText: STATUS_CODES[status.v] ?? '', headers: { 'content-type': 'application/json' } });
+}
+
+/** What a form or multipart body sent, as JSON for serve: a file as its name, size and type. */
+function formJson(body: FormData | URLSearchParams): string {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of body.entries()) {
+    const one = v instanceof File ? { name: v.name, size: v.size, type: v.type } : v;
+    const had = out[k];
+    out[k] = had === undefined ? one : Array.isArray(had) ? [...had, one] : [had, one];
+  }
+  return JSON.stringify(out);
 }
 
 /** One test: where it is, its group, and how it went. */
@@ -207,7 +247,7 @@ async function runOne(file: string, source: string, start: number, prelude: numb
     onError: e => page.errors.push(report(e)),
     loader: { base, read: href => readFile(fileURLToPath(href), 'utf8') },
   });
-  page = fresh(host);
+  page = fresh(host, dirname(file));
   try {
     await startUi(host);
     await runSource(host, `import ${TEST_SOURCE}`);

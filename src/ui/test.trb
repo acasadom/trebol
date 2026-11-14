@@ -1,6 +1,6 @@
 Trebol [
     title: "Screen tests: what a user does, without a browser"
-    exports: [serve reply click type choose pick-menu drag press say see test-answer test-route]
+    exports: [serve reply click type choose attach pick-menu drag press say see test-answer test-route]
 ]
 
 ; `trebol test` runs every block of an app.test.trb on the app started anew,
@@ -145,6 +145,10 @@ test-texts: function [/local f p] [
             foreach one either block? v [v] [reduce [v]] [
                 append out either t: all [f/known  select f/known one] [test-text t] [form one]
             ]
+        ]
+        ; the names of the files an upload or photo has
+        if all [find [upload photo] f/style  v] [
+            foreach one either block? v [v] [reduce [v]] [if object? one [append out one/name]]
         ]
         if all [find [choice radio] f/style  v] [
             foreach o any [f/options []] [
@@ -373,6 +377,43 @@ drag: function [
         at: 1 + length? either find [table list tree] zone/style [any [zone/data []]] [any [zone/pane []]]
     ]
     ui-drop zone :payload from at none
+    true
+]
+
+; Does an upload or photo whose accept is list take a file? As the browser's picker: "pdf" and ".pdf"
+; by its name, "image/png" and "image/*" by its type.
+test-accepts?: function [list [block!] name [string!] type [string!]] [
+    if empty? list [return true]
+    name: lowercase copy name
+    type: lowercase copy type
+    foreach x list [
+        x: lowercase trim form x
+        if either find x #"/" [
+            either #"*" = last x [find/match type copy/part x (length? x) - 1] [type = x]
+        ] [
+            unless #"." = first x [x: join "." x]
+            all [(length? name) >= length? x  x = skip tail name negate length? x]
+        ] [return true]
+    ]
+    false
+]
+
+attach: function [
+    "Chooses files for an upload or photo, as the user picks them or drops them on it; the ones its accept refuses are refused, as the browser does."
+    what [string! word!] "Its label, or its name"
+    files [file! block!] "A file next to the test, or a block of them"
+] [
+    f: first test-face 'attach [upload photo] what
+    list: either block? f/accept [f/accept] [either f/style = 'photo [["image/*"]] [[]]]
+    taken: copy []
+    refused: copy []
+    foreach file either block? files [files] [reduce [files]] [
+        one: test-file file
+        either test-accepts? list one/1 one/3 [append taken one] [append refused one/1]
+    ]
+    ; one file unless it takes more
+    unless f/multiple [taken: copy/part taken 4]
+    ui-files f taken refused
     true
 ]
 

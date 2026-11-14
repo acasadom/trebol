@@ -175,3 +175,21 @@ test('drag moves a row or a face to the place of another, or drops it on a face 
     '9 tests, 2 failed.',
   ]);
 });
+
+test('attach chooses files next to the test for an upload or photo, refuses what accept does not take, and serve sees them sent', async () => {
+  const { lines } = await ran(['test/fixtures/screens/files.test.trb']);
+  const at = (l: string): string => l.replace(/\S*test\/fixtures\/screens\//g, '');
+  assert.deepEqual(lines.map(at).filter(l => !/\*\* (Where|Near):/.test(l)), [
+    'ok    files.test.trb:8:1  attach',
+    'ok    files.test.trb:16:1  attach',
+    'ok    files.test.trb:21:1  attach',
+    'ok    files.test.trb:28:1  attach',
+    'FAIL  files.test.trb:34:1  attach',
+    '        ** Access error: attach: there is no file missing.pdf',
+    '        ** At: files.test.trb:34:2',
+    'FAIL  files.test.trb:35:1  attach',
+    '        ** User error: attach: nothing on the screen is "Said"',
+    '        ** At: files.test.trb:35:2',
+    '6 tests, 2 failed.',
+  ]);
+});

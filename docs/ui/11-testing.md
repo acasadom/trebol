@@ -115,6 +115,7 @@ translated.
 | `click "Book in"` | clicks a button, link, tile, check, toggle or tab; or the row of a table or list that shows that text |
 | `type "Customer" "Luis Gil"` | types in a field and leaves it; `""` empties it |
 | `choose "Bike" "City"` | chooses an option of a choice, radio or lookup, by the text it shows |
+| `attach "Photos" [%front.jpg %side.jpg]` | chooses files next to the test for an upload or photo, as the person picks or drops them; its `accept` refuses the others |
 | `pick-menu "Ana Ruiz" "Remove"` | chooses an item of the menu a button opens, of a face's context menu, or of the menu of the row of a table or list that shows that text; `["Move to" "Top"]` names one in a submenu |
 | `drag "Rest" "Write"` | drags a face, or the row that shows that text, onto another: where things can be reordered it takes the place of the other, else it is dropped on a face with `drop`, or before a row of one |
 | `press "Ctrl+S"` | presses a key: the button or link with that `key` as its shortcut, or else the view's `on-key` |
@@ -164,7 +165,8 @@ server fail:
 ]
 ```
 
-A request no `serve` answers fails the test, and says which one it was.
+A request no `serve` answers fails the test, and says which one it was. Files sent with `multipart`, after an
+`attach`, reach `body` as their name, size and type: `body/photo/name`.
 
 ## When a test fails
 

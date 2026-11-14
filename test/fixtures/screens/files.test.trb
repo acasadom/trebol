@@ -1,0 +1,35 @@
+Trebol [title: "Screen tests of attach"]
+
+serve [
+    POST "/api/papers" [rejoin ["Got " length? body/paper " papers, " body/paper/1/name " first"]]
+]
+
+"attach"
+[
+    attach "Papers" [%report.pdf %bike.gif %notes.txt]
+    see "Only pdf, image/* files"
+    see "bike.gif"
+    see/not "notes.txt"
+    2 = length? papers/value
+    papers/value/2/type = "image/gif"
+]
+[
+    attach "Papers" [%report.pdf %bike.gif]
+    click "Send"
+    see "Got 2 papers, report.pdf first"
+]
+[
+    attach "One paper" [%notes.txt %report.pdf]
+    one/value/1/name = "notes.txt"
+    1 = length? one/value
+    click "Read"
+    see "Read 6 bytes"
+]
+[
+    attach "Photo" %notes.txt
+    none? pic/value
+    attach "Photo" %bike.gif
+    pic/value/name = "bike.gif"
+]
+[attach "Papers" %missing.pdf]
+[attach "Said" %bike.gif]
