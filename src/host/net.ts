@@ -164,7 +164,8 @@ function decodeBody(type: string, bytes: Uint8Array): Cell {
     const r = parseJson(new TextDecoder().decode(bytes));
     return typeof r === 'string' ? string(new TextDecoder().decode(bytes)) : r;
   }
-  if (/^text\/|xml|javascript|x-www-form-urlencoded/i.test(type) || type === '') {
+  // xml only as the subtype or its +xml suffix: the type of an Excel file (…openxmlformats…) is binary
+  if (/^text\/|^[^;]*\/(?:xml|[^;]*\+xml)\s*(?:;|$)|javascript|x-www-form-urlencoded/i.test(type) || type === '') {
     return string(new TextDecoder().decode(bytes));
   }
   return { t: K.Binary, s: { data: [...bytes] }, i: 0 };

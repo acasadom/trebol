@@ -93,6 +93,11 @@ before(async () => {
         res.end(Buffer.from('%PDF-1.7'));
         return;
       }
+      case '/typed':
+        // bytes that are not UTF-8, with the type asked
+        res.writeHead(200, { 'content-type': url.searchParams.get('type')! });
+        res.end(Buffer.from([0x50, 0x4b, 0xff, 0x41]));
+        return;
       case '/text':
         res.writeHead(200, { 'content-type': 'text/plain' });
         res.end('plain text');
@@ -189,6 +194,14 @@ describe('http', () => {
 
   test('text answers come back as strings', async () => {
     assert.equal(await ev('fetch base/text'), '"plain text"');
+    for (const type of ['application/xml', 'image/svg+xml; charset=utf-8', 'application/atom+xml']) {
+      assert.equal(await ev(`string? fetch join base/typed "?type=${encodeURIComponent(type)}"`), 'true', type);
+    }
+  });
+
+  test('a file whose type only mentions xml comes back as binary', async () => {
+    const excel = encodeURIComponent('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    assert.equal(await ev(`fetch join base/typed "?type=${excel}"`), '#{504BFF41}');
   });
 
   test('fetch/with: method, JSON body and headers', async () => {

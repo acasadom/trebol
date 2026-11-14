@@ -6,6 +6,10 @@ values. See [tasks and the network](../language/12-tasks-and-network.md) and
 
 ## fetch
 
+What comes back follows the type the server gives: JSON as Trebol values, text (`text/...`, XML such as
+`application/xml` or `image/svg+xml`, JavaScript, form data) as a string, and any other file as `binary!`, an
+Excel file among them although its type has `xml` in its name.
+
 The options of `/with`, a block or an object:
 
 | Option | What it does |
