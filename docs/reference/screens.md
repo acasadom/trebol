@@ -187,6 +187,31 @@ set-values scope data
 - `scope` (any value)
 - `data` (`map!` `object!` `none!`)
 
+(fn-insert-text)=
+## insert-text
+
+Puts text where the cursor of a field, area or rich text was last, in place of what was selected, as if the user typed it.
+
+```text
+insert-text face text
+```
+
+- `face` (`object!`)
+- `text` (`string!`)
+
+For a `field`, `area` or `rich`. The text goes where the user's cursor was last, even after a click on a
+button or a choice took the focus away, and the cursor ends after it; with no cursor yet, at the end. It counts
+as the user's typing: the face's value changes and its `on-change` runs. In a `rich` the text is plain, never
+Markdown. A read-only or disabled face is left as it is; under `trebol test` the text always goes at the end.
+
+```trebol-ui
+view [
+    global gap: choice "Gap" ["{{name}}" "{{date}}"]
+    button "Insert gap" [if gap/value [insert-text letter gap/value]]
+    global letter: rich "Letter"
+]
+```
+
 (fn-field-error)=
 ## field-error
 

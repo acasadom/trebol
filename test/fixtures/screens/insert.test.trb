@@ -1,0 +1,14 @@
+Trebol [title: "Screen tests of insert-text"]
+
+"insert-text"
+[
+    choose "Gap" "{{city}}"
+    click "Insert"
+    see "# Dear^/^/{{city}}"
+    see "Letter changed"
+    see "{{city}}"
+    click "Insert"
+    see "# Dear^/^/{{city}}{{city}}"
+]
+[click "Locked"  see "Notes kept"]
+[click "Wrong"]

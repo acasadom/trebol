@@ -1,0 +1,14 @@
+Trebol [title: "Text put at the cursor, for the screen tests"]
+
+view [
+    global hole: choice "Gap" ["{{name}}" "{{city}}"]
+    button "Insert" [insert-text letter hole/value  insert-text subject hole/value]
+    global letter: rich "Letter" on-change [changes/text: "Letter changed"]
+    global subject: field "Subject"
+    global notes: area "Notes" readonly
+    global changes: text "-"
+    button "Locked" [insert-text notes "x"  if notes/value = "Fixed" [changes/text: "Notes kept"]]
+    button "Wrong" [insert-text hole "x"]
+]
+letter/value: "# Dear"
+notes/value: "Fixed"

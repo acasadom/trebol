@@ -144,6 +144,15 @@ export function printMd(blocks: Block[]): string {
   }).join('\n\n');
 }
 
+/** Markdown with plain text added at its end, in its last paragraph or a new one after a heading or list. */
+export function appendText(src: string, text: string): string {
+  const blocks = parseMd(src);
+  const last = blocks[blocks.length - 1];
+  if (last?.k === 'p') last.kids.push({ k: 'text', text });
+  else blocks.push({ k: 'p', kids: [{ k: 'text', text }] });
+  return printMd(blocks);
+}
+
 /** Only web and mail links open; anything else (javascript:...) is shown as plain text. */
 export function safeHref(href: string): boolean {
   return /^(https?:|mailto:)/i.test(href.trim());

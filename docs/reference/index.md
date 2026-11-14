@@ -81,7 +81,7 @@ draw
 
 ### I
 
-[`if`](#fn-if) · [`import`](#fn-import) · [`in`](#fn-in) · [`index?`](#fn-index-3f) · [`insert`](#fn-insert) · [`integer?`](#fn-integer-3f) · [`intersect`](#fn-intersect) · [`issue?`](#fn-issue-3f)
+[`if`](#fn-if) · [`import`](#fn-import) · [`in`](#fn-in) · [`index?`](#fn-index-3f) · [`insert`](#fn-insert) · [`insert-text`](#fn-insert-text) · [`integer?`](#fn-integer-3f) · [`intersect`](#fn-intersect) · [`issue?`](#fn-issue-3f)
 
 ### J
 

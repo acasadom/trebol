@@ -63,6 +63,19 @@ test('a request serve has no answer for fails the test, before what it caused', 
   assert.match(lines[2]!, /HTTP 404 Not Found/);
 });
 
+test('insert-text puts text in a field, area or rich text as the user would type it', async () => {
+  const { lines } = await ran(['test/fixtures/screens/insert.test.trb']);
+  const at = (l: string): string => l.replace(/\S*test\/fixtures\/screens\//g, '');
+  assert.deepEqual(lines.map(at).filter(l => !/\*\* (Where|Near):/.test(l)), [
+    'ok    insert.test.trb:4:1  insert-text',
+    'ok    insert.test.trb:13:1  insert-text',
+    'FAIL  insert.test.trb:14:1  insert-text',
+    '        ** User error: insert-text: a choice has no cursor',
+    '        ** At: insert.trb:11:21',
+    '3 tests, 1 failed.',
+  ]);
+});
+
 test('the tests of the examples pass', async () => {
   const files = (await findTests(join(ROOT, 'examples'))).map(f => relative(ROOT, f));
   assert.ok(files.includes('examples/clients/app.test.trb'));

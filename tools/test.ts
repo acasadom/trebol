@@ -14,11 +14,12 @@ import { STATUS_CODES } from 'node:http';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
-  K, NONE, TRUE, load, LoadError, intern, bindSeries, scriptStart, native, value, string, text, blockOf, form, mold, spell,
+  K, NONE, TRUE, load, LoadError, intern, ctxFind, bindSeries, scriptStart, native, value, string, text, blockOf, form, mold, spell,
   sourceOf, type Cell, type BlockCell, type ObjectCell, type StringCell, type WordCell,
 } from '../src/core/index.ts';
 import { startHost, startUi, runSource, report, TEST_SOURCE, type Host } from '../src/host/index.ts';
 import { spawn, taskResult } from '../src/host/scheduler.ts';
+import { appendText } from '../src/host/markdown.ts';
 
 /** What the page of the test running has shown and been asked. */
 let page = fresh();
@@ -47,6 +48,17 @@ native('shown-view', '["The view on show; none before the first." ]', () => valu
 native('apply-theme', '["Changes the look of the whole screen." spec [object!]]', (_t, f) => value(f.args[0]!));
 native('repaint', '["Redraws the faces that changed." ]', () => value(blockOf(K.Block, [])));
 native('print-faces', '["Opens the print dialog for the page, or for one face only." face [object! none!]]', () => value(NONE));
+// a test has no cursor: the text goes at the end
+native('insert-at-caret', '["The value of a field, area or rich text with text put where its cursor was; the cursor goes after it." face [object!] text [string!]]', (_t, f) => {
+  const face = f.args[0] as ObjectCell;
+  const facet = (name: string): Cell | undefined => face.ctx.vals[ctxFind(face.ctx, intern(name))];
+  const was = facet('value');
+  const old = was?.t === K.String ? text(was as StringCell) : '';
+  const add = text(f.args[1] as StringCell);
+  const style = facet('style');
+  const rich = style?.t === K.Word && spell((style as WordCell).sym) === 'rich';
+  return value(string(rich ? appendText(old, add) : old + add));
+});
 native('show-toast', '["Shows a short message at the edge of the screen." message [string!] kind [word! none!]]', (_t, f) => {
   page.toasts.push(text(f.args[0] as StringCell));
   return value(f.args[0]!);

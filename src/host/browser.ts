@@ -23,7 +23,7 @@ import { mapAt, startHost, startUi, runSource, report, shown, translate, uiText,
 import { spawn, taskResult, handleOf } from './scheduler.ts';
 import { themeCss, DEFAULT_THEME, LOOKS, THEME_WORDS, type ThemeParams } from './theme.ts';
 import { iconNode } from './icons.ts';
-import { parseMd, printMd, safeHref, type Block, type Inline } from './markdown.ts';
+import { parseMd, printMd, appendText, safeHref, type Block, type Inline } from './markdown.ts';
 import { fileHandle } from './net.ts';
 import { drawSvg, type El } from './draw.ts';
 import { rowField, groupRow, sortGroups, rowWindow, DRAW_ALL_UP_TO } from './rows.ts';
@@ -1273,6 +1273,7 @@ function buildInput(face: ObjectCell, style: string, m: Mounted): HTMLElement {
     if (style === 'password') i.autocomplete = 'new-password';
     input = i;
   }
+  input.addEventListener('focus', () => hadCaret.add(input));
   input.id = id;
   const error = el('div', 'tb-error');
   error.id = `${id}-error`;
@@ -2554,8 +2555,10 @@ function buildRich(face: ObjectCell, m: Mounted): HTMLElement {
   error.setAttribute('aria-live', 'polite');
   box.setAttribute('aria-describedby', error.id);
   label.addEventListener('click', () => box.focus());
+  keepCarets();
 
   const changed = (): void => {
+    if (inserting) return;
     const md = printMd(readBlocks(box));
     if (md === m.shown) return;
     m.shown = md;
@@ -2691,8 +2694,73 @@ function syncRich(m: Mounted, err: string | null): void {
   if (md !== m.shown && document.activeElement !== box) {
     m.shown = md;
     box.replaceChildren(...blockNodes(parseMd(md)));
+    richCaret.delete(box);
   }
 }
+
+// --- inserting text at the cursor ---------------------------------------------------
+//
+// insert-text puts text where the user's cursor was, even after a click on a button or
+// a choice took the focus away: an input keeps its selection, a rich text box has
+// its last one kept here.
+
+/** Inputs that have had the focus, so a cursor of their own. */
+const hadCaret = new WeakSet<Element>();
+/** The last selection inside each rich text box. */
+const richCaret = new WeakMap<HTMLElement, Range>();
+/** While insert-text writes in a rich text box, its own input event is not the user's. */
+let inserting = false;
+
+let keepingCarets = false;
+
+function keepCarets(): void {
+  if (keepingCarets) return;
+  keepingCarets = true;
+  document.addEventListener('selectionchange', () => {
+    const s = getSelection();
+    if (s === null || s.rangeCount === 0) return;
+    const n = s.anchorNode;
+    const box = (n instanceof Element ? n : n?.parentElement)?.closest<HTMLElement>('.tb-rich-box');
+    if (box != null) richCaret.set(box, s.getRangeAt(0).cloneRange());
+  });
+}
+
+native('insert-at-caret', '["The value of a field, area or rich text with text put where its cursor was; the cursor goes after it." face [object!] text [string!]]', (_t, f) => {
+  const face = f.args[0] as ObjectCell;
+  const add = text(f.args[1] as StringCell);
+  const rich = word(face, 'style') === 'rich';
+  const was = str(face, 'value') ?? '';
+  const m = byCtx.get(face.ctx);
+  if (m === undefined || !m.el.isConnected) return value(string(rich ? appendText(was, add) : was + add));
+  if (rich) {
+    const box = m.box!;
+    const at = richCaret.get(box);
+    box.focus();
+    const s = getSelection()!;
+    if (at !== undefined && box.contains(at.commonAncestorContainer)) {
+      s.removeAllRanges();
+      s.addRange(at);
+    } else {
+      s.selectAllChildren(box);
+      s.collapseToEnd();
+    }
+    inserting = true;
+    try {
+      document.execCommand('insertText', false, add);
+    } finally {
+      inserting = false;
+    }
+    const md = printMd(readBlocks(box));
+    m.shown = md;
+    return value(string(md));
+  }
+  const input = m.input as HTMLInputElement | HTMLTextAreaElement;
+  const end = input.value.length;
+  const [from, to] = hadCaret.has(input) ? [input.selectionStart ?? end, input.selectionEnd ?? end] : [end, end];
+  input.focus();
+  input.setRangeText(add, from, to, 'end');
+  return value(string(input.value));
+});
 
 // --- tables and lists ---------------------------------------------------------------
 

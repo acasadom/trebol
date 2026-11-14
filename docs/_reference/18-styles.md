@@ -91,7 +91,7 @@ Several lines of text.
 ## rich
 
 Rich text: headings, bold, italic, lists and links. Its value is Markdown, a plain string; `readonly` shows it
-formatted.
+formatted. Code puts text where the user's cursor is with [`insert-text`](#fn-insert-text).
 
 ## check
 
