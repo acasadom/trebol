@@ -46,6 +46,10 @@ own fresh faces. What must last from one screen to the next lives outside them, 
 the place to give a table its rows. The screen shows only once `on-enter` has finished, so the reader never
 sees it half filled.
 
+The new screen slides in as the old one slides out, the way the reader went: going to a screen, it comes
+from the side ahead; going back, from the side behind, as on a phone. The theme sets how long it takes, and
+a reader who asked their system for less motion gets the new screen at once.
+
 ## A screen for each booking
 
 A screen can take arguments, named in a block after its title like the arguments of a function. `go`

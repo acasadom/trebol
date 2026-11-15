@@ -313,7 +313,7 @@ function sizeVars(t: ThemeParams): string {
   lines.push(`  --tb-line: ${t.line}px;`);
   const icon = ICONS[t.icons];
   lines.push(`  --tb-icon-stroke: ${icon.stroke};`, `  --tb-icon-cap: ${icon.cap};`, `  --tb-icon-join: ${icon.join};`);
-  lines.push('  --tb-ease: cubic-bezier(0.2, 0, 0, 1);', '  --tb-fast: 150ms;');
+  lines.push('  --tb-ease: cubic-bezier(0.2, 0, 0, 1);', '  --tb-fast: 150ms;', '  --tb-move: 240ms;');
   return lines.join('\n');
 }
 
@@ -1406,6 +1406,19 @@ ol.tb-dev-entries .tb-dev-warning .tb-dev-kind { color: var(--tb-warning); }
   .tb-print-only .tb-print-target, .tb-print-only .tb-print-target * { visibility: visible; }
   .tb-print-only .tb-print-target { position: absolute; inset: 0 0 auto 0; margin: 0; box-shadow: none; }
 }
+/* a screen that gives way to another slides the way the user went (motion.ts) */
+::view-transition-group(*) { animation-duration: var(--tb-move); animation-timing-function: var(--tb-ease); }
+::view-transition-old(tb-screen) { animation: var(--tb-move) var(--tb-ease) both tb-screen-out; }
+::view-transition-new(tb-screen) { animation: var(--tb-move) var(--tb-ease) both tb-screen-in; }
+:root[data-tb-travel="back"]::view-transition-old(tb-screen) { animation-name: tb-screen-out-back; }
+:root[data-tb-travel="back"]::view-transition-new(tb-screen) { animation-name: tb-screen-in-back; }
+@keyframes tb-screen-out { to { opacity: 0; transform: translateX(calc(-1 * var(--tb-travel-x))); } }
+@keyframes tb-screen-in { from { opacity: 0; transform: translateX(var(--tb-travel-x)); } }
+@keyframes tb-screen-out-back { to { opacity: 0; transform: translateX(var(--tb-travel-x)); } }
+@keyframes tb-screen-in-back { from { opacity: 0; transform: translateX(calc(-1 * var(--tb-travel-x))); } }
+:root { --tb-travel-x: 32px; }
+:root[dir="rtl"] { --tb-travel-x: -32px; }
+.tb-leaving { pointer-events: none; z-index: 1; }
 @media (pointer: coarse) { :root { --tb-control: 44px; } }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }

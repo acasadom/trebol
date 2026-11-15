@@ -135,6 +135,9 @@ formula that cannot be worked out yet, because a field is empty, leaves it empty
 shows, its `value` for a field and its `text` for a text; `react` sets whatever it likes, and `react later`
 waits for the first change instead of running when shown.
 
+A face that is hidden folds away, and one shown again unfolds, as the warning here does when the box is
+ticked; the first time a screen shows, its faces are simply there.
+
 ## A photo
 
 `photo` shows an image and lets the person choose another: with its button, by clicking the image, or by

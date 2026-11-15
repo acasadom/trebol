@@ -32,6 +32,7 @@ import { rowField, groupRow, sortGroups, rowWindow, DRAW_ALL_UP_TO } from './row
 import { chartSvg, SERIES_COLORS, pieColor, type ChartKind, type Series } from './chart.ts';
 import { readOrbit, layoutOrbit, shownEdges, edgeLabel, bubble, gradients, edgePath, ease, fitCamera, MANY, type OrbitSpec, type Role, type Place, type Placed, type Box } from './orbit.ts';
 import { devLog } from './devlog.ts';
+import { changeScreen, travelled, themeMoved, mayMove, rowPlaces, moveRows, leaveRow, unfold, fold, isFolding } from './motion.ts';
 import { startDevtools, inDevtools, faceRef } from './devtools.ts';
 
 // --- reading faces -----------------------------------------------------------------
@@ -3393,6 +3394,10 @@ function drawRows(m: Mounted, again = true): void {
   const count = m.items.length;
   const old = m.rows!;
   const next = new Map<string, HTMLElement>();
+  // rows added, taken away or in another order move to their places, when all of them are drawn
+  const moved = old.size > 0 && count <= DRAW_ALL_UP_TO && !printing && box.isConnected && mayMove()
+    && !sameKeys(old, m.items) && m.items.some(it => old.has(it.k));
+  const was = moved ? rowPlaces(old.values()) : null;
   let cursor = box.firstChild;
   for (let i = first; i < end; i++) {
     const { row, k } = m.items[i]!;
@@ -3431,8 +3436,13 @@ function drawRows(m: Mounted, again = true): void {
     if (item !== cursor) box.insertBefore(item, cursor);
     else cursor = cursor.nextSibling;
   }
-  for (const [k, item] of old) if (next.get(k) !== item) item.remove();
+  for (const [k, item] of old) {
+    if (next.get(k) === item) continue;
+    if (was !== null) leaveRow(item, was.get(item)!);
+    else item.remove();
+  }
   m.rows = next;
+  if (was !== null) moveRows(next.values(), was);
   m.first = first;
   m.end = end;
   if (table) {
@@ -3457,6 +3467,14 @@ function drawRows(m: Mounted, again = true): void {
     const want = rowsToDraw(m);
     if (want.first !== first || want.end !== end) drawRows(m, false);
   }
+}
+
+/** Whether the rows drawn are the rows to draw, in the same order. */
+function sameKeys(old: Map<string, HTMLElement>, items: { k: string }[]): boolean {
+  if (old.size !== items.length) return false;
+  let i = 0;
+  for (const k of old.keys()) if (items[i++]!.k !== k) return false;
+  return true;
 }
 
 /**
@@ -4224,7 +4242,10 @@ function sync(m: Mounted): void {
   const hidden = flag(f, 'hidden');
   const err = str(f, 'error');
   const cls: string[] = [];
-  if (hidden && style !== 'dialog') cls.push('tb-hidden');
+  // a face shown or hidden after it was first on the page unfolds or folds away
+  const wasHidden = m.el.classList.contains('tb-hidden');
+  const turned = style !== 'dialog' && hidden !== wasHidden && m.el.dataset['tb'] !== undefined && m.el.isConnected && mayMove();
+  if (hidden && style !== 'dialog' && !(turned || isFolding(m.el))) cls.push('tb-hidden');
   if (flag(f, 'fill')) cls.push('tb-fill');
   if (flag(f, 'narrow-only')) cls.push('tb-narrow-only');
   if (flag(f, 'wide-only')) cls.push('tb-wide-only');
@@ -4240,6 +4261,8 @@ function sync(m: Mounted): void {
   if (err !== null) cls.push('tb-invalid');
   if (flag(f, 'pending')) cls.push('tb-pending');
   setExtra(m.el, cls);
+  if (turned && hidden && !isFolding(m.el)) fold(m.el, () => { if (flag(m.face, 'hidden')) setExtra(m.el, [...(m.el.dataset['tb'] ?? '').split(' ').filter(Boolean), 'tb-hidden']); });
+  else if (!hidden && (turned || isFolding(m.el))) unfold(m.el);
   // shown as it is, but it and its children cannot be used
   m.el.inert = flag(f, 'inert');
   // a face you can drag takes the focus, so the keyboard reaches its menu and moves it
@@ -4424,9 +4447,13 @@ function settleScreen(box: HTMLElement, f: ObjectCell): void {
   const entering = flag(f, 'entering');
   box.toggleAttribute('aria-busy', entering);
   if (entering || comingScreen === null) return;
-  box.replaceChildren(...comingScreen.childNodes);
-  comingScreen = null;
-  enteredScreen(box);
+  // the screen made last, when the browser has its picture of the page; one entering since waits for its own
+  changeScreen(box, () => {
+    if (comingScreen === null || flag(f, 'entering')) return;
+    box.replaceChildren(...comingScreen.childNodes);
+    comingScreen = null;
+    enteredScreen(box);
+  });
 }
 
 /** Sets a spacing property to a step of the theme's scale, or back to the stylesheet's. */
@@ -4537,6 +4564,7 @@ function landHistory(): void {
   before = { ...here };
   if (typeof state?.depth === 'number') here = { depth: state.depth, top: here.top };
   else here = { depth: here.depth + 1, top: here.depth + 1 };
+  travelled(here.depth < before.depth ? 'back' : 'on');
   history.replaceState({ ...here }, '');
 }
 
@@ -4549,6 +4577,7 @@ native('set-route', '["Puts a screen and arguments in the address bar." route [b
   }
   // a new screen after going back drops the ones ahead, as the browser does
   here = { depth: here.depth + 1, top: here.depth + 1 };
+  travelled('on');
   history.pushState({ ...here }, '', href);
   return value(f.args[0]!);
 });
@@ -4674,6 +4703,7 @@ function setTheme(p: ThemeParams): void {
     document.head.append(tag);
   }
   tag.textContent = themeCss(p);
+  themeMoved();
 }
 
 native('apply-theme', '["Changes the look of the whole screen." spec [object!]]', (_t, f) => {
