@@ -228,7 +228,9 @@ A button: the block after it runs when it is pressed. With a `menu`, it opens th
 ## link
 
 A link to a screen of the app: `link "Clients" 'clients`. It is a link for the browser too, so it opens in a
-new tab when the person asks.
+new tab when the person asks. Given a url or text instead, `link "Web" client/website`, it opens a web, mail
+(`mailto:`) or phone (`tel:`) address or one with no scheme; any other (`javascript:`, `data:`) shows as a link
+that goes nowhere, so data from a server can never run code. The same holds for the `links` of a lookup.
 
 ## tile
 

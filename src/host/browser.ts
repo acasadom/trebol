@@ -25,7 +25,7 @@ import { themeCss, DEFAULT_THEME, LOOKS, THEME_WORDS, type ThemeParams } from '.
 import { iconNode } from './icons.ts';
 import { interCss } from './fonts.ts';
 import { addBuiltIn, builtInText } from './modules.ts';
-import { parseMd, printMd, appendText, safeHref, type Block, type Inline } from './markdown.ts';
+import { parseMd, printMd, appendText, safeHref, linkHref, type Block, type Inline } from './markdown.ts';
 import { fileHandle } from './net.ts';
 import { drawSvg, type El } from './draw.ts';
 import { rowField, groupRow, sortGroups, rowWindow, DRAW_ALL_UP_TO } from './rows.ts';
@@ -369,7 +369,7 @@ function build(face: ObjectCell): HTMLElement {
       case 'divider': node = el('hr', 'tb-divider'); break;
       case 'link': {
         const a = el('a', 'tb-link');
-        a.href = screenHref(get(face, 'value')) ?? str(face, 'value') ?? '#';
+        a.href = screenHref(get(face, 'value')) ?? linkHref(str(face, 'value') ?? '#') ?? '#';
         withIcon(a, face, m);
         a.addEventListener('click', ev => {
           if (get(face, 'action').t === K.Block) {
@@ -1969,7 +1969,7 @@ function lookupHref(f: ObjectCell, v: Cell): string | null {
   if (to === null) return null;
   if (to.t === K.LitWord) return screenHref({ ...to, t: K.Word } as Cell);
   if (to.t === K.LitPath) return screenHref({ ...to, t: K.Path } as Cell);
-  return screenHref(to) ?? (to.t === K.Url || to.t === K.File || to.t === K.String ? form(to) : null);
+  return screenHref(to) ?? (to.t === K.Url || to.t === K.File || to.t === K.String ? linkHref(form(to)) : null);
 }
 
 function buildLookup(face: ObjectCell, m: Mounted): HTMLElement {

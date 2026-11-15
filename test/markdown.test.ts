@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseMd, printMd, appendText, safeHref } from '../src/host/markdown.ts';
+import { parseMd, printMd, appendText, safeHref, linkHref } from '../src/host/markdown.ts';
 
 test('markdown: what a rich text field writes reads back the same', () => {
   for (const src of [
@@ -49,4 +49,11 @@ test('markdown: text added at the end', () => {
   assert.equal(appendText('Dear **Ana**', ', hi'), 'Dear **Ana**, hi');
   assert.equal(appendText('# Title', '*not bold*'), '# Title\n\n\\*not bold\\*');
   assert.equal(appendText('- one', 'after'), '- one\n\nafter');
+});
+
+test('markdown: a link face opens only safe addresses', () => {
+  for (const ok of ['https://a.b', 'http://a.b', 'mailto:a@b.c', 'tel:+34600', '/api/x', 'doc.pdf', '#/clients', '?q=1'])
+    assert.equal(linkHref(ok), ok);
+  for (const bad of ['javascript:alert(1)', ' JaVaScRiPt:alert(1)', 'java\tscript:alert(1)', '\x01javascript:x', 'data:text/html,x', 'vbscript:x'])
+    assert.equal(linkHref(bad), null);
 });
