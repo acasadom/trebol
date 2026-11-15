@@ -385,7 +385,13 @@ function build(face: ObjectCell): HTMLElement {
         const submit = flag(face, 'submit');
         b.type = submit ? 'submit' : 'button';
         b.addEventListener('click', ev => {
-          if (!submit) return void fire('ui-click', face);
+          if (!submit) {
+            const done = fire('ui-click', face);
+            // Next of a form in steps that stays: take the user to the first problem of the step
+            const steps = b.closest('.tb-steps-nav')?.parentElement;
+            if (steps) void done.then(() => focusProblem(steps.querySelector<HTMLElement>(':scope > .tb-step-panel:not([hidden])')));
+            return;
+          }
           ev.preventDefault();
           clickSubmit(face, b.closest<HTMLElement>('form, .tb-view') ?? document.body);
         });
@@ -425,6 +431,7 @@ function build(face: ObjectCell): HTMLElement {
       case 'tree': node = buildTree(face, m); break;
       case 'dialog': node = buildDialog(face, m); break;
       case 'tabs': node = buildTabs(face, m); break;
+      case 'steps': node = buildSteps(face, m); break;
       case 'split': node = buildSplit(face, m); break;
       case 'screens': {
         node = el('div', 'tb-screens');
@@ -446,10 +453,16 @@ function build(face: ObjectCell): HTMLElement {
         node.setAttribute('role', 'tabpanel');
         break;
       }
+      case 'step': {
+        node = el('div', 'tb-step-panel');
+        node.setAttribute('role', 'group');
+        node.tabIndex = -1;
+        break;
+      }
       default: node = el('div');
     }
     if (style === 'screens') placeScreen(m, node);
-    else if (children(face).length > 0 && style !== 'tabs' && style !== 'split') appendChildren(m.box ?? node, face, style);
+    else if (children(face).length > 0 && style !== 'tabs' && style !== 'steps' && style !== 'split') appendChildren(m.box ?? node, face, style);
   }
   m.el = node;
   byNode.set(node, m);
@@ -1314,12 +1327,12 @@ function iconLabel(face: ObjectCell): string | null {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
-/** Children of a container; consecutive buttons in a form share an action row. */
+/** Children of a container; consecutive buttons in a form, or in a step of one, share an action row. */
 function appendChildren(node: HTMLElement, face: ObjectCell, style: string): void {
   let actions: HTMLElement | null = null;
   for (const c of children(face)) {
     const isButton = word(c, 'style') === 'button';
-    if (style === 'form' && isButton) {
+    if ((style === 'form' || style === 'step') && isButton) {
       if (actions === null) {
         actions = el('div', 'tb-actions');
         node.append(actions);
@@ -1335,13 +1348,15 @@ function appendChildren(node: HTMLElement, face: ObjectCell, style: string): voi
 }
 
 function clickSubmit(face: ObjectCell, formEl: HTMLElement): void {
-  void fire('ui-click', face).then(() => {
-    // after a failed submit, take the user to the first problem
-    for (const i of Array.from(formEl.querySelectorAll<HTMLElement>('input, textarea, select'))) {
-      const m = byNode.get(i);
-      if (m !== undefined && get(m.face, 'error').t === K.String) return i.focus();
-    }
-  });
+  // after a failed submit, take the user to the first problem
+  void fire('ui-click', face).then(() => focusProblem(formEl));
+}
+
+function focusProblem(scope: HTMLElement | null): void {
+  for (const i of Array.from(scope?.querySelectorAll<HTMLElement>('input, textarea, select') ?? [])) {
+    const m = byNode.get(i);
+    if (m !== undefined && get(m.face, 'error').t === K.String) return i.focus();
+  }
 }
 
 function buildInput(face: ObjectCell, style: string, m: Mounted): HTMLElement {
@@ -4137,6 +4152,127 @@ function syncTabs(m: Mounted): void {
   });
 }
 
+// A form in steps shows one step at a time under a bar of their titles; the steps
+// done can be chosen again. Each step the user moves on to is an entry in the
+// history, so the browser's Back returns to the step before.
+interface StepsState {
+  steps: { face: ObjectCell; li: HTMLLIElement; button: HTMLButtonElement; num: HTMLElement; title: HTMLElement }[];
+  count: HTMLElement;
+  /** The history entries of this face: the depth of each and the step it shows. */
+  trail: { depth: number; step: number }[];
+  shown: number;
+}
+const stepsState = new WeakMap<Mounted, StepsState>();
+const mountedSteps = new Set<Mounted>();
+
+function buildSteps(face: ObjectCell, m: Mounted): HTMLElement {
+  const node = el('div', 'tb-steps');
+  const bar = el('ol', 'tb-steps-bar');
+  keepOwn(bar, 'steps', 'aria-label');
+  const count = el('p', 'tb-steps-count');
+  node.append(bar, count);
+  const v = get(face, 'value');
+  const st: StepsState = { steps: [], count, trail: [{ depth: here.depth, step: v.t === K.Integer ? Number(v.v) : 1 }], shown: 0 };
+  let nav: ObjectCell | null = null;
+  children(face).forEach((c, i) => {
+    if (word(c, 'style') !== 'step') {
+      nav = c;
+      const n = build(c);
+      n.classList.add('tb-steps-nav');
+      node.append(n);
+      return;
+    }
+    const li = el('li');
+    const b = el('button', 'tb-steps-item');
+    b.type = 'button';
+    const num = el('span', 'tb-steps-num');
+    const title = el('span', 'tb-steps-title');
+    b.append(num, title);
+    b.addEventListener('click', () => void fire('ui-step-go', face, int(i + 1)));
+    li.append(b);
+    bar.append(li);
+    node.append(build(c));
+    st.steps.push({ face: c, li, button: b, num, title });
+  });
+  // Enter in a field goes to the next step; on the last one it sends the form
+  node.addEventListener('keydown', ev => {
+    if (ev.key !== 'Enter' || ev.defaultPrevented || !(ev.target instanceof HTMLInputElement) || !inTextBox(ev.target)) return;
+    const next = nav === null ? undefined : children(nav)[1];
+    if (next === undefined || flag(next, 'hidden')) return;
+    ev.preventDefault();
+    byCtx.get(next.ctx)?.el.click();
+  });
+  stepsState.set(m, st);
+  mountedSteps.add(m);
+  return node;
+}
+
+function syncSteps(m: Mounted): void {
+  const st = stepsState.get(m);
+  if (st === undefined) return;
+  const v = get(m.face, 'value');
+  const at = v.t === K.Integer ? Number(v.v) : 1;
+  const live = st.steps.filter(s => !flag(s.face, 'hidden'));
+  const k = live.findIndex(s => s === st.steps[at - 1]);
+  st.steps.forEach((s, i) => {
+    const j = live.indexOf(s);
+    const title = str(s.face, 'text') ?? '';
+    s.li.hidden = j < 0;
+    s.li.classList.toggle('tb-done', j >= 0 && j < k);
+    s.li.classList.toggle('tb-current', j === k);
+    s.num.textContent = String(j + 1);
+    s.title.textContent = title;
+    s.button.disabled = j < 0 || j >= k;
+    if (j === k) s.button.setAttribute('aria-current', 'step');
+    else s.button.removeAttribute('aria-current');
+    const panel = byCtx.get(s.face.ctx)?.el;
+    if (panel === undefined) return;
+    panel.hidden = i !== at - 1;
+    panel.setAttribute('aria-label', title);
+  });
+  st.count.textContent = k < 0 ? '' : `${own('step-of', String(k + 1), String(live.length))} · ${str(live[k]!.face, 'text') ?? ''}`;
+  if (st.shown !== 0 && st.shown !== at) {
+    stepHistory(st, at, st.shown);
+    const panel = byCtx.get(st.steps[at - 1]!.face.ctx)?.el;
+    if (m.el.getBoundingClientRect().top < 0) m.el.scrollIntoView({ block: 'start' });
+    panel?.focus({ preventScroll: true });
+  }
+  st.shown = at;
+}
+
+/** A new step on show: forward is a new history entry; back returns to the entry that showed it. */
+function stepHistory(st: StepsState, to: number, from: number): void {
+  const cur = st.trail.find(x => x.depth === here.depth);
+  // Back or Forward brought it: the history is already there
+  if (cur?.step === to) return;
+  if (to > from) {
+    here = { depth: here.depth + 1, top: here.depth + 1 };
+    st.trail = st.trail.filter(x => x.depth < here.depth);
+    st.trail.push({ depth: here.depth, step: to });
+    history.pushState({ ...here }, '');
+    return;
+  }
+  const back = st.trail.filter(x => x.depth < here.depth && x.step === to).pop();
+  if (back !== undefined) history.go(back.depth - here.depth);
+  else if (cur !== undefined) cur.step = to;
+}
+
+/** Back or Forward landed on an entry a form in steps made: it shows that step again. */
+function stepsLanded(): void {
+  const d = (history.state as { depth?: number } | null)?.depth;
+  if (typeof d !== 'number') return;
+  for (const m of mountedSteps) {
+    if (!m.el.isConnected) {
+      mountedSteps.delete(m);
+      continue;
+    }
+    const hit = stepsState.get(m)!.trail.find(x => x.depth === d);
+    if (hit === undefined) continue;
+    here = { depth: d, top: here.top };
+    void fire('ui-step-go', m.face, int(hit.step));
+  }
+}
+
 // A split shows two panes side by side with a handle between them; on narrow
 // screens it shows one pane, the one its value names, and the second pane
 // gets a back button.
@@ -4502,6 +4638,13 @@ function sync(m: Mounted): void {
     }
     case 'dialog': syncDialog(m); break;
     case 'tabs': syncTabs(m); return;
+    case 'steps': syncSteps(m); return;
+    // a step that comes to apply or not changes the bar of its steps
+    case 'step': {
+      const up = m.el.parentElement === null ? undefined : byNode.get(m.el.parentElement);
+      if (up !== undefined) syncSteps(up);
+      break;
+    }
     case 'split': syncSplit(m); return;
     case 'tab': if (m.button !== null) m.button.textContent = t ?? ''; break;
     case 'panel': {
@@ -4937,6 +5080,7 @@ async function boot(): Promise<void> {
     });
   }
   startHistory();
+  window.addEventListener('popstate', stepsLanded);
   window.addEventListener('hashchange', () => {
     if (undoing !== null) {
       here = undoing;

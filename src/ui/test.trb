@@ -105,15 +105,30 @@ test-walk: function [f parent out] [
     if any [f/hidden  f/narrow-only] [exit]
     append out reduce [f parent]
     unless block? f/pane [exit]
-    either f/style = 'tabs [
-        ; the label of every tab, the faces of the one chosen
-        repeat i length? f/pane [
-            t: pick f/pane i
-            append out reduce [t f]
-            if all [i = f/value  block? t/pane] [foreach c t/pane [test-walk c t out]]
+    case [
+        f/style = 'tabs [
+            ; the label of every tab, the faces of the one chosen
+            repeat i length? f/pane [
+                t: pick f/pane i
+                append out reduce [t f]
+                if all [i = f/value  block? t/pane] [foreach c t/pane [test-walk c t out]]
+            ]
         ]
-    ] [
-        foreach c f/pane [test-walk c f out]
+        f/style = 'steps [
+            ; the title of every step that applies, the faces of the one on show, then Back and Next
+            repeat i length? f/pane [
+                t: pick f/pane i
+                case [
+                    t/style <> 'step [test-walk t f out]
+                    t/hidden []
+                    true [
+                        append out reduce [t f]
+                        if all [i = f/value  block? t/pane] [foreach c t/pane [test-walk c t out]]
+                    ]
+                ]
+            ]
+        ]
+        true [foreach c f/pane [test-walk c f out]]
     ]
 ]
 
@@ -214,7 +229,7 @@ test-face: function [action [word!] styles [block!] what /local f p] [
 text-styles: [field password number money date area rich]
 
 click: function [
-    "Clicks a button, link, tile, check, toggle or tab, the row of a table or list that shows a text, or a node of an orbit."
+    "Clicks a button, link, tile, check, toggle, tab or a step done, the row of a table or list that shows a text, or a node of an orbit."
     what [string! word!] "What it shows, or a field's name"
     /local f p row id t back done
 ] [
@@ -258,7 +273,7 @@ click: function [
             ]
         ]
     ]
-    found: test-face 'click [button link tile check toggle tab] what
+    found: test-face 'click [button link tile check toggle tab step] what
     test-activate first found second found
 ]
 
@@ -267,6 +282,12 @@ test-activate: function [f parent] [
     switch/default f/style [
         check toggle [ui-input f not f/value  ui-blur f]
         tab [ui-input parent index? find parent/pane f]
+        ; only a step already done can be chosen by its title
+        step [
+            n: index? find parent/pane f
+            if n >= parent/value [do make error! rejoin ["click: " mold test-text f/text " cannot be used now"]]
+            ui-step-go parent n
+        ]
         link [
             case [
                 f/action [ui-click f]
@@ -549,7 +570,14 @@ press: function [
     f: any [at  shown-view]
     while [all [f  not all [f/events  select f/events 'on-key]]] [f: either at [test-parent f shown] [none]]
     if f [ui-event f 'on-key fields]
+    ; a form in steps with Next on show: Enter in a one-line field of the step presses it
+    steps: at
+    while [all [steps  steps/style <> 'steps]] [steps: test-parent steps shown]
+    next-face: all [steps  pick get in last steps/pane 'pane 2]
     case [
+        all [at  k = #"^M"  find [field password number money date] at/style  next-face  not next-face/hidden] [
+            ui-step steps 1
+        ]
         ; Enter in a one-line field of a form clicks its submit, if it can be clicked
         all [at  k = #"^M"  find [field password number money date] at/style  at/form  at/form/style = 'form] [
             foreach [f p] test-shown [

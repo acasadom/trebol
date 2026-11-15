@@ -138,6 +138,52 @@ waits for the first change instead of running when shown.
 A face that is hidden folds away, and one shown again unfolds, as the warning here does when the box is
 ticked; the first time a screen shows, its faces are simply there.
 
+## A form in steps
+
+A long form reads better a part at a time. The shop's web page takes repairs too, and a customer filling it
+in at home answers who they are, then what is wrong, then checks it all before sending. `steps` splits a
+form like that, each step a title and its block:
+
+```trebol-ui
+view [
+    title "Book a repair"
+    form [
+        steps [
+            "You" [
+                radio account "Who brings it" ["Me" "My company"] required
+                field customer "Name" required
+                field phone "Phone" required
+            ]
+            "Company" when [values/account = "My company"] [
+                field company "Company" required
+                field tax-id "Tax id" required
+            ]
+            "The bike" [
+                choice bike "Bike" ["Road" "Mountain" "City" "Child's"] required
+                area fault "What is wrong" required
+            ]
+            "Check" [
+                text is [rejoin [any [values/customer ""] ", a " any [values/bike "bike"] " bike: " any [values/fault ""]]]
+            ]
+        ]
+        submit "Book in" [toast rejoin ["Booked in for " values/customer]]
+    ]
+]
+```
+
+Only one step shows, under a bar with every title. *Next* moves on when the fields of the step are valid,
+and otherwise points out the ones that are not, as `submit` does for the whole form; Enter in a field presses
+it. *Back* keeps what was typed. The `submit` of the form waits for the last step, and `values` there holds
+the fields of every step.
+
+A step with `when` is there only while its block is true. Choose *My company* and a step for the company
+comes in; choose *Me* again and it goes, its fields with it: they are not checked, and they are not in
+`values`.
+
+A step done can be chosen again by its title, and the browser's Back goes to the step before, as people
+expect from a form on the web. The step on show is the value of `steps`, so a button can go back to one:
+with `go: steps [...]`, a *Change* button on the last step is `button "Change" [go/value: 1]`.
+
 ## A photo
 
 `photo` shows an image and lets the person choose another: with its button, by clicking the image, or by

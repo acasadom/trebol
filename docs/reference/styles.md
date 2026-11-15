@@ -312,6 +312,26 @@ the tab shown.
 
 One tab of `tabs`, which makes it: it is not written in a layout.
 
+(style-steps)=
+## steps
+
+It starts with `value: 1`.
+
+A form filled in one step at a time: `steps ["Who" [...] "Company" when [values/kind = "Company"] [...] "Check"
+[...]]`, each step a title and its block. A bar on top numbers the titles, and on a narrow screen a line says
+"Step 2 of 3". Back and Next go under the step; Next shows the messages of the step's fields and moves on only
+when they are all valid, and Enter in a field presses it. The submit buttons of the form show on the last step,
+next to Back, and `values` holds the fields of every step. A step with `when` applies only while its block is
+true: the bar leaves it out, and its fields are neither checked nor in `values`. Its value is the number of the
+step on show, counting every step: setting it shows that step without checking anything. A step done is chosen
+again with its title; each step moved on to is an entry in the browser's history, so Back returns to the one
+before.
+
+(style-step)=
+## step
+
+One step of `steps`, which makes it: it is not written in a layout.
+
 (style-toolbar)=
 ## toolbar
 

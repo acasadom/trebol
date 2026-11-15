@@ -90,6 +90,20 @@ view compose/deep/only [
             "Billing" [money "Credit" EUR text muted "Paid by transfer."]
         ]
     ]
+    panel "Steps" [
+        form [
+            steps [
+                "Who" [
+                    radio applicant "Applicant" ["Person" "Company"] required
+                    field name "Name" required
+                ]
+                "Company" when [values/applicant = "Company"] [field tax-id "Tax id" required]
+                "Request" [area request "What you ask for" required]
+                "Check" [text is [rejoin [any [values/name ""] " asks: " any [values/request ""]]]]
+            ]
+            submit "Send" [toast/role "Request sent" 'success]
+        ]
+    ]
     panel "Progress" [
         upload: progress "Uploading photos" 40%
         progress "Waiting for the server"

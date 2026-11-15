@@ -1,0 +1,78 @@
+Trebol [title: "Screen tests of a form in steps"]
+
+"one step at a time"
+[
+    see "Applicant"
+    see/not "Request"
+    see/not "Back"
+    see/not "Send"
+    choose "Applicant" "Person"
+    type "Name" "Ana"
+    click "Next"
+    see "Request"
+    see/not "Name"
+    see "Back"
+]
+"next checks only the step on show"
+[
+    click "Next"
+    see "This field is required"
+    see "Applicant"
+]
+"a step that does not apply is skipped"
+[
+    choose "Applicant" "Person"
+    type "Name" "Ana"
+    click "Next"
+    see/not "Tax id"
+    see "Request"
+]
+[
+    choose "Applicant" "Company"
+    type "Name" "Acme"
+    click "Next"
+    see "Tax id"
+    type "Tax id" "B123"
+    click "Next"
+    see "Request"
+    click "Back"
+    see "Tax id"
+]
+"the last step sends every value"
+[
+    choose "Applicant" "Person"
+    type "Name" "Ana"
+    click "Next"
+    type "Request" "A bench"
+    click "Next"
+    see "Ana: A bench"
+    see/not "Next"
+    click "Send"
+    all [sent/name = "Ana"  sent/request = "A bench"  not find words-of sent 'tax-id]
+]
+"a step chosen by its title or by code"
+[
+    choose "Applicant" "Person"
+    type "Name" "Ana"
+    click "Next"
+    click "Who"
+    see "Name"
+]
+[
+    choose "Applicant" "Person"
+    type "Name" "Ana"
+    click "Next"
+    type "Request" "A bench"
+    click "Next"
+    click "Change"
+    see "Name"
+]
+"errors"
+[click "What"]
+"Enter goes to the next step"
+[
+    choose "Applicant" "Person"
+    type "Name" "Ana"
+    press/on "Enter" "Name"
+    see "Request"
+]

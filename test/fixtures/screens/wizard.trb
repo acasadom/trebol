@@ -1,0 +1,25 @@
+Trebol [title: "A form in steps"]
+
+sent: none
+
+view [
+    form [
+        go: steps [
+            "Who" [
+                choice kind "Applicant" ["Person" "Company"] required
+                field name "Name" required
+            ]
+            "Company" when [values/kind = "Company"] [
+                field tax-id "Tax id" required
+            ]
+            "What" [
+                area request "Request" required
+            ]
+            "Check" [
+                text is [rejoin [any [values/name ""] ": " any [values/request ""]]]
+                button "Change" [go/value: 1]
+            ]
+        ]
+        submit "Send" [sent: values]
+    ]
+]

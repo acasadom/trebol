@@ -115,6 +115,17 @@ test('toast/undo: click "Undo" runs its back block, dismiss and a new screen run
   ], lines.join('\n'));
 });
 
+test('steps: one step on show, Next and Enter check it, a step with when is skipped, only a step done is chosen', async () => {
+  const { passed, lines } = await ran(['test/fixtures/screens/wizard.test.trb']);
+  assert.equal(passed, false);
+  const out = lines.map(l => l.replace(/\S*test\/fixtures\/screens\//g, '')).filter(l => !/\*\* (Where|Near|At):/.test(l));
+  assert.equal(out.filter(l => l.startsWith('ok ')).length, 8, lines.join('\n'));
+  assert.deepEqual(out.slice(7, 9), [
+    'FAIL  wizard.test.trb:71:1  errors',
+    '        ** User error: click: "What" cannot be used now',
+  ], lines.join('\n'));
+});
+
 test('the tests of the examples pass', async () => {
   const files = (await findTests(join(ROOT, 'examples'))).map(f => relative(ROOT, f));
   assert.ok(files.includes('examples/clients/app.test.trb'));
