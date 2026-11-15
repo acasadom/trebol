@@ -186,6 +186,5 @@ code they hold, so one that reads quotes from strangers should leave parens out.
 
 ## What's next
 
-This was the last page about the language on its own. The block that `view` takes on the first page of this
-guide is a dialect like the shop's quotes, read by rules like these, written in Trebol. The second tutorial uses
-it to give the shop its screens.
+Trebol has dialects of its own besides `parse`. The next page is about one for code that moves through stages,
+such as a repair that goes from the counter to the workshop and back: machines.

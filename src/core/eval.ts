@@ -71,7 +71,7 @@ export type Step =
  * reports where the program called into the library, not the library's
  * insides: `fetch`, not the native it calls.
  */
-export const LIBRARY_FILES = new Set<string>(['mezzanines']);
+export const LIBRARY_FILES = new Set<string>(['mezzanines', 'machine']);
 
 const inLibrary = (s: Series<Cell>): boolean => s.file !== undefined && LIBRARY_FILES.has(s.file);
 

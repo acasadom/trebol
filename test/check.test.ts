@@ -50,6 +50,26 @@ view compose/deep [text (name) button "a" menu (items) hiden  panel [(face) iner
   ]);
 });
 
+test('check makes each machine without running it: its data is not worked out', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'trebol-check-'));
+  const file = join(dir, 'app.trb');
+  writeFileSync(file, `Trebol [title: "Check"]
+good: machine [data [n: 1 / 0]  initial a  state a []  from a to a on go set [n: 2]]
+bad: machine [
+    data [email: none]
+    initial account
+    state account [on-enter [data/emial: ""]]
+]
+worse: machine [initial a  state a []  from a to b on go]
+`);
+  const { clean, lines } = await checked([file]);
+  assert.equal(clean, false);
+  assert.deepEqual(lines.map(l => l.slice(dir.length + 1)), [
+    'app.trb:6:30  machine: data has no emial',
+    'app.trb:8:40  machine: no state b',
+  ]);
+});
+
 test('a file that does not load is a problem; a clean one says so', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'trebol-check-'));
   writeFileSync(join(dir, 'bad.trb'), 'view [text "a]');

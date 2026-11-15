@@ -71,6 +71,7 @@ language/11-parse
 language/12-tasks-and-network
 language/13-modules
 language/14-dialects
+language/15-machines
 ```
 
 ## Build the screens

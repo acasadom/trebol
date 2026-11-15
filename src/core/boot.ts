@@ -25,6 +25,7 @@ import './natives/csv.ts';
 import './natives/xml.ts';
 import './natives/parse.ts';
 import { MEZZANINES } from './mezz.ts';
+import { MACHINE } from './machine.ts';
 
 export function makeRuntime(): Runtime {
   const lib = context();
@@ -45,11 +46,13 @@ export function makeRuntime(): Runtime {
     set(name, { t: K.Op, p: { fn: lib.vals[i]! } });
   }
   const rt: Runtime = { lib, user: context([], [], lib) };
-  const code = load(MEZZANINES, { file: 'mezzanines' });
-  bindSeries(code.s, lib, true);
-  const r = runSync(rt, code);
-  // Mezzanines failing to load is a bug in Trebol itself.
-  if (r.k === 'error') throw new Error(`mezzanines failed: ${errorMessage(r.e)}`);
+  for (const [file, src] of [['mezzanines', MEZZANINES], ['machine', MACHINE]] as const) {
+    const code = load(src, { file });
+    bindSeries(code.s, lib, true);
+    const r = runSync(rt, code);
+    // Mezzanines failing to load is a bug in Trebol itself.
+    if (r.k === 'error') throw new Error(`${file} failed: ${errorMessage(r.e)}`);
+  }
   return rt;
 }
 

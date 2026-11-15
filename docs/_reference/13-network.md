@@ -70,8 +70,6 @@ gets the part done as its `value`, from 0 to 1, or `none` while the total is unk
 
 ## on-error
 
-## send
-
 ## close-stream
 
 ## read-file

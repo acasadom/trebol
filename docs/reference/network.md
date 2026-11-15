@@ -169,18 +169,6 @@ on-error stream body
 - `stream` (`handle!`)
 - `body` (`block!`)
 
-(fn-send)=
-## send
-
-Sends a value on a socket.
-
-```text
-send stream data
-```
-
-- `stream` (`handle!`)
-- `data` (`any-value!`)
-
 (fn-close-stream)=
 ## close-stream
 

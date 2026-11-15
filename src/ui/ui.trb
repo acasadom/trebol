@@ -211,6 +211,7 @@ ui-check: function [
                 append/only blocks reduce [first p b]
                 walk b
             )
+            | 'machine set b block! (append/only blocks reduce ['machine b])
             | set b [block! | paren!] (walk b)
             | skip
         ]]
@@ -220,8 +221,16 @@ ui-check: function [
         if error? r: try body [append ui-checking reduce [place form r/message]]
     ]
     foreach p blocks [if 'stylize = first p [attempt-at next p [stylize copy/deep second p]]]
+    ; a machine is made without running anything: its data stays unevaluated
     foreach p blocks [
-        unless 'stylize = first p [
+        if 'machine = first p [
+            if error? r: try [machine-engine/make-machine second p] [
+                append ui-checking reduce [any [machine-engine/failed next p] form r/message]
+            ]
+        ]
+    ]
+    foreach p blocks [
+        unless find [stylize machine] first p [
             attempt-at next p [
                 faces: all-faces layout second p
                 ; screens and rows lay these out when shown
