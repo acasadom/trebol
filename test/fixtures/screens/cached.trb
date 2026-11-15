@@ -1,0 +1,12 @@
+Trebol [title: "Answers kept by cached"]
+
+view [
+    title "Bikes"
+    table is [cached "/api/bikes"] [name "Bike"]
+    count: text is [either b: cached "/api/bikes" [rejoin [length? b " bikes"]] ["Loading"]]
+    form [
+        field "Name" required
+        submit "Add" [fetch/with "/api/bikes" [method: 'POST body: values]]
+    ]
+    button "Again" [refresh "/api/bikes"]
+]

@@ -57,7 +57,7 @@ draw
 
 ### C
 
-[`can-go-back?`](#fn-can-go-back-3f) · [`can-go-forward?`](#fn-can-go-forward-3f) · [`cancel`](#fn-cancel) · [`case`](#fn-case) · [`catch`](#fn-catch) · [`cause-error`](#fn-cause-error) · [`change`](#fn-change) · [`char?`](#fn-char-3f) · [`charset`](#fn-charset) · [`checksum`](#fn-checksum) · [`clear`](#fn-clear) · [`close`](#fn-close) · [`close-stream`](#fn-close-stream) · [`closure`](#fn-closure) · [`collect`](#fn-collect) · [`collect-words`](#fn-collect-words) · [`comment`](#fn-comment) · [`complement`](#fn-complement) · [`compose`](#fn-compose) · [`compress`](#fn-compress) · [`confirm`](#fn-confirm) · [`construct`](#fn-construct) · [`context`](#fn-context) · [`context?`](#fn-context-3f) · [`continue`](#fn-continue) · [`copy`](#fn-copy) · [`cosine`](#fn-cosine)
+[`cached`](#fn-cached) · [`can-go-back?`](#fn-can-go-back-3f) · [`can-go-forward?`](#fn-can-go-forward-3f) · [`cancel`](#fn-cancel) · [`case`](#fn-case) · [`catch`](#fn-catch) · [`cause-error`](#fn-cause-error) · [`change`](#fn-change) · [`char?`](#fn-char-3f) · [`charset`](#fn-charset) · [`checksum`](#fn-checksum) · [`clear`](#fn-clear) · [`close`](#fn-close) · [`close-stream`](#fn-close-stream) · [`closure`](#fn-closure) · [`collect`](#fn-collect) · [`collect-words`](#fn-collect-words) · [`comment`](#fn-comment) · [`complement`](#fn-complement) · [`compose`](#fn-compose) · [`compress`](#fn-compress) · [`confirm`](#fn-confirm) · [`construct`](#fn-construct) · [`context`](#fn-context) · [`context?`](#fn-context-3f) · [`continue`](#fn-continue) · [`copy`](#fn-copy) · [`cosine`](#fn-cosine)
 
 ### D
 
@@ -113,7 +113,7 @@ draw
 
 ### R
 
-[`random`](#fn-random) · [`read`](#fn-read) · [`read-clipboard`](#fn-read-clipboard) · [`read-file`](#fn-read-file) · [`reduce`](#fn-reduce) · [`refinement?`](#fn-refinement-3f) · [`reform`](#fn-reform) · [`rejoin`](#fn-rejoin) · [`remainder`](#fn-remainder) · [`remove`](#fn-remove) · [`remove-each`](#fn-remove-each) · [`remove-local`](#fn-remove-local) · [`repeat`](#fn-repeat) · [`replace`](#fn-replace) · [`return`](#fn-return) · [`reverse`](#fn-reverse) · [`reword`](#fn-reword) · [`round`](#fn-round)
+[`random`](#fn-random) · [`read`](#fn-read) · [`read-clipboard`](#fn-read-clipboard) · [`read-file`](#fn-read-file) · [`reduce`](#fn-reduce) · [`refinement?`](#fn-refinement-3f) · [`reform`](#fn-reform) · [`refresh`](#fn-refresh) · [`rejoin`](#fn-rejoin) · [`remainder`](#fn-remainder) · [`remove`](#fn-remove) · [`remove-each`](#fn-remove-each) · [`remove-local`](#fn-remove-local) · [`repeat`](#fn-repeat) · [`replace`](#fn-replace) · [`return`](#fn-return) · [`reverse`](#fn-reverse) · [`reword`](#fn-reword) · [`round`](#fn-round)
 
 ### S
 

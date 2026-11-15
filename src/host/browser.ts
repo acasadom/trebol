@@ -16,7 +16,7 @@
 // set the field again to repaint it.
 
 import { logic,
-  K, NONE, TRUE, FALSE, native, value, string, form, money, decToNumber, decFromNumber, ctxFind, intern, spell, text, canon, blockOf, wordOf, char, compare, UNSET, throwError, toJson, parseJson,
+  K, NONE, TRUE, FALSE, native, value, string, form, money, decToNumber, decFromNumber, ctxFind, getWord, intern, spell, text, canon, blockOf, wordOf, char, compare, UNSET, throwError, toJson, parseJson,
   type Cell, type MapCell, type ObjectCell, type BlockCell, type WordCell, type StringCell, type Ctx, type Sym,
 } from '../core/index.ts';
 import { mapAt, startHost, startUi, runSource, report, shown, translate, uiText, activeLanguage, editLocal, readLocal, readDate, weekStart, fileSize, LOCAL_KINDS, type Host } from './index.ts';
@@ -4778,6 +4778,13 @@ async function boot(): Promise<void> {
     syncDirty();
     devLog.repainted();
   };
+  // an answer kept by cached that comes: the reactions that read it run
+  const news = getWord({ t: K.Word, sym: intern('ui-cache-news'), bind: host.rt.user });
+  if (news?.t === K.Object) news.ctx.watch = dirty;
+  // the page back into view: what cached kept is asked again
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') spawn(host.sch, { data: [{ t: K.Word, sym: intern('ui-caches-again'), bind: host.rt.user }] }, 0);
+  });
   document.addEventListener('keydown', onKeyDown, true);
   document.addEventListener('keydown', onReorderKey);
   // a scroll anywhere: the page, a scroll face, a dialog

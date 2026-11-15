@@ -87,7 +87,14 @@ test-answer: function [
 test-shown: function [] [
     out: copy []
     if v: shown-view [
-        foreach cycle ui-react v [print cycle]
+        ; answers that cached asks for behind come before the user looks
+        forever [
+            foreach cycle ui-react v [print cycle]
+            tasks: copy []
+            foreach [key e] ui-cache-entries [if e/asking [append tasks e/task]]
+            if empty? tasks [break]
+            wait tasks
+        ]
         test-walk v none out
     ]
     out

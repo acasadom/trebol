@@ -31,8 +31,106 @@ fetch: func [
     url [url! string!]
     /with "method, headers, body, form, multipart, timeout, full"
         options [block! object!]
+    /local answer
 ][
-    http-request url either with [either block? options [make object! options] [options]] [none]
+    if all [with block? options] [options: make object! options]
+    answer: http-request url either with [options] [none]
+    ; what was kept of the same path is old now
+    if all [with  find [post put patch delete] attempt [to word! select options 'method]] [ui-cache-touched url]
+    answer
+]
+
+; --- answers kept: cached and refresh ---------------------------------------------
+;
+; Each url read with cached has an entry; a reaction that reads cached %/x has
+; the entry's version among its sources, so it runs again when an answer comes.
+; ui-cache-news counts every answer, for reactions whose url is not written out.
+
+ui-cache-entries: copy []
+ui-cache-news: make object! [version: 0]
+
+ui-cache-entry: func ["The entry of what cached keeps for a url, made the first time." url /local key e] [
+    key: form url
+    unless e: select/case ui-cache-entries key [
+        e: make object! [url: none  answer: none  version: 0  stale: true  asking: false  again: false  task: none]
+        e/url: url
+        append ui-cache-entries reduce [key e]
+    ]
+    e
+]
+
+; The path of a url, without the server, the query or the fragment.
+ui-cache-path: func ["The path of a url, without the server, the query or the fragment." url /local s i] [
+    s: form url
+    if i: find s "#" [s: copy/part s i]
+    if i: find s "?" [s: copy/part s i]
+    if i: find s "://" [s: any [find skip i 3 "/" copy "/"]]
+    s
+]
+
+; Asks again behind; one request at a time per url, and one more if asked meanwhile.
+ui-cache-ask: func ["Asks again behind for the answer of an entry of cached." e] [
+    e/stale: false
+    either e/asking [e/again: true] [
+        e/asking: true
+        e/task: spawn compose [ui-cache-answer (e)]
+    ]
+]
+
+ui-cache-answer: func ["Asks for the answer of an entry of cached, and keeps it." e /local r] [
+    forever [
+        e/again: false
+        r: try [fetch e/url]
+        either error? :r [
+            ; the last answer stays; the next read asks again
+            e/stale: true
+            print ["cached:" form e/url "--" r/message]
+        ] [
+            e/answer: :r
+            e/version: e/version + 1
+            ui-cache-news/version: ui-cache-news/version + 1
+        ]
+        unless e/again [break]
+    ]
+    e/asking: false
+]
+
+; Every url kept is asked again: the page came back into view.
+ui-caches-again: func ["Asks again for every answer cached keeps." /local key e] [
+    foreach [key e] ui-cache-entries [ui-cache-ask e]
+]
+
+; Every url kept is old: it is asked again the next time it is read (a screen is entered).
+ui-caches-old: func ["Marks every answer cached keeps as old: the next read asks again." /local key e] [
+    foreach [key e] ui-cache-entries [e/stale: true]
+]
+
+; A post, put, patch or delete to url: what was kept of its path, or of a path
+; above or under it (/api/clients for /api/clients/7), is asked again.
+ui-cache-touched: func ["Asks again for what cached keeps of the path of url, or above or under it." url /local key e a b] [
+    a: ui-cache-path url
+    foreach [key e] ui-cache-entries [
+        b: ui-cache-path e/url
+        if any [a = b  find/match a join b "/"  find/match b join a "/"] [ui-cache-ask e]
+    ]
+]
+
+cached: func [
+    "The last answer to a GET of url, at once (none the first time), and asks again behind: a reaction (is, react) that reads it runs again when the answer comes."
+    url [url! string!]
+    /local e
+][
+    e: ui-cache-entry url
+    if e/stale [ui-cache-ask e]
+    e/answer
+]
+
+refresh: func [
+    "Asks again for an answer kept by cached, now; reactions that read it run again when it comes."
+    url [url! string!]
+][
+    ui-cache-ask ui-cache-entry url
+    exit
 ]
 
 show-progress: func [

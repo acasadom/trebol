@@ -91,6 +91,11 @@ test('react, is and calc follow what they read, between the steps of a test', as
   assert.ok(passed, lines.join('\n'));
 });
 
+test('cached gives the last answer and asks again after a post or a refresh', async () => {
+  const { passed, lines } = await ran(['test/fixtures/screens/cached.test.trb']);
+  assert.ok(passed, lines.join('\n'));
+});
+
 test('the tests of the examples pass', async () => {
   const files = (await findTests(join(ROOT, 'examples'))).map(f => relative(ROOT, f));
   assert.ok(files.includes('examples/clients/app.test.trb'));

@@ -724,6 +724,8 @@ enter-screen: function [f route [block!] /local ev b] [
     morphs reduce [s]
     f/value: copy route
     f/entering: true
+    ; what cached kept is asked again as the new screen reads it
+    ui-caches-old
     ; a screen starts with nothing to save
     set 'marked false
     set-unsaved false
@@ -1190,11 +1192,20 @@ react-path: function [f p out [block!]] [
 ]
 
 react-scan: function [f b [block! paren!] sources [block!] targets [block!] /local v] [
-    foreach v b [
+    forall b [
+        v: first b
         case [
             any [block? :v  paren? :v] [react-scan f v sources targets]
             any [path? :v  get-path? :v] [react-path f v sources]
             set-path? :v [react-path f v targets]
+            ; an answer kept: of its url if written out, else of any
+            all [word? :v  v = 'cached] [
+                append sources either any [url? second b  string? second b] [
+                    reduce [ui-cache-entry second b 'version]
+                ] [
+                    reduce [ui-cache-news 'version]
+                ]
+            ]
         ]
     ]
 ]
