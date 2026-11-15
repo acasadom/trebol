@@ -28,3 +28,8 @@ serve [
     see "Gravel"  see "1 bikes"
     asked = 2
 ]
+"an answer with no body"
+[
+    serve [DELETE "/api/bikes/1" [reply 204 none]]
+    "" = fetch/with "/api/bikes/1" [method: 'DELETE]
+]

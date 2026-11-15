@@ -159,7 +159,9 @@ async function answer(input: string | URL | Request, init: RequestInit = {}): Pr
     return new Response('', { status: 404, statusText: 'Not Found' });
   }
   const [status, json] = got.s.data.slice(got.i) as [{ v: number }, StringCell];
-  return new Response(text(json), { status: status.v, statusText: STATUS_CODES[status.v] ?? '', headers: { 'content-type': 'application/json' } });
+  // 204, 205 and 304 are answers with no body: Response refuses one
+  const empty = status.v === 204 || status.v === 205 || status.v === 304;
+  return new Response(empty ? null : text(json), { status: status.v, statusText: STATUS_CODES[status.v] ?? '', headers: { 'content-type': 'application/json' } });
 }
 
 /** What a form or multipart body sent, as JSON for serve: a file as its name, size and type. */
