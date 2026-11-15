@@ -44,7 +44,9 @@ A screen is built again every time it is entered, from its block, so it starts w
 own fresh faces. What must last from one screen to the next lives outside them, like `bookings` here.
 `on-enter`, at the top of a screen's block, runs as the screen is entered, with its faces already made:
 the place to give a table its rows. The screen shows only once `on-enter` has finished, so the reader never
-sees it half filled.
+sees it half filled. If `on-enter` keeps the reader waiting, longer than 300 ms, say for a slow server, the
+new screen comes anyway, and what has no data yet (an empty title or text, a table or list with no rows)
+shows as gray bars until `on-enter` ends: the reader sees at once where they went and what is coming.
 
 The new screen slides in as the old one slides out, the way the reader went: going to a screen, it comes
 from the side ahead; going back, from the side behind, as on a phone. The theme sets how long it takes, and

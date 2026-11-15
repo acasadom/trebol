@@ -734,7 +734,8 @@ enter-screen: function [f route [block!] /local ev b] [
 
 ; Runs what a screen does on entering, and only then lets the host show it: the
 ; page keeps the screen it had until the new one has its data, so nothing paints
-; half made. If on-enter went elsewhere, the screen it went to decides.
+; half made; if that takes long, the host shows the new one with gray bars where
+; its data will be. If on-enter went elsewhere, the screen it went to decides.
 run-enter: function [s] [
     r: none
     if h: handler-for s 'on-enter [r: try [run-handler s h  none]]

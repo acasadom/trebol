@@ -4453,7 +4453,10 @@ function sync(m: Mounted): void {
   if (style === 'screens') settleScreen(m.box ?? m.el, f);
 }
 
-/** A screen is made away from the page; the page keeps the one it has until `entering` ends. */
+/**
+ * A screen is made away from the page; the page keeps the one it has until `entering`
+ * ends, or shows the new one empty, as gray bars, if its on-enter takes long.
+ */
 function placeScreen(m: Mounted, box: HTMLElement): void {
   comingScreen = el('div');
   appendChildren(comingScreen, m.face, 'screens');
@@ -4463,15 +4466,39 @@ function placeScreen(m: Mounted, box: HTMLElement): void {
 function settleScreen(box: HTMLElement, f: ObjectCell): void {
   const entering = flag(f, 'entering');
   box.toggleAttribute('aria-busy', entering);
-  if (entering || comingScreen === null) return;
-  // the screen made last, when the browser has its picture of the page; one entering since waits for its own
+  if (entering) {
+    // an on-enter that keeps the user waiting: the new screen comes now, gray where its data will be
+    if (comingScreen !== null && loadingTimer === null) {
+      loadingTimer = setTimeout(() => {
+        loadingTimer = null;
+        if (comingScreen === null || !flag(f, 'entering')) return;
+        showComing(box, f, true);
+      }, LOADING_AFTER);
+    }
+    return;
+  }
+  if (loadingTimer !== null) clearTimeout(loadingTimer);
+  loadingTimer = null;
+  if (comingScreen === null) delete box.dataset['tbLoading'];
+  else showComing(box, f, false);
+}
+
+/** Puts the screen made last on the page, when the browser has its picture of it; one entering since waits for its own. */
+function showComing(box: HTMLElement, f: ObjectCell, loading: boolean): void {
+  if (comingScreen === null) return;
   changeScreen(box, comingScreen, () => {
-    if (comingScreen === null || flag(f, 'entering')) return;
+    const entering = flag(f, 'entering');
+    if (comingScreen === null || (entering && !loading)) return;
     box.replaceChildren(...comingScreen.childNodes);
     comingScreen = null;
+    box.toggleAttribute('data-tb-loading', entering);
     enteredScreen(box);
   });
 }
+
+/** How long, in ms, a screen's on-enter may take before the screen comes without its data. */
+const LOADING_AFTER = 300;
+let loadingTimer: ReturnType<typeof setTimeout> | null = null;
 
 /** Sets a spacing property to a step of the theme's scale, or back to the stylesheet's. */
 function space(e: HTMLElement, prop: string, v: Cell): void {

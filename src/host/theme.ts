@@ -361,6 +361,18 @@ body {
 /* entering a screen focuses its title for screen readers; it is not a control, so no ring */
 .tb-screen :is(h1, h2)[tabindex="-1"]:focus { outline: none; }
 .tb-screens[aria-busy] { cursor: progress; }
+/* a screen on show while its on-enter still loads: what has no data yet is a gray bar */
+.tb-screens[data-tb-loading] :is(.tb-title, .tb-heading, .tb-text):empty::before {
+  content: ""; display: inline-block; vertical-align: middle; width: 14em; max-width: 100%; height: 0.8lh;
+  border-radius: var(--tb-radius); background: color-mix(in srgb, var(--tb-muted) 22%, transparent); animation: tb-skeleton 1.2s ease-in-out infinite;
+}
+.tb-screens[data-tb-loading] .tb-text:empty::before { width: 24em; }
+.tb-screens[data-tb-loading] .tb-empty:not([hidden]) {
+  color: transparent; min-height: 9em; margin: var(--tb-space-4);
+  background: repeating-linear-gradient(to bottom, color-mix(in srgb, var(--tb-muted) 22%, transparent) 0 1.25em, transparent 1.25em 2.75em);
+  animation: tb-skeleton 1.2s ease-in-out infinite;
+}
+@keyframes tb-skeleton { 50% { opacity: 0.5; } }
 .tb-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--tb-space-3); }
 .tb-row:where(:not(.tb-top, .tb-middle, .tb-bottom)):has(> .tb-field) { align-items: flex-end; }
 /* with fields, a text beside them sits on the line of the controls, not on their labels */
