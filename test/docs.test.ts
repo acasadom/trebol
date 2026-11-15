@@ -145,9 +145,10 @@ function runScreenTests(app: string, tests: string, where: string): void {
 }
 
 // no DOM here: an example's custom element is defined, never drawn
-const g = globalThis as { HTMLElement?: unknown; customElements?: unknown };
+const g = globalThis as { HTMLElement?: unknown; customElements?: unknown; CSSStyleSheet?: unknown };
 g.HTMLElement ??= class {};
 g.customElements ??= { define: () => {} };
+g.CSSStyleSheet ??= class { replaceSync() {} };
 
 let supplier: Server | null = null;
 before(async () => {

@@ -3,9 +3,10 @@
 // unicode-range of each face). They come from @fontsource-variable/inter
 // 5.3.0, under the SIL Open Font License (fonts/OFL.txt).
 //
-// trebol.js declares them with addresses next to itself; a page made by
-// `trebol build` carries the files inside and declares them in its own
-// <style data-tb-fonts>, which the host then leaves alone.
+// trebol.js declares them, with addresses next to itself, in a constructed
+// style sheet (a strict Content-Security-Policy drops a <style> made by
+// script); a page made by `trebol build` carries the files inside and declares
+// them in its own <style data-tb-fonts>, which the host then leaves alone.
 
 export interface FontFile {
   /** File name in fonts/. */

@@ -4779,14 +4779,22 @@ export function themeParams(obj: ObjectCell): ThemeParams {
   return p;
 }
 
-function setTheme(p: ThemeParams): void {
-  let tag = document.getElementById('tb-theme');
-  if (tag === null) {
-    tag = el('style');
-    tag.id = 'tb-theme';
-    document.head.append(tag);
+// The host's own CSS goes in constructed style sheets, not <style> elements: a page whose
+// Content-Security-Policy says style-src 'self' drops a <style> made by script, but adopts these.
+const sheets = new Map<string, CSSStyleSheet>();
+
+function setSheet(id: string, css: string): void {
+  let sheet = sheets.get(id);
+  if (sheet === undefined) {
+    sheet = new CSSStyleSheet();
+    sheets.set(id, sheet);
+    document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
   }
-  tag.textContent = themeCss(p);
+  sheet.replaceSync(css);
+}
+
+function setTheme(p: ThemeParams): void {
+  setSheet('theme', themeCss(p));
   themeMoved();
 }
 
@@ -4805,11 +4813,8 @@ async function boot(): Promise<void> {
       addBuiltIn(new URL(path, location.href).href, src);
     }
   }
-  if (document.querySelector('style[data-tb-fonts]') === null) {
-    const fonts = el('style');
-    fonts.dataset['tbFonts'] = '';
-    fonts.textContent = interCss(file => new URL(`fonts/${file}`, import.meta.url).href);
-    document.head.append(fonts);
+  if (document.querySelector('style[data-tb-fonts], link[data-tb-fonts]') === null) {
+    setSheet('fonts', interCss(file => new URL(`fonts/${file}`, import.meta.url).href));
   }
   setTheme(DEFAULT_THEME);
   host = startHost({ onError: e => showError(report(e)) });
