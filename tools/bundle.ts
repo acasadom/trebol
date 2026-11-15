@@ -9,6 +9,11 @@
 // The page has only the fonts its own text needs beyond Latin: Latin and Latin Extended always, the
 // Cyrillic, Greek and Vietnamese files only when some .trb has one of their letters. Other letters
 // show in the system font.
+//
+// With --csp the runtime and the fonts go next to the page instead, as trebol.js and fonts/ (every
+// font: the browser downloads only those its text needs), so a server whose Content-Security-Policy
+// says script-src 'self' and style-src 'self' runs it; such a page needs a web server. The .trb stay
+// inside: a <script type="application/json"> is data, which a policy does not block.
 
 import { existsSync } from 'node:fs';
 import { cp, mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
@@ -42,6 +47,13 @@ export interface Built {
   sources: string[];
   /** The files copied next to it. */
   copied: string[];
+  /** With --csp, the runtime and fonts written next to it. */
+  split: string[];
+}
+
+export interface BuildOptions {
+  /** The runtime and fonts as files next to the page, for a strict Content-Security-Policy. */
+  csp?: boolean;
 }
 
 /** The files of the folder, by path from it with / between names, leaving out dotfiles, node_modules and `skip`. */
@@ -101,7 +113,7 @@ function fontsDir(): string {
 }
 
 /** Builds the app in `folder` into `out`; throws an Error with a message for the user when it cannot. */
-export async function buildApp(folder: string, out?: string): Promise<Built> {
+export async function buildApp(folder: string, out?: string, options: BuildOptions = {}): Promise<Built> {
   const root = resolve(folder);
   const dest = resolve(out ?? join(root, 'build'));
   if (!existsSync(join(root, 'app.trb'))) throw new Error(`no app.trb in ${folder}`);
@@ -115,6 +127,8 @@ export async function buildApp(folder: string, out?: string): Promise<Built> {
   const files = await filesOf(root, dest);
   const sources = files.filter(f => f.endsWith('.trb') && !f.endsWith('.test.trb'));
   const copied = files.filter(f => ASSETS.has(extname(f).toLowerCase()) && !LEFT_OUT.has(f));
+  const clash = options.csp ? copied.find(f => f === 'trebol.js' || f.startsWith('fonts/')) : undefined;
+  if (clash !== undefined) throw new Error(`${clash} would take the place of the runtime or its fonts; move it to build with --csp`);
   const texts: Record<string, string> = {};
   for (const f of sources) texts[f] = await readFile(join(root, f), 'utf8');
 
@@ -130,14 +144,24 @@ export async function buildApp(folder: string, out?: string): Promise<Built> {
   const title = escapeHtml(titleOf(texts['app.trb']!) ?? 'Trebol');
   // < as < keeps the JSON from closing its script
   const json = JSON.stringify(texts).replace(/</g, '\\u003c');
-  const page = `<!doctype html>
+  const head = `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 ${MARK}
 <title>${title}</title>
-<!-- The font Inter:
+`;
+  const tail = `<script type="text/trebol" src="app.trb"></script>
+</head>
+<body></body>
+</html>
+`;
+  const page = options.csp
+    ? `${head}<script type="application/json" id="trebol-files">${json}</script>
+<script type="module" src="trebol.js"></script>
+${tail}`
+    : `${head}<!-- The font Inter:
 ${license.replace(/--/g, '- -')}
 -->
 <style data-tb-fonts>
@@ -145,18 +169,21 @@ ${interCss(file => `data:font/woff2;base64,${data.get(file)}`, faces)}
 </style>
 <script type="application/json" id="trebol-files">${json}</script>
 <script type="module">${scriptSafe(await runtime())}</script>
-<script type="text/trebol" src="app.trb"></script>
-</head>
-<body></body>
-</html>
-`;
+${tail}`;
 
   await rm(dest, { recursive: true, force: true });
   await mkdir(dest, { recursive: true });
   await writeFile(join(dest, 'index.html'), page);
+  const split: string[] = [];
+  if (options.csp) {
+    await writeFile(join(dest, 'trebol.js'), await runtime());
+    await mkdir(join(dest, 'fonts'));
+    for (const f of [...INTER.map(i => i.file), 'OFL.txt']) await cp(join(fonts, f), join(dest, 'fonts', f));
+    split.push('trebol.js', 'fonts/');
+  }
   for (const f of copied) {
     await mkdir(dirname(join(dest, f)), { recursive: true });
     await cp(join(root, f), join(dest, f));
   }
-  return { page: join(dest, 'index.html'), size: (await stat(join(dest, 'index.html'))).size, sources, copied };
+  return { page: join(dest, 'index.html'), size: (await stat(join(dest, 'index.html'))).size, sources, copied, split };
 }

@@ -108,6 +108,7 @@ reference/index
 :caption: Guides
 
 from-rebol
+strict-csp
 ```
 
 ```{toctree}

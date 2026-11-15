@@ -140,7 +140,8 @@ backend or `package.json`, stays out. Copy the `build` folder to any server that
 is the app. The page even opens from the disk with a double click, with no server, as long as the app imports
 no JavaScript module (the browser loads those only from a server). `trebol build other-folder --out site`
 builds another folder into `site`. A second build replaces the folder of the first; a folder it did not make
-is left alone, with an error.
+is left alone, with an error. For a server with a strict Content-Security-Policy, `trebol build --csp` puts
+Trebol and the fonts next to the page as files ([A strict Content-Security-Policy](../strict-csp.md)).
 
 The page has the fonts its own text needs: Latin always, Cyrillic, Greek and Vietnamese only when some `.trb`
 file has one of their letters. Other letters show in the system font.

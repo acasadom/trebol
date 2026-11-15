@@ -77,6 +77,24 @@ test('a page in Latin has only the Latin fonts', async () => {
   assert.match(page, /<title>Trebol<\/title>/);
 });
 
+test('with csp the page has no inline script or style, and the runtime and fonts sit next to it', async () => {
+  const root = folder({ 'app.trb': 'Trebol []\nview [text "Hi"]\n', 'photo.png': 'png' });
+  const b = await buildApp(root, undefined, { csp: true });
+  const out = join(root, 'build');
+  assert.deepEqual(b.split, ['trebol.js', 'fonts/']);
+  const page = readFileSync(b.page, 'utf8');
+  assert.doesNotMatch(page, /<style|style=/);
+  // every script has a src or is data
+  for (const open of page.match(/<script[^>]*>/g)!) assert.match(open, /src="|type="application\/json"/, open);
+  assert.match(page, /<script type="module" src="trebol.js"><\/script>/);
+  assert.deepEqual(Object.keys(JSON.parse(script(page, '<script type="application/json" id="trebol-files">'))), ['app.trb']);
+  assert.ok(readFileSync(join(out, 'trebol.js'), 'utf8').length > 100_000);
+  for (const f of ['inter-latin.woff2', 'inter-cyrillic.woff2', 'OFL.txt']) assert.ok(existsSync(join(out, 'fonts', f)), f);
+  assert.equal(readFileSync(join(out, 'photo.png'), 'utf8'), 'png');
+  // the app's own trebol.js would be lost
+  await assert.rejects(buildApp(folder({ 'app.trb': 'view []', 'fonts/a.woff2': 'x' }), undefined, { csp: true }), /fonts\/a\.woff2 would take the place/);
+});
+
 test('a build replaces only a folder it made', async () => {
   const root = folder({ 'app.trb': 'view [text "hi"]', 'a.svg': '<svg/>' });
   await buildApp(root);
