@@ -969,6 +969,17 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
 .tb-dialog.tb-confirm { width: min(420px, calc(100vw - 32px)); }
 .tb-dialog.tb-confirm > .tb-dialog-body { padding-top: var(--tb-space-6); gap: var(--tb-space-6); }
 .tb-confirm-question { margin: 0; font-size: 15px; line-height: 1.5; }
+/* the palette (Ctrl+K): near the top, as a search box with what it finds under it */
+.tb-dialog.tb-palette { margin-top: min(15vh, 120px); width: min(600px, calc(100vw - 32px)); max-height: min(480px, calc(100vh - 2 * min(15vh, 120px))); padding: var(--tb-space-2); gap: var(--tb-space-2); }
+.tb-palette-input { width: 100%; box-sizing: border-box; font-size: 16px; }
+.tb-palette-list { list-style: none; margin: 0; padding: 0; overflow: auto; }
+.tb-palette-list:empty { display: none; }
+.tb-palette-option { display: flex; align-items: center; gap: var(--tb-space-3); min-height: var(--tb-control); box-sizing: border-box; padding: var(--tb-space-2) var(--tb-space-3); border-radius: var(--tb-radius); cursor: pointer; }
+.tb-palette-option > span:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-palette-option[aria-selected="true"] { background: var(--tb-primary-soft); }
+.tb-palette-hint { flex: none; font-size: 13px; color: var(--tb-muted); }
+.tb-palette-none { margin: 0; padding: var(--tb-space-4) var(--tb-space-3); color: var(--tb-muted); }
+.tb-palette-none[hidden] { display: none; }
 @keyframes tb-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
 /* tabs */
@@ -1410,6 +1421,7 @@ ol.tb-dev-entries .tb-dev-warning .tb-dev-kind { color: var(--tb-warning); }
   .tb-crumb-more { display: inline-flex !important; }
   .tb-dialog { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; border-radius: 0; }
   .tb-dialog.tb-confirm { width: calc(100vw - 32px); height: fit-content; max-height: calc(100dvh - 32px); margin: auto; border-radius: var(--tb-radius-lg); }
+  .tb-dialog.tb-palette { width: 100vw; max-height: 100dvh; margin: 0; }
 }
 @media print {
   .tb-toasts, .tb-dialog:not([open]) { display: none !important; }

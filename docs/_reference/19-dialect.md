@@ -329,6 +329,13 @@ On a screen of `screens`: when the screen is entered, before it shows. A `go` in
 
 When a row of a tree opens.
 
+## on-find
+
+On a view: when the user types in the palette (Ctrl+K, ⌘K on a Mac), with what was typed as `value`. It gives
+a block of a label and a link for each thing it found, as a breadcrumb's items: `["Ada Lovelace" [booking 1]]`.
+They show under the screens, buttons and menu items that match, and choosing one goes to its link. It may wait
+for a server.
+
 ## on-focus
 
 When it gets the focus.

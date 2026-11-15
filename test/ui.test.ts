@@ -1346,3 +1346,34 @@ test('a lookup drops what a search answers once the user has typed on, and works
     reduce [fs/1/options fs/2/options]`);
   assert.equal(r, '[none []]');
 });
+
+test('the palette finds screens, buttons, links and menu items on show, and what on-find gives', async () => {
+  link = ['home'];
+  const app = `
+    picked: none
+    v: view [
+      on-find [either value = "ada" [["Ada Lovelace" [client 1]]] [[]]]
+      global main: screens [
+        home "Home" [
+          button "Save" key "Ctrl+S" [picked: 'save]
+          button "Gone" hidden
+          button "Off" disabled
+          button "Export" menu ["As CSV" csv "More" ["As PDF" pdf]] on-menu [picked: event/picked]
+          tabs ["One" [link "Help" https://example.com] "Two" [button "Hidden in two"]]
+        ]
+        about "About" [text "x"]
+        client "Client" [id] [text "y"]
+      ]
+    ]
+    labels: func [found] [collect [foreach [l k s t] found [keep l]]]
+  `;
+  assert.equal(await ev(app + 'labels ui-palette v ""'),
+    '["Home" "About" "Save" "Export › As CSV" "Export › More › As PDF" "Help"]');
+  assert.equal(await ev(app + 'found: ui-palette v "sav"  reduce [found/2 found/3]'), '[action "Ctrl+S"]');
+  assert.equal(await ev(app + 'labels ui-palette v "pdf"'), '["Export › More › As PDF"]');
+  assert.equal(await ev(app + 'labels ui-palette v "ada"'), '["Ada Lovelace"]');
+  assert.equal(await ev(app + 'found: ui-palette v "pdf"  ui-palette-pick v found/2 found/4  picked'), 'pdf');
+  // the view opens on the screen of the link, which the next ones change
+  assert.equal(await ev(app + 'found: ui-palette v "ada"  ui-palette-pick v found/2 found/4  main/value'), '[client "1"]');
+  assert.equal(await ev(app + 'found: ui-palette v "about"  ui-palette-pick v found/2 found/4  main/value'), '[about]');
+});

@@ -547,6 +547,16 @@ An event: the block after it runs when it happens.
 
 When a row of a tree opens.
 
+(word-on-find)=
+## on-find
+
+An event: the block after it runs when it happens.
+
+On a view: when the user types in the palette (Ctrl+K, ⌘K on a Mac), with what was typed as `value`. It gives
+a block of a label and a link for each thing it found, as a breadcrumb's items: `["Ada Lovelace" [booking 1]]`.
+They show under the screens, buttons and menu items that match, and choosing one goes to its link. It may wait
+for a server.
+
 (word-on-focus)=
 ## on-focus
 

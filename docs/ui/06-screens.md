@@ -142,6 +142,48 @@ its row again. A face with the same name on both screens is enough, a picture of
 large one, `morph 'photo`, or a button that becomes the dialog-like panel it opens; everything else slides
 with its screen.
 
+## Finding with Ctrl+K
+
+Every app has a box that finds things: Ctrl+K opens it (⌘K on a Mac). Typing narrows what it offers: the
+screens that need no arguments, and the buttons, links and menu items on show, each with its shortcut if it
+has one. Choosing one, with the arrows and Enter or the pointer, goes to the screen or does what the button
+does. The app adds what only it can find with `on-find` on the view: `value` is the text typed, and it gives a
+label and a link for each thing found, as a breadcrumb's items:
+
+```trebol-ui
+bookings: [
+    #(id: 1 customer: "Ada Lovelace" bike: "Road")
+    #(id: 2 customer: "Grace Hopper" bike: "City")
+]
+
+view [
+    on-find [
+        collect [
+            foreach b bookings [
+                if find b/customer value [keep b/customer  keep/only reduce ['booking b/id]]
+            ]
+        ]
+    ]
+    screens [
+        workshop "Workshop" [
+            on-enter [board/data: bookings]
+            row [title "In the workshop"  button "New booking" key "Ctrl+B" [toast "A new booking"]]
+            table board [customer "Customer" bike "Bike"] on-select [go [booking row/id]]
+        ]
+        settings "Settings" [title "Settings"  row [button "Back" [go-back 'workshop]]]
+        booking "Booking" [id] [
+            on-enter [foreach b bookings [if id = form b/id [who/text: b/customer]]]
+            who: title
+            row [button "Back" [go-back 'workshop]]
+        ]
+    ]
+]
+```
+
+Click the example, press Ctrl+K and type `gra`: Grace Hopper's booking is there, found by `on-find`, under
+what the page itself has. `on-find` may ask a server, as a search does, and the box shows the answer when it
+comes.
+
 ## The link
 
 Every screen has a link of its own: the workshop is `#/workshop` and Grace's booking `#/booking/2`. The

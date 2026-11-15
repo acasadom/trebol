@@ -32,6 +32,7 @@ import { rowField, groupRow, sortGroups, rowWindow, DRAW_ALL_UP_TO } from './row
 import { chartSvg, SERIES_COLORS, pieColor, type ChartKind, type Series } from './chart.ts';
 import { readOrbit, layoutOrbit, shownEdges, edgeLabel, bubble, gradients, edgePath, ease, fitCamera, MANY, type OrbitSpec, type Role, type Place, type Placed, type Box } from './orbit.ts';
 import { devLog } from './devlog.ts';
+import { openPalette, type PaletteEntry } from './palette.ts';
 import { changeScreen, travelled, themeMoved, mayMove, rowPlaces, moveRows, leaveRow, unfold, fold, isFolding } from './motion.ts';
 import { startDevtools, inDevtools, faceRef } from './devtools.ts';
 
@@ -1241,6 +1242,42 @@ function onKeyDown(ev: KeyboardEvent): void {
     m.el.click();
     return;
   }
+  // Ctrl+K (⌘K): the palette, unless a button of the app has those keys (above) or a dialog is open
+  if ((ev.ctrlKey || ev.metaKey) && !ev.altKey && !ev.shiftKey && ev.key.toLowerCase() === 'k' && rootFace !== null && modal === undefined) {
+    ev.preventDefault();
+    seenKeys.add(ev);
+    showPalette(rootFace);
+  }
+}
+
+/** Opens the palette of the view on show: what it finds comes from ui-palette. */
+function showPalette(view: ObjectCell): void {
+  openPalette({
+    label: own('palette'),
+    placeholder: own('palette-search'),
+    nothing: own('palette-none'),
+    search: async typed => {
+      const got = await fire('ui-palette', view, string(typed));
+      if (got.t !== K.Block) return [];
+      const d = got.s.data.slice(got.i);
+      const out: PaletteEntry[] = [];
+      for (let i = 0; i + 3 < d.length; i += 4) {
+        const kind = d[i + 1]!.t === K.Word ? spell((d[i + 1] as WordCell).sym) : '';
+        const keys = d[i + 2]!.t === K.String ? text(d[i + 2] as StringCell) : null;
+        const hint = kind === 'screen' ? own('palette-screen') : keys !== null ? shortcutLabel(keys) : '';
+        out.push({ label: form(d[i]!), hint, target: [kind, d[i + 3]!] });
+      }
+      return out;
+    },
+    pick: e => {
+      const [kind, target] = e.target as [string, Cell];
+      // a button or link is clicked, as the user would
+      if (kind === 'action' && target.t === K.Object) {
+        const m = byCtx.get((target as ObjectCell).ctx);
+        if (m?.el.isConnected === true) m.el.click();
+      } else void fire('ui-palette-pick', view, wordOf(K.Word, kind), target);
+    },
+  });
 }
 
 function onViewKey(ev: KeyboardEvent): void {
@@ -4692,11 +4729,14 @@ native('repaint', '["Redraws the faces that changed." ]', () => {
 });
 
 let root: HTMLElement | null = null;
+/** The view on show, whose palette Ctrl+K opens. */
+let rootFace: ObjectCell | null = null;
 /** The face whose text is the page title: the view's title, or the screen shown. */
 let titleFace: ObjectCell | null = null;
 
 native('show', '["Draws a face and everything in it." face [object!]]', (_t, f) => {
   const face = f.args[0] as ObjectCell;
+  rootFace = face;
   viewKeys = null;
   screensFace = null;
   document.documentElement.lang = activeLanguage(host.rt);
