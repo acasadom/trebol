@@ -1,0 +1,109 @@
+Trebol [
+    title: "Machine time tests"
+    ; timeout and ttl: they need the timers of a host.
+]
+
+"timeout: entering a state arms a timer, leaving it stops it"
+[
+    m: machine [
+        initial waiting
+        state waiting [timeout 0.03]
+        state paid []
+        final cancelled cancelled
+        from waiting to paid on pay
+        from waiting to cancelled on timeout
+    ]
+    first-state: m/state
+    wait 0.08
+    all [first-state = 'waiting  m/state = 'cancelled  m/outcome = 'cancelled  m/done]
+]
+[
+    m: machine [
+        initial waiting
+        state waiting [timeout 0.03]
+        state paid []
+        final cancelled cancelled
+        from waiting to paid on pay
+        from waiting to cancelled on timeout
+    ]
+    send m 'pay
+    wait 0.08
+    all [m/state = 'paid  empty? collect [foreach [k x] m/timers [if x [keep k]]]]
+]
+[
+    ; a timer that was stopped and armed again goes off only once, from the new start
+    m: machine [
+        data [n: 0]
+        initial a
+        state a [timeout 0.05]
+        state away []
+        state b []
+        from a to away on leave
+        from away to a on back
+        from a to b on timeout set [n: data/n + 1]
+    ]
+    wait 0.03  send m 'leave  send m 'back
+    wait 0.03  here: m/state
+    wait 0.06
+    all [here = 'a  m/state = 'b  m/data/n = 1]
+]
+[
+    ; the time can be read from the data as the state is entered
+    m: machine [
+        data [wait: 0.02]
+        initial a
+        state a [timeout data/wait]
+        final b
+        from a to b on timeout
+    ]
+    wait 0.06
+    m/done
+]
+[
+    ; a timeout is taken from its own state first, then from the ones around it
+    m: machine [
+        initial outer
+        state outer [
+            timeout 0.03
+            initial in1
+            state in1 [timeout 0.01]
+            state in2 []
+            from in1 to in2 on timeout
+            from in2 to in1 on back
+        ]
+        final out
+        from outer to out on timeout
+    ]
+    wait 0.015  inside: m/state
+    wait 0.05
+    all [inside = 'outer/in2  m/state = 'out]
+]
+[
+    m: machine [initial a  state a [timeout 0.01]  final b  from a to b on timeout]
+    restart m
+    wait 0.04
+    m/done
+]
+
+"ttl: a machine that hears nothing for a while expires"
+[
+    m: machine [
+        ttl 0.05
+        initial open
+        state open []
+        final closed expired
+        from open to open on ping
+        from open to closed on expired
+    ]
+    wait 0.03  send m 'ping
+    wait 0.03  send m 'ping
+    alive: m/state
+    wait 0.08
+    all [alive = 'open  m/state = 'closed  m/outcome = 'expired]
+]
+[
+    ; with no on expired it just ends, where it was
+    m: machine [ttl 0.02  initial a  state a []  from a to a on ping]
+    wait 0.05
+    all [m/done  m/outcome = 'expired  m/state = 'a]
+]

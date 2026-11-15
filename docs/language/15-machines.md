@@ -192,6 +192,115 @@ quote: machine [
 A `choose` with no `else`, when no condition holds, does not happen. A way out with no `on` is taken as soon as
 the machine comes into its state; a `choose` with no `on` decides then where to go.
 
+When the place depends on a value worked out once, not on a list of conditions, `select` runs its block and
+takes the branch for the value it gives, as `switch` does. The block may ask the server first:
+
+```trebol
+order: machine [
+    data [tries: 0]
+    initial paying
+    state paying []
+    final paid
+    final cancelled given-up
+    from paying to paid on accepted
+    from paying select [data/tries: data/tries + 1  either data/tries < 3 ['again] ['stop]] on declined [
+        again to paying
+        stop to cancelled
+    ]
+]
+```
+
+```trebol-console
+>> send order 'declined
+== paying
+>> send order 'declined
+== paying
+>> send order 'declined
+== cancelled
+```
+
+The block of a `select` runs once each time the event comes. A value with no branch, and no `else`, is a
+mistake, and fails like one.
+
+## Time
+
+Some ways out are taken by the clock, not by an event. A state with `timeout` starts a timer when the machine
+comes into it and stops it when the machine leaves; when the time is up, the machine sends itself the event
+`timeout`, taken like any other:
+
+```trebol
+booking: machine [
+    initial held
+    state held [timeout 0:15]
+    state paid []
+    final released
+    from held to paid on pay
+    from held to released on timeout
+]
+```
+
+```trebol-console
+>> send booking 'pay
+== paid
+```
+
+A customer who pays within fifteen minutes keeps the bike; one who does not loses it. The time is in seconds,
+a `time!` such as `0:15`, or `data/field`, read as the state is entered. The `timeout` is taken from its own
+state first, then from the ones around it, so a state with states inside can give the whole of them a time.
+
+A machine may also have a time for silence: with `ttl` at the top, it **expires** when nobody sends it an event
+for that long. Each event sent starts the time again, and its own timeouts do not count. When the time is up the
+machine takes `on expired`, which goes to a `final` state; with none, it just ends, with the outcome `expired`.
+Here the time is a tenth of a second, to see it happen:
+
+```trebol
+session: machine [
+    ttl 0.1
+    initial open
+    state open []
+    final closed timed-out
+    from open to open on click
+    from open to closed on expired
+]
+```
+
+```trebol-console
+>> wait 0.2
+== none
+>> session/state
+== closed
+>> session/outcome
+== timed-out
+```
+
+## Events that come early
+
+An event the state has no way out for is lost. Sometimes it only came early: the bank says the payment went
+through before the shop has said the order is ready. `defer` holds such events until the machine is in a state
+that takes them, in the order they came:
+
+```trebol
+payment: machine [
+    defer confirmed
+    initial charging
+    state charging []
+    state waiting []
+    final done
+    from charging to waiting on sent
+    from waiting to done on confirmed
+]
+```
+
+```trebol-console
+>> send payment 'confirmed
+== charging
+>> send payment 'sent
+== done
+```
+
+A `defer` at the top holds the event in every state; inside a state, only while the machine is in it. An event
+held keeps its fields, and a machine that is done drops the ones still held.
+
 ## The end
 
 A state with no way out ends the stage it is in. Inside another state, the machine is then in that outer state,

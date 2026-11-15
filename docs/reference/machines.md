@@ -33,6 +33,15 @@ The block says the states and the ways between them:
 | `from a to b` | with no `on`: taken as soon as the machine is in `a` |
 | `from a choose on event [...]` | the block has `when [...] to b`, each with its own `set` if any, and `else to c` |
 | `from a to b on error` | taken when code run on the way into a state fails; the event is the error |
+| `from a select [...] on event [...]` | the block runs, and the branch `value to b` for the value it gives is taken; `else to c` for any other |
+| `timeout 30` | in a state: when the machine has been in it that long, it sends itself `timeout`; seconds, a `time!` or `data/field` |
+| `ttl 0:30` | at the top: when no event has been sent for that long, the machine sends itself `expired` |
+| `defer event` | an event with no way out waits for a state that has one; `defer [e f]` for several |
+
+A state with `timeout` needs a way out `on timeout` from it or from a state around it, and `on timeout` needs
+a `timeout` in its state or inside it. `on expired` needs `ttl` and goes to a `final` state; with no `on expired`
+the machine ends where it is, with the outcome `expired`. `error`, `timeout` and `expired` are the machine's own
+events: `send` does not take them, nor `defer`.
 
 Code in a machine reads `data/field` and `event/field`. A condition that fails while it is worked out does not
 hold. A target is a name, or a path from the state the way is in, `outer/inner`; it is looked for among the

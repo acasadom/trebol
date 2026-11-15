@@ -500,3 +500,122 @@ Trebol [
     all [e/near = [from a to nowhere]  to logic! find e/at "machine.trb:"]
 ]
 [e: try [send machine [initial a state a []] 'error]  error? e]
+[e: try [send machine [initial a state a []] 'timeout]  error? e]
+
+"defer: an event that comes early waits for a state that takes it"
+[
+    trace: copy []
+    m: machine [
+        defer confirmed
+        initial charging
+        state charging [on-activity [append trace 'activity]]
+        state hook []
+        final done success
+        from charging to hook on ack
+        from hook to done on confirmed
+    ]
+    send m 'confirmed
+    held: length? m/deferred
+    send m 'ack
+    all [held = 1  m/outcome = 'success  empty? trace  empty? m/deferred]
+]
+[
+    ; held in the order they came; the fields of the event come with it
+    m: machine [
+        data [got: none]
+        defer [b c]
+        initial s1
+        state s1 []
+        state s2 []
+        state s3 []
+        final s4
+        from s1 to s2 on a
+        from s2 to s3 on b set [got: event/n]
+        from s3 to s4 on c
+    ]
+    send m [c]  send m [b n: 7]  send m 'a
+    all [m/done  m/data/got = 7]
+]
+[
+    ; a defer in a state holds only there; one held stays held after it is left
+    spec: [
+        initial a
+        state a [defer late]
+        state b []
+        state c []
+        final d
+        from a to b on go
+        from b to c on go
+        from c to d on late
+    ]
+    m1: machine spec  send m1 'late  send m1 'go  send m1 'go
+    m2: machine spec  send m2 'go  send m2 'late  send m2 'go
+    all [m1/done  m2/state = 'c]
+]
+
+"select: a block works out the branch"
+[
+    m: machine [
+        data [tries: 0]
+        initial asking
+        state asking []
+        final gave-up failed
+        from asking select [data/tries: data/tries + 1  either data/tries < 3 ['again] ['stop]] on no [
+            again to asking
+            stop to gave-up
+        ]
+    ]
+    send m 'no  send m 'no  one: m/state
+    send m 'no
+    all [one = 'asking  m/outcome = 'failed  m/data/tries = 3]
+]
+[
+    m: machine [
+        data [code: none]
+        initial waiting
+        state waiting []
+        state done []
+        state missing []
+        state broken []
+        from waiting select [event/status] on answer [
+            200 to done set [code: event/status]
+            404 to missing
+            else to broken
+        ]
+    ]
+    send m [answer status: 404]  a: m/state
+    restart m  send m [answer status: 500]  b: m/state
+    restart m  send m [answer status: 200]
+    all [a = 'missing  b = 'broken  m/data/code = 200]
+]
+[
+    ; a value no branch takes is a mistake, and on error can take it
+    m: machine [
+        initial a
+        state a []
+        state b []
+        state oops []
+        from a select [3] on go [1 to b]
+        from a to oops on error
+    ]
+    send m 'go
+    all [m/state = 'oops  to logic! find m/error/message "select gave 3"]
+]
+"mistakes with time, defer and select"
+[
+    says?: func [code text /local e] [e: try code  all [error? e  to logic! find e/message text]]
+    true
+]
+[says? [machine [initial a  state a [timeout 1]  state b []  from a to b on go]] "has a timeout and no transition on timeout"]
+[says? [machine [initial a  state a []  state b []  from a to b on timeout]] "which has no timeout"]
+[says? [machine [initial a  timeout 1  state a []]] "goes inside a state"]
+[says? [machine [initial a  state a []  final b [timeout 1]]] "final state takes no timeout"]
+[says? [machine [initial a  state a [timeout "x"]]] "timeout takes seconds"]
+[says? [machine [data [x: 1]  initial a  state a [timeout data/y]  from a to a on timeout]] "data has no y"]
+[says? [machine [initial a  state a [ttl 1]]] "ttl goes at the top"]
+[says? [machine [initial a  state a []  final b  from a to b on expired]] "needs ttl"]
+[says? [machine [ttl 1  initial a  state a []  state b []  from a to b on expired]] "goes to a final state"]
+[says? [machine [initial a  state a []  defer timeout]] "cannot wait"]
+[says? [machine [initial a  state a []  from a select [1] [1 to a  1 to a]]] "two branches for 1"]
+[says? [machine [initial a  state a []  from a select [1] [1 to a  else to a  else to a]]] "select has two else"]
+[says? [machine [initial a  state a []  from a select [1] [1 a]]] "a branch of select takes to"]
