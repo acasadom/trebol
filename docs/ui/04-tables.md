@@ -76,7 +76,7 @@ with a field to search it.
 
 When `data` changes, the rows move: a new row fades in, a row taken away fades where it stood while the
 others close the gap, and rows sorted or moved glide to their places. Trebol knows a row by its `id`, or by
-the field `key` names (`table key 'code`), so give rows one, or a change in the middle looks like a change
+the field `key` names (`table key code`), so give rows one, or a change in the middle looks like a change
 at the end. A long table, or a reader who asked their system for less motion, gets the rows at once.
 
 ## Groups

@@ -204,6 +204,7 @@ describe('layout', () => {
       ['layout: tabs take a label and a block per tab', '["B" 1]']);
     assert.deepEqual((await problems('view [split [text "a"]]'))[0], 'layout: split takes two faces, one per pane');
     assert.deepEqual((await problems('view [table [a] sorted [a up]]'))[0], 'layout: sorted takes a column and asc or desc');
+    assert.deepEqual((await problems('view [text "a" morph 3]'))[0], "layout: morph takes a name, 'logo, or a block, [client id]");
     assert.deepEqual((await problems('view [breadcrumb ["A" a "B" "C"]]')).slice(0, 2),
       ['layout: a breadcrumb takes a label and a word per item; only the last may have no word', '["C"]']);
     assert.deepEqual((await problems('view [screens [home "Home" [1] [text "a"]]]')).slice(0, 2),
@@ -740,6 +741,21 @@ describe('components', () => {
     assert.deepEqual(links, ['push client/7']);
     await assert.rejects(runSource(host, 'go [nowhere 1]'));
     await assert.rejects(runSource(host, 'view [screens [home "Home" [1] []]]'));
+  });
+
+  test('morph names a face for the next screen: a word as written, or a block whose first word stays and the rest is evaluated', async () => {
+    link = ['nowhere'];
+    const r = await ev(`
+      root: view [
+        global main: screens [
+          home "Home" [global people: table morph 'person [name] image %logo.svg morph 'logo]
+          person "Person" [id] [global who: title morph [person id] global code: text morph [label 1 + 1]]
+        ]
+      ]
+      a: reduce [people/morph main/pane/1/pane/2/morph]
+      go [person 7]
+      reduce [a who/morph code/morph]`);
+    assert.equal(r, '[[person logo] [person "7"] [label 2]]');
   });
 
   test('a form on a screen entered later starts with its submit disabled until its fields are valid', async () => {

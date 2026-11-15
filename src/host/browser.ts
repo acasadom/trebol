@@ -3394,6 +3394,9 @@ function drawRows(m: Mounted, again = true): void {
   const count = m.items.length;
   const old = m.rows!;
   const next = new Map<string, HTMLElement>();
+  const morph = morphName(get(f, 'morph'));
+  const keyWord = get(f, 'key');
+  const keySym = keyWord.t === K.Word || keyWord.t === K.LitWord ? (keyWord as WordCell).sym : intern('id');
   // rows added, taken away or in another order move to their places, when all of them are drawn
   const moved = old.size > 0 && count <= DRAW_ALL_UP_TO && !printing && box.isConnected && mayMove()
     && !sameKeys(old, m.items) && m.items.some(it => old.has(it.k));
@@ -3416,6 +3419,9 @@ function drawRows(m: Mounted, again = true): void {
     } else {
       if (item === undefined) item = table ? newTableRow(cols) : newListItem();
       rowOf.set(item, row);
+      // morph 'client: the row is "client <its key>", for a face of the next screen to become
+      if (morph !== null) item.dataset['tbMorph'] = `${morph} ${form(rowField(row, keySym))}`;
+      else delete item.dataset['tbMorph'];
       fillRow(item, row, cols, table);
       if (selectable) item.tabIndex = 0;
       else item.removeAttribute('tabindex');
@@ -3467,6 +3473,13 @@ function drawRows(m: Mounted, again = true): void {
     const want = rowsToDraw(m);
     if (want.first !== first || want.end !== end) drawRows(m, false);
   }
+}
+
+/** A morph name, 'logo or [client 7], as text: "logo", "client 7"; null for none. */
+function morphName(v: Cell): string | null {
+  if (v.t === K.Word || v.t === K.LitWord) return spell((v as WordCell).sym);
+  if (v.t === K.Block) return v.s.data.slice(v.i).map(c => form(c)).join(' ');
+  return null;
 }
 
 /** Whether the rows drawn are the rows to draw, in the same order. */
@@ -4261,6 +4274,10 @@ function sync(m: Mounted): void {
   if (err !== null) cls.push('tb-invalid');
   if (flag(f, 'pending')) cls.push('tb-pending');
   setExtra(m.el, cls);
+  // the rows of a table or list carry its morph name, each with its key
+  const morph = style === 'table' || style === 'list' ? null : morphName(get(f, 'morph'));
+  if (morph !== null) m.el.dataset['tbMorph'] = morph;
+  else delete m.el.dataset['tbMorph'];
   if (turned && hidden && !isFolding(m.el)) fold(m.el, () => { if (flag(m.face, 'hidden')) setExtra(m.el, [...(m.el.dataset['tb'] ?? '').split(' ').filter(Boolean), 'tb-hidden']); });
   else if (!hidden && (turned || isFolding(m.el))) unfold(m.el);
   // shown as it is, but it and its children cannot be used
@@ -4448,7 +4465,7 @@ function settleScreen(box: HTMLElement, f: ObjectCell): void {
   box.toggleAttribute('aria-busy', entering);
   if (entering || comingScreen === null) return;
   // the screen made last, when the browser has its picture of the page; one entering since waits for its own
-  changeScreen(box, () => {
+  changeScreen(box, comingScreen, () => {
     if (comingScreen === null || flag(f, 'entering')) return;
     box.replaceChildren(...comingScreen.childNodes);
     comingScreen = null;

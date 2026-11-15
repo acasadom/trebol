@@ -46,7 +46,7 @@ let swapping = false;
  * the way the user went. Faces given the same `morph` in both become one another.
  * swap is called once, now or at the browser's next frame; it may decide not to.
  */
-export function changeScreen(box: HTMLElement, swap: () => void): void {
+export function changeScreen(box: HTMLElement, coming: HTMLElement, swap: () => void): void {
   const doc = document as Document & { startViewTransition?: (update: () => void) => { finished: Promise<void> } };
   // the first screen, or a page that cannot or may not move
   const way = travel;
@@ -57,14 +57,57 @@ export function changeScreen(box: HTMLElement, swap: () => void): void {
   const root = document.documentElement;
   root.dataset['tbTravel'] = way;
   box.style.setProperty('view-transition-name', 'tb-screen');
+  // only the names in both screens: a face with no partner goes with its screen
+  const both = morphsIn(coming);
+  const was = nameMorphs(both);
   const t = doc.startViewTransition(() => {
     swapping = false;
+    clearMorphs();
     swap();
+    nameMorphs(was);
   });
   void t.finished.catch(() => {}).then(() => {
     box.style.removeProperty('view-transition-name');
     delete root.dataset['tbTravel'];
+    clearMorphs();
   });
+}
+
+/** The faces given a morph name for the change of screen going on. */
+let named: HTMLElement[] = [];
+
+/**
+ * Gives the browser the morph name of each face on show that has one among those
+ * given, so a face of the old screen and one of the new with the same name become
+ * one another; when two on show share a name, the first keeps it. Gives the names given.
+ */
+function nameMorphs(among: Set<string>): Set<string> {
+  const seen = new Set<string>();
+  for (const e of Array.from(document.querySelectorAll<HTMLElement>('[data-tb-morph]'))) {
+    const name = morphIdent(e.dataset['tbMorph']!);
+    if (!among.has(name) || seen.has(name) || e.getClientRects().length === 0) continue;
+    seen.add(name);
+    e.style.setProperty('view-transition-name', name);
+    named.push(e);
+  }
+  return seen;
+}
+
+/** The morph names of a screen not yet on the page. */
+function morphsIn(screen: HTMLElement): Set<string> {
+  return new Set(Array.from(screen.querySelectorAll<HTMLElement>('[data-tb-morph]'), e => morphIdent(e.dataset['tbMorph']!)));
+}
+
+function clearMorphs(): void {
+  for (const e of named) e.style.removeProperty('view-transition-name');
+  named = [];
+}
+
+/** A name as the browser takes it: letters, digits, - and _, anything else spelled by its code. */
+export function morphIdent(name: string): string {
+  let out = 'tb-m-';
+  for (const ch of name) out += /[A-Za-z0-9_-]/.test(ch) ? ch : `_${ch.codePointAt(0)!.toString(16)}_`;
+  return out;
 }
 
 // --- rows --------------------------------------------------------------------------

@@ -103,6 +103,43 @@ screen itself. Choosing a step runs its block with the screen's name in `value`.
 screen the reader came from, as the browser's back button would; if they arrived straight at this booking
 from a link, there is nothing to go back to, and it goes to the screen it names instead.
 
+## A row that becomes the screen
+
+`morph` ties a face of one screen to a face of the next, so that as the screen changes one becomes the
+other. On a table, `morph 'booking` names each row by the word and the booking's id; on the booking's
+screen, `morph [booking id]` gives the title the same name, the word as written and the id it was entered
+with:
+
+```trebol-ui
+bookings: [
+    #(id: 1 customer: "Ada Lovelace" bike: "Road")
+    #(id: 2 customer: "Grace Hopper" bike: "City")
+    #(id: 3 customer: "Alan Turing" bike: "Mountain")
+]
+
+view [
+    screens [
+        workshop "Workshop" [
+            on-enter [board/data: bookings]
+            title "In the workshop"
+            table board morph 'booking [customer "Customer" bike "Bike"] on-select [go [booking row/id]]
+        ]
+        booking "Booking" [id] [
+            on-enter [
+                foreach b bookings [if id = form b/id [who/text: b/customer]]
+            ]
+            who: title morph [booking id]
+            row [button "Back" [go-back 'workshop]]
+        ]
+    ]
+]
+```
+
+Choose a booking: its row moves up and grows into the title of its screen, and going back it shrinks into
+its row again. A face with the same name on both screens is enough, a picture of a product that becomes the
+large one, `morph 'photo`, or a button that becomes the dialog-like panel it opens; everything else slides
+with its screen.
+
 ## The link
 
 Every screen has a link of its own: the workshop is `#/workshop` and Grace's booking `#/booking/2`. The

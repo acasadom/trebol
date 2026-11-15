@@ -75,6 +75,8 @@ face: make object! [
     data: none          ; table, list and tree: a block of map! or object! rows (a tree's
                         ; have their own in `children`); breadcrumb: its items; orbit: its focus, nodes, edges and trail
     key: 'id            ; the row field that identifies a row
+    morph: none         ; a name shared with a face of the next screen, which this one becomes as the screen
+                        ; changes: a word, or a block of values; a table or list gives each row its name and key
     selected: none      ; the row last chosen
     sortable: false     ; a table the host sorts, from the rows it has, when a header is chosen
     sorted: none        ; a table: the order shown, [column asc] or [column desc]
@@ -140,7 +142,7 @@ flags: [fill fit hidden disabled readonly inert narrow-only wide-only linked rou
 chart-kinds: [bar line area pie]
 simple-rules: [required email url integer]
 letter: charset [#"a" - #"z" #"A" - #"Z"]
-rule-words: [min max length pattern match check check-async calc react is width pad gap menu accept known links sorted poster captions]
+rule-words: [min max length pattern match check check-async calc react is width pad gap menu accept known links sorted key morph poster captions]
 media-styles: [video audio]
 media-flags: [loop muted autoplay]   ; of a video or a sound
 
@@ -276,13 +278,14 @@ ui-takes: [
     menu "a block"  sorted "a block"  known "a map"  links "a map"  match "the name of a field"
     poster "a file or a url"  captions "a file, a url or a block"  width "small, medium, large or fill"
     pad "a step from 0 to 7, none or wide"  gap "a step from 0 to 7, none or wide"  key "a text or a word"
+    morph "a name, 'logo, or a block, [client id]"
 ]
 
 ; Every word the dialect knows, for ui-suggest.
 ui-dialect-words: does [
     unique compose [
         (words-of styles) (roles) (sizes) (aligns) (valigns) (flags) (chart-kinds) (simple-rules)
-        (rule-words) (media-flags) required global key
+        (rule-words) (media-flags) required global
     ]
 ]
 
@@ -374,6 +377,7 @@ layout: function [
         out/size: width
     ]
     bind-labels spec labels copy []
+    morphs either only [out] [reduce [out]]
     out
 ]
 
@@ -381,6 +385,15 @@ layout: function [
 bind-labels: function [spec [block!] labels [block!] words [block!] /local w f] [
     foreach [w f] labels [append words reduce [to set-word! w f]]
     unless empty? words [bind spec make object! words]
+]
+
+; Works out the morph names given as blocks once the layout's words are bound: in
+; [client id] the first word is the name as written, and what follows is evaluated.
+morphs: function [faces [block!]] [
+    if ui-checking [exit]
+    foreach f faces [foreach g all-faces f [
+        if all [block? m: g/morph  not empty? m  word? first m] [g/morph: append reduce [first m] reduce next m]
+    ]]
 ]
 
 ; Keeps a label for a face: in the layout's labels, or as a global word.
@@ -472,6 +485,7 @@ build-faces: function [
         | 'width set w word! (f/size: w)
         | pos: set w ['pad | 'gap] [set n integer! | 'none (n: 0) | 'wide (n: 6)] (poke f w spacing n pos)
         | 'menu set b block! (f/menu: menu-of b)
+        | 'morph set v [lit-word! | block!] (f/morph: either block? v [v] [to word! v])
         | 'key set s string! (f/shortcut: s)
         | 'key set w word! (f/key: w)
         | 'sorted set b block! (f/sorted: sort-order b)
@@ -503,7 +517,7 @@ build-faces: function [
             ; chart bar income [...]: the kind comes before the label
             opt [if (f/style = 'chart) set n word! if (find chart-kinds n) (f/kind: n)]
             ; table clients [...] is the same as clients: table [...]
-            opt [if (any [find data-styles f/style  f/style = 'orbit]) set n word! if (all [field-name? n  n <> 'key]) (label-face n labels global? f)]
+            opt [if (any [find data-styles f/style  f/style = 'orbit]) set n word! if (field-name? n) (label-face n labels global? f)]
             any [
                 modifier
                 ; a mistyped style starts a face of its own: what follows it is that face's
@@ -707,6 +721,7 @@ enter-screen: function [f route [block!] /local ev b] [
     words: copy []
     repeat i length? def/3 [append words reduce [to set-word! pick def/3 i  pick route i + 1]]
     bind-labels spec labels words
+    morphs reduce [s]
     f/value: copy route
     f/entering: true
     ; a screen starts with nothing to save

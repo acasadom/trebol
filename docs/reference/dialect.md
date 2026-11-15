@@ -438,6 +438,27 @@ A word followed by its value.
 
 `sorted [due desc]`: the order a table shows, by a column, `asc` or `desc`.
 
+(word-key)=
+## key
+
+A word followed by its value.
+
+`key code`: the field that tells the rows of a table, list or tree apart, `id` unless told; a row keeps its
+place in the selection and moves as itself when the rows change. `key "Ctrl+S"`: the shortcut of a button or
+link.
+
+(word-morph)=
+## morph
+
+A word followed by its value.
+
+`morph 'logo`: a name the face shares with a face of the next screen; as the screen changes, one becomes the
+other, moving and growing from where it was to where the other is. `morph [client id]` is a name made of a
+word, as written, and the values after it, evaluated when the screen is entered, so the title of a client's
+screen can carry the client's id. On a table or a list, `morph 'client` names each row by the word and its
+key, `client 7`, so the row chosen becomes the face of the next screen named `[client id]`. Only faces on
+show in both screens move; the rest go with their screen.
+
 (word-poster)=
 ## poster
 
