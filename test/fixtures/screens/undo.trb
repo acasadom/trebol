@@ -1,0 +1,29 @@
+Trebol [title: "Undo instead of asking"]
+
+view [
+    screens [
+        home "Clients" [
+            global table clients [name "Name" city "City"] menu ["Remove" remove "Archive" archive] on-menu [
+                remove find face/data row
+                face/data: face/data
+                either event/picked = 'remove [
+                    toast/undo/then rejoin [row/name " removed"] [
+                        append face/data row
+                        face/data: face/data
+                    ] [
+                        fetch/with rejoin ["/api/clients/" row/id] [method: 'DELETE]
+                    ]
+                ] [
+                    toast/undo rejoin [row/name " archived"] [
+                        append face/data row
+                        face/data: face/data
+                    ]
+                ]
+            ]
+            link "Other" 'other
+        ]
+        other "Other" [title "Other page"]
+    ]
+]
+
+clients/data: [#(id: 1 name: "Ana Ruiz" city: "Madrid") #(id: 2 name: "Luis Gil" city: "Lugo")]

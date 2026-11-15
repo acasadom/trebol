@@ -27,7 +27,7 @@ import { readFile } from 'node:fs/promises';
 import { basename, dirname, join, relative } from 'node:path';
 import type { Server } from 'node:http';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { native, value, blockOf, K, ctxFind, intern, NONE, type Cell, type ObjectCell } from '../src/core/index.ts';
+import { native, value, blockOf, K, ctxFind, intern, NONE, UNSET, type Cell, type ObjectCell } from '../src/core/index.ts';
 import { drawSvg } from '../src/host/draw.ts';
 import { output, runSource, report, startHost, startUi } from '../src/host/index.ts';
 import { Repl, consoleHost, PROMPT, MORE } from '../tools/console.ts';
@@ -63,6 +63,7 @@ native('apply-theme', '[spec [object!]]', (_t, f) => value(f.args[0]!));
 native('route', '[]', () => value(blockOf(K.Block, [])));
 native('set-route', '[route [block!] replace [logic!]]', (_t, f) => value(f.args[0]!));
 native('set-unsaved', '[on [logic!]]', (_t, f) => value(f.args[0]!));
+native('hide-toast', '[id [integer!]]', () => value(UNSET));
 native('repaint', '[]', () => value(blockOf(K.Block, [])));
 
 function pages(dir: string): string[] {

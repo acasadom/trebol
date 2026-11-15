@@ -2,7 +2,7 @@ Trebol [
     title: "UI dialect: faces, styles, layout and validation"
     exports: [
         face styles stylize layout view theme looks open close toast confirm print-page
-        validate-face field-error form-values set-values insert-text ui-pane ui-input ui-files ui-remove-file ui-lookup-search ui-lookup-pick ui-lookup-remove ui-blur ui-click ui-select ui-sort ui-close ui-event ui-menu ui-drop ui-reorder ui-crumb ui-expand ui-orbit ui-palette ui-palette-pick
+        validate-face field-error form-values set-values insert-text ui-pane ui-input ui-files ui-remove-file ui-lookup-search ui-lookup-pick ui-lookup-remove ui-blur ui-click ui-select ui-sort ui-close ui-event ui-menu ui-drop ui-reorder ui-crumb ui-expand ui-orbit ui-palette ui-palette-pick ui-toast-undo ui-toast-gone ui-toasts-done ui-toasts-on
         go go-back go-forward can-go-back? can-go-forward? unsaved unsaved? ui-route set-language ui-rows ui-check ui-react
     ]
 ]
@@ -726,6 +726,8 @@ enter-screen: function [f route [block!] /local ev b] [
     f/entering: true
     ; what cached kept is asked again as the new screen reads it
     ui-caches-old
+    ; what could be undone on the screen left is done now: its back block may need faces of that screen
+    ui-toasts-done
     ; a screen starts with nothing to save
     set 'marked false
     set-unsaved false
@@ -867,13 +869,62 @@ close: func [
     either object? target [target/hidden: true] [close-stream target]
 ]
 
-toast: func [
+toast: function [
     "Shows a short notice that goes away by itself."
     message [string! map! word!] "A text, a text per language, or a word of the dictionary"
     /role "primary, success, warning or danger"
         kind [word!]
+    /undo "With an Undo button, for what was just done: back runs if the user clicks it"
+        back [block!]
+    /then "Runs done when the notice goes without Undo: what waits for it, such as the delete on the server"
+        done [block!]
 ] [
-    show-toast tr message either role [kind] [none]
+    text: tr message
+    id: none
+    if any [undo then] [
+        set 'toasts-made id: toasts-made + 1
+        append toasts-waiting reduce [id  text  either undo [back] [none]  either then [done] [none]]
+    ]
+    show-toast text either role [kind] [none] all [undo id]
+]
+
+toasts-made: 0
+; A notice that can still be undone or whose then has not run: id text back done.
+toasts-waiting: copy []
+
+ui-toasts-on: func ["The notices that can still be undone or whose then has not run: id text back done for each."] [
+    copy toasts-waiting
+]
+
+ui-toast-undo: function [
+    "Called by the host when the user clicks Undo on notice id: runs its back block, never its then."
+    v id [integer!]
+] [
+    unless here: find/skip toasts-waiting id 4 [exit]
+    back: here/3
+    remove/part here 4
+    if back [do back]
+]
+
+ui-toast-gone: function [
+    "Called by the host when notice id goes without Undo: runs its then block."
+    v id [integer!]
+] [
+    unless here: find/skip toasts-waiting id 4 [exit]
+    done: here/4
+    remove/part here 4
+    if done [do done]
+]
+
+ui-toasts-done: function [
+    "Ends every notice that can still be undone, as if its time had passed: the screen changes or the page is hidden."
+    /local id
+] [
+    while [not empty? toasts-waiting] [
+        id: first toasts-waiting
+        hide-toast id
+        ui-toast-gone none id
+    ]
 ]
 
 confirm: func [

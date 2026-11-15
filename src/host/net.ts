@@ -346,6 +346,8 @@ native('http-request', '["Sends an HTTP request; used by fetch." url [url! strin
     let problem: string | null = null;
     try {
       const init: RequestInit = { method: verb, headers, body, credentials, signal: ctl.signal };
+      // a page being hidden may close: a small request still goes (an Undo notice ending sends its delete)
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden' && (body === undefined || (typeof body === 'string' && body.length < 60000))) init.keepalive = true;
       const res = shown !== null && typeof XMLHttpRequest !== 'undefined'
         ? await sendXhr(url, init, shown.tell)
         : await sendFetch(url, init, shown === null ? null : shown.tell);

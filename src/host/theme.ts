@@ -1194,6 +1194,21 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
 .tb-toast.tb-success::before { background: var(--tb-success); }
 .tb-toast.tb-warning::before { background: var(--tb-warning); }
 .tb-toast.tb-danger { background: var(--tb-danger); color: var(--tb-on-danger); }
+.tb-toast-undo {
+  margin: calc(-1 * var(--tb-space-2)) calc(-1 * var(--tb-space-3)) calc(-1 * var(--tb-space-2)) 0;
+  padding: var(--tb-space-2) var(--tb-space-3);
+  border: 0;
+  border-radius: var(--tb-radius);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.tb-toast-undo:hover { background: color-mix(in oklch, currentColor 14%, transparent); }
+.tb-toast-undo:focus-visible { outline: 2px solid currentColor; outline-offset: 1px; }
 
 /* under trebol dev, the errors the app does not catch */
 .tb-dev-errors {

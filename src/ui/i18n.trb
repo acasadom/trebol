@@ -43,6 +43,7 @@ i18n: make object! [
         palette-none #(en: "Nothing found" es: "No se encontró nada")
         palette-screen #(en: "Screen" es: "Pantalla")
         close #(en: "Close" es: "Cerrar")
+        undo #(en: "Undo" es: "Deshacer")
         move-to #(en: "Move to" es: "Mover a")
         resize-panes #(en: "Resize panes" es: "Cambiar el tamaño de los paneles")
         breadcrumb #(en: "Breadcrumb" es: "Ruta de navegación")

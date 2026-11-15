@@ -96,6 +96,25 @@ test('cached gives the last answer and asks again after a post or a refresh', as
   assert.ok(passed, lines.join('\n'));
 });
 
+test('toast/undo: click "Undo" runs its back block, dismiss and a new screen run its then block', async () => {
+  const { passed, lines } = await ran(['test/fixtures/screens/undo.test.trb']);
+  assert.equal(passed, false);
+  const at = (l: string): string => l.replace(/\S*test\/fixtures\/screens\//g, '');
+  const out = lines.map(at).filter(l => !/\*\* (Where|Near|At):/.test(l));
+  assert.deepEqual(out.slice(0, 4), [
+    'ok    undo.test.trb:7:1  undo',
+    'ok    undo.test.trb:15:1  undo',
+    'ok    undo.test.trb:24:1  undo',
+    'ok    undo.test.trb:32:1  what waits is done when the screen changes',
+  ], lines.join('\n'));
+  assert.deepEqual(out.slice(4, 8), [
+    'FAIL  undo.test.trb:38:1  errors',
+    '        ** User error: dismiss: no notice waiting to go shows "Nobody removed"',
+    'FAIL  undo.test.trb:39:1  errors',
+    '        ** User error: click: nothing on the screen is "Undo"',
+  ], lines.join('\n'));
+});
+
 test('the tests of the examples pass', async () => {
   const files = (await findTests(join(ROOT, 'examples'))).map(f => relative(ROOT, f));
   assert.ok(files.includes('examples/clients/app.test.trb'));

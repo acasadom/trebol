@@ -114,6 +114,14 @@ toast message
 
 - `message` (`string!` `map!` `word!`): A text, a text per language, or a word of the dictionary
 - `/role kind` (`word!`): primary, success, warning or danger
+- `/undo back` (`block!`): With an Undo button, for what was just done: back runs if the user clicks it
+- `/then done` (`block!`): Runs done when the notice goes without Undo: what waits for it, such as the delete on the server
+
+A toast stays four seconds, six with the `danger` role; a click dismisses it sooner. With `/undo` it has an
+*Undo* button and stays eight seconds, waiting while the pointer or the keyboard is on it; Ctrl+Z (⌘Z) out
+of a box of text clicks the newest one. The `/then` block runs when the notice goes without *Undo*: when its
+time passes, the person clicks it away, the app goes to another screen, or the page is hidden. Both blocks
+keep the words of the handler that showed the notice, such as `row`.
 
 (fn-go)=
 ## go

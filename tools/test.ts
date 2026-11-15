@@ -14,7 +14,7 @@ import { STATUS_CODES } from 'node:http';
 import { basename, dirname, extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
-  K, NONE, TRUE, makeError, load, LoadError, intern, ctxFind, bindSeries, scriptStart, native, value, string, text, blockOf, form, mold, spell,
+  K, NONE, TRUE, UNSET, makeError, load, LoadError, intern, ctxFind, bindSeries, scriptStart, native, value, string, text, blockOf, form, mold, spell,
   sourceOf, type Cell, type BlockCell, type ObjectCell, type StringCell, type WordCell,
 } from '../src/core/index.ts';
 import { startHost, startUi, runSource, report, fileHandle, TEST_SOURCE, type Host } from '../src/host/index.ts';
@@ -65,10 +65,11 @@ native('insert-at-caret', '["The value of a field, area or rich text with text p
   const rich = style?.t === K.Word && spell((style as WordCell).sym) === 'rich';
   return value(string(rich ? appendText(old, add) : old + add));
 });
-native('show-toast', '["Shows a short message at the edge of the screen." message [string!] kind [word! none!]]', (_t, f) => {
+native('show-toast', '["Shows a short message at the edge of the screen." message [string!] kind [word! none!] undo [integer! none!]]', (_t, f) => {
   page.toasts.push(text(f.args[0] as StringCell));
   return value(f.args[0]!);
 });
+native('hide-toast', '["Takes away a notice with an Undo button, by its id." id [integer!]]', () => value(UNSET));
 native('shown-toasts', '["The notices the page has shown." ]', () => value(strings(page.toasts)));
 // the user says what say told, or yes
 native('show-confirm', '["Asks a question in a small dialog; true when the user says yes." question [string!] yes [string! none!] no [string! none!] kind [word! none!]]', (_t, f) => {
@@ -261,6 +262,8 @@ async function runOne(file: string, source: string, start: number, prelude: numb
     if (app !== null) await runSource(host, await readFile(app, 'utf8'), relative(process.cwd(), app) || app);
     const test = s.data[at] as BlockCell;
     const got = await taskResult(spawn(host.sch, test.s, test.i));
+    // a notice still waiting goes when the test ends: what waits for it runs, and its requests need answers too
+    await taskResult(spawn(host.sch, { data: [{ t: K.Word, sym: intern('ui-toasts-done'), bind: host.rt.user }] }, 0));
     const problems = [...unanswered(), ...page.errors, ...unasked()];
     if (got.t !== K.Logic || !got.v) problems.push(`the test gave ${mold(got)}, not true`);
     return problems.length > 0 ? problems.join('\n') : null;

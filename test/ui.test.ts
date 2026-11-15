@@ -5,7 +5,7 @@ import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { K, NONE, spell, TRUE, FALSE, native, value, mold, form, string, text, money, blockOf, errorField, type Cell, type ObjectCell, type StringCell } from '../src/core/index.ts';
+import { K, NONE, UNSET, spell, TRUE, FALSE, native, value, mold, form, string, text, money, blockOf, errorField, type Cell, type ObjectCell, type StringCell } from '../src/core/index.ts';
 import { startHost, startUi, runSource, readLocal, editLocal, readDate, weekStart, fileSize, translate, uiText, type Host } from '../src/host/index.ts';
 import { fileHandle } from '../src/host/net.ts';
 import { themeCss, DEFAULT_THEME, LOOKS, palette, contrast, contrastOverImage, scrimAlpha, CONTRAST_PAIRS } from '../src/host/theme.ts';
@@ -17,10 +17,11 @@ native('show', '[root [object!]]', (_t, f) => {
   return value(shown);
 });
 let toasts: string[] = [];
-native('show-toast', '[message [string!] kind [word! none!]]', (_t, f) => {
+native('show-toast', '[message [string!] kind [word! none!] undo [integer! none!]]', (_t, f) => {
   toasts.push(mold(f.args[0]!) + ' ' + mold(f.args[1]!));
   return value(f.args[0]!);
 });
+native('hide-toast', '[id [integer!]]', () => value(UNSET));
 let asked: string[] = [];
 native('show-confirm', '[question [string!] yes [string! none!] no [string! none!] kind [word! none!]]', (_t, f) => {
   asked.push(f.args.slice(0, 4).map(a => mold(a)).join(' '));

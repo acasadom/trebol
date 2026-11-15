@@ -1242,6 +1242,14 @@ function onKeyDown(ev: KeyboardEvent): void {
     m.el.click();
     return;
   }
+  // Ctrl+Z (⌘Z) out of a text box: the Undo of the newest notice on show; a text box undoes its own typing
+  if ((ev.ctrlKey || ev.metaKey) && !ev.altKey && !ev.shiftKey && ev.key.toLowerCase() === 'z' && undoToasts.size > 0 && modal === undefined && !inTextBox(ev.target)) {
+    const newest = [...undoToasts.values()].pop()!;
+    ev.preventDefault();
+    seenKeys.add(ev);
+    newest.querySelector<HTMLButtonElement>('.tb-toast-undo')?.click();
+    return;
+  }
   // Ctrl+K (⌘K): the palette, unless a button of the app has those keys (above) or a dialog is open
   if ((ev.ctrlKey || ev.metaKey) && !ev.altKey && !ev.shiftKey && ev.key.toLowerCase() === 'k' && rootFace !== null && modal === undefined) {
     ev.preventDefault();
@@ -4196,8 +4204,10 @@ function syncSplit(m: Mounted): void {
 }
 
 let toasts: HTMLElement | null = null;
+/** The notices with an Undo button on show, by the id ui.trb gave them. */
+const undoToasts = new Map<number, HTMLElement>();
 
-native('show-toast', '["Shows a short message at the edge of the screen." message [string!] kind [word! none!]]', (_t, f) => {
+native('show-toast', '["Shows a short message at the edge of the screen." message [string!] kind [word! none!] undo [integer! none!] "With an Undo button: the id of what it undoes"]', (_t, f) => {
   if (toasts === null) {
     // a manual popover sits in the top layer, so toasts show above open dialogs
     toasts = el('div', 'tb-toasts');
@@ -4206,24 +4216,83 @@ native('show-toast', '["Shows a short message at the edge of the screen." messag
     document.body.append(toasts);
   }
   const kind = f.args[1]!.t === K.Word ? spell((f.args[1] as WordCell).sym).toLowerCase() : null;
+  const id = f.args[2]!.t === K.Integer ? Number((f.args[2] as { v: number | bigint }).v) : null;
   const t = el('div', kind !== null ? `tb-toast tb-${kind}` : 'tb-toast');
   if (kind === 'danger') t.setAttribute('role', 'alert');
   const message = text(f.args[0] as StringCell);
   devLog.note('toast', kind !== null ? `${kind}: ${message}` : message);
+  const said = el('span', 'tb-toast-text');
+  t.append(said);
   const box = toasts;
+  let timer: ReturnType<typeof setTimeout> | undefined;
   const dismiss = (): void => {
+    clearTimeout(timer);
     t.remove();
     if (box.childElementCount === 0 && box.matches(':popover-open')) box.hidePopover();
   };
-  t.addEventListener('click', dismiss);
-  setTimeout(dismiss, kind === 'danger' ? 6000 : 4000);
+  // gone without Undo: ui.trb runs what waited for it
+  const gone = (): void => {
+    dismiss();
+    if (id !== null && undoToasts.delete(id)) fireRoot('ui-toast-gone', id);
+  };
+  t.addEventListener('click', gone);
+  const wait = id !== null ? 8000 : kind === 'danger' ? 6000 : 4000;
+  if (id !== null) {
+    const undo = el('button', 'tb-toast-undo');
+    undo.type = 'button';
+    keepOwn(undo, 'undo');
+    undo.addEventListener('click', ev => {
+      ev.stopPropagation();
+      dismiss();
+      if (undoToasts.delete(id)) fireRoot('ui-toast-undo', id);
+    });
+    t.append(undo);
+    t.dataset.tbUndo = String(id);
+    undoToasts.set(id, t);
+    // while the pointer or the keyboard is on it, it waits: the user has time to read and choose
+    const hold = (): void => clearTimeout(timer);
+    const resume = (): void => {
+      if (!t.matches(':hover') && !t.contains(document.activeElement)) timer = setTimeout(gone, wait);
+    };
+    t.addEventListener('pointerenter', hold);
+    t.addEventListener('focusin', hold);
+    t.addEventListener('pointerleave', resume);
+    t.addEventListener('focusout', () => setTimeout(resume));
+  }
+  timer = setTimeout(gone, wait);
   if (box.matches(':popover-open')) box.hidePopover();
   box.append(t);
   box.showPopover();
   // screen readers announce text that changes inside a live region already shown
-  setTimeout(() => { t.textContent = message; }, 50);
+  setTimeout(() => { said.textContent = message; }, 50);
   return value(f.args[0]!);
 });
+
+native('hide-toast', '["Takes away a notice with an Undo button, by its id." id [integer!]]', (_t, f) => {
+  const id = Number((f.args[0] as { v: number | bigint }).v);
+  const t = undoToasts.get(id);
+  if (t !== undefined) {
+    undoToasts.delete(id);
+    const box = t.parentElement;
+    t.remove();
+    if (box !== null && box.childElementCount === 0 && box.matches(':popover-open')) box.hidePopover();
+  }
+  return value(UNSET);
+});
+
+/** A box where Ctrl+Z undoes typing: a text input, a text area or rich text. */
+function inTextBox(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable || target instanceof HTMLTextAreaElement) return true;
+  return target instanceof HTMLInputElement && !['button', 'checkbox', 'radio', 'range', 'color', 'file', 'submit', 'reset'].includes(target.type);
+}
+
+/** Runs a function of ui.trb for the page, not for one face: the view on show is its face. */
+function fireRoot(fn: string, id: number): void {
+  const n = int(id);
+  if (rootFace !== null) void fire(fn, rootFace, n);
+  else spawn(host.sch, { data: [{ t: K.Word, sym: intern(fn), bind: host.rt.user }, NONE, n] }, 0);
+}
 
 native('show-confirm', '["Asks a question in a small dialog; true when the user says yes." question [string!] yes [string! none!] no [string! none!] kind [word! none!]]', (_t, f, v) => {
   if (f.phase === 1) return value(v!);
@@ -4829,6 +4898,8 @@ async function boot(): Promise<void> {
   // the page back into view: what cached kept is asked again
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') spawn(host.sch, { data: [{ t: K.Word, sym: intern('ui-caches-again'), bind: host.rt.user }] }, 0);
+    // hidden, maybe closed: what waits for a notice to go is done now (its requests are sent with keepalive)
+    else if (undoToasts.size > 0) spawn(host.sch, { data: [{ t: K.Word, sym: intern('ui-toasts-done'), bind: host.rt.user }] }, 0);
   });
   document.addEventListener('keydown', onKeyDown, true);
   document.addEventListener('keydown', onReorderKey);

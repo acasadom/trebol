@@ -1,6 +1,6 @@
 Trebol [
     title: "Screen tests: what a user does, without a browser"
-    exports: [serve reply click type choose attach pick-menu drag press say see test-answer test-route]
+    exports: [serve reply click type choose attach pick-menu drag press say see dismiss test-answer test-route]
 ]
 
 ; `trebol test` runs every block of an app.test.trb on the app started anew,
@@ -216,8 +216,22 @@ text-styles: [field password number money date area rich]
 click: function [
     "Clicks a button, link, tile, check, toggle or tab, the row of a table or list that shows a text, or a node of an orbit."
     what [string! word!] "What it shows, or a field's name"
-    /local f p row id t back
+    /local f p row id t back done
 ] [
+    ; the Undo of the newest notice that has one
+    if all [string? what  what = tr select i18n/ui 'undo] [
+        undos: copy []
+        foreach [id t back done] ui-toasts-on [if back [append undos id]]
+        unless empty? undos [
+            foreach [f p] test-shown [
+                if all [find [button link tile] f/style  test-called? f what] [
+                    do make error! rejoin ["click: a notice and a face on the screen are " mold what]
+                ]
+            ]
+            ui-toast-undo none last undos
+            return true
+        ]
+    ]
     if string? what [
         ; a neighbour of an orbit, or a node of its trail
         foreach [f p] test-shown [
@@ -549,6 +563,20 @@ press: function [
         all [k = #"^["  dialog] [ui-close dialog]
     ]
     true
+]
+
+dismiss: function [
+    "The notice that shows a text goes as if its time had passed: what waits for it (toast/then) runs now."
+    text [string!]
+    /local id t back done
+] [
+    foreach [id t back done] ui-toasts-on [
+        if find t text [
+            ui-toast-gone none id
+            return true
+        ]
+    ]
+    do make error! rejoin ["dismiss: no notice waiting to go shows " mold text]
 ]
 
 say: func [

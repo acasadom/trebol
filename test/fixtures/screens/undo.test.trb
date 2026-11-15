@@ -1,0 +1,39 @@
+Trebol [title: "Screen tests of toast/undo"]
+
+deleted: copy []
+serve [DELETE "/api/clients/:id" [append deleted id  reply 204 none]]
+
+"undo"
+[
+    pick-menu "Madrid" "Remove"
+    see "Ana Ruiz removed"
+    see/not "Madrid"
+    click "Undo"
+    see "Madrid"
+    empty? deleted
+]
+[
+    pick-menu "Madrid" "Remove"
+    pick-menu "Lugo" "Remove"
+    click "Undo"
+    see "Lugo"
+    see/not "Madrid"
+    dismiss "Ana Ruiz removed"
+    deleted = ["1"]
+]
+[
+    pick-menu "Lugo" "Archive"
+    see/not "Lugo"
+    dismiss "Luis Gil archived"
+    see/not "Lugo"
+    empty? deleted
+]
+"what waits is done when the screen changes"
+[
+    pick-menu "Lugo" "Remove"
+    click "Other"
+    deleted = ["2"]
+]
+"errors"
+[dismiss "Nobody removed"]
+[click "Undo"]

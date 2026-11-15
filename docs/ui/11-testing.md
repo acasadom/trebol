@@ -121,6 +121,8 @@ translated.
 | `press "Ctrl+S"` | presses a key: the button or link with that `key` as its shortcut, or else the view's `on-key` |
 | `press/on "Enter" "Customer"` | presses it with the cursor in a face: its `on-key`, or the nearest one around it; Enter in a field of a form clicks its submit, Escape closes a dialog |
 | `say no` | answers no to the next question of `confirm`; with nothing said, the answer is yes |
+| `click "Undo"` | clicks the *Undo* of the newest notice that has one, as `toast/undo` shows it |
+| `dismiss "Ana Ruiz removed"` | lets the notice that shows that text go, as if its time had passed: the block of `toast/then` runs |
 | `see "Booked in."` | checks that the text is on the screen: in a face, a field, a row, a message, a notice or a question asked |
 | `see/not "Booked in."` | checks that it is not |
 
@@ -144,6 +146,10 @@ question, and one that no question took fails the test, since the app did not as
     see "Ana Ruiz"
 ]
 ```
+
+No time passes in a test, so a notice with *Undo* waits until the test clicks it, dismisses it or goes to
+another screen; one still waiting when the test ends goes then, and the request its `/then` sends needs an
+answer from `serve` like any other.
 
 ## What the server answers
 

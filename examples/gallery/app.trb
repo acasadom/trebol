@@ -15,6 +15,7 @@ view compose/deep/only [
         button "Confirm" [
             either confirm/role "Delete the draft?" 'danger [toast/role "Deleted" 'danger] [toast "Kept"]
         ]
+        button "Undo" [toast/undo "Draft deleted" [toast "Draft back"]]
     ]
     global edit: dialog "Edit client" [
         form [
