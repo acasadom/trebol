@@ -15,6 +15,7 @@ machine spec
 ```
 
 - `spec` (`block!`)
+- `/from saved` (`block!`): Resumes it where a snapshot of it left it, instead; saved: What snapshot gave
 
 The block says the states and the ways between them:
 
@@ -40,6 +41,7 @@ The block says the states and the ways between them:
 | `run [...]` | in a state: the block runs as a task while the machine is in it; its end sends `done` with `event/value`, a failure `error` |
 | `invoke spec with [field: value ...]` | in a state: the machine of the block `spec` (or of the word's value) runs while the machine is in it; when done, `done` with `event/outcome` and `event/data`; `with` may be left out |
 | `invoke spec for item in data/field with [...]` | one machine of `spec` for each value of the block `data/field`, `item` being that value inside `with`; `done` comes when all of them are, with `event/outcomes` and `event/data` as blocks in the order of the values |
+| `on-save [...]` | at the top: code run after each event, `snapshot` inside it being the machine's snapshot then; also when a machine it invoked moves on its own |
 | `defer event` | an event with no way out waits for a state that has one; `defer [e f]` for several |
 
 A state with `timeout` needs a way out `on timeout` from it or from a state around it, and `on timeout` needs
@@ -63,6 +65,11 @@ of its final state, or the name of that state; `none` while it goes on); a `to` 
 The machine is an object with `state` (a word, or a path when it is in a state inside another; a block of them
 when it is in a parallel), `data`, `done`,
 `outcome` and `error`, the last error taken by `on error`.
+
+`machine/from spec saved` makes the machine of `spec` where the [snapshot](#fn-snapshot) `saved` left it,
+instead of starting it: no `on-enter` runs again, each timeout and the ttl go off when they were going to (at once
+if that time has passed), a `run` starts over and a machine invoked goes on from its own snapshot. A state or a
+field of the data the snapshot has and `spec` does not is an error.
 
 (fn-send)=
 ## send
@@ -101,3 +108,18 @@ restart m
 ```
 
 - `m` (`object!`)
+
+(fn-snapshot)=
+## snapshot
+
+The state of a machine as a block of plain data, which machine/from resumes.
+
+```text
+snapshot m
+```
+
+- `m` (`object!`)
+
+The block is plain data: `mold/all` and `load` keep it, so it can be saved with `save-local` or sent to a server
+and given to `machine/from` later. It holds the states the machine is in, its data, history, the events held by
+`defer`, when each timer goes off and the snapshots of the machines it invoked.

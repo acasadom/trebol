@@ -11,7 +11,7 @@ export const MACHINE = String.raw`
 ; in it (the root is 1), so a machine holds no loops of references and molds.
 machine-engine: make object! [
 
-    words: [data initial state final parallel from no on-enter on-exit on-activity timeout ttl defer run invoke]
+    words: [data initial state final parallel from no on-enter on-exit on-activity on-save timeout ttl defer run invoke]
 
     ; the events a machine sends itself
     own: [error timeout expired done]
@@ -115,6 +115,15 @@ machine-engine: make object! [
                             if select node m k 'final [fail rejoin ["parallel " name " holds states, not final ones"] here]
                         ]
                     ]
+                ]
+                on-save [
+                    if n/id <> 1 [fail "on-save goes at the top of the machine" here]
+                    b: code m here w
+                    ; snapshot, inside it, is the machine as it is after the event
+                    m/saver: make object! [snapshot: none]
+                    bind b m/saver
+                    m/on-save: b
+                    spec: next spec
                 ]
                 on-enter on-exit on-activity [
                     if n/id = 1 [fail rejoin [w " goes inside a state"] here]
@@ -531,9 +540,14 @@ machine-engine: make object! [
     ; --- time: a timer per state with a timeout, and one (key 0) for the ttl ---
 
     ; The timer sends the machine its own event; a serial tells a timer that was stopped.
-    clock: function [m key time name] [
+    clock: function [m key time name] [clock-at m key now/precise + to time! time name]
+
+    ; A timer that goes off at a moment, kept with it for snapshot; one already past goes off at once.
+    clock-at: function [m key at name] [
         s: serial m
-        put m/timers key reduce [s delay time compose [machine-engine/post (m) (to lit-word! name) (key) (s)]]
+        left: difference at now/precise
+        if left < 0:00 [left: 0:00]
+        put m/timers key reduce [s delay left compose [machine-engine/post (m) (to lit-word! name) (key) (s)] at]
     ]
 
     arm: function [m id] [
@@ -922,8 +936,132 @@ machine-engine: make object! [
         m/busy: false
         m/state: where m
         if error? :r [clear m/queue  do r]
+        saved m
         returned m
         m
+    ]
+
+    ; --- snapshot: the machine as plain data, which machine/from resumes ---
+
+    ; A state as the block of the names from the top down to it, and back.
+    names-of: function [m id] [collect [foreach x next chain m 1 id [keep select node m x 'name]]]
+
+    id-of: function [m names] [
+        id: 1
+        foreach w names [
+            unless id: child m id w [do make error! rejoin ["machine/from: no state " mold to path! names]]
+        ]
+        id
+    ]
+
+    ; An object from a block of field: value, the values taken as they are.
+    object-of: function [body] [
+        o: make object! append collect [foreach [f v] body [keep to set-word! f]] [none]
+        foreach [f v] body [set in o to word! f :v]
+        o
+    ]
+
+    snapshot: function [m] [
+        timers: copy []  tasks: copy []  ttl: none
+        foreach [key x] m/timers [
+            if x [
+                case [
+                    key = 0 [ttl: third x]
+                    key > 0 [append/only timers names-of m key  append timers third x]
+                    true [
+                        w: second x
+                        append/only tasks names-of m negate key
+                        append/only tasks case [
+                            object? w [snapshot w]
+                            block? w [
+                                reduce [
+                                    'outcomes copy third x  'data copy fourth x
+                                    'machines collect [foreach c w [keep/only either c/done [none] [snapshot c]]]
+                                ]
+                            ]
+                            true ['run]
+                        ]
+                    ]
+                ]
+            ]
+        ]
+        reduce [
+            'on collect [foreach id m/on [keep/only names-of m id]]
+            'data body-of m/data
+            'history collect [foreach [k v] m/history [if v [keep/only names-of m k  keep/only names-of m v]]]
+            'results collect [foreach [k v] m/results [keep/only names-of m k  keep :v]]
+            'deferred collect [foreach e m/deferred [keep/only reduce [first e  body-of second e]]]
+            'timers timers  'ttl ttl  'tasks tasks
+            'done m/done  'outcome m/outcome  'last m/last
+        ]
+    ]
+
+    ; Puts a machine made from its spec where the snapshot left it: no on-enter runs again, the
+    ; timers go off when they were going to, a run starts over and a machine invoked resumes.
+    resume: function [m saved] [
+        unless block? :saved [do make error! "machine/from: a snapshot is a block"]
+        foreach names select saved 'on [append m/on id-of m names]
+        foreach [f v] select saved 'data [
+            unless in m/data to word! f [do make error! rejoin ["machine/from: data has no " to word! f]]
+            set in m/data to word! f :v
+        ]
+        foreach [k v] select saved 'history [put m/history id-of m k id-of m v]
+        foreach [k v] select saved 'results [put m/results id-of m k :v]
+        foreach e select saved 'deferred [append/only m/deferred reduce [first e  object-of second e]]
+        m/done: true = select saved 'done
+        m/outcome: select saved 'outcome
+        m/last: select saved 'last
+        unless m/done [
+            if t: select saved 'ttl [clock-at m 0 t 'expired]
+            foreach [names t] select saved 'timers [clock-at m id-of m names t 'timeout]
+            foreach [names w] select saved 'tasks [
+                id: id-of m names
+                n: node m id
+                case [
+                    n/run [work m id]
+                    all [n/invoke  n/for  block? :w] [
+                        s: serial m
+                        kids: copy []
+                        machines: select w 'machines
+                        repeat i length? machines [
+                            if c: pick machines i [
+                                c: resumed n c
+                                c/caller: reduce [m id s i]
+                                append kids c
+                            ]
+                        ]
+                        put m/timers negate id reduce [s kids  copy select w 'outcomes  copy select w 'data  length? kids]
+                    ]
+                    all [n/invoke  block? :w] [
+                        c: resumed n w
+                        s: serial m
+                        c/caller: reduce [m id s]
+                        put m/timers negate id reduce [s c]
+                    ]
+                ]
+            ]
+        ]
+        m/state: where m
+        m
+    ]
+
+    ; The machine of an invoke, resumed from its own snapshot.
+    resumed: function [n saved] [
+        spec: n/invoke
+        unless block? spec [spec: get spec]
+        c: make-machine spec
+        fresh c
+        resume c saved
+    ]
+
+    ; After each event, the on-save of the outermost machine, with its snapshot.
+    saved: function [m] [
+        top: m
+        while [top/caller] [top: first top/caller]
+        if all [top/on-save  not top/busy] [
+            top/saver/snapshot: snapshot top
+            do top/on-save
+        ]
     ]
 
     make-machine: function [spec [block!]] [
@@ -934,7 +1072,7 @@ machine-engine: make object! [
             nodes: copy []  code: copy []  history: make map! []  queue: copy []
             timers: make map! []  serial: 0  deferred: copy []
             on: copy []  results: make map! []  last: caller: none
-            busy: false  exiting: false
+            busy: false  exiting: false  on-save: saver: none
             scope: make object! [data: event: none]
         ]
         add-node m none none
@@ -962,10 +1100,19 @@ machine-engine: make object! [
 machine: function [
     "Makes a state machine from a block and starts it in its initial state."
     spec [block!]
+    /from {Resumes it where a snapshot of it left it, instead}
+    saved [block!] "What snapshot gave"
 ] [
     m: machine-engine/make-machine spec
     machine-engine/fresh m
-    machine-engine/start m
+    either from [machine-engine/resume m saved] [machine-engine/start m]
+]
+
+snapshot: function [
+    "The state of a machine as a block of plain data, which machine/from resumes."
+    m [object!]
+] [
+    machine-engine/snapshot m
 ]
 
 send: function [

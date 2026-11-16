@@ -717,6 +717,79 @@ Trebol [
     ]
 ]
 
+"snapshot and machine/from: a machine kept as data and resumed"
+[
+    ; nested states, history and data survive mold/all and load; no on-enter runs again
+    entered: 0
+    spec: [
+        data [email: none]
+        initial account
+        state account []
+        state profile [
+            on-enter [entered: entered + 1]
+            initial name  state name []  state photo []
+            from name to photo on next
+            from photo to name on back
+        ]
+        state help []
+        final done success
+        from account to profile on next set [email: event/email]
+        from profile to help on help
+        from help to profile on back
+        from profile to done on finish
+    ]
+    m: machine spec
+    send m [next email: "a@x.es"]
+    send m 'next
+    send m 'help
+    m2: machine/from spec load mold/all snapshot m
+    before: entered
+    resumed: m2/state
+    send m2 'back
+    all [resumed = 'help  m2/state = 'profile/photo  m2/data/email = "a@x.es"  entered = (before + 1)]
+]
+[
+    ; events held by defer, with their fields, and how the states of a parallel ended
+    spec: [
+        data [got: none]
+        defer confirm
+        initial p
+        parallel p [
+            state a [initial a1  state a1 []  final a2 ok  from a1 to a2 on go-a]
+            state b [initial b1  state b1 []  final b2  from b1 to b2 on go-b]
+        ]
+        state waiting []
+        final done
+        from p to waiting
+        from waiting to done on confirm set [got: event/n]
+    ]
+    m: machine spec
+    send m [confirm n: 7]
+    send m 'go-a
+    m2: machine/from spec load mold/all snapshot m
+    first-state: m2/state
+    send m2 'go-b
+    all [first-state = 'p/b/b1  m2/state = 'done  m2/data/got = 7]
+]
+[
+    ; on-save runs after each event with the snapshot; a done machine resumes done
+    saves: copy []
+    spec: [initial a  state a []  final b won  from a to b on go]
+    m: machine append copy spec [on-save [append/only saves snapshot]]
+    send m 'go
+    m2: machine/from spec last saves
+    all [2 = length? saves  m2/done  m2/outcome = 'won  m2/state = 'b]
+]
+[
+    says?: func [code text /local e] [e: try code  all [error? e  to logic! find e/message text]]
+    spec: [data [n: 0]  initial a  state a []]
+    all [
+        says? [machine/from spec [on [[z]]]] "no state z"
+        says? [machine/from spec [on [[a]] data [m: 1]]] "data has no m"
+        says? [machine [initial a  state a [on-save []]]] "on-save goes at the top"
+    ]
+]
+
 "mistakes in a machine"
 [
     says?: func [code text /local e] [e: try code  all [error? e  to logic! find e/message text]]

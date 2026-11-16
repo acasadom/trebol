@@ -509,6 +509,61 @@ the machine was already leaving, and the error reaches the sender.
 Events sent while the machine is still busy with one, from its own code for instance, wait their turn: each event
 is finished, states left and entered, before the next one starts.
 
+## Keeping a machine
+
+A user who fills half a form and closes the page expects to find it where it was. `snapshot` gives the state of a
+machine as a block of plain data: the states it is in, its data, where each state with history was left, the
+events held by `defer`, when each timer goes off and the machines it invoked. `machine/from` makes the machine of
+the same block again where the snapshot left it, instead of starting it:
+
+```trebol
+signup: [
+    data [email: none]
+    initial account
+    state account []
+    state profile [on-enter [print "Now the profile"]]
+    final done success
+    from account to profile on next set [email: event/email]
+    from profile to done on finish
+]
+form-flow: machine signup
+send form-flow [next email: "ana@example.com"]
+kept: mold/all snapshot form-flow
+again: machine/from signup load kept
+```
+
+```trebol-console
+>> again/state
+== profile
+>> again/data/email
+== "ana@example.com"
+```
+
+The text `kept` is what goes into the browser with `save-local`, or to the server. Coming back runs no `on-enter`
+again: the machine was already in `profile`. A timeout goes off when it was going to, at once if that time has
+passed while the page was closed, and a `run` starts over.
+
+`on-save [...]` at the top of a machine runs after each event, with `snapshot` in it being the machine as it is
+then, so the machine keeps itself:
+
+```trebol
+cart: machine [
+    on-save [save-local 'cart snapshot]
+    data [items: 0]
+    initial shopping
+    state shopping []
+    from shopping to shopping on add set [items: data/items + 1]
+]
+send cart 'add
+```
+
+```trebol-console
+>> second find load-local 'cart 'data
+== [items: 1]
+```
+
+A machine resumed from a snapshot of another machine, with states or data its block does not have, is an error.
+
 ## What's next
 
 This was the last page about the language on its own. The block that `view` takes on the first page of this
