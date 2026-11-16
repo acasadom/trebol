@@ -123,3 +123,49 @@ Trebol [
     wait 0.06
     all [m/state = 'out  m/done  empty? collect [foreach [k x] m/timers [if x [keep k]]]]
 ]
+
+"run: a task while the machine is in a state"
+[
+    m: machine [
+        data [rows: none]
+        initial loading
+        state loading [run [wait 0.02  [1 2 3]]]
+        state shown []
+        state failed []
+        from loading to shown on done set [rows: event/value]
+        from loading to failed on error
+        from shown to loading on reload
+    ]
+    first-state: m/state
+    wait 0.06
+    all [first-state = 'loading  m/state = 'shown  m/data/rows = [1 2 3]]
+]
+[
+    ; a failure is taken by on error, with the error as the event
+    m: machine [
+        data [said: none]
+        initial loading
+        state loading [run [wait 0.01  1 / 0]]
+        state failed [on-enter [data/said: event/id]]
+        state shown []
+        from loading to shown on done
+        from loading to failed on error
+    ]
+    wait 0.04
+    all [m/state = 'failed  m/data/said = 'zero-divide]
+]
+[
+    ; leaving the state stops its task
+    said: none
+    m: machine [
+        initial loading
+        state loading [run [wait 0.03  said: 'late]]
+        state gone []
+        from loading to gone on away
+        from gone to loading on back
+        from loading to gone on done
+    ]
+    send m 'away
+    wait 0.06
+    all [m/state = 'gone  none? said]
+]

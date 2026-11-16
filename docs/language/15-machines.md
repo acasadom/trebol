@@ -228,7 +228,7 @@ quote: machine [
     state counting []
     state small []
     state ask-the-owner []
-    from counting choose on done [
+    from counting choose on counted [
         when [data/total < $100] to small
         else to ask-the-owner
     ]
@@ -238,7 +238,7 @@ quote: machine [
 ```trebol-console
 >> quote/data/total: $250
 == $250.00
->> send quote 'done
+>> send quote 'counted
 == ask-the-owner
 ```
 
@@ -324,6 +324,67 @@ session: machine [
 == closed
 >> session/outcome
 == timed-out
+```
+
+## Work that takes a while
+
+A state may have work to do while the machine is in it: ask the supplier for a price, load the list of repairs.
+`run` starts its block as a [task](12-tasks-and-network.md) when the machine comes into the state, and stops it
+if the machine leaves first. When the block ends, the machine sends itself `done`, with the value the block gave
+in `event/value`; when it fails, `error`, taken by `on error` as any failure:
+
+```trebol
+prices: machine [
+    data [price: none]
+    initial asking
+    state asking [run [wait 0.05  $120]]
+    state shown []
+    state failed []
+    from asking to shown on done set [price: event/value]
+    from asking to failed on error
+]
+```
+
+```trebol-console
+>> prices/state
+== asking
+>> wait 0.1
+== none
+>> prices/state
+== shown
+>> prices/data/price
+== $120.00
+```
+
+A real one would `fetch` from the server in that block; the rest of the program goes on meanwhile.
+
+A state may also be a whole machine of its own: `invoke` makes the machine of a block when the state is
+entered and starts it, with `with` giving fields of its data. When it is done, the outer machine gets `done`, with
+`event/outcome` and `event/data` of the inner one. The inner machine is a black box: it takes no events from
+outside, so it runs on its own, by its own ways with no event, its timeouts and its `run`:
+
+```trebol
+payment: [
+    data [amount: $0]
+    initial deciding
+    state deciding []
+    final ok authorized
+    final no declined
+    from deciding choose [when [data/amount <= $100] to ok  else to no]
+]
+order: machine [
+    data [amount: $80]
+    initial charging
+    state charging [invoke payment with [amount: data/amount]]
+    final paid
+    final refused
+    from charging choose on done [when [event/outcome = 'authorized] to paid  else to refused]
+]
+```
+
+```trebol-console
+>> order/state
+== paid
 ```
 
 ## Events that come early

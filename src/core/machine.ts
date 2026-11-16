@@ -11,10 +11,10 @@ export const MACHINE = String.raw`
 ; in it (the root is 1), so a machine holds no loops of references and molds.
 machine-engine: make object! [
 
-    words: [data initial state final parallel from no on-enter on-exit on-activity timeout ttl defer]
+    words: [data initial state final parallel from no on-enter on-exit on-activity timeout ttl defer run invoke]
 
     ; the events a machine sends itself
-    own: [error timeout expired]
+    own: [error timeout expired done]
 
     ; send on a socket, when the host has sockets: send itself is redefined below
     socket: either value? 'send [:send] [none]
@@ -34,7 +34,7 @@ machine-engine: make object! [
 
     add-node: function [m name parent] [
         n: make object! [
-            id: name: parent: initial: enter: exit: activity: outcome: place: timeout: none
+            id: name: parent: initial: enter: exit: activity: outcome: place: timeout: run: invoke: with: none
             children: copy []  transitions: copy []  defer: copy []  history: true  final: false  parallel: false
         ]
         append m/nodes n
@@ -131,6 +131,34 @@ machine-engine: make object! [
                     ]
                     n/timeout: v
                     spec: next spec
+                ]
+                run invoke [
+                    if n/id = 1 [fail rejoin [w " goes inside a state"] here]
+                    if n/final [fail rejoin ["a final state takes no " w] here]
+                    if any [n/run n/invoke] [fail "a state runs one thing: one run or one invoke" here]
+                    either w = 'run [
+                        n/run: code m here 'run
+                        spec: next spec
+                    ] [
+                        v: first spec
+                        unless any [block? :v  word? :v  path? :v] [fail "invoke takes the block of a machine, or a word for one" here]
+                        ; a machine written here is made now, so its mistakes show at once
+                        if block? v [inner: make-machine v]
+                        n/invoke: v
+                        spec: next spec
+                        if 'with = first spec [
+                            n/with: code m spec 'with
+                            if block? v [
+                                fields: collect [foreach x any [inner/data-spec []] [if set-word? :x [keep to word! x]]]
+                                foreach x n/with [
+                                    if all [set-word? :x  not find fields to word! x] [
+                                        fail rejoin ["the machine invoked in " n/name " has no data " to word! x] spec
+                                    ]
+                                ]
+                            ]
+                            spec: skip spec 2
+                        ]
+                    ]
                 ]
                 ttl [
                     if n/id <> 1 [fail "ttl goes at the top of the machine" here]
@@ -274,8 +302,11 @@ machine-engine: make object! [
             if t/other [t/other: target m n t/other t/place]
         ]
         if t/events [
-            if all [find t/events 'timeout  not timed? m id] [
+            if all [find t/events 'timeout  not has? m id [timeout]] [
                 fail rejoin ["on timeout leaves " second t/place ", which has no timeout"] t/place
+            ]
+            if all [find t/events 'done  not has? m id [run invoke]] [
+                fail rejoin ["on done leaves " second t/place ", which has no run or invoke"] t/place
             ]
             if find t/events 'expired [
                 unless m/ttl [fail "on expired needs ttl at the top of the machine" t/place]
@@ -293,11 +324,11 @@ machine-engine: make object! [
         ]
     ]
 
-    ; Whether a state or one inside it has a timeout.
-    timed?: function [m id] [
+    ; Whether a state or one inside it has one of the fields.
+    has?: function [m id fields] [
         n: node m id
-        if n/timeout [return true]
-        foreach c n/children [if timed? m c [return true]]
+        foreach f fields [if select n f [return true]]
+        foreach c n/children [if has? m c fields [return true]]
         false
     ]
 
@@ -469,12 +500,14 @@ machine-engine: make object! [
         m/active: id
         append m/on id
         arm m id
+        work m id
         hook m id 'enter
     ]
 
     leave: function [m id] [
         m/active: id
         disarm m id
+        disarm m negate id
         hook m id 'exit
         remove find m/on id
     ]
@@ -483,8 +516,7 @@ machine-engine: make object! [
 
     ; The timer sends the machine its own event; a serial tells a timer that was stopped.
     clock: function [m key time name] [
-        m/serial: m/serial + 1
-        s: m/serial
+        s: serial m
         put m/timers key reduce [s delay time compose [machine-engine/post (m) (to lit-word! name) (key) (s)]]
     ]
 
@@ -501,10 +533,75 @@ machine-engine: make object! [
 
     disarm: function [m key] [
         if x: select m/timers key [
-            cancel second x
+            drop second x
             put m/timers key none
         ]
     ]
+
+    ; Stops a timer, a task or a machine invoked; none is one that has already ended.
+    drop: function [x] [
+        case [
+            object? x [
+                stop x
+                x/caller: none
+                x/done: true
+            ]
+            x [cancel x]
+        ]
+    ]
+
+    ; --- run and invoke: work of a state (key -id), its end sent back as done or error ---
+
+    work: function [m id] [
+        n: node m id
+        case [
+            n/run [
+                s: serial m
+                put m/timers negate id reduce [s spawn compose/only [machine-engine/worked (m) (id) (s) (n/run)]]
+            ]
+            n/invoke [
+                spec: n/invoke
+                unless block? spec [spec: get spec]
+                unless block? :spec [
+                    do make error! rejoin ["machine: invoke in " n/name " takes the block of a machine: " mold :spec]
+                ]
+                c: make-machine spec
+                fresh c
+                if n/with [
+                    foreach [f v] values m reduce [n/with] [
+                        unless in c/data f [do make error! rejoin ["machine: the machine invoked in " n/name " has no data " f]]
+                        set in c/data f :v
+                    ]
+                ]
+                s: serial m
+                c/caller: reduce [m id s]
+                put m/timers negate id reduce [s c]
+                start c
+            ]
+        ]
+    ]
+
+    ; The task of a run: the value it gives comes back as done, a failure as error.
+    worked: function [m id s b] [
+        r: try b
+        x: select m/timers negate id
+        if all [x  s = first x] [poke x 2 none]
+        either error? :r [
+            post-event m 'error r negate id s
+        ] [
+            post-event m 'done make object! [value: :r] negate id s
+        ]
+    ]
+
+    ; A machine invoked that is done tells the one that invoked it.
+    returned: function [c] [
+        if all [c/done  x: c/caller] [
+            c/caller: none
+            post-event first x 'done make object! [outcome: c/outcome  data: c/data] negate second x third x
+        ]
+    ]
+
+    serial: function [m] [m/serial: m/serial + 1]
 
     arm-ttl: function [m] [
         if m/ttl [
@@ -514,13 +611,15 @@ machine-engine: make object! [
     ]
 
     stop: function [m] [
-        foreach [key x] m/timers [if x [cancel second x]]
+        foreach [key x] m/timers [if x [drop second x]]
         m/timers: make map! []
         clear m/deferred
     ]
 
-    post: function [m name key serial] [
-        append/only m/queue reduce [name make object! [] key serial]
+    post: function [m name key serial] [post-event m name make object! [] key serial]
+
+    post-event: function [m name ev key serial] [
+        append/only m/queue reduce [name ev key serial]
         unless m/busy [run m]
     ]
 
@@ -529,14 +628,25 @@ machine-engine: make object! [
         x: select m/timers key
         unless all [x  serial = first x] [exit]
         put m/timers key none
-        either name = 'timeout [
-            if t: find-from m key 'timeout true none [go m t]
-        ] [
-            unless deliver m 'expired [
-                m/outcome: 'expired
-                m/done: true
-                stop m
-                exit
+        case [
+            name = 'timeout [
+                if t: find-from m key 'timeout true none [go m t]
+            ]
+            name = 'expired [
+                unless deliver m 'expired [
+                    m/outcome: 'expired
+                    m/done: true
+                    stop m
+                    exit
+                ]
+            ]
+            name = 'done [
+                if t: find-from m negate key 'done true none [go m t]
+            ]
+            name = 'error [
+                ; routed as a failure of the state that ran it
+                m/active: negate key
+                do m/scope/event
             ]
         ]
         drain m
@@ -756,6 +866,7 @@ machine-engine: make object! [
         m/busy: false
         m/state: where m
         if error? :r [clear m/queue  do r]
+        returned m
         m
     ]
 
@@ -766,7 +877,7 @@ machine-engine: make object! [
             done: false
             nodes: copy []  code: copy []  history: make map! []  queue: copy []
             timers: make map! []  serial: 0  deferred: copy []
-            on: copy []  results: make map! []  last: none
+            on: copy []  results: make map! []  last: caller: none
             busy: false  exiting: false
             scope: make object! [data: event: none]
         ]

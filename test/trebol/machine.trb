@@ -613,6 +613,57 @@ Trebol [
     send m 'jump
     m/state = [p/a/a2 p/b/b1]
 ]
+"invoke: another machine as one state"
+[
+    payment: [
+        data [amount: 0]
+        initial deciding
+        state deciding []
+        final ok authorized
+        final no declined
+        from deciding choose [when [data/amount <= 100] to ok  else to no]
+    ]
+    order: func [amount] [
+        machine compose/deep [
+            data [amount: (amount)  paid: none]
+            initial charge
+            state charge [invoke payment with [amount: data/amount]]
+            final paid success
+            final cancelled failed
+            from charge choose on done [
+                when [event/outcome = 'authorized] to paid set [paid: event/data/amount]
+                else to cancelled
+            ]
+        ]
+    ]
+    m1: order 50  m2: order 500
+    all [m1/outcome = 'success  m1/data/paid = 50  m2/outcome = 'failed  none? m2/data/paid]
+]
+[
+    ; the machine invoked may be written in the block
+    m: machine [
+        data [amount: 50  paid: none]
+        initial charge
+        state charge [invoke [data [amount: 0] initial s  state s []  final ok yes  final no nope
+            from s choose [when [data/amount < 100] to ok else to no]] with [amount: data/amount]]
+        final paid success
+        final cancelled failed
+        from charge choose on done [when [event/outcome = 'yes] to paid set [paid: event/data/amount]  else to cancelled]
+    ]
+    all [m/outcome = 'success  m/data/paid = 50]
+]
+[
+    ; a machine invoked that fails on the way in fails the state that invoked it
+    m: machine [
+        initial charge
+        state charge [invoke [initial s  state s [on-enter [1 / 0]]]]
+        state failed []
+        from charge to failed on error
+        from charge to failed on done
+    ]
+    m/state = 'failed
+]
+
 "mistakes in a machine"
 [
     says?: func [code text /local e] [e: try code  all [error? e  to logic! find e/message text]]
@@ -759,3 +810,10 @@ Trebol [
 [says? [machine [initial p  parallel p [initial a  state a []  state b []]]] "has no initial"]
 [says? [machine [initial p  parallel p [state a []  final b]]] "not final ones"]
 [says? [machine [initial p  parallel p [state a []  state b []  from a to b on go]]] "no ways between them"]
+[says? [machine [initial a  state a []  state b []  from a to b on done]] "which has no run or invoke"]
+[says? [machine [initial a  state a [run [1]  run [2]]]] "runs one thing"]
+[says? [machine [initial a  run [1]  state a []]] "run goes inside a state"]
+[says? [machine [initial a  state a [invoke [initial z]]]] "no state z"]
+[says? [machine [initial a  state a [invoke 3]]] "invoke takes the block"]
+[says? [machine [initial a  state a [invoke [data [x: 1] initial s state s []] with [y: 2]]]] "has no data y"]
+[says? [machine [initial a  state a []  defer done]] "cannot wait"]
