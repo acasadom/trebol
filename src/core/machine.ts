@@ -34,7 +34,7 @@ machine-engine: make object! [
 
     add-node: function [m name parent] [
         n: make object! [
-            id: name: parent: initial: enter: exit: activity: outcome: place: timeout: run: invoke: with: none
+            id: name: parent: initial: enter: exit: activity: outcome: place: timeout: run: invoke: with: for: in: none
             children: copy []  transitions: copy []  defer: copy []  history: true  final: false  parallel: false
         ]
         append m/nodes n
@@ -146,6 +146,19 @@ machine-engine: make object! [
                         if block? v [inner: make-machine v]
                         n/invoke: v
                         spec: next spec
+                        ; one machine for each item of a block of the data
+                        if 'for = first spec [
+                            unless all [word? second spec  'in = third spec] [
+                                fail "invoke ... for takes a word, in and data/field" spec
+                            ]
+                            v: fourth spec
+                            unless all [path? :v  'data = first v  2 = length? v] [
+                                fail "invoke ... for item in takes data/field" spec
+                            ]
+                            n/for: second spec
+                            n/in: v
+                            spec: skip spec 4
+                        ]
                         if 'with = first spec [
                             n/with: code m spec 'with
                             if block? v [
@@ -377,6 +390,9 @@ machine-engine: make object! [
             if all [path? n/timeout  not find fields second n/timeout] [
                 fail rejoin ["data has no " second n/timeout] n/place
             ]
+            if all [n/in  not find fields second n/in] [
+                fail rejoin ["data has no " second n/in] n/place
+            ]
         ]
     ]
 
@@ -546,6 +562,7 @@ machine-engine: make object! [
                 x/caller: none
                 x/done: true
             ]
+            block? x [foreach c x [drop c]]
             x [cancel x]
         ]
     ]
@@ -565,20 +582,49 @@ machine-engine: make object! [
                 unless block? :spec [
                     do make error! rejoin ["machine: invoke in " n/name " takes the block of a machine: " mold :spec]
                 ]
-                c: make-machine spec
-                fresh c
-                if n/with [
-                    foreach [f v] values m reduce [n/with] [
-                        unless in c/data f [do make error! rejoin ["machine: the machine invoked in " n/name " has no data " f]]
-                        set in c/data f :v
-                    ]
-                ]
                 s: serial m
-                c/caller: reduce [m id s]
-                put m/timers negate id reduce [s c]
-                start c
+                either n/for [
+                    items: get in m/data second n/in
+                    unless block? :items [
+                        do make error! rejoin ["machine: invoke in " n/name " goes over a block: data/" second n/in " is " mold :items]
+                    ]
+                    ; [serial children outcomes data left]: the outcomes and data in the order of the items
+                    x: reduce [s copy []  array length? items  array length? items  length? items]
+                    put m/timers negate id x
+                    either empty? items [
+                        post-event m 'done make object! [outcomes: copy []  data: copy []] negate id s
+                    ] [
+                        repeat i length? items [
+                            ; the word of for, seen only by with
+                            it: make object! reduce [to set-word! n/for none]
+                            set in it n/for pick items i
+                            c: invoked m n spec all [n/with  bind copy/deep n/with it]
+                            c/caller: reduce [m id s i]
+                            append second x c
+                        ]
+                        foreach c second x [start c]
+                    ]
+                ] [
+                    c: invoked m n spec n/with
+                    c/caller: reduce [m id s]
+                    put m/timers negate id reduce [s c]
+                    start c
+                ]
             ]
         ]
+    ]
+
+    ; A machine made for invoke, its data seeded by with.
+    invoked: function [m n spec with] [
+        c: make-machine spec
+        fresh c
+        if with [
+            foreach [f v] values m reduce [with] [
+                unless in c/data f [do make error! rejoin ["machine: the machine invoked in " n/name " has no data " f]]
+                set in c/data f :v
+            ]
+        ]
+        c
     ]
 
     ; The task of a run: the value it gives comes back as done, a failure as error.
@@ -597,7 +643,9 @@ machine-engine: make object! [
     returned: function [c] [
         if all [c/done  x: c/caller] [
             c/caller: none
-            post-event first x 'done make object! [outcome: c/outcome  data: c/data] negate second x third x
+            ev: make object! [outcome: c/outcome  data: c/data]
+            if fourth x [ev: make ev [item: fourth x]]
+            post-event first x 'done ev negate second x third x
         ]
     ]
 
@@ -627,6 +675,14 @@ machine-engine: make object! [
     ring: function [m name key serial] [
         x: select m/timers key
         unless all [x  serial = first x] [exit]
+        ; a machine of a fan-out that ends: the state is done when all of them are
+        if all [name = 'done  block? second x  in e: m/scope/event 'item] [
+            poke third x e/item e/outcome
+            poke fourth x e/item e/data
+            poke x 5 (pick x 5) - 1
+            if 0 < pick x 5 [exit]
+            m/scope/event: make object! [outcomes: third x  data: fourth x]
+        ]
         put m/timers key none
         case [
             name = 'timeout [

@@ -387,6 +387,42 @@ order: machine [
 == paid
 ```
 
+When the same work is done once for each thing in a list, `invoke ... for` makes one machine of the block for each
+value of a block of the data. Inside `with`, the word after `for` is that value, so each machine gets its own. They
+run side by side, each a black box, and the outer machine gets `done` when all of them are: `event/outcomes` and
+`event/data` are blocks, in the order of the list. With an empty list, `done` comes at once:
+
+```trebol
+ship: [
+    data [parcel: none]
+    initial shipping
+    state shipping []
+    final shipped success
+    final lost failed
+    from shipping choose [when [data/parcel <> "C"] to shipped  else to lost]
+]
+delivery: machine [
+    data [parcels: ["A" "B" "C"]  outcomes: none]
+    initial dispatching
+    state dispatching [invoke ship for parcel in data/parcels with [parcel: parcel]]
+    final delivered
+    final stuck
+    from dispatching choose on done [
+        when [parse event/outcomes [any 'success]] to delivered
+        else to stuck set [outcomes: event/outcomes]
+    ]
+]
+```
+
+```trebol-console
+>> delivery/state
+== stuck
+>> delivery/data/outcomes
+== [success success failed]
+```
+
+Leaving the state stops every machine it started.
+
 ## Events that come early
 
 An event the state has no way out for is lost. Sometimes it only came early: the bank says the payment went

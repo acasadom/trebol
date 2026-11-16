@@ -169,3 +169,36 @@ Trebol [
     wait 0.06
     all [m/state = 'gone  none? said]
 ]
+
+"invoke ... for: machines that take their time"
+[
+    ; each machine ends on its own; done comes once all have, in the order of the items
+    m: machine [
+        data [waits: [0.03 0.01 0.02]  order: none]
+        initial working
+        state working [invoke [data [t: 0] initial s  state s [timeout data/t]  final f
+            from s to f on timeout] for t in data/waits with [t: t]]
+        final finished
+        from working to finished on done set [order: collect [foreach d event/data [keep d/t]]]
+    ]
+    first-state: m/state
+    wait 0.08
+    all [first-state = 'working  m/state = 'finished  m/data/order = [0.03 0.01 0.02]]
+]
+[
+    ; leaving the state stops every machine it started
+    said: copy []
+    m: machine [
+        data [xs: [1 2]]
+        initial working
+        state working [invoke [data [x: 0] initial s  state s [run [wait 0.03  append said data/x]]  final f
+            from s to f on done] for x in data/xs with [x: x]]
+        state gone []
+        final finished
+        from working to gone on away
+        from working to finished on done
+    ]
+    send m 'away
+    wait 0.06
+    all [m/state = 'gone  empty? said]
+]

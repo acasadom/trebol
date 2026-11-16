@@ -39,6 +39,7 @@ The block says the states and the ways between them:
 | `ttl 0:30` | at the top: when no event has been sent for that long, the machine sends itself `expired` |
 | `run [...]` | in a state: the block runs as a task while the machine is in it; its end sends `done` with `event/value`, a failure `error` |
 | `invoke spec with [field: value ...]` | in a state: the machine of the block `spec` (or of the word's value) runs while the machine is in it; when done, `done` with `event/outcome` and `event/data`; `with` may be left out |
+| `invoke spec for item in data/field with [...]` | one machine of `spec` for each value of the block `data/field`, `item` being that value inside `with`; `done` comes when all of them are, with `event/outcomes` and `event/data` as blocks in the order of the values |
 | `defer event` | an event with no way out waits for a state that has one; `defer [e f]` for several |
 
 A state with `timeout` needs a way out `on timeout` from it or from a state around it, and `on timeout` needs

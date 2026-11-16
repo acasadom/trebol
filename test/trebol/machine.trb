@@ -664,6 +664,59 @@ Trebol [
     m/state = 'failed
 ]
 
+"invoke ... for: one machine for each item, done when all of them are"
+[
+    ship: [
+        data [parcel: none]
+        initial shipping
+        state shipping []
+        final shipped success
+        final lost failed
+        from shipping choose [when [data/parcel <> "C"] to shipped  else to lost]
+    ]
+    order: func [parcels] [
+        machine compose/deep [
+            data [parcels: [(parcels)]  outcomes: none  got: none]
+            initial dispatching
+            state dispatching [invoke ship for p in data/parcels with [parcel: p]]
+            final delivered success
+            final stuck failed
+            from dispatching choose on done [
+                when [parse event/outcomes [any 'success]] to delivered
+                    set [outcomes: event/outcomes  got: collect [foreach d event/data [keep d/parcel]]]
+                else to stuck set [outcomes: event/outcomes]
+            ]
+        ]
+    ]
+    m1: order ["A" "B"]  m2: order ["A" "C" "B"]  m3: order []
+    all [
+        m1/outcome = 'success  m1/data/got = ["A" "B"]
+        m2/outcome = 'failed  m2/data/outcomes = [success failed success]
+        m3/outcome = 'success  m3/data/outcomes = []
+    ]
+]
+[
+    ; the word of for is the item, only inside with; each machine gets its own data
+    m: machine [
+        data [xs: [1 2 3]  sum: 0]
+        initial adding
+        state adding [invoke [data [n: 0  twice: 0] initial s  state s [on-enter [data/twice: data/n * 2]]  final f
+            from s to f] for x in data/xs with [n: x]]
+        final added
+        from adding to added on done set [sum: collect [foreach d event/data [keep d/twice]]]
+    ]
+    m/data/sum = [2 4 6]
+]
+[
+    says?: func [code text /local e] [e: try code  all [error? e  to logic! find e/message text]]
+    all [
+        says? [machine [data [xs: []] initial a  state a [invoke [initial s state s []] for x in data/ys]  from a to a on done]] "data has no ys"
+        says? [machine [data [xs: []] initial a  state a [invoke [initial s state s []] for x data/xs]  from a to a on done]] "takes a word, in and data/field"
+        says? [machine [data [xs: []] initial a  state a [invoke [initial s state s []] for x in xs]  from a to a on done]] "takes data/field"
+        says? [machine [data [xs: 3] initial a  state a [invoke [initial s state s []] for x in data/xs]  from a to a on done]] "goes over a block"
+    ]
+]
+
 "mistakes in a machine"
 [
     says?: func [code text /local e] [e: try code  all [error? e  to logic! find e/message text]]
