@@ -1350,7 +1350,11 @@ main-facet: func [f] [
 face?: func [v] [all [object? :v  in v 'style  in v 'pane]]
 
 ; Puts in out the face and facet a path names: name/facet (a label), face/facet
-; (the face itself), values/field (the value of the field of that name).
+; (the face itself), values/field (the value of the field of that name). Any
+; other word that holds an object reads down the path from it, at any depth:
+; m/state, m/data/qty, settings/dark. Its words are kept as a block, walked on
+; each check, so an object put in place of another (restart makes new data) is
+; followed.
 react-path: function [f p out [block!]] [
     w: first p
     unless all [word? :w  word? pick p 2] [exit]
@@ -1360,7 +1364,14 @@ react-path: function [f p out [block!]] [
         w = 'values [facet: 'value  attempt [find-named f second p]]
         true [attempt [get w]]
     ]
-    if all [face? :g  in g facet] [append out reduce [g facet]]
+    case [
+        face? :g [if in g facet [append out reduce [g facet]]]
+        object? :g [
+            ws: copy []
+            foreach v next to block! p [either word? :v [append ws v] [break]]
+            if in g first ws [append out reduce [g ws]]
+        ]
+    ]
 ]
 
 react-scan: function [f b [block! paren!] sources [block!] targets [block!] /local v] [
@@ -1370,6 +1381,8 @@ react-scan: function [f b [block! paren!] sources [block!] targets [block!] /loc
             any [block? :v  paren? :v] [react-scan f v sources targets]
             any [path? :v  get-path? :v] [react-path f v sources]
             set-path? :v [react-path f v targets]
+            ; whether a machine is in a state: what it reads is its state
+            all [word? :v  v = 'in?  word? second b] [react-path f to path! reduce [second b 'state] sources]
             ; an answer kept: of its url if written out, else of any
             all [word? :v  v = 'cached] [
                 append sources either any [url? second b  string? second b] [
@@ -1382,9 +1395,19 @@ react-scan: function [f b [block! paren!] sources [block!] targets [block!] /loc
     ]
 ]
 
+; What the sources are now. Down a path of an object, each object met is
+; watched by the host, so that a change to it (a timer of a machine, another
+; tab) runs the reactions at the end of that round.
 react-now: function [r /local g facet] [
     out: copy []
-    foreach [g facet] r/sources [append/only out select g facet]
+    foreach [g facet] r/sources [
+        either word? facet [append/only out select g facet] [
+            foreach w facet [
+                either object? :g [ui-watch g  g: select g w] [g: none  break]
+            ]
+            append/only out :g
+        ]
+    ]
     out
 ]
 

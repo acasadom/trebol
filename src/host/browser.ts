@@ -4928,6 +4928,12 @@ function enteredScreen(box: HTMLElement): void {
 
 // --- natives -----------------------------------------------------------------------
 
+native('ui-watch', '["Marks an object a reaction reads, so that a change to it runs the reactions at the end of the round." object [object!]]', (_t, f) => {
+  const o = f.args[0] as ObjectCell;
+  o.ctx.watch = dirty;
+  return value(o);
+});
+
 native('repaint', '["Redraws the faces that changed." ]', () => {
   // after a change of language: every mounted face shows its values again
   document.documentElement.lang = activeLanguage(host.rt);

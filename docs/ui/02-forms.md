@@ -135,6 +135,31 @@ formula that cannot be worked out yet, because a field is empty, leaves it empty
 shows, its `value` for a field and its `text` for a text; `react` sets whatever it likes, and `react later`
 waits for the first change instead of running when shown.
 
+A block can read more than faces: any word that holds an object, down a path as deep as it goes, such as
+`settings/look/dark` or the state and data of a machine (page 15 of the language tutorial). Whatever changes
+it, a click, a timer of the machine or another tab, the faces that read it follow:
+
+```trebol-ui
+repair: machine [
+    data [bike: none]
+    initial received
+    state received []
+    state repairing []
+    from received to repairing on start set [bike: event/bike]
+    from repairing to received on fixed
+]
+view [
+    title "Workshop"
+    text is [either in? repair 'repairing [rejoin ["Repairing " repair/data/bike]] ["Nothing on the stand"]]
+    row [
+        button "Start" react [face/disabled: in? repair 'repairing] [send repair [start bike: "Brompton"]]
+        button "Done" react [face/disabled: not in? repair 'repairing] [send repair 'fixed]
+    ]
+]
+```
+
+`in? repair 'repairing` counts as reading `repair/state`.
+
 A face that is hidden folds away, and one shown again unfolds, as the warning here does when the box is
 ticked; the first time a screen shows, its faces are simply there.
 

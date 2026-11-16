@@ -16,6 +16,7 @@ native('show', '[root [object!]]', (_t, f) => {
   shown = f.args[0]!;
   return value(shown);
 });
+native('ui-watch', '[object [object!]]', (_t, f) => value(f.args[0]!));
 let toasts: string[] = [];
 native('show-toast', '[message [string!] kind [word! none!] undo [integer! none!]]', (_t, f) => {
   toasts.push(mold(f.args[0]!) + ' ' + mold(f.args[1]!));
@@ -1290,6 +1291,33 @@ test('react and is: a face follows the facets its block reads', async () => {
     ui-react v`), /react: left out, what it reads changed again after it ran \(a cycle\)/);
   // an error in a reaction reaches the host, after the others ran
   assert.match(await ev(`v: view [t: text is [1 / 0]  u: text is ["ok"]]  e: try [ui-react v]  reduce [v/pane/2/text e/id]`), /"ok"/);
+});
+
+test('react and is follow any object down a path: a machine, its data, settings', async () => {
+  const m = `m: machine [
+      data [bike: none  parts: 0]
+      initial received
+      state received []
+      state repairing []
+      from received to repairing on start set [bike: event/bike]
+      from repairing to received on again
+    ]
+    settings: make object! [look: make object! [dark: false]]
+    v: view [
+      text is [form m/state]
+      text is [either in? m 'repairing ["Working"] ["Waiting"]]
+      text is [any [m/data/bike "None"]]
+      text is [either settings/look/dark ["Dark"] ["Light"]]
+    ]
+    shown: does [ui-react v  collect [foreach f v/pane [keep f/text]]]  `;
+  assert.equal(await ev(m + 'shown'), '["received" "Waiting" "None" "Light"]');
+  assert.equal(await ev(m + 'shown  send m [start bike: "Brompton"]  shown'), '["repairing" "Working" "Brompton" "Light"]');
+  // restart makes new data: the reaction reads the new one
+  assert.equal(await ev(m + 'send m [start bike: "Brompton"]  shown  restart m  shown'), '["received" "Waiting" "None" "Light"]');
+  // an object put in place of another, deeper down
+  assert.equal(await ev(m + 'shown  settings/look: make object! [dark: true]  shown'), '["received" "Waiting" "None" "Dark"]');
+  // a path to a field the object has not is not read
+  assert.equal(await ev(`o: make object! [a: 1]  v: view [text is [any [attempt [o/b] "no"]]]  ui-react v  v/pane/1/text`), '"no"');
 });
 
 test('a lookup keeps what was chosen, and only the answer to the last search', async () => {

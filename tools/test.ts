@@ -52,6 +52,8 @@ const strings = (parts: string[]): Cell => blockOf(K.Block, parts.map(p => strin
 native('show', '["Draws a face and everything in it." face [object!]]', (_t, f) => value(page.view = f.args[0]!));
 native('shown-view', '["The view on show; none before the first." ]', () => value(page.view));
 native('apply-theme', '["Changes the look of the whole screen." spec [object!]]', (_t, f) => value(f.args[0]!));
+// no rounds here: the tests run the reactions themselves
+native('ui-watch', '["Marks an object a reaction reads, so that a change to it runs the reactions at the end of the round." object [object!]]', (_t, f) => value(f.args[0]!));
 native('repaint', '["Redraws the faces that changed." ]', () => value(blockOf(K.Block, [])));
 native('print-faces', '["Opens the print dialog for the page, or for one face only." face [object! none!]]', () => value(NONE));
 // a test has no cursor: the text goes at the end
