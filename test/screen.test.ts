@@ -76,6 +76,11 @@ test('insert-text puts text in a field, area or rich text as the user would type
   ]);
 });
 
+test('a form in steps led by a machine: it chooses the next step, Back puts it back', async () => {
+  const { passed, lines } = await ran(['test/fixtures/screens/flow.test.trb']);
+  assert.ok(passed, lines.join('\n'));
+});
+
 test('going back goes one step, as the browser does', async () => {
   const { passed, lines } = await ran(['test/fixtures/screens/steps.test.trb']);
   assert.ok(passed, lines.join('\n'));

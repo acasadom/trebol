@@ -106,6 +106,21 @@ in? m name
 - `m` (`object!`)
 - `name` (`word!` `path!`)
 
+(fn-can-3f)=
+## can?
+
+Whether a machine has a way out on an event from where it is now; what where would say is not asked.
+
+```text
+can? m event
+```
+
+- `m` (`object!`)
+- `event` (`word!`)
+
+For example `can? signup 'next`. A way whose `where` is false still counts: the block of `where` reads the
+event, which is not there yet. A form in steps led by a machine shows *Next* while this is true.
+
 (fn-restart)=
 ## restart
 

@@ -74,6 +74,11 @@ binary as it is and any other value as JSON; see [the network](network.md).
 
 ## in?
 
+## can?
+
+For example `can? signup 'next`. A way whose `where` is false still counts: the block of `where` reads the
+event, which is not there yet. A form in steps led by a machine shows *Next* while this is true.
+
 ## restart
 
 ## snapshot

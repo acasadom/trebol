@@ -41,6 +41,17 @@ An event that has no way out of the current state changes nothing. The bike that
 == ready
 ```
 
+`in?` says whether the machine is in a state, and `can?` whether it has a way out on an event from where it is:
+
+```trebol-console
+>> in? repair 'ready
+== true
+>> can? repair 'again
+== true
+>> can? repair 'start
+== false
+```
+
 ## What a state does
 
 A state can run code when the machine comes into it, `on-enter`, and when it leaves, `on-exit`:

@@ -209,6 +209,54 @@ A step done can be chosen again by its title, and the browser's Back goes to the
 expect from a form on the web. The step on show is the value of `steps`, so a button can go back to one:
 with `go: steps [...]`, a *Change* button on the last step is `button "Change" [go/value: 1]`.
 
+When which step comes next is more than one `when`, a machine (page 15 of the language tutorial) can lead the
+steps. Its word goes after `steps`, and each step starts with the name of its state:
+
+```trebol-ui
+booking: machine [
+    data [account: none]
+    initial you
+    state you []
+    state company []
+    state bike []
+    state check []
+    from you choose on next [
+        when [event/values/account = "My company"] to company set [account: "company"]
+        else to bike set [account: "own"]
+    ]
+    from company to bike on next
+    from bike to check on next
+]
+view [
+    title "Book a repair"
+    form [
+        steps booking [
+            you "You" [
+                radio account "Who brings it" ["Me" "My company"] required
+                field customer "Name" required
+            ]
+            company "Company" [
+                field company "Company" required
+            ]
+            bike "The bike" [
+                area fault "What is wrong" required
+            ]
+            check "Check" [
+                text is [rejoin [any [values/customer ""] ": " any [values/fault ""]]]
+            ]
+        ]
+        submit "Book in" [toast rejoin ["Booked in for " values/customer]]
+    ]
+]
+```
+
+The step on show is the one of the state the machine is in. *Next* checks the fields of the step, as before,
+and sends the machine `next`, with the values of the form in `event/values`; where it goes is the machine's
+choice, and it may keep what it needs in its data. *Next* is there while the machine has a way out on
+`next` (`can? booking 'next`), so on the last step the `submit` takes its place. *Back* puts the machine back
+where it was before that *Next*, its data too, and nothing in `on-enter` runs again: the machine only says the
+way forward. The steps it did not go through do not apply, as with `when`.
+
 ## A photo
 
 `photo` shows an image and lets the person choose another: with its button, by clicking the image, or by

@@ -954,3 +954,38 @@ Trebol [
     send m 'go
     all [m/owner  m/state = 'b  m/data/n = 1  (select snapshot m 'on) = [[b]]]
 ]
+
+"can?"
+[
+    m: machine [
+        initial a
+        state a []
+        state w [initial x  state x []  state y []  from x to y on go]
+        from a to w on next where [false]
+        from w to a on reset
+    ]
+    ; a way whose where is false still counts: where is not asked
+    r: reduce [can? m 'next  can? m 'reset  can? m 'go]
+    m: machine [initial w  state w [initial x  state x []  state y []  from x to y on go]  state a []  from w to a on reset]
+    all [r = reduce [true false false]  can? m 'go  can? m 'reset  not can? m 'next]
+]
+
+"rewind: a machine back where a snapshot left it, in place"
+[
+    n: 0
+    m: machine [
+        data [k: none]
+        initial a
+        state a []
+        state b [on-enter [n: n + 1]]
+        state c []
+        from a to b on next set [k: event/k]
+        from b to c on next
+    ]
+    s: snapshot m
+    send m [next k: 1]
+    send m 'next
+    r: reduce [m/state m/data/k]
+    machine-engine/rewind m s
+    all [r = [c 1]  m/state = 'a  none? m/data/k  n = 1  (select snapshot m 'on) = [[a]]]
+]

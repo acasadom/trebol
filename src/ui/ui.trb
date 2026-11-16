@@ -114,7 +114,9 @@ poke styles 'view make face [style: 'view]
 poke styles 'submit make face [style: 'button role: 'primary submit: true]
 poke styles 'dialog make face [style: 'dialog hidden: true]
 poke styles 'tabs make face [style: 'tabs value: 1]
-poke styles 'steps make face [style: 'steps value: 1]   ; value: the step on show, counting every step
+; value: the step on show, counting every step; flow: the word of a machine that leads them; trail: the
+; snapshots of that machine before each Next, which Back puts back
+poke styles 'steps make face [style: 'steps value: 1  flow: none  trail: none]
 poke styles 'screens make face [style: 'screens entering: false]   ; entering: the screen on show is still the old one
 poke styles 'split make face [style: 'split value: 1]   ; value: the pane shown on narrow screens
 poke styles 'canvas make face [style: 'canvas extent: 300x150]
@@ -461,7 +463,7 @@ build-faces: function [
                 all [f/style = 'widget  none? f/props] [f/props: either ui-checking [make object! []] [make object! b]]
                 f/style = 'canvas [f/draw: b]
                 f/style = 'tabs [f/pane: tabs-of b labels]
-                f/style = 'steps [f/pane: steps-of f b labels]
+                f/style = 'steps [f/pane: either f/flow [steps-flow-of f b labels] [steps-of f b labels]]
                 f/style = 'screens [f/data: screens-of b]
                 all [find [choice radio] f/style  none? f/options] [f/options: options-of b]
                 true [f/action: b]
@@ -509,6 +511,8 @@ build-faces: function [
         | set w word! if (find simple-rules w) (add-rule f reduce [w])
         ; money price "Price" EUR
         | set w word! if (all [f/style = 'money  parse form w [3 letter]]) (f/currency: to word! uppercase form w)
+        ; steps flow [...]: a machine leads the steps (check, which runs nothing, takes the word as one)
+        | set w word! ahead block! if (all [f/style = 'steps  not f/flow  any [ui-checking  machine? attempt [get w]]]) (f/flow: w)
     ]
     parse spec [any [
         (label: none  global?: false)
@@ -601,17 +605,13 @@ steps-of: function [f spec [block!] labels [block!] /local p w label b] [
     out: copy []
     parse spec [any [
         set label text-rule (w: none) opt ['when set w block!] set b block! (
-            s: make select styles 'step [text: text-of label  pane: build-faces b labels]
+            s: make select styles 'step [text: text-of label  pane: build-faces b labels  state: none]
             if w [add-reaction s 'react compose/only [face/hidden: not do (w)] false]
             append out s
         )
         | p: skip (ui-problem p "steps take a label, when [...] if it applies only sometimes, and a block per step") to end
     ]]
-    earlier: make select styles 'button [text: select i18n/ui 'back]
-    earlier/action: compose [ui-step (f) -1]
-    later: make select styles 'button [role: 'primary  text: select i18n/ui 'next]
-    later/action: compose [ui-step (f) 1]
-    append out make select styles 'row [pane: reduce [earlier later]]
+    append out steps-nav f
     ; Back, Next and the submit buttons follow the step on show: a reaction to the step and to what applies
     add-reaction f 'react [ui-steps-sync face] false
     r: last f/reactions
@@ -619,6 +619,68 @@ steps-of: function [f spec [block!] labels [block!] /local p w label b] [
     foreach s out [if s/style = 'step [append r/sources reduce [s 'hidden]]]
     r/targets: copy []
     out
+]
+
+;-- a machine leads them: steps flow [you "You" [...] company "Company" [...]]. Each step names a state;
+; the one on show is the step of the state the machine is in. Next sends it next with the values of the
+; form, and the machine chooses where to go; Back puts the machine back where it was before that Next.
+
+machine?: func [v] [all [object? :v  in v 'nodes  in v 'queue  in v 'state]]
+
+steps-nav: function [f] [
+    earlier: make select styles 'button [text: select i18n/ui 'back]
+    earlier/action: compose [ui-step (f) -1]
+    later: make select styles 'button [role: 'primary  text: select i18n/ui 'next]
+    later/action: compose [ui-step (f) 1]
+    make select styles 'row [pane: reduce [earlier later]]
+]
+
+steps-flow-of: function [f spec [block!] labels [block!] /local p n label b w] [
+    out: copy []
+    ; check runs nothing: there is no machine to ask
+    m: unless ui-checking [get f/flow]
+    names: either m [collect [foreach x m/nodes [keep x/name]]] [none]
+    parse spec [any [
+        p: set n word! set label text-rule
+        opt [w: 'when block! (ui-problem w "a machine leads these steps: it chooses where Next goes, with no when")]
+        set b block! (
+            if all [names  not find names n] [ui-problem p rejoin [f/flow " has no state " n ui-suggest n names]]
+            s: make select styles 'step [text: text-of label  pane: build-faces b labels  state: n]
+            append out s
+        )
+        | p: skip (ui-problem p "steps with a machine take the name of a state, a label and a block per step") to end
+    ]]
+    f/trail: copy []
+    append out steps-nav f
+    unless m [return out]
+    ; the step on show and the buttons follow the state of the machine
+    add-reaction f 'react [ui-steps-follow face  ui-steps-sync face] false
+    r: last f/reactions
+    r/sources: reduce [m [state]  f 'value]
+    r/targets: copy []
+    out
+]
+
+; The step of the state the machine is in is on show; the steps before it that it did not go
+; through do not apply, so their fields are neither checked nor in values.
+ui-steps-follow: function [s] [
+    m: get s/flow
+    at: none
+    repeat i length? s/pane [
+        g: pick s/pane i
+        if all [g/style = 'step  in? m g/state] [at: i  break]
+    ]
+    unless at [exit]
+    done: copy []
+    foreach x s/trail [append done first x]
+    repeat i length? s/pane [
+        g: pick s/pane i
+        if g/style = 'step [
+            off: all [i < at  not find done i]
+            unless off = g/hidden [g/hidden: off]
+        ]
+    ]
+    unless at = s/value [s/value: at]
 ]
 
 ; The submit buttons written in a form with steps go after Next, shown on the last step.
@@ -662,9 +724,12 @@ ui-steps-sync: function [s /local i] [
     ]
     k: index? find live s/value
     nav: last s/pane
-    nav/pane/1/hidden: k = 1
-    nav/pane/2/hidden: k = length? live
-    foreach b skip nav/pane 2 [b/hidden: k < length? live]
+    ; with a machine: Back while there is a Next to undo, Next while the machine takes it
+    first?: either s/flow [empty? s/trail] [k = 1]
+    last?: either s/flow [not can? get s/flow 'next] [k = length? live]
+    nav/pane/1/hidden: first?
+    nav/pane/2/hidden: last?
+    foreach b skip nav/pane 2 [b/hidden: not last?]
 ]
 
 ; True if every field of the step on show is valid; shows the messages of those that are not.
@@ -681,6 +746,22 @@ ui-step: function [
     "Called by Back and Next of a form in steps: by -1 or 1. Next only leaves a step whose fields are valid."
     s by [integer!]
 ] [
+    if s/flow [
+        m: get s/flow
+        either by > 0 [
+            unless step-valid? s [exit]
+            was: m/state
+            saved: snapshot m
+            send m compose [next values: (form-values any [s/form s/root])]
+            ; the machine did not move: nothing to undo
+            unless strict-equal? was m/state [append/only s/trail reduce [s/value saved]]
+        ] [
+            if empty? s/trail [exit]
+            machine-engine/rewind m second take/last s/trail
+        ]
+        ui-steps-follow s
+        exit
+    ]
     live: steps-live s
     unless here: find live s/value [exit]
     if all [by > 0  not step-valid? s] [exit]
@@ -691,6 +772,22 @@ ui-step-go: function [
     "Called by the host when the user chooses a step or the history moves: back to any step, forward through valid ones."
     s n [integer!]
 ] [
+    if s/flow [
+        ; back to a step done, or forward again through valid ones (the browser's Forward)
+        either n < s/value [
+            done: copy []
+            foreach x s/trail [append done first x]
+            unless find done n [exit]
+            while [s/value <> n] [ui-step s -1]
+        ] [
+            while [s/value <> n] [
+                was: s/value
+                ui-step s 1
+                if s/value = was [exit]
+            ]
+        ]
+        exit
+    ]
     live: steps-live s
     unless find live n [exit]
     while [s/value < n] [

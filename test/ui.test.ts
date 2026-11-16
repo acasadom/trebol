@@ -1320,6 +1320,12 @@ test('react and is follow any object down a path: a machine, its data, settings'
   assert.equal(await ev(`o: make object! [a: 1]  v: view [text is [any [attempt [o/b] "no"]]]  ui-react v  v/pane/1/text`), '"no"');
 });
 
+test('steps led by a machine: a state it has not, or a when, is a problem', async () => {
+  const m = `m: machine [initial a  state a []  state b []  from a to b on next]  `;
+  assert.match(await ev(m + `e: try [view [form [steps m [a "A" [] bb "B" []]]]]  e/message`), /m has no state bb; did you mean b\?/);
+  assert.match(await ev(m + `e: try [view [form [steps m [a "A" [] b "B" when [true] []]]]]  e/message`), /it chooses where Next goes, with no when/);
+});
+
 test('a lookup keeps what was chosen, and only the answer to the last search', async () => {
   const r = await ev(`
     people: [#(value: "1" text: "Ana") #(value: "2" text: "Luis")]

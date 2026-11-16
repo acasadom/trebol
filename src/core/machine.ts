@@ -1070,6 +1070,37 @@ machine-engine: make object! [
         clear m/queue
     ]
 
+    ; The machine back where a snapshot of it left it, in place: what it was doing
+    ; is stopped, and nothing it does on entering a state runs again. A form in
+    ; steps goes back with it. A copy of a shared machine asks the owner's tab.
+    rewind: function [m saved] [
+        unless m/owner [
+            share-ask m/channel mold/all reduce ['rewind saved]
+            return m
+        ]
+        clean m
+        m/done: false
+        m/outcome: m/error: m/active: m/last: none
+        resume m saved
+        saved m
+        m
+    ]
+
+    ; Whether a state the machine is in, or one around it, has a way out on an event.
+    can: function [m name] [
+        foreach leaf leaves m [
+            id: leaf
+            while [all [id  id <> 1]] [
+                n: node m id
+                foreach t select node m n/parent 'transitions [
+                    if all [t/source = id  t/events  find t/events name] [return true]
+                ]
+                id: n/parent
+            ]
+        ]
+        false
+    ]
+
     ; The machine of an invoke, resumed from its own snapshot.
     resumed: function [n saved] [
         spec: n/invoke
@@ -1145,6 +1176,7 @@ machine-engine: make object! [
                 unless m/busy [run m]
             ]
             restart [again m]
+            rewind [rewind m second x]
         ]
     ]
 
@@ -1270,6 +1302,14 @@ in?: function [
         foreach w to block! name [unless id: e/child m id w [return false]]
         e/on? m id
     ]
+]
+
+can?: function [
+    "Whether a machine has a way out on an event from where it is now; what where would say is not asked."
+    m [object!]
+    event [word!]
+] [
+    machine-engine/can m event
 ]
 
 restart: function [

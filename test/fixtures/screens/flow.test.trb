@@ -1,0 +1,71 @@
+Trebol [title: "Screen tests of a form in steps led by a machine"]
+
+"one step at a time, where the machine is"
+[
+    see "Applicant"
+    see/not "Request"
+    see/not "Back"
+    see/not "Send"
+    choose "Applicant" "Person"
+    type "Name" "Ana"
+    click "Next"
+    see "Request"
+    see/not "Name"
+    see "Back"
+    apply/state = 'what
+]
+"next checks only the step on show"
+[
+    click "Next"
+    see "This field is required"
+    all [apply/state = 'who]
+]
+"the machine chooses the next step"
+[
+    choose "Applicant" "Company"
+    type "Name" "Acme"
+    click "Next"
+    see "Tax id"
+    all [apply/state = 'company  apply/data/kind = "Company"]
+]
+"back puts the machine where it was"
+[
+    choose "Applicant" "Company"
+    type "Name" "Acme"
+    click "Next"
+    type "Tax id" "B123"
+    click "Next"
+    see "Request"
+    click "Back"
+    see "Tax id"
+    click "Back"
+    see "Name"
+    all [apply/state = 'who  none? apply/data/kind  entered = 1]
+]
+"the last step sends the values of the steps gone through"
+[
+    choose "Applicant" "Company"
+    type "Name" "Acme"
+    click "Next"
+    type "Tax id" "B123"
+    click "Back"
+    choose "Applicant" "Person"
+    click "Next"
+    type "Request" "A bench"
+    click "Next"
+    see "Acme: A bench"
+    see/not "Next"
+    click "Send"
+    all [sent/name = "Acme"  sent/request = "A bench"  not find words-of sent 'tax-id]
+]
+"a step done chosen by its title"
+[
+    choose "Applicant" "Person"
+    type "Name" "Ana"
+    click "Next"
+    type "Request" "A bench"
+    click "Next"
+    click "Who"
+    see "Name"
+    all [apply/state = 'who]
+]
