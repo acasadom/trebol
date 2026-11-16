@@ -11,7 +11,7 @@ export const MACHINE = String.raw`
 ; in it (the root is 1), so a machine holds no loops of references and molds.
 machine-engine: make object! [
 
-    words: [data initial state final parallel from no on-enter on-exit on-activity on-save timeout ttl defer run invoke]
+    words: [data initial state final parallel from no on-enter on-exit on-activity on-save timeout ttl defer run invoke shared]
 
     ; the events a machine sends itself
     own: [error timeout expired done]
@@ -115,6 +115,12 @@ machine-engine: make object! [
                             if select node m k 'final [fail rejoin ["parallel " name " holds states, not final ones"] here]
                         ]
                     ]
+                ]
+                shared [
+                    if n/id <> 1 [fail "shared goes at the top of the machine" here]
+                    unless word? first spec [fail "shared takes a name, the same in every tab" here]
+                    m/shared: first spec
+                    spec: next spec
                 ]
                 on-save [
                     if n/id <> 1 [fail "on-save goes at the top of the machine" here]
@@ -631,6 +637,7 @@ machine-engine: make object! [
     ; A machine made for invoke, its data seeded by with.
     invoked: function [m n spec with] [
         c: make-machine spec
+        if c/shared [do make error! rejoin ["machine: the machine invoked in " n/name " cannot be shared"]]
         fresh c
         if with [
             foreach [f v] values m reduce [with] [
@@ -999,6 +1006,18 @@ machine-engine: make object! [
     ; Puts a machine made from its spec where the snapshot left it: no on-enter runs again, the
     ; timers go off when they were going to, a run starts over and a machine invoked resumes.
     resume: function [m saved] [
+        restore m saved
+        unless m/done [
+            if t: select saved 'ttl [clock-at m 0 t 'expired]
+            foreach [names t] select saved 'timers [clock-at m id-of m names t 'timeout]
+            foreach [names w] select saved 'tasks [revive m names w]
+        ]
+        m/state: where m
+        m
+    ]
+
+    ; The plain part of a snapshot: states, data, history, results, the events held.
+    restore: function [m saved] [
         unless block? :saved [do make error! "machine/from: a snapshot is a block"]
         foreach names select saved 'on [append m/on id-of m names]
         foreach [f v] select saved 'data [
@@ -1011,10 +1030,11 @@ machine-engine: make object! [
         m/done: true = select saved 'done
         m/outcome: select saved 'outcome
         m/last: select saved 'last
-        unless m/done [
-            if t: select saved 'ttl [clock-at m 0 t 'expired]
-            foreach [names t] select saved 'timers [clock-at m id-of m names t 'timeout]
-            foreach [names w] select saved 'tasks [
+        m/state: where m
+    ]
+
+    ; The work of a state as the snapshot left it: a run starts over, a machine invoked resumes.
+    revive: function [m names w] [
                 id: id-of m names
                 n: node m id
                 case [
@@ -1039,10 +1059,15 @@ machine-engine: make object! [
                         put m/timers negate id reduce [s c]
                     ]
                 ]
-            ]
-        ]
-        m/state: where m
-        m
+    ]
+
+    ; Forgets the states, history and results, before a snapshot is put in.
+    clean: function [m] [
+        stop m
+        m/on: copy []
+        m/history: make map! []
+        m/results: make map! []
+        clear m/queue
     ]
 
     ; The machine of an invoke, resumed from its own snapshot.
@@ -1058,10 +1083,94 @@ machine-engine: make object! [
     saved: function [m] [
         top: m
         while [top/caller] [top: first top/caller]
-        if all [top/on-save  not top/busy] [
+        if any [top/busy  not top/owner] [exit]
+        if top/on-save [
             top/saver/snapshot: snapshot top
             do top/on-save
         ]
+        if top/channel [tell top false]
+    ]
+
+    ; --- shared: one machine for every tab of the app, run by the tab that owns it ---
+    ; The owner holds a lock named after the machine and tells the other tabs its
+    ; snapshot after each event; they keep a copy and send their events to it.
+
+    share-name: function [m] [rejoin ["trebol-machine-" m/shared]]
+
+    ; Makes m the owner, or a copy of the owner another tab has.
+    share-start: function [m saved] [
+        ; a host with no tabs has no share-open: the machine is only this one's
+        m/channel: all [value? 'share-open  share-open share-name m compose [machine-engine/heard (m) message asked]]
+        either any [
+            none? m/channel
+            share-lock share-name m compose [machine-engine/took (m)]
+        ] [
+            either saved [resume m saved] [start m]
+        ] [
+            m/owner: false
+            share-ask m/channel mold/all [hello]
+        ]
+        m
+    ]
+
+    ; The snapshot to the other tabs, answering the asks done since the last one.
+    tell: function [m fresh] [
+        asks: m/asks
+        m/asks: copy []
+        share-post m/channel mold/all reduce ['state snapshot m] asks fresh
+    ]
+
+    ; What another tab says: to the owner an event, restart or hello; to a copy the owner's snapshot.
+    heard: function [m message asked] [
+        x: load message
+        unless m/owner [
+            if 'state = first x [
+                m/seen: second x
+                clean m
+                restore m m/seen
+            ]
+            exit
+        ]
+        if 'state = first x [exit]
+        if asked [append m/asks asked]
+        obey m x
+        unless m/busy [tell m false]
+    ]
+
+    ; An event or a restart that came from another tab.
+    obey: function [m x] [
+        switch first x [
+            event [
+                append/only m/queue reduce [second x  object-of third x]
+                unless m/busy [run m]
+            ]
+            restart [again m]
+        ]
+    ]
+
+    ; The owner's tab has gone: this one goes on from the last snapshot it was told.
+    took: function [m] [
+        m/owner: true
+        clean m
+        either m/seen [resume m m/seen] [start m]
+        foreach [id message] share-asks m/channel [
+            append m/asks id
+            obey m load message
+        ]
+        tell m true
+    ]
+
+    ; restart, for the owner or a machine of one tab.
+    again: function [m] [
+        stop m
+        fresh m
+        m/history: make map! []
+        m/outcome: m/error: m/active: m/last: none
+        m/on: copy []
+        m/results: make map! []
+        m/done: false
+        clear m/queue
+        start m
     ]
 
     make-machine: function [spec [block!]] [
@@ -1073,6 +1182,7 @@ machine-engine: make object! [
             timers: make map! []  serial: 0  deferred: copy []
             on: copy []  results: make map! []  last: caller: none
             busy: false  exiting: false  on-save: saver: none
+            shared: channel: seen: none  owner: true  asks: copy []
             scope: make object! [data: event: none]
         ]
         add-node m none none
@@ -1103,16 +1213,22 @@ machine: function [
     /from {Resumes it where a snapshot of it left it, instead}
     saved [block!] "What snapshot gave"
 ] [
-    m: machine-engine/make-machine spec
-    machine-engine/fresh m
-    either from [machine-engine/resume m saved] [machine-engine/start m]
+    e: machine-engine
+    m: e/make-machine spec
+    e/fresh m
+    case [
+        m/shared [e/share-start m all [from saved]]
+        from [e/resume m saved]
+        true [e/start m]
+    ]
 ]
 
 snapshot: function [
     "The state of a machine as a block of plain data, which machine/from resumes."
     m [object!]
 ] [
-    machine-engine/snapshot m
+    ; a copy of a shared machine has only what the owner told it
+    either m/owner [machine-engine/snapshot m] [copy/deep m/seen]
 ]
 
 send: function [
@@ -1130,6 +1246,11 @@ send: function [
         ev: make object! next event
     ]
     if find machine-engine/own name [do make error! rejoin ["send: " name " is the machine's own event"]]
+    unless m/owner [
+        ; a copy: the owner's tab runs it, and its answer brings the new state
+        share-ask m/channel mold/all reduce ['event name body-of ev]
+        return m/state
+    ]
     append/only m/queue reduce [name ev]
     unless m/busy [machine-engine/run m]
     m/state
@@ -1155,14 +1276,9 @@ restart: function [
     "Starts a machine again from its initial state, with its data as it was made."
     m [object!]
 ] [
-    machine-engine/stop m
-    machine-engine/fresh m
-    m/history: make map! []
-    m/outcome: m/error: m/active: m/last: none
-    m/on: copy []
-    m/results: make map! []
-    m/done: false
-    clear m/queue
-    machine-engine/start m
+    either m/owner [machine-engine/again m] [
+        share-ask m/channel mold/all [restart]
+        m
+    ]
 ]
 `;

@@ -943,3 +943,14 @@ Trebol [
 [says? [machine [initial a  state a [invoke 3]]] "invoke takes the block"]
 [says? [machine [initial a  state a [invoke [data [x: 1] initial s state s []] with [y: 2]]]] "has no data y"]
 [says? [machine [initial a  state a []  defer done]] "cannot wait"]
+[says? [machine [initial a  state a [shared cart]]] "shared goes at the top"]
+[says? [machine [shared "cart"  initial a  state a []]] "shared takes a name"]
+[says? [machine [initial a  state a [invoke [shared c  initial s  state s []]]]] "cannot be shared"]
+
+"shared"
+[
+    ; with no other tab to share it with, a shared machine runs in its own
+    m: machine [shared cart  data [n: 0]  initial a  state a []  state b []  from a to b on go set [n: 1]]
+    send m 'go
+    all [m/owner  m/state = 'b  m/data/n = 1  (select snapshot m 'on) = [[b]]]
+]

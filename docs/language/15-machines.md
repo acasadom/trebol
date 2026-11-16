@@ -564,6 +564,38 @@ send cart 'add
 
 A machine resumed from a snapshot of another machine, with states or data its block does not have, is an error.
 
+## One machine for every tab
+
+A user may open the same app in two tabs or two windows of the browser. Each one makes its own machines, which
+know nothing of each other: signing out in one leaves the other signed in. With `shared name` at the top, every
+tab of the site that makes a machine with that name has the same one:
+
+```trebol
+session: machine [
+    shared session
+    data [user: none]
+    initial out
+    state out []
+    state in []
+    from out to in on sign-in set [user: event/user]
+    from in to out on sign-out set [user: none]
+]
+send session [sign-in user: "ana"]
+```
+
+One tab runs the machine: the first one that made it. Only there do `on-enter`, `on-exit`, timeouts, `run`,
+`invoke` and `on-save` happen, so a request is never made twice because the app is open twice. The other tabs
+have a copy: its `state` and `data` follow the machine after each event, and `send` on it sends the event to the
+tab that runs it and waits until it is done there, so the line after `send` already sees the new state. When the
+tab that runs the machine is closed, another one goes on from where the machine was, as `machine/from` does: no
+`on-enter` again, each timeout at its time, a `run` starting over.
+
+The tabs share it through the browser (a lock and a channel named after the machine), so it reaches the tabs and
+windows of the same browser for the same site, not other browsers or other computers. With `machine/from`, the
+snapshot is taken only when no other tab runs the machine yet. The data and the fields of the events go from tab
+to tab as `mold/all` gives them: plain values, no functions or handles. Where there is no browser, as in the
+console, a shared machine is a machine like the others.
+
 ## What's next
 
 This was the last page about the language on its own. The block that `view` takes on the first page of this

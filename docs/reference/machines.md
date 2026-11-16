@@ -42,6 +42,7 @@ The block says the states and the ways between them:
 | `invoke spec with [field: value ...]` | in a state: the machine of the block `spec` (or of the word's value) runs while the machine is in it; when done, `done` with `event/outcome` and `event/data`; `with` may be left out |
 | `invoke spec for item in data/field with [...]` | one machine of `spec` for each value of the block `data/field`, `item` being that value inside `with`; `done` comes when all of them are, with `event/outcomes` and `event/data` as blocks in the order of the values |
 | `on-save [...]` | at the top: code run after each event, `snapshot` inside it being the machine's snapshot then; also when a machine it invoked moves on its own |
+| `shared name` | at the top: every tab of the site that makes a machine with this name has the same one; see below |
 | `defer event` | an event with no way out waits for a state that has one; `defer [e f]` for several |
 
 A state with `timeout` needs a way out `on timeout` from it or from a state around it, and `on timeout` needs
@@ -64,7 +65,14 @@ of its final state, or the name of that state; `none` while it goes on); a `to` 
 
 The machine is an object with `state` (a word, or a path when it is in a state inside another; a block of them
 when it is in a parallel), `data`, `done`,
-`outcome` and `error`, the last error taken by `on error`.
+`outcome`, `error`, the last error taken by `on error`, and `owner`, `false` on the copy of a `shared` machine.
+
+A `shared` machine is run by one tab, the first that made it, which holds a lock named after it: only there do
+hooks, timeouts, `run`, `invoke` and `on-save` happen. The other tabs and windows of the same browser and site get
+a copy whose `state` and `data` follow it after each event (`owner` is `false` on it); `send` and `restart` on a
+copy go to the tab that runs it and wait until they are done there. When that tab closes, another one goes on
+from the last snapshot it was told. Data and event fields travel as `mold/all` gives them. With no browser to
+share it with, it runs on its own, as any machine.
 
 `machine/from spec saved` makes the machine of `spec` where the [snapshot](#fn-snapshot) `saved` left it,
 instead of starting it: no `on-enter` runs again, each timeout and the ttl go off when they were going to (at once

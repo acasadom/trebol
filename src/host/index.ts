@@ -5,6 +5,7 @@ import './natives.ts';
 import './net.ts';
 import './page.ts';
 import './compress.ts';
+import './share.ts';
 import './locale.ts';
 import { setLoader, defaultLoader, type Loader } from './modules.ts';
 import {
@@ -15,6 +16,7 @@ import { makeScheduler, spawn, taskResult, type Scheduler } from './scheduler.ts
 
 export { output } from './natives.ts';
 export { fileHandle } from './net.ts';
+export { setShareEnv, type ShareEnv, type ChannelLike, type LocksLike, type Envelope } from './share.ts';
 export { page } from './page.ts';
 export { mapAt, formatLocal, activeLanguage, shown, translate, uiText, editLocal, readLocal, readDate, weekStart, fileSize, LOCAL_KINDS } from './locale.ts';
 export type { Loader } from './modules.ts';
