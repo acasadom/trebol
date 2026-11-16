@@ -394,7 +394,7 @@ machine-engine: make object! [
     nested: function [m scope rel want outer] [
         head: first rel
         if 1 < length? rel [
-            if t: nested m head next rel want true [return t]
+            if t: nested m head next rel want outer [return t]
             unless outer [return none]
         ]
         foreach t select node m scope 'transitions [

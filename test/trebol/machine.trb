@@ -477,6 +477,21 @@ Trebol [
     all [m1/data/n = 2  m2/data/n = 1]
 ]
 
+"a way out with no event is looked for only in the state the machine is in"
+[
+    ; three levels deep as two: the inner state waits for its event, the outer one does not leave
+    m: machine [
+        initial top
+        state top [
+            initial o
+            state o [initial a  state a []  state b []  from a to b on go]
+            state x []
+            from o to x
+        ]
+    ]
+    m/state = 'top/o/a
+]
+
 "mistakes in a machine"
 [
     says?: func [code text /local e] [e: try code  all [error? e  to logic! find e/message text]]
