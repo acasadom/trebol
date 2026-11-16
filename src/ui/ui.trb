@@ -301,43 +301,12 @@ ui-dialect-words: does [
     ]
 ]
 
-; The word near enough to w to be what it meant (buton: button), or none.
-ui-nearest: function [w [word!] words [block!]] [
-    t: form w
-    most: either 4 < length? t [2] [1]
-    best: none
-    foreach c words [
-        d: ui-distance t form c
-        if all [d > 0  d <= most] [best: c  most: d - 1]
-    ]
-    best
-]
+; The word near enough to w to be what it meant (buton: button), or none; the
+; machines' errors use the same.
+ui-nearest: function [w [word!] words [block!]] [machine-engine/nearest w words]
 
 ; "; did you mean button?" for buton, when one of the words is near enough; "" otherwise.
-ui-suggest: function [w [word!] words [block!]] [
-    either best: ui-nearest w words [rejoin ["; did you mean " best "?"]] [""]
-]
-
-; Optimal string alignment distance: letters put in, taken out, changed, or two neighbours swapped.
-ui-distance: function [a [string!] b [string!]] [
-    n: length? b
-    before: none
-    prev: copy []
-    repeat j n + 1 [append prev j - 1]
-    repeat i length? a [
-        row: reduce [i]
-        repeat j n [
-            d: min min (pick prev j + 1) + 1  (last row) + 1  (pick prev j) + either (pick a i) = (pick b j) [0] [1]
-            if all [i > 1  j > 1  (pick a i) = (pick b j - 1)  (pick a i - 1) = (pick b j)] [
-                d: min d (pick before j - 1) + 1
-            ]
-            append row d
-        ]
-        before: prev
-        prev: row
-    ]
-    last prev
-]
+ui-suggest: function [w [word!] words [block!]] [machine-engine/suggest w words]
 
 ; A value as a problem shows it: its mold, cut when long.
 ui-shown: function [v] [

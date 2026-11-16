@@ -65,7 +65,7 @@ worse: machine [initial a  state a []  from a to b on go]
   const { clean, lines } = await checked([file]);
   assert.equal(clean, false);
   assert.deepEqual(lines.map(l => l.slice(dir.length + 1)), [
-    'app.trb:6:30  machine: data has no emial',
+    'app.trb:6:30  machine: data has no emial; did you mean email?',
     'app.trb:8:40  machine: no state b',
   ]);
 });

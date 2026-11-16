@@ -102,6 +102,13 @@ Trebol [
     all [alive = 'open  m/state = 'closed  m/outcome = 'expired]
 ]
 [
+    ; with ttl, an event no way names still counts: it keeps the machine alive
+    m: machine [ttl 0.05  initial a  state a []  final b  from a to b on go]
+    wait 0.03  send m 'still-here
+    wait 0.03
+    all [not m/done  m/state = 'a]
+]
+[
     ; with no on expired it just ends, where it was
     m: machine [ttl 0.02  initial a  state a []  from a to a on ping]
     wait 0.05

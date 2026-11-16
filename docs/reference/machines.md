@@ -91,7 +91,9 @@ send m event
 - `m` (`object!` `handle!`): A machine, or a socket
 - `event` (`any-value!`): The event: a word, or a block with the word and its fields; for a socket, the value
 
-For example `send repair 'start` or `send repair [start bike: "Road"]`. On a socket a string goes as text, a
+For example `send repair 'start` or `send repair [start bike: "Road"]`. An event that no way or `defer` of the
+machine names is an error, with the one it may have meant, unless the machine has `ttl` or a state with
+`on-activity`. On a socket a string goes as text, a
 binary as it is and any other value as JSON; see [the network](network.md).
 
 (fn-in-3f)=

@@ -32,6 +32,52 @@ machine-engine: make object! [
 
     node: function [m id] [pick m/nodes id]
 
+    ; --- did you mean: the word near enough to one that is not known (strat: start) ---
+
+    ; Optimal string alignment distance: letters put in, taken out, changed, or two neighbours swapped.
+    distance: function [a [string!] b [string!]] [
+        n: length? b
+        before: none
+        prev: copy []
+        repeat j n + 1 [append prev j - 1]
+        repeat i length? a [
+            row: reduce [i]
+            repeat j n [
+                d: min min (pick prev j + 1) + 1  (last row) + 1  (pick prev j) + either (pick a i) = (pick b j) [0] [1]
+                if all [i > 1  j > 1  (pick a i) = (pick b j - 1)  (pick a i - 1) = (pick b j)] [
+                    d: min d (pick before j - 1) + 1
+                ]
+                append row d
+            ]
+            before: prev
+            prev: row
+        ]
+        last prev
+    ]
+
+    ; The word near enough to w to be what it meant, or none: one letter off up to four letters, two longer;
+    ; nothing for one or two letters, which are near too many.
+    nearest: function [w words [block!]] [
+        t: form w
+        if 3 > length? t [return none]
+        most: either 4 < length? t [2] [1]
+        best: none
+        foreach c words [
+            d: distance t form c
+            if all [d > 0  d <= most] [best: c  most: d - 1]
+        ]
+        best
+    ]
+
+    ; "; did you mean start?" when one of the words is near enough; "" otherwise.
+    suggest: function [w words [block!]] [
+        either best: nearest w words [rejoin ["; did you mean " best "?"]] [""]
+    ]
+
+    state-names: function [m] [collect [foreach n next m/nodes [keep n/name]]]
+
+    data-fields: function [m] [collect [foreach v any [m/data-spec []] [if set-word? :v [keep to word! v]]]]
+
     add-node: function [m name parent] [
         n: make object! [
             id: name: parent: initial: enter: exit: activity: outcome: place: timeout: run: invoke: with: for: in: none
@@ -180,7 +226,7 @@ machine-engine: make object! [
                                 fields: collect [foreach x any [inner/data-spec []] [if set-word? :x [keep to word! x]]]
                                 foreach x n/with [
                                     if all [set-word? :x  not find fields to word! x] [
-                                        fail rejoin ["the machine invoked in " n/name " has no data " to word! x] spec
+                                        fail rejoin ["the machine invoked in " n/name " has no data " to word! x suggest to word! x fields] spec
                                     ]
                                 ]
                             ]
@@ -215,7 +261,7 @@ machine-engine: make object! [
                 ]
                 from [spec: transition m n here]
             ] [
-                fail rejoin [w " is not a word of machine"] here
+                fail rejoin [w " is not a word of machine" suggest w words] here
             ]
         ]
         if all [n/parallel  n/initial] [fail rejoin ["parallel " n/name " has no initial: all its states start at once"] n/initial]
@@ -226,7 +272,7 @@ machine-engine: make object! [
         if n/initial [
             place: n/initial
             unless n/initial: child m n/id second place [
-                fail rejoin ["no state " second place " here"] place
+                fail rejoin ["no state " second place " here" suggest second place state-names m] place
             ]
         ]
     ]
@@ -322,7 +368,7 @@ machine-engine: make object! [
 
     resolve: function [m n t] [
         if n/parallel [fail rejoin ["the states of parallel " n/name " have no ways between them"] t/place]
-        unless id: child m n/id t/source [fail rejoin ["no state " t/source " here"] t/place]
+        unless id: child m n/id t/source [fail rejoin ["no state " t/source " here" suggest t/source state-names m] t/place]
         t/source: id
         if t/target [t/target: target m n t/target t/place]
         if t/choices [
@@ -360,6 +406,72 @@ machine-engine: make object! [
         false
     ]
 
+    ; Every state can be reached: from the initial ones, by the ways out of states that can.
+    check-reach: function [m] [
+        reach: make map! []
+        mark: function [id] [
+            if any [none? id  select reach id] [exit]
+            put reach id true
+            n: node m id
+            if n/parent [mark n/parent]
+            either n/parallel [foreach c n/children [mark c]] [mark n/initial]
+        ]
+        mark 1
+        more: true
+        while [more] [
+            more: false
+            before: length? reach
+            foreach n m/nodes [
+                foreach t n/transitions [
+                    if select reach t/source [
+                        mark t/target
+                        mark t/other
+                        foreach c any [t/choices []] [mark second c]
+                    ]
+                ]
+            ]
+            more: before < length? reach
+        ]
+        foreach n next m/nodes [
+            unless select reach n/id [fail rejoin ["no way leads to state " n/name] n/place]
+        ]
+    ]
+
+    ; A choose with no event and no else, out of a state with no other way out, may keep the machine there for good.
+    check-hang: function [m] [
+        foreach n m/nodes [
+            foreach t n/transitions [
+                if all [t/choices  none? t/events  none? t/other  none? t/select] [
+                    s: node m t/source
+                    up: next chain m 1 t/source
+                    out: false
+                    foreach id up [if select node m id 'parallel [out: true]]
+                    unless empty? s/children [out: true]
+                    foreach o m/nodes [
+                        foreach x o/transitions [
+                            if all [x <> t  find up x/source] [out: true]
+                        ]
+                    ]
+                    unless out [
+                        fail rejoin ["the machine may stay in " s/name " for good: give the choose an else, or the state another way out"] t/place
+                    ]
+                ]
+            ]
+        ]
+    ]
+
+    ; The events some way or defer of the machine names; none if it takes any (ttl, on-activity).
+    events: function [m] [
+        if m/ttl [return none]
+        out: copy []
+        foreach n m/nodes [
+            if n/activity [return none]
+            append out n/defer
+            foreach t n/transitions [append out any [t/events []]]
+        ]
+        unique out
+    ]
+
     ; Every timeout is taken by a transition on timeout from its state or one around it.
     check-timeouts: function [m] [
         foreach n m/nodes [
@@ -377,22 +489,22 @@ machine-engine: make object! [
     ]
 
     target: function [m n name place] [
-        any [find-state m n/id name  fail rejoin ["no state " mold name] place]
+        any [find-state m n/id name  fail rejoin ["no state " mold name suggest either path? name [last name] [name] state-names m] place]
     ]
 
     ; The data a block reads or writes, for data/x where data has no x.
     check-data: function [m] [
-        fields: collect [foreach v any [m/data-spec []] [if set-word? :v [keep to word! v]]]
+        fields: data-fields m
         walk: function [b sets] [
             while [not tail? b] [
                 v: first b
                 case [
                     all [sets  set-word? :v  not find fields to word! v] [
-                        fail rejoin ["data has no " to word! v] b
+                        fail rejoin ["data has no " to word! v suggest to word! v fields] b
                     ]
                     all [any [path? :v set-path? :v get-path? :v]  'data = first v] [
                         if all [word? second v  not find fields second v] [
-                            fail rejoin ["data has no " second v] b
+                            fail rejoin ["data has no " second v suggest second v fields] b
                         ]
                     ]
                     any [block? :v paren? :v] [walk v false]
@@ -403,10 +515,10 @@ machine-engine: make object! [
         foreach place m/code [walk second place 'set = first place]
         foreach n m/nodes [
             if all [path? n/timeout  not find fields second n/timeout] [
-                fail rejoin ["data has no " second n/timeout] n/place
+                fail rejoin ["data has no " second n/timeout suggest second n/timeout fields] n/place
             ]
             if all [n/in  not find fields second n/in] [
-                fail rejoin ["data has no " second n/in] n/place
+                fail rejoin ["data has no " second n/in suggest second n/in fields] n/place
             ]
         ]
     ]
@@ -641,7 +753,7 @@ machine-engine: make object! [
         fresh c
         if with [
             foreach [f v] values m reduce [with] [
-                unless in c/data f [do make error! rejoin ["machine: the machine invoked in " n/name " has no data " f]]
+                unless in c/data f [do make error! rejoin ["machine: the machine invoked in " n/name " has no data " f suggest f words-of c/data]]
                 set in c/data f :v
             ]
         ]
@@ -956,7 +1068,7 @@ machine-engine: make object! [
     id-of: function [m names] [
         id: 1
         foreach w names [
-            unless id: child m id w [do make error! rejoin ["machine/from: no state " mold to path! names]]
+            unless id: child m id w [do make error! rejoin ["machine/from: no state " mold to path! names suggest w state-names m]]
         ]
         id
     ]
@@ -1021,7 +1133,7 @@ machine-engine: make object! [
         unless block? :saved [do make error! "machine/from: a snapshot is a block"]
         foreach names select saved 'on [append m/on id-of m names]
         foreach [f v] select saved 'data [
-            unless in m/data to word! f [do make error! rejoin ["machine/from: data has no " to word! f]]
+            unless in m/data to word! f [do make error! rejoin ["machine/from: data has no " to word! f suggest to word! f words-of m/data]]
             set in m/data to word! f :v
         ]
         foreach [k v] select saved 'history [put m/history id-of m k id-of m v]
@@ -1290,6 +1402,8 @@ machine-engine: make object! [
         if empty? select node m 1 'children [fail "a machine needs a state" spec]
         check-timeouts m
         check-data m
+        check-reach m
+        check-hang m
         m
     ]
 
@@ -1344,6 +1458,10 @@ send: function [
         ev: make object! next event
     ]
     if find machine-engine/own name [do make error! rejoin ["send: " name " is the machine's own event"]]
+    ; an event no way of the machine names is a mistake: it would be lost
+    if all [known: machine-engine/events m  not find known name] [
+        do make error! rejoin ["send: the machine has no way on " name machine-engine/suggest name known]
+    ]
     unless m/owner [
         ; a copy: the owner's tab runs it, and its answer brings the new state
         share-ask m/channel mold/all reduce ['event name body-of ev]

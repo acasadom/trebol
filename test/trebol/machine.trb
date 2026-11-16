@@ -136,11 +136,23 @@ Trebol [
     all [r  m/state = 'b]
 ]
 
-"an event nobody takes changes nothing"
+"an event the state has no way for changes nothing"
 [
-    m: machine [initial a  state a []  state b []  from a to b on go]
-    send m 'nothing
+    m: machine [initial a  state a []  state b []  state c []  from a to b on go  from b to c on on-to]
+    send m 'on-to
     all [m/state = 'a  not m/done]
+]
+"an event no way of the machine names is an error, with what it may have meant"
+[
+    m: machine [initial a  state a []  state b []  from a to b on start]
+    e: try [send m 'strat]
+    all [error? e  e/message = "send: the machine has no way on strat; did you mean start?"  m/state = 'a]
+]
+[
+    ; with on-activity (or ttl) any event counts
+    n: machine [initial a  state a [on-activity [1]]  state b []  from a to b on go]
+    send n 'ping
+    n/state = 'a
 ]
 
 "set works out every value before anything changes"
@@ -946,6 +958,41 @@ Trebol [
 [says? [machine [initial a  state a [shared cart]]] "shared goes at the top"]
 [says? [machine [shared "cart"  initial a  state a []]] "shared takes a name"]
 [says? [machine [initial a  state a [invoke [shared c  initial s  state s []]]]] "cannot be shared"]
+; did you mean
+[says? [machine [initial start  state start []  state finish []  from start to finsh on go]] "no state finsh; did you mean finish?"]
+[says? [machine [initial strat  state start []]] "no state strat here; did you mean start?"]
+[says? [machine [initial start  state start []  stat finish []]] "stat is not a word of machine; did you mean state?"]
+[says? [machine [data [email: none]  initial a  state a [on-enter [print data/emial]]]] "data has no emial; did you mean email?"]
+; a state no way leads to
+[says? [machine [initial a  state a []  state b []  state c []  from a to b on go]] "no way leads to state c"]
+[says? [machine [initial a  state a []  state w [initial x  state x []  state y []]  from a to w on go]] "no way leads to state y"]
+[says? [machine [initial a  state a []  state b [initial x  state x []]  from b to a on go]] "no way leads to state b"]
+; a choose that may never be taken
+[says? [machine [data [n: 0]  initial a  state a []  state b []  from a choose [when [data/n > 0] to b]]] "may stay in a for good"]
+
+"what reaches a state"
+[
+    ; a state inside one reached by a way to it, the states of a parallel, a way out of an outer state
+    m: machine [
+        initial a
+        state a []
+        state w [initial x  state x []  state y []]
+        parallel p [state r [initial i  state i []]  state q [initial j  state j []]]
+        state z []
+        from a to w/y on go
+        from w to p on go
+        from p to z on go
+    ]
+    send m 'go  send m 'go  send m 'go
+    m/state = 'z
+]
+[
+    ; a choose with no else is fine when the state has another way out, or the choose has an event
+    m: machine [data [n: 0]  initial a  state a []  state b []  from a choose [when [data/n > 0] to b]  from a to b on go]
+    n: machine [data [n: 0]  initial a  state a []  state b []  from a choose on go [when [data/n > 0] to b]]
+    send n 'go
+    all [m/state = 'a  n/state = 'a]
+]
 
 "shared"
 [

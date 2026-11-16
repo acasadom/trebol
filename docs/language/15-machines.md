@@ -41,6 +41,19 @@ An event that has no way out of the current state changes nothing. The bike that
 == ready
 ```
 
+An event that no way of the machine names at all is another thing: most likely a slip of the keyboard, so `send`
+says so instead of losing it:
+
+```trebol-console
+>> error? e: try [send repair 'strat]
+== true
+>> e/message
+== "send: the machine has no way on strat; did you mean start?"
+```
+
+A machine with `ttl`, or a state with `on-activity`, takes any event, since an event there counts even when no
+way names it.
+
 `in?` says whether the machine is in a state, and `can?` whether it has a way out on an event from where it is:
 
 ```trebol-console
@@ -109,8 +122,13 @@ line runs:
 >> error? e: try [machine [data [bike: none] initial a  state a [on-enter [print data/bkie]]]]
 == true
 >> e/message
-== "machine: data has no bkie"
+== "machine: data has no bkie; did you mean bike?"
 ```
+
+Other mistakes show when the machine is made too: a state or a word misspelt (with the one it may have meant), a
+state no way leads to, and a `choose` with no event and no `else` out of a state with no other way out, which
+would keep the machine there for good when no `when` holds. `trebol check` finds them all without running the
+program.
 
 ## States inside states
 

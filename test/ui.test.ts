@@ -1321,9 +1321,9 @@ test('react and is follow any object down a path: a machine, its data, settings'
 });
 
 test('steps led by a machine: a state it has not, or a when, is a problem', async () => {
-  const m = `m: machine [initial a  state a []  state b []  from a to b on next]  `;
-  assert.match(await ev(m + `e: try [view [form [steps m [a "A" [] bb "B" []]]]]  e/message`), /m has no state bb; did you mean b\?/);
-  assert.match(await ev(m + `e: try [view [form [steps m [a "A" [] b "B" when [true] []]]]]  e/message`), /it chooses where Next goes, with no when/);
+  const m = `m: machine [initial start  state start []  state finish []  from start to finish on next]  `;
+  assert.match(await ev(m + `e: try [view [form [steps m [start "A" [] finsh "B" []]]]]  e/message`), /m has no state finsh; did you mean finish\?/);
+  assert.match(await ev(m + `e: try [view [form [steps m [start "A" [] finish "B" when [true] []]]]]  e/message`), /it chooses where Next goes, with no when/);
 });
 
 test('a lookup keeps what was chosen, and only the answer to the last search', async () => {
