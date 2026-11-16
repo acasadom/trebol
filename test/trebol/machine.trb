@@ -492,6 +492,127 @@ Trebol [
     m/state = 'top/o/a
 ]
 
+"parallel: every state inside is on at once"
+[
+    trace: copy []
+    log: func [w] [append trace w]
+    m: machine [
+        initial verifying
+        parallel verifying [
+            on-enter [log 've]  on-exit [log 'vx]
+            state fraud [
+                on-enter [log 'fe]  on-exit [log 'fx]
+                initial screening
+                state screening [on-exit [log 'sx]]
+                final cleared
+                from screening to cleared on fraud-ok
+            ]
+            state stock [
+                on-enter [log 'ke]  on-exit [log 'kx]
+                initial checking
+                state checking []
+                final reserved
+                from checking to reserved on stock-ok
+            ]
+        ]
+        final approved
+        from verifying to approved
+    ]
+    start: m/state
+    started: copy trace
+    send m 'stock-ok
+    half: m/state
+    send m 'fraud-ok
+    all [
+        start = [verifying/fraud/screening verifying/stock/checking]
+        started = [ve fe ke]
+        half = 'verifying/fraud/screening
+        trace = [ve fe ke kx sx fx vx]
+        m/state = 'approved
+        m/done
+    ]
+]
+[
+    ; an event goes to every state of the parallel
+    m: machine [
+        initial p
+        parallel p [
+            state a [initial a1  state a1 []  state a2 []  from a1 to a2 on go  from a2 to a1 on back]
+            state b [initial b1  state b1 []  state b2 []  from b1 to b2 on go  from b2 to b1 on back]
+        ]
+    ]
+    send m 'go
+    all [m/state = [p/a/a2 p/b/b2]  in? m 'a2  in? m 'p/b/b2  not in? m 'b1]
+]
+[
+    ; the states inside take an event first; the ways out of the parallel only when none does
+    m: machine [
+        initial p
+        parallel p [
+            state a [initial a1  state a1 []  state a2 []  from a1 to a2 on go  from a2 to a1 on back]
+            state b [initial b1  state b1 []  from b1 to b1 on nothing]
+        ]
+        state out []
+        from p to out on go
+        from p to out on leave
+        from out to p on back
+    ]
+    send m 'go  inside: m/state
+    send m 'leave  left: m/state
+    send m 'back
+    all [inside = [p/a/a2 p/b/b1]  left = 'out  m/state = [p/a/a2 p/b/b1]]
+]
+[
+    ; a way out with no event and a choose see in event how each state ended
+    m: machine [
+        initial verifying
+        parallel verifying [
+            state fraud [
+                initial screening  state screening []
+                final cleared  final rejected
+                from screening to cleared on fraud-ok
+                from screening to rejected on fraud-bad
+            ]
+            state stock [initial checking  state checking []  final reserved  from checking to reserved on stock-ok]
+        ]
+        final approved success
+        final refused failed
+        from verifying choose [
+            when [event/fraud = 'rejected] to refused
+            when [all [event/fraud = 'cleared  event/stock = 'reserved]] to approved
+        ]
+    ]
+    send m 'fraud-bad
+    all [m/outcome = 'failed  m/done]
+]
+[
+    ; the outcomes inside a parallel are not the machine's
+    m: machine [
+        initial p
+        parallel p [
+            state a [initial a1  state a1 []  final a2 lost  from a1 to a2 on go]
+            state b [initial b1  state b1 []  final b2  from b1 to b2 on go]
+        ]
+        final end won
+        from p to end
+    ]
+    send m 'go
+    all [m/outcome = 'won]
+]
+[
+    ; going into one state of a parallel enters the others too
+    m: machine [
+        initial off
+        state off []
+        parallel p [
+            state a [initial a1  state a1 []  state a2 []  from a1 to a2 on go  from a2 to a1 on back]
+            state b [initial b1  state b1 []  from b1 to b1 on x]
+        ]
+        from off to p/a/a2 on jump
+    ]
+    send m 'jump
+    m/state = [p/a/a2 p/b/b1]
+]
 "mistakes in a machine"
 [
     says?: func [code text /local e] [e: try code  all [error? e  to logic! find e/message text]]
@@ -634,3 +755,7 @@ Trebol [
 [says? [machine [initial a  state a []  from a select [1] [1 to a  1 to a]]] "two branches for 1"]
 [says? [machine [initial a  state a []  from a select [1] [1 to a  else to a  else to a]]] "select has two else"]
 [says? [machine [initial a  state a []  from a select [1] [1 a]]] "a branch of select takes to"]
+[says? [machine [initial p  parallel p [state a []]]] "needs two states"]
+[says? [machine [initial p  parallel p [initial a  state a []  state b []]]] "has no initial"]
+[says? [machine [initial p  parallel p [state a []  final b]]] "not final ones"]
+[says? [machine [initial p  parallel p [state a []  state b []  from a to b on go]]] "no ways between them"]

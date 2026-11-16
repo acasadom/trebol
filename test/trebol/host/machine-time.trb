@@ -107,3 +107,19 @@ Trebol [
     wait 0.05
     all [m/done  m/outcome = 'expired  m/state = 'a]
 ]
+
+"timeout in a parallel"
+[
+    ; a state of a parallel has its own time; leaving the parallel stops every timer inside
+    m: machine [
+        initial p
+        parallel p [
+            state a [initial a1  state a1 [timeout 0.02]  final late  from a1 to late on timeout]
+            state b [initial b1  state b1 [timeout 0.2]  state b2 []  from b1 to b2 on timeout  from b2 to b1 on back]
+        ]
+        final out
+        from p choose [when [event/a = 'late] to out]
+    ]
+    wait 0.06
+    all [m/state = 'out  m/done  empty? collect [foreach [k x] m/timers [if x [keep k]]]]
+]

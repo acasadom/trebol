@@ -163,6 +163,59 @@ that state's `on-enter` runs again:
 That memory is the state's **history**. A state that should always start again from its `initial` says
 `no history`.
 
+## Things at once
+
+A bike in for a service waits for two things that have nothing to do with each other: the parts to come, and the
+customer to say yes to the price. A `parallel` state is in **all** of its states at once, each with its own
+states inside, and each event goes to every one of them:
+
+```trebol
+service: machine [
+    initial waiting
+    parallel waiting [
+        state parts [
+            initial ordered
+            state ordered []
+            final arrived
+            from ordered to arrived on delivered
+        ]
+        state customer [
+            initial asked
+            state asked []
+            final agreed
+            final declined
+            from asked to agreed on yes
+            from asked to declined on no
+        ]
+    ]
+    state working []
+    final returned
+    from waiting choose [
+        when [event/customer = 'declined] to returned
+        when [all [event/parts = 'arrived  event/customer = 'agreed]] to working
+    ]
+]
+```
+
+```trebol-console
+>> service/state
+== [waiting/parts/ordered waiting/customer/asked]
+>> send service 'yes
+== waiting/parts/ordered
+>> send service 'delivered
+== working
+```
+
+When the machine is in several states, `state` is a block of paths, one for each. A state of a parallel that
+has ended is no longer in it. The ways out of the parallel with no event see in `event` how each of its states
+ended: its outcome, or the name of the final state it got to, and `none` while it goes on. A plain
+`from waiting to working` is taken when all of them have ended; a `choose` is looked at each time one ends, so
+the customer saying no sends the bike back at once, parts or no parts.
+
+An event goes first to the states of the parallel; the ways out of the parallel itself take it only when none
+of them does. Leaving the parallel leaves every state still on inside it. All of them share the machine's
+`data`.
+
 ## Choosing
 
 Sometimes the same event leads to different places, depending on the data. `choose` tries its `when` conditions

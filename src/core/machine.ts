@@ -11,7 +11,7 @@ export const MACHINE = String.raw`
 ; in it (the root is 1), so a machine holds no loops of references and molds.
 machine-engine: make object! [
 
-    words: [data initial state final from no on-enter on-exit on-activity timeout ttl defer]
+    words: [data initial state final parallel from no on-enter on-exit on-activity timeout ttl defer]
 
     ; the events a machine sends itself
     own: [error timeout expired]
@@ -35,7 +35,7 @@ machine-engine: make object! [
     add-node: function [m name parent] [
         n: make object! [
             id: name: parent: initial: enter: exit: activity: outcome: place: timeout: none
-            children: copy []  transitions: copy []  defer: copy []  history: true  final: false
+            children: copy []  transitions: copy []  defer: copy []  history: true  final: false  parallel: false
         ]
         append m/nodes n
         n/id: length? m/nodes  n/name: name  n/parent: parent
@@ -88,7 +88,7 @@ machine-engine: make object! [
                     n/initial: here
                     spec: next spec
                 ]
-                state final [
+                state final parallel [
                     name: first spec
                     unless word? :name [fail rejoin [w " takes a name"] here]
                     if child m n/id name [fail rejoin ["two states called " name] here]
@@ -96,6 +96,7 @@ machine-engine: make object! [
                     c/place: here
                     append n/children c/id
                     spec: next spec
+                    c/parallel: w = 'parallel
                     if w = 'final [
                         c/final: true
                         if all [word? first spec  not find words first spec] [
@@ -108,6 +109,12 @@ machine-engine: make object! [
                         spec: next spec
                     ]
                     if all [c/final  not empty? c/children] [fail rejoin ["final " name " has states inside"] here]
+                    if c/parallel [
+                        if 2 > length? c/children [fail rejoin ["parallel " name " needs two states or more"] here]
+                        foreach k c/children [
+                            if select node m k 'final [fail rejoin ["parallel " name " holds states, not final ones"] here]
+                        ]
+                    ]
                 ]
                 on-enter on-exit on-activity [
                     if n/id = 1 [fail rejoin [w " goes inside a state"] here]
@@ -155,7 +162,8 @@ machine-engine: make object! [
                 fail rejoin [w " is not a word of machine"] here
             ]
         ]
-        if all [not empty? n/children  none? n/initial] [
+        if all [n/parallel  n/initial] [fail rejoin ["parallel " n/name " has no initial: all its states start at once"] n/initial]
+        if all [not empty? n/children  none? n/initial  not n/parallel] [
             fail either n/id = 1 ["the machine has no initial state"] [rejoin ["state " n/name " has no initial"]]
                 any [n/place spec]
         ]
@@ -257,6 +265,7 @@ machine-engine: make object! [
     ]
 
     resolve: function [m n t] [
+        if n/parallel [fail rejoin ["the states of parallel " n/name " have no ways between them"] t/place]
         unless id: child m n/id t/source [fail rejoin ["no state " t/source " here"] t/place]
         t/source: id
         if t/target [t/target: target m n t/target t/place]
@@ -380,35 +389,69 @@ machine-engine: make object! [
     ]
 
     ; want: none = a transition with no event, true = any, a word = that event.
-    ; The route of the one that fits is kept in m/taken, for go.
+    ; The route of the one that fits is kept in m/taken, for go. A way out of a parallel
+    ; with no event sees in event how each of its states ended: a to waits for all of them.
     fits?: function [m t want] [
         case [
             want = true [true]
-            none? want [all [none? t/events  m/taken: route m t]]
+            none? want [
+                if t/events [return false]
+                if select node m t/source 'parallel [
+                    if all [none? t/choices  inside? m t/source] [return false]
+                    m/scope/event: results m t/source
+                ]
+                to logic! m/taken: route m t
+            ]
             true [all [t/events  find t/events want  holds? m t/guard  m/taken: route m t]]
         ]
     ]
 
-    ; The transition for the active state: the innermost level first, then the ones
-    ; around it, for an event; only the innermost for one with no event.
-    nested: function [m scope rel want outer] [
-        head: first rel
-        if 1 < length? rel [
-            if t: nested m head next rel want outer [return t]
+    ; The transition from state id that fits: its own first, then, when outer, those of the
+    ; states around it, up to the state stop (none: up to the top).
+    find-from: function [m id want outer stop] [
+        while [all [id  id <> 1  id <> stop]] [
+            n: node m id
+            foreach t select node m n/parent 'transitions [
+                if all [t/source = id  fits? m t want] [return t]
+            ]
             unless outer [return none]
-        ]
-        foreach t select node m scope 'transitions [
-            if all [t/source = head  fits? m t want] [return t]
+            id: n/parent
         ]
         none
     ]
 
-    find-transition: function [m want outer] [find-from m m/active want outer]
+    ; --- the states the machine is in: m/on holds each, from the top down to the leaves ---
 
-    ; The same, looking from a state that may be around the active one.
-    find-from: function [m id want outer] [
-        if any [none? id  id = 1] [return none]
-        nested m 1 next chain m 1 id want outer
+    on?: function [m id] [to logic! find m/on id]
+
+    ; Whether a state has one of its own states on.
+    inside?: function [m id] [
+        foreach c select node m id 'children [if on? m c [return true]]
+        false
+    ]
+
+    ; The innermost states on, in the order the block gives them.
+    leaves: function [m] [
+        out: copy []
+        foreach id m/on [unless inside? m id [append out id]]
+        sort out
+    ]
+
+    ; The nearest parallel around a state, or none.
+    region-of: function [m id] [
+        while [id: select node m id 'parent] [if select node m id 'parallel [return id]]
+        none
+    ]
+
+    ; How each state of a parallel ended: its outcome, or the name of its final state; none while on.
+    results: function [m id] [
+        make object! collect [
+            foreach c select node m id 'children [
+                keep to set-word! select node m c 'name
+                v: either on? m c [none] [select m/results c]
+                keep either v [to lit-word! v] ['none]
+            ]
+        ]
     ]
 
     hook: function [m id which] [
@@ -424,6 +467,7 @@ machine-engine: make object! [
 
     enter: function [m id] [
         m/active: id
+        append m/on id
         arm m id
         hook m id 'enter
     ]
@@ -432,6 +476,7 @@ machine-engine: make object! [
         m/active: id
         disarm m id
         hook m id 'exit
+        remove find m/on id
     ]
 
     ; --- time: a timer per state with a timeout, and one (key 0) for the ttl ---
@@ -485,9 +530,9 @@ machine-engine: make object! [
         unless all [x  serial = first x] [exit]
         put m/timers key none
         either name = 'timeout [
-            if t: find-from m key 'timeout true [go m t]
+            if t: find-from m key 'timeout true none [go m t]
         ] [
-            either t: find-transition m 'expired true [go m t] [
+            unless deliver m 'expired [
                 m/outcome: 'expired
                 m/done: true
                 stop m
@@ -497,15 +542,30 @@ machine-engine: make object! [
         drain m
     ]
 
+    ; An event goes to every innermost state: each takes its own way out, looking no further
+    ; out than its parallel; when none does, the states around the parallels may.
+    deliver: function [m name] [
+        taken: false
+        foreach id leaves m [
+            if on? m id [
+                if t: find-from m id name true region-of m id [go m t  taken: true]
+            ]
+        ]
+        if taken [return true]
+        foreach id leaves m [
+            if t: find-from m id name true none [go m t  return true]
+        ]
+        false
+    ]
+
     ; The first event held by defer that the machine can take now.
     redeliver: function [m] [
         pos: m/deferred
         while [not tail? pos] [
             e: first pos
             m/scope/event: second e
-            if t: find-transition m first e true [
+            if deliver m first e [
                 remove pos
-                go m t
                 return true
             ]
             pos: next pos
@@ -514,7 +574,7 @@ machine-engine: make object! [
     ]
 
     deferring?: function [m name] [
-        foreach id chain m 1 m/active [if find select node m id 'defer name [return true]]
+        foreach id head insert copy m/on 1 [if find select node m id 'defer name [return true]]
         false
     ]
 
@@ -522,15 +582,37 @@ machine-engine: make object! [
         if p: select node m id 'parent [put m/history p id]
     ]
 
-    descend: function [m id] [
-        while [true] [
-            n: node m id
-            if empty? n/children [exit]
-            unless n/history [put m/history id none]
-            c: any [select m/history id  n/initial]
-            enter m c
-            put m/history id c
-            id: c
+    ; Enters the states of path, the first one down to the last, and then what is inside the
+    ; last: its history or initial state, or every state of a parallel.
+    enter-down: function [m path] [
+        id: first path
+        rest: next path
+        enter m id
+        remember m id
+        n: node m id
+        case [
+            n/parallel [
+                foreach c n/children [
+                    put m/results c none
+                    enter-down m either all [not tail? rest  c = first rest] [rest] [reduce [c]]
+                ]
+            ]
+            not tail? rest [enter-down m rest]
+            not empty? n/children [
+                unless n/history [put m/history id none]
+                enter-down m reduce [any [select m/history id  n/initial]]
+            ]
+        ]
+    ]
+
+    ; Leaves every state on inside state id, innermost first.
+    exit-below: function [m id] [
+        foreach c reverse copy select node m id 'children [
+            if on? m c [
+                exit-below m c
+                leave m c
+                remember m c
+            ]
         ]
     ]
 
@@ -549,6 +631,8 @@ machine-engine: make object! [
         out
     ]
 
+    ; The states left and entered are those below the one the source and the target share;
+    ; a parallel is never that one, so going between its states leaves it and enters it again.
     go: function [m t] [
         r: m/taken
         dest: first r
@@ -556,58 +640,67 @@ machine-engine: make object! [
         if t/set [append/only sets t/set]
         if second r [append/only sets second r]
         vals: values m sets
-        source: m/active
-        pivot: lca m source dest
-        foreach id reverse next chain m pivot source [
-            leave m id
-            remember m id
-        ]
+        pivot: lca m t/source dest
+        while [select node m pivot 'parallel] [pivot: select node m pivot 'parent]
+        exit-below m pivot
         m/active: pivot
         foreach [f v] vals [set in m/data f :v]
-        foreach id next chain m pivot dest [
-            enter m id
-            remember m id
-        ]
-        descend m dest
+        path: next chain m pivot dest
+        unless empty? path [enter-down m path]
     ]
 
-    ; Follows transitions with no event; a state with nowhere to go ends its level.
-    drain: function [m] [
-        while [true] [
-            if t: find-transition m none false [go m t  continue]
-            if find-transition m true false [
-                if redeliver m [continue]
-                exit
-            ]
-            n: node m m/active
-            if all [n/outcome  none? m/outcome] [m/outcome: n/outcome]
-            leave m n/id
-            either all [n/parent  n/parent <> 1] [
-                put m/history n/parent none
-                m/active: n/parent
-            ] [
+    ; A state with nowhere to go ends: a leaf gives its outcome, a state of a parallel how it ended.
+    sink: function [m id] [
+        n: node m id
+        if empty? n/children [
+            m/last: any [n/outcome n/name]
+            if all [n/outcome  none? m/outcome  none? region-of m id] [m/outcome: n/outcome]
+        ]
+        leave m id
+        case [
+            n/parent = 1 [
+                m/on: reduce [id]
                 m/done: true
                 stop m
-                exit
             ]
+            select node m n/parent 'parallel [put m/results id m/last]
+            true [put m/history n/parent none]
+        ]
+    ]
+
+    ; One move with no event, if there is one: a way out with no event, or a state that ends.
+    settle: function [m] [
+        foreach id leaves m [
+            if on? m id [
+                if t: find-from m id none false none [go m t  return true]
+                unless find-from m id true false none [sink m id  return true]
+            ]
+        ]
+        foreach id copy m/on [
+            if all [select node m id 'parallel  t: find-from m id none false none] [go m t  return true]
+        ]
+        false
+    ]
+
+    drain: function [m] [
+        while [not m/done] [
+            unless any [settle m  redeliver m] [exit]
         ]
     ]
 
     begin: function [m] [
-        root: node m 1
         arm-ttl m
-        enter m root/initial
-        descend m root/initial
+        enter-down m reduce [select node m 1 'initial]
         drain m
     ]
 
     ; An event from send: one that no transition takes waits if a defer holds it.
     event: function [m name] [
-        either t: find-transition m name true [go m t] [
+        unless deliver m name [
             either deferring? m name [
                 append/only m/deferred reduce [name m/scope/event]
             ] [
-                if m/active [hook m m/active 'activity]
+                foreach id leaves m [hook m id 'activity]
             ]
         ]
         drain m
@@ -630,16 +723,25 @@ machine-engine: make object! [
             if m/exiting [m/exiting: false  do r]
             m/error: r
             m/scope/event: r
-            unless t: find-transition m 'error true [do r]
+            unless t: find-from m m/active 'error true none [do r]
             go m t
             drain m
         ]
     ]
 
+    ; A word or a path for one state on; a block of paths when there are several.
     where: function [m] [
-        if none? m/active [return none]
-        names: collect [foreach id next chain m 1 m/active [keep select node m id 'name]]
-        either 1 = length? names [first names] [to path! names]
+        out: collect [
+            foreach leaf leaves m [
+                names: collect [foreach id next chain m 1 leaf [keep select node m id 'name]]
+                keep either 1 = length? names [first names] [to path! names]
+            ]
+        ]
+        case [
+            empty? out [none]
+            1 = length? out [first out]
+            true [out]
+        ]
     ]
 
     run: function [m] [
@@ -664,6 +766,7 @@ machine-engine: make object! [
             done: false
             nodes: copy []  code: copy []  history: make map! []  queue: copy []
             timers: make map! []  serial: 0  deferred: copy []
+            on: copy []  results: make map! []  last: none
             busy: false  exiting: false
             scope: make object! [data: event: none]
         ]
@@ -724,15 +827,13 @@ in?: function [
     name [word! path!]
 ] [
     e: machine-engine
-    if none? m/active [return false]
-    ids: next e/chain m 1 m/active
     either word? name [
-        foreach id ids [if name = select e/node m id 'name [return true]]
+        foreach id m/on [if name = select e/node m id 'name [return true]]
         false
     ] [
         id: 1
         foreach w to block! name [unless id: e/child m id w [return false]]
-        to logic! find ids id
+        e/on? m id
     ]
 ]
 
@@ -743,7 +844,9 @@ restart: function [
     machine-engine/stop m
     machine-engine/fresh m
     m/history: make map! []
-    m/outcome: m/error: m/active: none
+    m/outcome: m/error: m/active: m/last: none
+    m/on: copy []
+    m/results: make map! []
     m/done: false
     clear m/queue
     machine-engine/start m

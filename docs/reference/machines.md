@@ -23,6 +23,7 @@ The block says the states and the ways between them:
 | `data [...]` | the machine's own fields, as in an object; code inside reads them as `data/field` (at the top only) |
 | `initial name` | the state the machine, or the state this is in, starts in |
 | `state name [...]` | a state; the block holds its hooks, and states of its own with their `initial` |
+| `parallel name [...]` | a state that is in all the states of its block at once; an event goes to each of them |
 | `final name outcome [...]` | a state that ends the machine; the outcome word and the block may be left out |
 | `on-enter [...]`, `on-exit [...]` | code run when the machine comes into the state and when it leaves it |
 | `on-activity [...]` | code run when an event comes that has no way out of the state |
@@ -49,7 +50,13 @@ states next to the way, then in each level further out.
 
 Each event is finished before the next one starts: one sent by the machine's own code waits its turn.
 
-The machine is an object with `state` (a word, or a path when it is in a state inside another), `data`, `done`,
+A `parallel` has no `initial` and no ways between its states: all of them start when it is entered, and it ends
+when all of them have. A way out of it with no event sees in `event/name` how its state `name` ended (the outcome
+of its final state, or the name of that state; `none` while it goes on); a `to` is taken once all have ended, a
+`choose` is looked at each time one ends. Its states take an event first; its own ways out only when none does.
+
+The machine is an object with `state` (a word, or a path when it is in a state inside another; a block of them
+when it is in a parallel), `data`, `done`,
 `outcome` and `error`, the last error taken by `on error`.
 
 (fn-send)=
