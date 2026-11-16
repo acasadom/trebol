@@ -111,10 +111,10 @@ spec-of value
 (fn-body-of)=
 ## body-of
 
-A copy of a function's body block, or none for a native.
+A copy of a function's body block, or none for a native; for an object, its fields as field: value.
 
 ```text
 body-of value
 ```
 
-- `value` (`any-function!`)
+- `value` (`any-function!` `any-object!`)

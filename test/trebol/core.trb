@@ -59,6 +59,8 @@ Trebol [
 [block? spec-of :append]
 [(spec-of :+) = spec-of :add]
 [[a b] = words-of make object! [a: 1 b: 2]]
+[[a: 1 b: "x"] = body-of make object! [a: 1 b: "x"]]
+[o: make object! [a: 1]  b: body-of o  append b [c: 2]  [a] = words-of o]
 [[1 2] = values-of make object! [a: 1 b: 2]]
 [[a b] = words-of #(a: 1 b: 2)]
 [[1 2] = values-of #(a: 1 b: 2)]
