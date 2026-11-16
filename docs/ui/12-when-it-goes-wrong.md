@@ -69,6 +69,12 @@ face on the page, or click a line of the tree, to see what the face holds now: i
 it shows, its rules and its events. Under the name is the line of `app.trb` where you wrote it; the link opens
 it in VS Code. A grey line is a face that is not on show: a dialog that is closed, a tab not chosen.
 
+**Machines** shows each machine the program keeps in a word, or in a field of an object in a word: its
+states as a tree, `›` before the one each level starts in and a dot after the ones it is in now. Click the
+machine for its state, its data, the events it takes now and every way out of its states; click a state for
+the ways out of that one and what it does (its timeout, what it runs or invokes). A machine made inside a
+function and kept nowhere else is not there.
+
 **Console** runs Trebol against the app as it runs, the same `>>` and `==` as `npx trebol`. The face you
 picked is `face`, so you can try a change before writing it in the file:
 
@@ -85,7 +91,8 @@ browser's console.
 
 **Log** lists what happened, newest last: each event with its face (`click · button "Book in"`, `input ·
 field name "Name" "Ann"`), each request with its answer and how long it took (`POST /api/bookings 422 · 34 ms`),
-each toast, each error. When a button seems to do nothing, the log tells whether the click arrived, whether a
+each toast, each error, and each change of state of a machine (`repair: received → work/checking`), whether
+an event, a timer or another tab moved it. When a button seems to do nothing, the log tells whether the click arrived, whether a
 request left and what the server answered.
 
 ## probe

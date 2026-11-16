@@ -1101,6 +1101,72 @@ machine-engine: make object! [
         false
     ]
 
+    ; --- graph: the states and ways as plain data, for tools that draw them ---
+
+    key-of: function [m id] [
+        names: names-of m id
+        either 1 = length? names [first names] [to path! names]
+    ]
+
+    graph: function [m] [
+        states: copy []
+        foreach n next m/nodes [
+            parent: node m n/parent
+            append states key-of m n/id
+            append/only states reduce [
+                'kind case [n/final ['final]  n/parallel ['parallel]  true ['state]]
+                'initial n/id = parent/initial
+                'on on? m n/id
+                'history n/history
+                'outcome n/outcome
+                'timeout :n/timeout
+                'run either n/run [copy/deep n/run] [none]
+                'invoke either block? :n/invoke [graph make-machine n/invoke] [:n/invoke]
+                'for n/for
+                'in :n/in
+                'defer copy n/defer
+            ]
+        ]
+        ways: copy []
+        foreach n m/nodes [
+            foreach t n/transitions [
+                way: reduce ['from key-of m t/source]
+                case [
+                    t/target [append way reduce ['to key-of m t/target]]
+                    t/select [append way reduce ['select copy/deep t/select]]
+                    true [append way 'choose]
+                ]
+                append way reduce ['on either t/events [copy t/events] [none]]
+                append way reduce ['where either t/guard [copy/deep t/guard] [none]]
+                append way reduce ['set either t/set [copy/deep t/set] [none]]
+                if t/choices [
+                    branches: copy []
+                    foreach c t/choices [
+                        append/only branches reduce [
+                            either t/select ['value] ['when]  copy/deep first c
+                            'to key-of m second c
+                            'set either third c [copy/deep third c] [none]
+                        ]
+                    ]
+                    if t/other [
+                        append/only branches reduce ['else none 'to key-of m t/other 'set either t/other-set [copy/deep t/other-set] [none]]
+                    ]
+                    append way reduce ['branches branches]
+                ]
+                append/only ways way
+            ]
+        ]
+        reduce [
+            'state m/state
+            'data collect [foreach v any [m/data-spec []] [if set-word? :v [keep to word! v]]]
+            'ttl m/ttl
+            'shared m/shared
+            'done m/done
+            'states states
+            'ways ways
+        ]
+    ]
+
     ; The machine of an invoke, resumed from its own snapshot.
     resumed: function [n saved] [
         spec: n/invoke
@@ -1302,6 +1368,14 @@ in?: function [
         foreach w to block! name [unless id: e/child m id w [return false]]
         e/on? m id
     ]
+]
+
+graph-of: function [
+    "The states of a machine and the ways between them, as plain data; of a block, the machine it would make, run not."
+    machine [object! block!] "A machine, or the block of one"
+] [
+    e: machine-engine
+    e/graph either block? machine [e/make-machine machine] [machine]
 ]
 
 can?: function [

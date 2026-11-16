@@ -989,3 +989,55 @@ Trebol [
     machine-engine/rewind m s
     all [r = [c 1]  m/state = 'a  none? m/data/k  n = 1  (select snapshot m 'on) = [[a]]]
 ]
+
+"graph-of"
+[
+    spec: [
+        data [parts: 0]
+        initial received
+        state received []
+        state work [
+            initial checking
+            state checking [timeout 30]
+            state waiting [invoke [initial s  state s []]]
+            state fixing []
+            from checking choose on found [when [data/parts > 0] to waiting set [parts: 1]  else to fixing]
+            from checking to fixing on timeout
+        ]
+        final ready done
+        from received to work on start where [true]
+        from work to ready on fixed
+    ]
+    g: graph-of spec
+    states: select g 'states
+    ways: select g 'ways
+    c: select/only states 'work/checking
+    all [
+        (extract states 2) = load "[received work work/checking work/waiting work/fixing ready]"
+        none? select g 'state
+        (select g 'data) = [parts]
+        (select c 'timeout) = 30
+        true = select c 'initial
+        false = select c 'on
+        'final = select select states 'ready 'kind
+        'done = select select states 'ready 'outcome
+        block? select select/only states 'work/waiting 'invoke
+        (select first ways 'on) = [start]
+        (select first ways 'where) = [true]
+        'choose = pick third ways 3
+        2 = length? select third ways 'branches
+        (load mold/all g) = g
+    ]
+]
+[
+    m: machine [initial a  state a []  state b [initial x  state x []  state y []  from x to y on turn]  from a to b on go]
+    send m 'go
+    g: graph-of m
+    s: select g 'states
+    all [
+        (select g 'state) = load "b/x"
+        false = select select s 'a 'on
+        true = select select s 'b 'on
+        true = select select/only s load "b/x" 'on
+    ]
+]

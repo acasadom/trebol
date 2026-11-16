@@ -74,7 +74,7 @@ draw
 
 ### G
 
-[`get`](#fn-get) · [`get-path?`](#fn-get-path-3f) · [`get-word?`](#fn-get-word-3f) · [`go`](#fn-go) · [`go-back`](#fn-go-back) · [`go-forward`](#fn-go-forward) · [`greater-or-equal?`](#fn-greater-or-equal-3f) · [`greater?`](#fn-greater-3f)
+[`get`](#fn-get) · [`get-path?`](#fn-get-path-3f) · [`get-word?`](#fn-get-word-3f) · [`go`](#fn-go) · [`go-back`](#fn-go-back) · [`go-forward`](#fn-go-forward) · [`graph-of`](#fn-graph-of) · [`greater-or-equal?`](#fn-greater-or-equal-3f) · [`greater?`](#fn-greater-3f)
 
 ### H
 

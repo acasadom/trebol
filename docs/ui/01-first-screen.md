@@ -102,11 +102,12 @@ the action of a button; *Close* puts it away. On any other server the page shows
 in the browser's console (in Chrome, *View › Developer › JavaScript Console*).
 
 `trebol dev` also gives the page its own dev tools: the small *Trebol* button in the corner, or Ctrl+`, opens a
-panel at the bottom with three tabs. *Faces* shows the faces on the screen as a tree; *Pick* and a click on one
+panel at the bottom with four tabs. *Faces* shows the faces on the screen as a tree; *Pick* and a click on one
 shows what it holds (its text, value, error, rules, events) and the line where you wrote it, a link that opens
 the file in VS Code. *Console* runs Trebol against the app as it runs, with `face` being the face picked:
-`face/text: "Hello"` changes it on the screen, and what `print` writes shows there too. *Log* lists what happened,
-newest last: the events of each face, each request with its status and time, toasts, errors. A page that
+`face/text: "Hello"` changes it on the screen, and what `print` writes shows there too. *Machines* shows the
+state machines of the program, which come later in this guide. *Log* lists what happened, newest last: the
+events of each face, each request with its status and time, toasts, errors, the changes of state of machines. A page that
 `trebol build` writes has none of it.
 
 A view in the action of a button is read when the button is pressed, so its mistakes show up only then.

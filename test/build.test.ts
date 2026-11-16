@@ -97,7 +97,8 @@ test('the browser runtime is one module with the UI dialect inside', async () =>
   const { pkg } = await installed();
   const js = readFileSync(join(pkg, 'dist', 'trebol.js'), 'utf8');
   // the one dynamic import is the app's own: import %x.js, by an address known only when it runs
-  assert.doesNotMatch(js, /^import\b|\bimport\s*\(\s*["'`]|\bfrom\s*["']/m);
+  // `from "./x.js"`, not the text "from" (a word of the machines' graph)
+  assert.doesNotMatch(js, /^import\b|\bimport\s*\(\s*["'`]|\bfrom\s*["'][\w./@-]/m);
   assert.equal(js.match(/\bimport\s*\(/g)?.length, 1);
   // with Inter next to it, and next to the host of trebol/browser
   for (const dir of ['fonts', join('lib', 'host', 'fonts')]) assert.ok(existsSync(join(pkg, 'dist', dir, 'inter-latin.woff2')), dir);

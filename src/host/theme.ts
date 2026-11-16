@@ -1301,7 +1301,7 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
   font: 13px/1.6 ui-monospace, Menlo, Consolas, monospace;
 }
 
-/* under trebol dev, the dev tools: Faces, Console, Log */
+/* under trebol dev, the dev tools: Faces, Machines, Console, Log */
 .tb-dev-tools {
   position: fixed;
   inset: auto 0 0 0;
@@ -1374,6 +1374,10 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
 .tb-dev-node:hover { background: var(--tb-primary-soft); }
 .tb-dev-node[aria-current="true"] { background: var(--tb-primary); color: var(--tb-on-primary); }
 .tb-dev-unseen { color: var(--tb-muted); }
+.tb-dev-machines { display: grid; grid-template-columns: minmax(200px, 2fr) 3fr; }
+.tb-dev-machine-head { font-weight: 600; }
+.tb-dev-on::after { content: " ●"; color: var(--tb-success, var(--tb-primary)); }
+.tb-dev-node[aria-current="true"].tb-dev-on::after { color: inherit; }
 .tb-dev-detail { overflow: auto; padding: var(--tb-space-3) var(--tb-space-4); }
 .tb-dev-detail h3 { margin: 0 0 var(--tb-space-1); font-size: 14px; }
 .tb-dev-detail dl { display: grid; grid-template-columns: max-content 1fr; gap: 2px var(--tb-space-4); margin: var(--tb-space-3) 0 0; }

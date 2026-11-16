@@ -607,6 +607,37 @@ snapshot is taken only when no other tab runs the machine yet. The data and the 
 to tab as `mold/all` gives them: plain values, no functions or handles. Where there is no browser, as in the
 console, a shared machine is a machine like the others.
 
+## The machine as data
+
+`graph-of` gives the states of a machine and the ways between them as a block of plain data, for a tool that
+draws it or checks it. It takes the machine, or the block of one, which it reads without running anything:
+
+```trebol
+g: graph-of [
+    initial off
+    state off []
+    state on [timeout 60]
+    from off to on on press
+    from on to off on [press timeout]
+]
+```
+
+```trebol-console
+>> extract select g 'states 2
+== [off on]
+>> select select select g 'states 'on 'timeout
+== 60
+>> first select g 'ways
+== [from off to on on [press] where none set none]
+```
+
+Each state has its `kind` (`state`, `parallel` or `final`), whether its level starts in it (`initial`),
+whether the machine is in it now (`on`), its `timeout`, what it runs or invokes (an invoked machine written
+in place comes as a graph of its own) and the events it holds with `defer`. A state inside another is named
+by its path, `work/checking`, as `state` gives it; a path inside a block is found with `select/only`. Each way
+has `from`, `to` (or `choose` and its `branches`), the events `on`, and its `where` and `set` blocks. `trebol
+dev` draws the machines of a running app from it (see *When it goes wrong* in the UI tutorial).
+
 ## What's next
 
 This was the last page about the language on its own. The block that `view` takes on the first page of this

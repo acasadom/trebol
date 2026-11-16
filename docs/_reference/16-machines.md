@@ -74,6 +74,12 @@ binary as it is and any other value as JSON; see [the network](network.md).
 
 ## in?
 
+## graph-of
+
+For example `graph-of repair`, or `graph-of [initial a  state a []]` to read a block without making it run. The
+block is `[state ... data [fields] ttl ... shared ... done ... states [name [kind ... initial ... on ...] ...]
+ways [[from a to b on [events] where [...] set [...]] ...]]`; see [the machine as data](../language/15-machines.md).
+
 ## can?
 
 For example `can? signup 'next`. A way whose `where` is false still counts: the block of `where` reads the

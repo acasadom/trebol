@@ -106,6 +106,21 @@ in? m name
 - `m` (`object!`)
 - `name` (`word!` `path!`)
 
+(fn-graph-of)=
+## graph-of
+
+The states of a machine and the ways between them, as plain data; of a block, the machine it would make, run not.
+
+```text
+graph-of machine
+```
+
+- `machine` (`object!` `block!`): A machine, or the block of one
+
+For example `graph-of repair`, or `graph-of [initial a  state a []]` to read a block without making it run. The
+block is `[state ... data [fields] ttl ... shared ... done ... states [name [kind ... initial ... on ...] ...]
+ways [[from a to b on [events] where [...] set [...]] ...]]`; see [the machine as data](../language/15-machines.md).
+
 (fn-can-3f)=
 ## can?
 
