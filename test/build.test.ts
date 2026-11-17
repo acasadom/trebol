@@ -104,8 +104,8 @@ test('the browser runtime is one module with the UI dialect inside', async () =>
   assert.equal(js.match(/\bimport\s*\(/g)?.length, 1);
   // with Inter next to it, and next to the host of trebol/browser
   for (const dir of ['fonts', join('lib', 'host', 'fonts')]) assert.ok(existsSync(join(pkg, 'dist', dir, 'inter-latin.woff2')), dir);
-  for (const name of ['ui.trb', 'i18n.trb']) {
-    const first = readFileSync(join(ROOT, 'src', 'ui', name), 'utf8').split('\n')[0]!;
+  for (const name of ['ui.trb', 'i18n.trb', 'dialect/faces.trb', 'dialect/events.trb']) {
+    const first = readFileSync(join(ROOT, 'src', 'ui', name), 'utf8').split('\n').find(l => l !== '' && !l.startsWith('; A part'))!;
     assert.ok(js.includes(JSON.stringify(first).slice(1, -1)), `${name} is inside`);
   }
 });

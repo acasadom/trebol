@@ -1,0 +1,70 @@
+; A part of the UI dialect: see ui.trb, whose words it shares.
+
+; --- layout --------------------------------------------------------------------
+
+roles: [primary accent danger success warning muted]
+sizes: [small medium large]
+aligns: [left center right spread]
+valigns: [top middle bottom]
+flags: [fill fit hidden disabled readonly inert narrow-only wide-only linked round drag drop reorder multiple sortable stacked count]
+chart-kinds: [bar line area pie]
+simple-rules: [required email url integer]
+letter: charset [#"a" - #"z" #"A" - #"Z"]
+rule-words: [min max length pattern match check check-async calc react is width pad gap menu accept known links sorted key morph poster captions mark by card step]
+media-styles: [video audio]
+media-flags: [loop muted autoplay]   ; of a video or a sound
+
+; Words that never name a field. email, url and integer are rules too,
+; but also common field names, so the first word after an input style names it.
+field-name?: func [w [word!]] [
+    not any [
+        find roles w  find sizes w  find aligns w  find flags w
+        find rule-words w  w = 'required  event-word? w
+    ]
+]
+
+; The rules a program or a package adds, by name: name -> the block that checks a value.
+; Their messages are in i18n/ui, under the same name, so an app can change them.
+custom-rules: make map! []
+
+rule: function [
+    "Adds a rule that a face takes by its name, as it takes required: rule 'even ^"Enter an even number^" [even? value]"
+    name [word!]
+    message [string! map! block!] "What a face that breaks it says: a text, or a text per language"
+    body [block!] "Sees value, face and values; gives true when the value is good, none or false for the message, or a string to say instead"
+] [
+    if any [
+        all [find ui-dialect-words name  not select custom-rules name]
+        event-word? name
+    ] [do make error! rejoin ["rule: " name " is already a word of the dialect"]]
+    if all [select i18n/ui name  not select custom-rules name] [
+        do make error! rejoin ["rule: " name " is already one of Trebol's texts"]
+    ]
+    poke custom-rules name body
+    poke i18n/ui name translated message
+    name
+]
+
+add-rule: func [f rule [block!]] [
+    unless f/rules [f/rules: copy []]
+    append/only f/rules rule
+]
+
+event-word?: func [w [word!]] [
+    to logic! find/match form w "on-"
+]
+
+; The events a face, a view or a screen answers to.
+ui-events: [
+    on-back on-change on-close on-dbl-click on-drop on-end on-enter on-expand on-find on-focus on-key
+    on-leave on-menu on-over on-reorder on-search on-select on-sort on-unfocus
+]
+
+; An on- word that is no event is a problem of the layout at place: on-chnage, "did you mean on-change?".
+ui-known-event: func [place [block!] ev [word!]] [
+    unless find ui-events ev [
+        ui-problem place rejoin [ev " is not an event" either ui-nearest ev [on-click] [
+            "; the block after a face runs when it is clicked"
+        ] [ui-suggest ev ui-events]]
+    ]
+]

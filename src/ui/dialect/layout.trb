@@ -1,0 +1,283 @@
+; A part of the UI dialect: see ui.trb, whose words it shares.
+
+; --- laying out -----------------------------------------------------------------
+
+; Labels (`search: field`, `table clients`) are local to the layout, as R3
+; planned for its VID: each layout gets an object holding them, and the
+; layout's blocks (its handlers too) are bound to it. `global search: field`
+; sets a global word instead.
+
+layout: function [
+    "Turns a block of the UI dialect into a view face; /only gives the block of faces."
+    spec [block!]
+    /only "Return the faces, not a view holding them"
+    /local ev b w
+] [
+    ; a copy, so laying out the same block twice never shares bindings
+    spec: copy/deep spec
+    labels: copy []
+    either only [
+        out: ui-build spec labels
+    ] [
+        ; on-xxx handlers and its width before the first face belong to the view itself
+        events: copy []
+        width: none
+        parse spec [any [
+            p: set ev word! if (event-word? ev) set b block! (ui-known-event p ev  append events reduce [ev b])
+            | 'width set w ['small | 'medium | 'large | 'fill] (width: w)
+        ] body:]
+        out: make select styles 'view [pane: ui-build body labels]
+        unless empty? events [out/events: events]
+        out/size: width
+    ]
+    bind-labels spec labels copy []
+    morphs either only [out] [reduce [out]]
+    out
+]
+
+; Binds a laid-out block to an object of its labels and the given [word: value ...].
+bind-labels: function [spec [block!] labels [block!] words [block!] /local w f] [
+    foreach [w f] labels [append words reduce [to set-word! w f]]
+    unless empty? words [bind spec make object! words]
+]
+
+; Works out the morph names given as blocks once the layout's words are bound: in
+; [client id] the first word is the name as written, and what follows is evaluated.
+morphs: function [faces [block!]] [
+    if ui-checking [exit]
+    foreach f faces [foreach g all-faces f [
+        if all [block? m: g/morph  not empty? m  word? first m] [g/morph: append reduce [first m] reduce next m]
+    ]]
+]
+
+; Keeps a label for a face: in the layout's labels, or as a global word.
+label-face: function [label labels [block!] global? [logic!] f] [
+    either global? [set label f] [
+        w: to word! label
+        either p: find/skip labels w 2 [p/2: f] [append labels reduce [w f]]
+    ]
+]
+
+; A text of the interface: a string, a text per language (a map), or a word of
+; the dictionary written as a lit-word ('save). Faces keep it as given and the
+; host shows it in the active language, so set-language translates them.
+text-rule: [string! | map! | lit-word!]
+text-of: func [t] [either lit-word? :t [to word! t] [t]]
+
+; The faces of a block of the dialect; labels collects [word face ...].
+build-faces: function [
+    spec [block!] labels [block!]
+    /local label global? style-word f proto n s b w a i v ev p pos later
+] [
+    out: copy []
+    ; what starts the next face
+    face-start: [set-word! | 'global | set w word! if (select styles w)]
+    modifier: [
+        ; ui-check reads view compose [...] with its parens in it: menu (looks)
+        if (ui-checking) opt [set w word! if (select ui-takes w)] some paren!
+        | set s [string! | map!] (either f/text [f/hint: s] [f/text: s])
+        ; a word of the dictionary: button 'save (in a link, a lit-word is the screen)
+        | if (f/style <> 'link) set v lit-word! (v: to word! v  either f/text [f/hint: v] [f/text: v])
+        | p: set ev word! if (event-word? ev) set b block! (
+            ; a widget's element fires events of its own: on-moved
+            unless any [f/tag  f/style = 'widget] [ui-known-event p ev]
+            unless f/events [f/events: copy []]
+            append f/events reduce [ev b]
+        )
+        | pos: set b block! (
+            case [
+                ; grid [1 4 1] [...]: the weight of each column, then the children
+                all [f/style = 'grid  none? f/pane  not empty? b  parse b [some integer!]] [f/cols: b]
+                ; rows items [...]: the fields of a row; a second block is the action
+                all [f/style = 'rows  none? f/template] [f/template: b]
+                find container-styles f/style [
+                    ; --- in a toolbar is a separator
+                    f/pane: build-faces either f/style = 'toolbar [replace/all copy b '--- 'divider] [b] labels
+                    if f/style = 'form [steps-take-submits f]
+                    if all [f/style = 'split  2 <> length? f/pane] [
+                        ui-problem pos "split takes two faces, one per pane"
+                    ]
+                ]
+                ; board tasks by status [todo "To do" ...]: its lanes; a second block is the action
+                all [f/style = 'board  none? f/lanes] [f/lanes: lanes-of b]
+                find data-styles f/style [f/columns: columns-of b]
+                ; the first block holds the items, the second is the action
+                all [f/style = 'breadcrumb  none? f/data] [f/data: crumbs-of b]
+                ; orbit [focus ... nodes [...]]: what it shows; a second block is the action
+                all [f/style = 'orbit  none? f/data] [f/data: orbit-of b]
+                ; widget <geo-map> [zoom: 12]: its properties; a second block is the action
+                all [f/style = 'widget  none? f/props] [f/props: either ui-checking [make object! []] [make object! b]]
+                f/style = 'canvas [f/draw: b]
+                f/style = 'tabs [f/pane: tabs-of b labels]
+                f/style = 'steps [f/pane: either f/flow [steps-flow-of f b labels] [steps-of f b labels]]
+                f/style = 'screens [f/data: screens-of b]
+                all [find [choice radio] f/style  none? f/options] [f/options: options-of b]
+                true [f/action: b]
+            ]
+        )
+        | set i issue! (f/icon: i)
+        | set v [file! | url! | percent!] (f/value: v)
+        ; a link to a screen: link "Clients" 'clients, link "Ada" 'client/42
+        | set v lit-word! (f/value: to word! v)
+        | set v lit-path! (f/value: to path! v)
+        ; slider volume "Volume" 0 100: the least and the most it takes
+        | if (f/style = 'slider) set a number! set n number! (add-rule f reduce ['min a]  add-rule f reduce ['max n])
+        | 'step set n number! if (find [slider time] f/style) (f/step: n)
+        | set n integer! (f/cols: n)
+        | set p pair! (f/extent: p)
+        | set w word! if (all [f/style = 'chart  find chart-kinds w]) (f/kind: w)
+        | 'min set n [number! | money! | date! | time!] (add-rule f reduce ['min n])
+        | 'max set n [number! | money! | date! | time!] (add-rule f reduce ['max n])
+        | 'length set a integer! set n integer! (add-rule f reduce ['length a n])
+        | 'pattern set b block! (add-rule f reduce ['pattern b])
+        | 'accept set b block! (f/accept: b)
+        | 'poster set v [file! | url!] (f/poster: v)
+        | 'captions set v [file! | url! | block!] (f/captions: v)
+        ; muted names a role elsewhere, and loop a function, so a video keeps them in fields of its own
+        | set w word! if (all [find media-flags w  find media-styles f/style]) (
+            poke f select [muted silent loop looping autoplay autoplay] w true
+        )
+        | 'known set v map! (f/known: v)
+        | 'links set v map! (f/links: v)
+        | 'match set w word! (add-rule f reduce ['match w])
+        | 'check set b block! (add-rule f reduce ['check b])
+        | 'check-async set b block! (add-rule f reduce ['check-async b])
+        | 'calc set b block! (add-reaction f 'calc b false  f/readonly: true)
+        | 'is set b block! (add-reaction f 'is b false)
+        | 'react (later: false) opt ['later (later: true)] set b block! (add-reaction f 'react b later)
+        | 'width set w word! (f/size: w)
+        | pos: set w ['pad | 'gap] [set n integer! | 'none (n: 0) | 'wide (n: 6)] (poke f w spacing n pos)
+        | 'menu set b block! (f/menu: menu-of b)
+        | 'morph set v [lit-word! | block!] (f/morph: either block? v [v] [to word! v])
+        ; tile #folder "Records" mark #list "List": the label goes right after the mark's icon
+        | 'mark set v issue! set s text-rule (f/mark: v  f/mark-text: text-of s)
+        | 'by set w word! if (f/style = 'board) (f/field: w)
+        | 'card set b block! if (f/style = 'board) (f/card: columns-of b)
+        | 'key set s string! (f/shortcut: s)
+        | 'key set w word! (f/key: w)
+        | 'sorted set b block! (f/sorted: sort-order b)
+        | set w word! if (find roles w) (f/role: w)
+        | set w word! if (find sizes w) (f/size: w)
+        | set w word! if (find aligns w) (f/align: w)
+        | set w word! if (all [f/style = 'row  find valigns w]) (f/valign: w)
+        | set w word! if (find flags w) (poke f w true)
+        | set w word! if (find simple-rules w) (add-rule f reduce [w])
+        | set w word! if (select custom-rules w) (add-rule f reduce [w])
+        ; money price "Price" EUR
+        | set w word! if (all [f/style = 'money  parse form w [3 letter]]) (f/currency: to word! uppercase form w)
+        ; steps flow [...]: a machine leads the steps (check, which runs nothing, takes the word as one)
+        | set w word! ahead block! if (all [f/style = 'steps  not f/flow  any [ui-checking  machine? attempt [get w]]]) (f/flow: w)
+    ]
+    parse spec [any [
+        (label: none  global?: false)
+        opt ['global (global?: true)]
+        opt [set label set-word!]
+        [
+            ; a face that compose puts in: check takes what follows as words of a face it cannot know
+            if (ui-checking) paren! (f: make face []) any modifier
+        |   pos: set style-word word! if (proto: select styles style-word) (
+                f: make proto []
+                f/place: loaded-at pos
+                append out f
+                if label [label-face label labels global? f]
+            )
+            ; widget <geo-map> place "Place": the element comes before the name
+            opt [if (f/style = 'widget) set v tag! (f/tag: to string! v)]
+            opt [if (find input-styles f/style) set n word! if (field-name? n) (f/name: n)]
+            ; chart bar income [...]: the kind comes before the label
+            opt [if (f/style = 'chart) set n word! if (find chart-kinds n) (f/kind: n)]
+            ; table clients [...] is the same as clients: table [...]
+            opt [if (any [find data-styles f/style  f/style = 'orbit]) set n word! if (field-name? n) (label-face n labels global? f)]
+            any [
+                modifier
+                ; a mistyped style starts a face of its own: what follows it is that face's
+                | pos: not face-start skip (ui-problem pos ui-stray f first pos) opt [
+                    if (ui-meant-style first pos) any [not face-start skip]
+                ]
+            ]
+            (if f/style = 'rows [rows-fill f])
+            (if f/style = 'slider [slider-fill f pos])
+            (if all [f/style = 'time  f/step  any [not integer? f/step  f/step < 1  f/step > 720]] [
+                ui-problem pos "a time's step is a whole number of minutes from 1 to 720"
+            ])
+            (if f/style = 'board [
+                unless f/lanes [ui-problem pos "a board takes a block with a word and a label for each lane"]
+                unless f/field [ui-problem pos "a board takes by and the field that names the lane of a card: by status"]
+                board-fill f
+            ])
+            ; not a style: a problem, then on to the next face
+        |   pos: skip (
+                w: first pos
+                ui-problem pos case [
+                    not word? :w [rejoin ["a face starts with a style, not " ui-shown :w]]
+                    find ui-dialect-words w [rejoin [w " is not a style; it goes after one"]]
+                    true [rejoin [w " is not a style" ui-suggest w words-of styles]]
+                ]
+            ) any [not face-start skip]
+        ]
+    ]]
+    out
+]
+
+; A slider goes from 0 to 100 unless told, one at a time, and starts at its least.
+slider-fill: function [f place [block!]] [
+    unless rule-of f 'min [add-rule f copy [min 0]]
+    unless rule-of f 'max [add-rule f copy [max 100]]
+    low: rule-of f 'min  high: rule-of f 'max
+    unless all [number? low  number? high  low < high] [
+        ui-problem place "a slider takes its least and its most as two numbers, the least first: 0 100"
+        exit
+    ]
+    if all [f/step  any [f/step <= 0  f/step > (high - low)]] [
+        ui-problem place "a slider's step is a number above 0 and no more than its most less its least"
+    ]
+    if none? f/value [f/value: low]
+]
+
+; Where a slider stands for a number given to it: within its least and most.
+slider-at: function [f v] [
+    unless number? :v [return f/value]
+    max rule-of f 'min min rule-of f 'max v
+]
+
+spacing: func [n [integer!] place [block!]] [
+    if all [n >= 0  n <= 7] [return n]
+    ui-problem place rejoin [first place " takes a step from 0 to 7"]
+    0
+]
+
+; [name "Name" email] -> [name "Name" email "email"]
+; A column of images keeps what it is with its label: [photo "" image round] -> [photo ["" image round]]
+columns-of: function [spec [block!] /local w label kind p] [
+    out: copy []
+    parse spec [any [
+        set w word! (label: form w  kind: none) opt [set label text-rule]
+        opt ['image (kind: copy [image]) opt ['round (append kind 'round)]]
+        (
+            label: text-of label
+            append out w
+            append/only out either kind [head insert/only kind label] [label]
+        )
+        | p: skip (ui-problem p "table columns are words, each with an optional label, then image or image round") to end
+    ]]
+    out
+]
+
+; [name desc] -> [name desc], checked
+sort-order: function [b [block!]] [
+    unless parse b [word! ['asc | 'desc]] [ui-problem b "sorted takes a column and asc or desc"]
+    copy b
+]
+
+; ["General" [...] "Advanced" [...]] -> a tab face per pair
+tabs-of: function [spec [block!] labels [block!] /local p] [
+    out: copy []
+    parse spec [any [
+        set label text-rule set b block! (
+            label: text-of label
+            append out make select styles 'tab [text: label pane: build-faces b labels]
+        )
+        | p: skip (ui-problem p "tabs take a label and a block per tab") to end
+    ]]
+    out
+]

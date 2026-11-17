@@ -1,0 +1,208 @@
+; A part of the UI dialect: see ui.trb, whose words it shares.
+
+; --- rows ------------------------------------------------------------------------
+;
+; A field made of rows the user adds and removes. Its pane is an entry per row
+; and the add button last; an entry holds the fields of the template and its
+; remove button. Each entry is a scope of its own, so `values` in a handler or
+; a formula of a row is that row. The value is a block with a map per row, or
+; none when there are no rows; code changes the rows by assigning it.
+
+last-entry: 0
+
+rule-of: function [f name [word!]] [
+    foreach r any [f/rules []] [if r/1 = name [return r/2]]
+    none
+]
+
+entries-of: function [f] [
+    collect [foreach c any [f/pane []] [if c/style = 'entry [keep c]]]
+]
+
+rows-entry: function [f data] [
+    spec: copy/deep f/template
+    labels: copy []
+    set 'last-entry last-entry + 1
+    e: make select styles 'entry [owner: f  value: last-entry]
+    e/pane: ui-build spec labels
+    bind-labels spec labels copy []
+    foreach g named-faces e [
+        if f/readonly [g/readonly: true]
+        if f/disabled [g/disabled: true]
+    ]
+    if data [set-values e data]
+    remove-button: make select styles 'button [icon: #trash]
+    remove-button/hint: select i18n/ui 'remove-row
+    remove-button/action: compose [rows-remove (f) (e/value)]
+    append e/pane remove-button
+    e
+]
+
+; Makes the rows again from the value, if it or the flags changed since they were made.
+rows-fill: function [f] [
+    state: reduce [f/value f/readonly f/disabled]
+    if all [f/pane  state = f/built] [exit]
+    entries: map-each d any [f/value []] [rows-entry f d]
+    ; `min 2` starts with two empty rows
+    while [(length? entries) < any [rule-of f 'min 0]] [append entries rows-entry f none]
+    add-button: either f/pane [last f/pane] [
+        make select styles 'button [icon: #plus]
+    ]
+    add-button/text: select i18n/ui 'add-row
+    add-button/action: compose [rows-add (f)]
+    f/pane: append entries add-button
+    if f/root [foreach e entries [attach e f/root f/form]]
+    rows-store f
+]
+
+; Takes the value from the rows and shows only the buttons that can be used.
+rows-store: function [f] [
+    entries: entries-of f
+    n: length? entries
+    f/value: either empty? entries [none] [map-each e entries [form-values e]]
+    f/built: reduce [f/value f/readonly f/disabled]
+    add-button: last f/pane
+    add-button/hidden: f/readonly
+    add-button/disabled: any [f/disabled  n >= any [rule-of f 'max n + 1]]
+    foreach e entries [
+        remove-button: last e/pane
+        remove-button/hidden: f/readonly
+        remove-button/disabled: any [f/disabled  n <= any [rule-of f 'min 0]]
+    ]
+]
+
+;--- a board: cards in lanes ------------------------------------------------------
+;
+; board tasks by status [todo "To do" doing "Doing" done "Done"]: a lane for each word, and in each, as
+; cards, the rows of its data whose status names it. A lane is a panel that takes drops, holding a list of
+; its cards that can be dragged; the board makes them, and deals the cards again when its data changes.
+
+lanes-of: function [spec [block!] /local w s] [
+    out: copy []
+    unless parse spec [some [set w word! set s text-rule (append out reduce [w text-of s])]] [
+        ui-problem spec "a board takes a word and a label for each lane"
+    ]
+    out
+]
+
+; The lane of a row: the word its field holds (a text from JSON too), or the state of its machine.
+board-lane: function [f row] [
+    v: attempt [select row f/field]
+    if machine? :v [v: v/state  if path? :v [v: first v]]
+    all [any [word? :v  string? :v]  attempt [to word! v]]
+]
+
+; Makes the lanes, and puts each card in the lane its row names, when the data or a lane changed.
+board-fill: function [f /local id label] [
+    unless all [f/lanes  f/field] [exit]
+    data: any [f/data []]
+    state: reduce [data  map-each row data [board-lane f row]]
+    if all [f/pane  state = f/built] [exit]
+    unless f/pane [
+        f/pane: collect [
+            foreach [id label] f/lanes [
+                cards: make select styles 'list [
+                    drag: true  owner: f  text: ""
+                    columns: any [f/card  columns-of [title]]
+                    events: compose/deep [on-select [board-pick (f) row]]
+                ]
+                keep make select styles 'panel [lane: id  owner: f  text: label  drop: true  pane: reduce [cards]]
+            ]
+        ]
+    ]
+    foreach lane f/pane [
+        lane/pane/1/data: collect [foreach row data [if lane/lane = board-lane f row [keep/only row]]]
+    ]
+    f/built: state
+]
+
+board-pick: function [f row] [
+    f/selected: row
+    if h: handler-for f 'on-select [run-handler f h]
+]
+
+; The event that takes machine m to the state named lane: of the first way from a state it is in to that state
+; (or into it, or to one branch of a choose there) whose event it can take now; none if there is none.
+board-way: function [m lane] [
+    into?: func [p] [all [p  lane = either path? p [first p] [p]]]
+    foreach w select graph-of m 'ways [
+        if in? m select w 'from [
+            if any [
+                into? select w 'to
+                foreach b any [select w 'branches []] [if into? select b 'to [break/return true]]
+            ] [
+                foreach e select w 'on [if can? m e [return e]]
+            ]
+        ]
+    ]
+    none
+]
+
+; A card dropped on a lane: its field names that lane, or its machine takes a way to the state of that name, if
+; it has one. on-drop sees the row moved; false puts it back. (func, so that the to: of the event is no local.)
+board-drop: func [f lane row /local there here v saved r e] [
+    there: lane/lane
+    here: board-lane f :row
+    if any [not here  here = there] [exit]
+    v: select row f/field
+    either machine? :v [
+        unless e: board-way v there [exit]
+        saved: snapshot v
+        send v e
+    ] [
+        poke row f/field either string? :v [form there] [there]
+    ]
+    r: fire-event f 'on-drop reduce [quote row: row  quote from: to lit-word! here  quote to: to lit-word! there]
+    if false = :r [either machine? :v [machine-engine/rewind v saved] [poke row f/field :v]]
+    board-fill f
+]
+
+ui-board: function [
+    "Called by the host when the data of a board may have changed."
+    f
+] [
+    board-fill f
+]
+
+; A field of a row changed: so did the value of its rows, and of the rows those are in.
+store-around: function [f] [
+    e: f/form
+    if all [e  e/style = 'entry] [
+        rows-store e/owner
+        store-around e/owner
+    ]
+]
+
+rows-add: function [f] [
+    e: rows-entry f none
+    attach e f/root f/form
+    faces: copy f/pane
+    insert back tail faces e
+    f/pane: faces
+    rows-store f
+    f/touched: true
+    changed f
+]
+
+rows-remove: function [f id] [
+    faces: copy f/pane
+    ; faces compare by content, so a row is found by its number
+    forall faces [
+        if faces/1/value = id [
+            remove faces
+            break
+        ]
+    ]
+    f/pane: head faces
+    rows-store f
+    f/touched: true
+    changed f
+]
+
+ui-rows: function [
+    "Called by the host when code gave a rows face a new value or changed its flags."
+    f
+] [
+    rows-fill f
+    refresh-form any [f/form f/root]
+]

@@ -1,0 +1,293 @@
+; A part of the UI dialect: see ui.trb, whose words it shares.
+
+; --- screens -------------------------------------------------------------------
+;
+; A screens face shows one screen at a time and keeps the page's link in step:
+; the screen `client [id]` showing id "42" is #/client/42. A route is a block
+; of the screen name and its arguments as strings, as they come in the link.
+
+router: none        ; the screens face of the page
+marked: false       ; the screen on show has changes not saved (unsaved)
+page: none          ; the root face of the view on show
+
+; The [name title args body] of the screen a route names, or none.
+find-screen: function [f route [block!] /local n t a b] [
+    if any [empty? route  not word? first route] [return none]
+    foreach [n t a b] f/data [
+        if all [n = first route  (length? a) = ((length? route) - 1)] [return reduce [n t a b]]
+    ]
+    none
+]
+
+; Builds the screen a route names as the only child of f; returns the screen face.
+enter-screen: function [f route [block!] /local ev b] [
+    def: find-screen f route
+    ; a screen's arguments and labels are local to it
+    spec: copy/deep def/4
+    labels: copy []
+    ; on-xxx handlers before the first face belong to the screen
+    events: copy []
+    parse spec [any [p: set ev word! if (event-word? ev) set b block! (ui-known-event p ev  append events reduce [ev b])] body:]
+    s: make select styles 'screen [text: def/2  pane: ui-build body labels]
+    unless empty? events [s/events: events]
+    words: copy []
+    repeat i length? def/3 [append words reduce [to set-word! pick def/3 i  pick route i + 1]]
+    bind-labels spec labels words
+    morphs reduce [s]
+    f/value: copy route
+    f/entering: true
+    ; what cached kept is asked again as the new screen reads it
+    ui-caches-old
+    ; what could be undone on the screen left is done now: its back block may need faces of that screen
+    ui-toasts-done
+    ; a screen starts with nothing to save
+    set 'marked false
+    set-unsaved false
+    f/pane: reduce [s]
+    ui-pane f
+    s
+]
+
+; Runs what a screen does on entering, and only then lets the host show it: the
+; page keeps the screen it had until the new one has its data, so nothing paints
+; half made; if that takes long, the host shows the new one with gray bars where
+; its data will be. If on-enter went elsewhere, the screen it went to decides.
+run-enter: function [s] [
+    r: none
+    if h: handler-for s 'on-enter [r: try [run-handler s h  none]]
+    if same? s first router/pane [
+        router/entering: false
+        ; the screen on show changed, and so may whether back and forward can be used
+        if h: handler-for router 'on-change [run-handler router h]
+    ]
+    if error? :r [do :r]
+]
+
+; Whether the screen on show lets the page leave it: its on-leave says, false or
+; 'continue (as Red's on-close) to stay; with no on-leave, a screen with unsaved
+; changes asks the user. Both may wait for a dialog.
+may-leave?: function [/local s h r] [
+    unless all [router  s: first router/pane] [return true]
+    if h: handler-for s 'on-leave [
+        r: run-handler s h
+        return not any [false = :r  'continue = :r]
+    ]
+    any [
+        not marked
+        confirm/with/role select i18n/ui 'leave-unsaved reduce [select i18n/ui 'leave select i18n/ui 'stay] 'danger
+    ]
+]
+
+; Shows the screen of a link given as a block of strings; a link that names no
+; screen shows the first one and is replaced by its link.
+follow-link: function [f parts [block!]] [
+    route: copy parts
+    unless empty? route [route/1: attempt [to word! route/1]]
+    unless find-screen f route [
+        route: reduce [first f/data]
+        set-route route true
+    ]
+    enter-screen f route
+]
+
+go: function [
+    "Shows a screen and gives the page its link: go 'clients, go [client row/id] (the name is not evaluated, the arguments are)."
+    target [word! block! path!]
+] [
+    unless router [do make error! "go: the view has no screens"]
+    route: reduce [either word? target [target] [first target]]
+    if block? target [foreach a reduce next target [append route form a]]
+    if path? target [foreach a next to block! target [append route form a]]
+    unless find-screen router route [do make error! rejoin ["go: no screen for " mold route]]
+    unless may-leave? [exit]
+    set-route route false
+    run-enter enter-screen router route
+]
+
+go-back: function [
+    "Returns to the screen the user came from; if they came from outside the page, goes to target."
+    target [word! block! path!]
+] [
+    unless route-back [go target]
+]
+
+go-forward: function [
+    "Goes to the screen the user came back from, if there is one; true if it went."
+] [
+    route-forward
+]
+
+can-go-back?: function [
+    "True if a screen of this page lies behind the current one in the browser's history."
+] [
+    0 < first route-steps
+]
+
+can-go-forward?: function [
+    "True if a screen of this page lies ahead of the current one: the user went back and has not gone elsewhere since."
+] [
+    0 < second route-steps
+]
+
+unsaved: function [
+    "Marks the screen on show as having changes not saved, or not: leaving it asks first, and so does closing the page."
+    on [logic!]
+] [
+    set 'marked on
+    set-unsaved on
+]
+
+unsaved?: function [
+    "True if the screen on show has changes not saved (unsaved)."
+] [
+    marked
+]
+
+ui-route: function [
+    "Called by the host when the page's link changes: back, forward or a link."
+    f parts [block!]
+] [
+    route: copy parts
+    unless empty? route [route/1: attempt [to word! route/1]]
+    if route = f/value [exit]
+    ; the link has changed already: staying puts the screen's link back
+    unless may-leave? [route-undo  exit]
+    run-enter follow-link f parts
+]
+
+ui-pane: function [
+    "Called by the host when code gave a face a new pane: links the new faces to their view and form."
+    f
+] [
+    inner: either find [form entry] f/style [f] [f/form]
+    foreach c any [f/pane []] [attach c f/root inner]
+    unless f/root [exit]
+    refresh-form any [inner f/root]
+    ; and the forms among the new faces, whose submits start disabled until their fields are valid
+    foreach c any [f/pane []] [foreach g all-faces c [if g/style = 'form [refresh-form g]]]
+]
+
+open: func [
+    "Shows a dialog."
+    dialog [object!]
+] [
+    dialog/hidden: false
+]
+
+close: func [
+    "Hides a dialog; closes a stream."
+    target [object! handle!]
+] [
+    either object? target [target/hidden: true] [close-stream target]
+]
+
+toast: function [
+    "Shows a short notice that goes away by itself."
+    message [string! map! word!] "A text, a text per language, or a word of the dictionary"
+    /role "primary, success, warning or danger"
+        kind [word!]
+    /undo "With an Undo button, for what was just done: back runs if the user clicks it"
+        back [block!]
+    /then "Runs done when the notice goes without Undo: what waits for it, such as the delete on the server"
+        done [block!]
+] [
+    text: tr message
+    id: none
+    if any [undo then] [
+        set 'toasts-made id: toasts-made + 1
+        append toasts-waiting reduce [id  text  either undo [back] [none]  either then [done] [none]]
+    ]
+    show-toast text either role [kind] [none] all [undo id]
+]
+
+toasts-made: 0
+; A notice that can still be undone or whose then has not run: id text back done.
+toasts-waiting: copy []
+
+ui-toasts-on: func ["The notices that can still be undone or whose then has not run: id text back done for each."] [
+    copy toasts-waiting
+]
+
+ui-toast-undo: function [
+    "Called by the host when the user clicks Undo on notice id: runs its back block, never its then."
+    v id [integer!]
+] [
+    unless here: find/skip toasts-waiting id 4 [exit]
+    back: here/3
+    remove/part here 4
+    if back [do back]
+]
+
+ui-toast-gone: function [
+    "Called by the host when notice id goes without Undo: runs its then block."
+    v id [integer!]
+] [
+    unless here: find/skip toasts-waiting id 4 [exit]
+    done: here/4
+    remove/part here 4
+    if done [do done]
+]
+
+ui-toasts-done: function [
+    "Ends every notice that can still be undone, as if its time had passed: the screen changes or the page is hidden."
+    /local id
+] [
+    while [not empty? toasts-waiting] [
+        id: first toasts-waiting
+        hide-toast id
+        ui-toast-gone none id
+    ]
+]
+
+confirm: func [
+    "Asks a question in a small dialog and waits: true when the user says yes."
+    question [string! map! word!] "A text, a text per language, or a word of the dictionary"
+    /with "The answers, yes first"
+        choices [block!]
+    /role "primary (the default) or danger, for what cannot be undone"
+        kind [word!]
+] [
+    show-confirm tr question
+        either with [tr first choices] [none]
+        either with [tr second choices] [none]
+        either role [kind] [none]
+]
+
+print-page: func [
+    "Opens the browser's print dialog for the screen."
+    /only "Print just this face and what is inside it"
+        face [object!]
+] [
+    print-faces either only [face] [none]
+]
+
+set-language: func [
+    "Changes the active language and shows every face again in it."
+    language [word! string!]
+] [
+    i18n/language: either string? language [to word! language] [language]
+    ; the messages under the fields were written in the language before
+    if page [foreach f all-faces page [refresh-form f]]
+    repaint
+]
+
+; The looks of src/host/theme.ts, with their names: colors, shapes, fonts, shadows and
+; how the icons are drawn go together. As they are, they make the items of a menu.
+looks: [
+    #(en: "Minimal" es: "Minimalista") minimal
+    #(en: "Paper" es: "Papel") paper
+    #(en: "Civic" es: "Institucional") civic
+    #(en: "Soft" es: "Amable") soft
+    #(en: "Ink" es: "Tinta") ink
+    #(en: "Classic" es: "Clásico") classic
+    #(en: "Cupertino" es: "Cupertino") cupertino
+    #(en: "Fusion" es: "Fusion") fusion
+    #(en: "Fluent" es: "Fluent") fluent
+]
+
+theme: func [
+    "Sets the theme: a look by name (theme 'civic), or parameters (theme [look: civic base: 200 mode: dark])."
+    spec [block! word!]
+] [
+    apply-theme construct either word? spec [reduce [to set-word! 'look spec]] [spec]
+]

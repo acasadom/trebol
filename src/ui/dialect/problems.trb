@@ -1,0 +1,174 @@
+; A part of the UI dialect: see ui.trb, whose words it shares.
+
+; --- problems in a layout -------------------------------------------------------
+;
+; layout reads the whole block and makes one error of every problem it finds,
+; each with the place it was loaded from (loaded-at) and a word it may mean.
+
+; [place message ...] while a block is laid out; none otherwise, and then a problem is an error at once.
+ui-problems: none
+
+ui-problem: func [place [block!] message [string!]] [
+    either ui-problems [append ui-problems reduce [place message]] [ui-fail reduce [place message]]
+]
+
+; The faces of a block, as build-faces gives them, or an error with every problem in it.
+ui-build: function [spec [block!] labels [block!]] [
+    outer: ui-problems
+    set 'ui-problems copy []
+    out: try [build-faces spec labels]
+    found: ui-problems
+    set 'ui-problems outer
+    if error? out [do out]
+    unless empty? found [either ui-checking [append ui-checking found] [ui-fail found]]
+    out
+]
+
+; While ui-check runs: the problems of every block, and no code of the program is run.
+ui-checking: none
+
+; It lays out each block after view or layout (styles of stylize first), and the
+; faces of each screen and row of rows, which a running app lays out only when shown.
+ui-check: function [
+    "Every problem in the layouts of a program, without running it: [place message ...]"
+    code [block!]
+    /local b p n m rest
+] [
+    set 'ui-checking copy []
+    blocks: copy []
+    ; the blocks after view, layout and stylize, in code and in the blocks inside it
+    walk: function [code] [
+        parse code [any [
+            p: ['view | 'layout | 'stylize | path! if (find [view layout] first first p)]
+            ; view compose [...]: its parens stand for values check cannot know
+            opt ['compose | path! if ('compose = first first next p)]
+            set b block! (
+                append/only blocks reduce [first p b]
+                walk b
+            )
+            | 'machine set b block! (append/only blocks reduce ['machine b])
+            ; a rule of the program: its words may follow a style
+            | 'rule set n lit-word! set m [string! | map! | block!] set b block! (append/only blocks reduce ['rule p reduce [to word! n m b]])
+            | set b [block! | paren!] (walk b)
+            | skip
+        ]]
+    ]
+    walk code
+    attempt-at: func [place body] [
+        if error? r: try body [append ui-checking reduce [place form r/message]]
+    ]
+    ; the imports at the top of the program run first: a module only defines things, as the rules of a package do
+    ; (a JavaScript module may need a browser)
+    parse code [any [
+        p: 'import [lit-word! | set n [file! | url!] if (not find [%.js %.mjs] suffix? n)] (attempt-at p [do/next p 'rest])
+        | skip
+    ]]
+    foreach p blocks [if 'rule = first p [attempt-at second p [apply/only :rule third p]]]
+    foreach p blocks [if 'stylize = first p [attempt-at next p [stylize copy/deep second p]]]
+    ; a machine is made without running anything: its data stays unevaluated
+    foreach p blocks [
+        if 'machine = first p [
+            if error? r: try [machine-engine/make-machine second p] [
+                append ui-checking reduce [any [machine-engine/failed next p] form r/message]
+            ]
+        ]
+    ]
+    foreach p blocks [
+        unless find [stylize machine rule] first p [
+            attempt-at next p [
+                faces: all-faces layout second p
+                ; screens and rows lay these out when shown
+                while [not empty? faces] [
+                    f: take faces
+                    later: copy []
+                    if f/style = 'screens [foreach [n t a b] f/data [append/only later b]]
+                    if all [f/style = 'rows  f/template] [append/only later f/template]
+                    foreach b later [
+                        spec: copy/deep b
+                        parse spec [any [set w word! if (event-word? w) block!] body:]
+                        foreach g ui-build body copy [] [append faces all-faces g]
+                    ]
+                ]
+            ]
+        ]
+    ]
+    ; a screen or rows laid out twice (rows with min) gives its problems twice
+    found: copy []
+    seen: copy []
+    foreach [p m] ui-checking [
+        k: rejoin [any [loaded-at p ""] " " m]
+        unless find seen k [append seen k  append found reduce [p m]]
+    ]
+    set 'ui-checking none
+    found
+]
+
+ui-fail: function [found [block!] /local place m] [
+    either 2 = length? found [
+        message: rejoin ["layout: " second found]
+    ] [
+        places: collect [foreach [place m] found [keep any [loaded-at place  ""]]]
+        wide: 0
+        foreach p places [wide: max wide length? p]
+        message: rejoin ["layout: " (length? found) / 2 " problems"]
+        i: 0
+        foreach [place m] found [
+            p: pick places i: i + 1
+            append message rejoin ["^/   " p  append/dup copy "" #" " wide + 1 - length? p  m]
+        ]
+    ]
+    e: make error! message
+    ; the first values from the place, one after another as near shows them
+    e/near: copy []
+    foreach v copy/part first found 3 [append/only e/near :v]
+    e/at: loaded-at first found
+    do e
+]
+
+; What a rule word takes, for a problem when what follows it is something else.
+ui-takes: [
+    min "a number, an amount, a date or a time"  max "a number, an amount, a date or a time"  length "two integers"
+    pattern "a block"  check "a block"  check-async "a block"  calc "a block"  react "a block, after later or not"  is "a block"  accept "a block"
+    menu "a block"  sorted "a block"  known "a map"  links "a map"  match "the name of a field"
+    poster "a file or a url"  captions "a file, a url or a block"  width "small, medium, large or fill"
+    pad "a step from 0 to 7, none or wide"  gap "a step from 0 to 7, none or wide"  key "a text or a word"
+    morph "a name, 'logo, or a block, [client id]"  mark "an icon and its label, #list ^"List^""
+    by "the field that names the lane of a card, by status"  card "a block of the fields a card shows"
+    step "a number above 0; for a time, minutes"
+]
+
+; Every word the dialect knows, for ui-suggest.
+ui-dialect-words: does [
+    unique compose [
+        (words-of styles) (roles) (sizes) (aligns) (valigns) (flags) (chart-kinds) (simple-rules)
+        (rule-words) (media-flags) required global (words-of custom-rules)
+    ]
+]
+
+; The word near enough to w to be what it meant (buton: button), or none; the
+; machines' errors use the same.
+ui-nearest: function [w [word!] words [block!]] [machine-engine/nearest w words]
+
+; "; did you mean button?" for buton, when one of the words is near enough; "" otherwise.
+ui-suggest: function [w [word!] words [block!]] [machine-engine/suggest w words]
+
+; A value as a problem shows it: its mold, cut when long.
+ui-shown: function [v] [
+    t: mold :v
+    either 30 < length? t [append copy/part t 27 "..."] [t]
+]
+
+; The style a word after a face means when it is a mistyped one (feild: field), or none.
+ui-meant-style: function [v] [
+    all [word? :v  s: ui-nearest v ui-dialect-words  select styles s  s]
+]
+
+; The problem with a value that follows a face and means nothing to it.
+ui-stray: function [f v] [
+    case [
+        all [word? :v  t: select ui-takes v] [rejoin [v " takes " t]]
+        s: ui-meant-style :v [rejoin [v " is not a style; did you mean " s "?"]]
+        word? :v [rejoin [v " is not a word of " f/style ui-suggest v ui-dialect-words]]
+        true [rejoin [f/style " does not take " ui-shown :v]]
+    ]
+]

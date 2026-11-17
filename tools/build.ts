@@ -18,7 +18,7 @@
 // looks for them.
 
 import { build, type BuildOptions, type Plugin } from 'esbuild';
-import { cpSync, readFileSync } from 'node:fs';
+import { cpSync, readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
@@ -39,6 +39,7 @@ const sources: Plugin = {
         contents: `import { addBuiltIn } from './src/host/modules.ts';
 import { UI_SOURCE, I18N_SOURCE, TEST_SOURCE } from './src/host/index.ts';
 addBuiltIn(UI_SOURCE, ${text('ui.trb')});
+${readdirSync(join(ROOT, 'src', 'ui', 'dialect')).filter(f => f.endsWith('.trb')).map(f => `addBuiltIn(new URL('dialect/${f}', UI_SOURCE).href, ${text(`dialect/${f}`)});`).join('\n')}
 addBuiltIn(I18N_SOURCE, ${text('i18n.trb')});
 addBuiltIn(TEST_SOURCE, ${text('test.trb')});`,
       };

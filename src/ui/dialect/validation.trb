@@ -1,0 +1,137 @@
+; A part of the UI dialect: see ui.trb, whose words it shares.
+
+; --- validation ------------------------------------------------------------------
+
+message: function [key args [block!]] [
+    out: copy tr select i18n/ui key
+    repeat i length? args [replace out rejoin ["#" i] localize pick args i]
+    out
+]
+
+digit: charset "0123456789"
+word-char: charset [#"a" - #"z" #"A" - #"Z" #"0" - #"9" "._%+-"]
+host-char: charset [#"a" - #"z" #"A" - #"Z" #"0" - #"9" "-"]
+email-rule: [some word-char "@" some host-char some ["." some host-char] end]
+url-rule: [["http://" | "https://"] some host-char any ["." some host-char] opt [":" some digit] opt ["/" to end] end]
+
+; check and toggle hold true or false
+logic-face?: func [f] [to logic! find [check toggle] f/style]
+
+blank?: func [v] [
+    any [none? :v  all [string? :v  empty? trim copy v]]
+]
+
+label-of: func [f] [either f/text [tr f/text] [form f/name]]
+
+list-of: function [items [block!]] [
+    out: copy ""
+    foreach x items [unless empty? out [append out ", "] append out form x]
+    out
+]
+
+; The message for the first rule a face breaks, or none. Asynchronous checks
+; are skipped here: their last result is kept in async-error.
+validate-face: function [
+    "Checks a face's rules; returns a message or none."
+    f
+] [
+    if f/readonly [return none]
+    v: f/value
+    rules: any [f/rules []]
+    if f/style = 'rows [
+        n: either v [length? v] [0]
+        return case [
+            all [n = 0  find/only rules [required]] [message 'required []]
+            n < any [rule-of f 'min 0] [message 'rows-min reduce [rule-of f 'min]]
+            n > any [rule-of f 'max n] [message 'rows-max reduce [rule-of f 'max]]
+            true [none]
+        ]
+    ]
+    if f/typed [
+        if f/style = 'upload [return message 'accept reduce [list-of f/accept]]
+        if f/style = 'photo [return either f/accept [message 'accept reduce [list-of f/accept]] [message 'images []]]
+        return message select [number number money amount date date date-range date-range time time] f/style []
+    ]
+    if blank? :v [
+        return either find/only rules [required] [message 'required []] [f/async-error]
+    ]
+    if all [logic-face? f  find/only rules [required]  not v] [return message 'required []]
+    foreach r rules [
+        problem: switch/default first r [
+            email [unless parse v email-rule [message 'email []]]
+            url [unless parse v url-rule [message 'url []]]
+            integer [unless parse form v [opt "-" some digit] [message 'integer []]]
+            ; a range of dates keeps both its ends within them
+            min [
+                low: either f/style = 'date-range [v/1] [v]
+                if all [any [number? low  money? low  date? low  time? low]  low < r/2] [message 'min reduce [r/2]]
+            ]
+            max [
+                high: either f/style = 'date-range [v/2] [v]
+                if all [any [number? high  money? high  date? high  time? high]  high > r/2] [message 'max reduce [r/2]]
+            ]
+            length [
+                n: length? form v
+                if any [n < r/2  n > r/3] [
+                    either r/2 = r/3 [message 'length-exact reduce [r/2]] [message 'length reduce [r/2 r/3]]
+                ]
+            ]
+            pattern [unless parse form v r/2 [message 'pattern []]]
+            match [
+                other: find-named f r/2
+                if all [other  v <> other/value] [message 'match reduce [label-of other]]
+            ]
+            check [check-result run-handler f r/2]
+        ] [
+            if b: select custom-rules first r [check-result/as run-handler f b first r]
+        ]
+        if problem [return problem]
+    ]
+    f/async-error
+]
+
+check-result: func [result /as key "The message of this rule, not check's"] [
+    case [
+        string? :result [result]
+        any [none? :result  false = :result] [message any [key 'check] []]
+        true [none]
+    ]
+]
+
+; Rules Trebol adds as a program would
+rule 'iban #(en: "Enter a valid IBAN" es: "Introduce un IBAN válido") [iban? form value]
+
+find-named: function [f name] [
+    scope: any [f/form f/root]
+    foreach g named-faces scope [if g/name = name [return g]]
+    none
+]
+
+; Runs asynchronous checks of a face (they may fetch).
+check-async: function [f] [
+    foreach r any [f/rules []] [
+        if all [r/1 = 'check-async  not blank? f/value] [
+            f/pending: true
+            f/async-error: check-result run-handler f r/2
+            f/pending: false
+        ]
+    ]
+]
+
+; Updates the errors of touched faces and enables submit buttons only when
+; every field of the form is valid. A view checks only the faces outside its forms.
+refresh-form: function [scope] [
+    ; the fields of a row count for the form its rows are in
+    while [all [scope  scope/style = 'entry]] [scope: any [scope/form scope/root]]
+    unless all [scope  find [form view] scope/style] [exit]
+    ok: true
+    faces: own-faces scope
+    foreach f faces [
+        if any [f/rules  f/typed  f/error] [
+            problem: validate-face f
+            f/error: either f/touched [problem] [none]
+            if problem [ok: false]
+        ]
+    ]
+    foreach f faces [if f/submit [f/disabled: not ok]]
+]
