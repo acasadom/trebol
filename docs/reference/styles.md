@@ -135,6 +135,14 @@ when it is not, picking it puts the value back to `none`.
 
 A switch. Its value is `true` or `false`.
 
+(style-slider)=
+## slider
+
+A number picked by moving a handle along a line, with the number it stands at after it:
+`slider volume "Volume" 0 50 step 5`. The two numbers are the least and the most it takes, 0 and 100 unless
+given, and `step` how far one move takes it, 1 unless given; a decimal step gives decimal values. It starts at
+its least. The arrow keys, Home, End, Page Up and Page Down move it too. A screen test sets it with `type`.
+
 (style-radio)=
 ## radio
 

@@ -239,6 +239,11 @@ test('attach chooses files next to the test for an upload or photo, refuses what
   ]);
 });
 
+test('a slider starts at its least, takes numbers within its ends, and keeps its place for what is no number', async () => {
+  const { passed, lines } = await ran(['test/fixtures/screens/slider.test.trb']);
+  assert.ok(passed, lines.join('\n'));
+});
+
 test('a board deals its cards to lanes; a drop sets the field, or takes the way of a machine to that state', async () => {
   const { passed, lines } = await ran(['test/fixtures/screens/board.test.trb']);
   assert.ok(passed, lines.join('\n'));

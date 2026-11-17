@@ -217,6 +217,14 @@ A word followed by its value.
 
 The fields a card of a board shows, as the columns of a list: `card [title "Job" who "Mechanic"]`.
 
+(word-step)=
+## step
+
+A word followed by its value.
+
+How far one move takes a slider: `slider volume "Volume" 0 50 step 5`. A number above 0; a decimal step gives
+decimal values.
+
 (word-round)=
 ## round
 

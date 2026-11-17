@@ -163,7 +163,7 @@ test-texts: function [/local f p t] [
         v: f/value
         case [
             string? :v [append out v]
-            find [number money date] f/style [if v [append out localize v]]
+            find [number money date slider] f/style [if v [append out localize v]]
         ]
         if all [f/style = 'lookup  v] [
             foreach one either block? v [v] [reduce [v]] [
@@ -228,7 +228,7 @@ test-face: function [action [word!] styles [block!] what /local f p] [
 
 ; --- what the user does ---------------------------------------------------------
 
-text-styles: [field password number money date area rich]
+text-styles: [field password number money date area rich slider]
 
 click: function [
     "Clicks a button, link, tile, check, toggle, tab or a step done, the row of a table or list that shows a text, or a node of an orbit."
@@ -301,7 +301,7 @@ test-activate: function [f parent] [
 ]
 
 type: function [
-    "Types a text in a field, then leaves it; an empty text clears it."
+    "Types a text in a field, then leaves it; an empty text clears it. A slider moves to the number typed."
     what [string! word!] "Its label or hint, or its name"
     text [any-type!] "What to type; a number or date is typed as written"
 ] [

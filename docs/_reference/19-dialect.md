@@ -131,6 +131,11 @@ The field that names the lane of each card of a board: `board jobs by status [..
 
 The fields a card of a board shows, as the columns of a list: `card [title "Job" who "Mechanic"]`.
 
+## step
+
+How far one move takes a slider: `slider volume "Volume" 0 50 step 5`. A number above 0; a decimal step gives
+decimal values.
+
 ## round
 
 Cuts an image to a circle, as for a person's photo: `image %ada.jpg "Ada" 48x48 round`.

@@ -77,6 +77,26 @@ view [
 What the program receives is still the option chosen, here `"Brakes"`, not its group. A `radio` takes groups
 the same way, and shows each title over its options.
 
+## A number on a line
+
+Some numbers are easier to pick than to type, when what matters is roughly where they sit between two ends.
+A `slider` is a handle on a line, with the number it stands at after it:
+
+```trebol-ui
+view [
+    form [
+        slider pressure "Tyre pressure" 20 120 step 5
+        slider wear "Chain wear" 0 1 step 0.25
+        submit "Save" [toast rejoin [values/pressure " psi"]]
+    ]
+]
+```
+
+The two numbers are the least and the most it takes, 0 and 100 when they are left out, and `step` how far
+one move takes it, 1 unless told. It starts at its least, and its value is a number, an integer unless the step
+makes it a decimal. Dragging it, or the arrow keys, Home and End, move it; its action and `on-change` run as
+it moves.
+
 ## Rules of your own
 
 The built-in rules cover the usual cases: `required`, `email`, `url`, `integer`, `iban`, `min` and `max`

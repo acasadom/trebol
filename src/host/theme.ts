@@ -614,6 +614,23 @@ select.tb-input { appearance: none; background-image: linear-gradient(45deg, tra
 .tb-switch input:focus-visible { border-radius: 10px; }
 .tb-check input:disabled, .tb-check input:disabled + span { opacity: 0.45; cursor: not-allowed; }
 
+/* a slider: a track filled up to where it stands (--tb-at, set by the host), then its number */
+.tb-slider { display: flex; align-items: center; gap: var(--tb-space-3); min-height: var(--tb-control); }
+.tb-range { appearance: none; flex: 1; min-width: 0; height: 24px; margin: 0; background: transparent; cursor: pointer; }
+.tb-range::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(to right, var(--tb-primary) var(--tb-at, 0%), var(--tb-border-strong) var(--tb-at, 0%)); }
+.tb-range::-moz-range-track { height: 6px; border-radius: 3px; background: linear-gradient(to right, var(--tb-primary) var(--tb-at, 0%), var(--tb-border-strong) var(--tb-at, 0%)); }
+.tb-range::-webkit-slider-thumb { appearance: none; width: 20px; height: 20px; margin-top: -7px; border: 2px solid var(--tb-primary); border-radius: 50%; background: var(--tb-surface); box-shadow: var(--tb-shadow-1); transition: transform var(--tb-fast) var(--tb-ease); }
+.tb-range::-moz-range-thumb { box-sizing: border-box; width: 20px; height: 20px; border: 2px solid var(--tb-primary); border-radius: 50%; background: var(--tb-surface); box-shadow: var(--tb-shadow-1); transition: transform var(--tb-fast) var(--tb-ease); }
+.tb-range:active::-webkit-slider-thumb { transform: scale(1.1); }
+.tb-range:active::-moz-range-thumb { transform: scale(1.1); }
+.tb-range:focus-visible { outline: none; }
+.tb-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px var(--tb-focus-ring); }
+.tb-range:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px var(--tb-focus-ring); }
+.tb-range:disabled { opacity: 0.45; cursor: not-allowed; }
+.tb-slider-value { min-width: 4ch; text-align: end; font-variant-numeric: tabular-nums; font-weight: 600; }
+.tb-invalid .tb-range::-webkit-slider-thumb { border-color: var(--tb-danger); }
+.tb-invalid .tb-range::-moz-range-thumb { border-color: var(--tb-danger); }
+
 .tb-actions { display: flex; flex-wrap: wrap; gap: var(--tb-space-3); padding-top: var(--tb-space-2); }
 .tb-button {
   font: inherit;
@@ -1616,6 +1633,13 @@ select.tb-input:focus { box-shadow: var(--tb-raise), var(--tb-ring); }
 .tb-switch input, .tb-switch input:focus-visible { border-radius: var(--tb-radius); box-shadow: var(--tb-sink); }
 .tb-switch input:focus-visible { box-shadow: var(--tb-sink), var(--tb-ring); }
 .tb-switch input::before { border-radius: var(--tb-radius); background: var(--tb-face); box-shadow: var(--tb-raise), 0 0 0 1px var(--tb-border-strong); }
+/* a slider runs in a sunken groove under a raised handle */
+.tb-range::-webkit-slider-runnable-track { border-radius: var(--tb-radius); box-shadow: var(--tb-sink); }
+.tb-range::-moz-range-track { border-radius: var(--tb-radius); box-shadow: var(--tb-sink); }
+.tb-range::-webkit-slider-thumb { width: 12px; border: 0; border-radius: var(--tb-radius); background: var(--tb-face); box-shadow: var(--tb-raise), 0 0 0 1px var(--tb-border-strong); }
+.tb-range::-moz-range-thumb { width: 12px; border: 0; border-radius: var(--tb-radius); background: var(--tb-face); box-shadow: var(--tb-raise), 0 0 0 1px var(--tb-border-strong); }
+.tb-range:focus-visible::-webkit-slider-thumb { box-shadow: var(--tb-raise), 0 0 0 1px var(--tb-border-strong), var(--tb-ring); }
+.tb-range:focus-visible::-moz-range-thumb { box-shadow: var(--tb-raise), 0 0 0 1px var(--tb-border-strong), var(--tb-ring); }
 .tb-upload { box-shadow: var(--tb-sink); }
 .tb-date-button { top: 1px; right: 1px; bottom: 1px; width: calc(var(--tb-control) - 2px); border-left: 1px solid var(--tb-border-strong); border-radius: 0; background: var(--tb-face); box-shadow: var(--tb-raise); color: var(--tb-text); }
 .tb-scroll { background: var(--tb-surface); border-color: var(--tb-border-strong); box-shadow: var(--tb-sink); }
@@ -1823,6 +1847,13 @@ select.tb-input:focus { box-shadow: 0 0 0 1px var(--tb-surface), 0 0 0 3px var(-
 .tb-switch input::before { top: 3px; left: 3px; width: 12px; height: 12px; background: var(--tb-muted); box-shadow: none; }
 .tb-switch input:checked { border-color: var(--tb-primary); }
 .tb-switch input:checked::before { transform: translateX(20px); background: var(--tb-on-primary); }
+/* a slider: a thin line, and a white handle with a dot of the accent that grows under the pointer */
+.tb-range::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: linear-gradient(to right, var(--tb-primary) var(--tb-at, 0%), var(--tb-muted) var(--tb-at, 0%)); }
+.tb-range::-moz-range-track { height: 4px; border-radius: 2px; background: linear-gradient(to right, var(--tb-primary) var(--tb-at, 0%), var(--tb-muted) var(--tb-at, 0%)); }
+.tb-range::-webkit-slider-thumb { margin-top: -8px; border: 0; background: radial-gradient(circle, var(--tb-primary) 0 5px, var(--tb-surface) 5.5px); box-shadow: 0 0 0 1px var(--tb-border), var(--tb-shadow-1); }
+.tb-range::-moz-range-thumb { border: 0; background: radial-gradient(circle, var(--tb-primary) 0 5px, var(--tb-surface) 5.5px); box-shadow: 0 0 0 1px var(--tb-border), var(--tb-shadow-1); }
+.tb-range:hover::-webkit-slider-thumb { background: radial-gradient(circle, var(--tb-primary) 0 6px, var(--tb-surface) 6.5px); transform: none; }
+.tb-range:active::-webkit-slider-thumb { background: radial-gradient(circle, var(--tb-primary) 0 4px, var(--tb-surface) 4.5px); transform: none; }
 .tb-switch input:focus-visible { box-shadow: 0 0 0 1px var(--tb-surface), 0 0 0 3px var(--tb-focus-ring); }
 /* tabs: plain words; a short pill of the accent under the chosen one */
 .tb-tablist { gap: var(--tb-space-1); box-shadow: none; }

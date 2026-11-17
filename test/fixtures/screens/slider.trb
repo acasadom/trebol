@@ -1,0 +1,13 @@
+Trebol [title: "Sliders"]
+
+sent: none
+moved: 0
+
+view [
+    form [
+        slider volume "Volume" 0 50 step 5 [moved: moved + 1]
+        slider level "Level"
+        slider speed "Speed" 0.5 2.5 step 0.25
+        submit "Save" [sent: values]
+    ]
+]

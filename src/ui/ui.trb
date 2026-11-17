@@ -65,6 +65,7 @@ face: make object! [
     links: none         ; a lookup: the screen each value links to when readonly, a map
     query: none         ; a lookup: the text last searched for
     currency: none      ; a money field's currency code: EUR
+    step: none          ; a slider: how far one move takes it; none is 1
     reactions: none     ; react, is and calc: a block of reaction objects
     template: none      ; rows: the block of the fields of one row
     built: none         ; rows: what its rows were last made from
@@ -98,7 +99,7 @@ face: make object! [
 styles: make map! []
 
 container-styles: [view column row form panel grid dialog scroll split toolbar desktop]
-input-styles: [field password number money date area rich check toggle choice radio upload photo lookup rows widget]
+input-styles: [field password number money date area rich check toggle choice radio upload photo lookup rows widget slider]
 data-styles: [table list tree chart board]
 
 foreach [name base] [
@@ -106,7 +107,7 @@ foreach [name base] [
     title title  heading heading  text text  divider divider
     field field  password password  number number  money money  date date  area area  rich rich  check check  choice choice
     toggle toggle  radio radio  upload upload  photo photo  lookup lookup  progress progress  image image  backdrop backdrop  icon icon
-    video video  audio audio  widget widget
+    video video  audio audio  widget widget  slider slider
     button button  link link  tile tile  table table  list list  tabs tabs  tab tab  steps steps  step step
     toolbar toolbar  breadcrumb breadcrumb  tree tree  screens screens  screen screen  rows rows  entry entry
     canvas canvas  chart chart  orbit orbit  board board
@@ -150,7 +151,7 @@ flags: [fill fit hidden disabled readonly inert narrow-only wide-only linked rou
 chart-kinds: [bar line area pie]
 simple-rules: [required email url integer]
 letter: charset [#"a" - #"z" #"A" - #"Z"]
-rule-words: [min max length pattern match check check-async calc react is width pad gap menu accept known links sorted key morph poster captions mark by card]
+rule-words: [min max length pattern match check check-async calc react is width pad gap menu accept known links sorted key morph poster captions mark by card step]
 media-styles: [video audio]
 media-flags: [loop muted autoplay]   ; of a video or a sound
 
@@ -343,6 +344,7 @@ ui-takes: [
     pad "a step from 0 to 7, none or wide"  gap "a step from 0 to 7, none or wide"  key "a text or a word"
     morph "a name, 'logo, or a block, [client id]"  mark "an icon and its label, #list ^"List^""
     by "the field that names the lane of a card, by status"  card "a block of the fields a card shows"
+    step "a number above 0"
 ]
 
 ; Every word the dialect knows, for ui-suggest.
@@ -499,6 +501,9 @@ build-faces: function [
         ; a link to a screen: link "Clients" 'clients, link "Ada" 'client/42
         | set v lit-word! (f/value: to word! v)
         | set v lit-path! (f/value: to path! v)
+        ; slider volume "Volume" 0 100: the least and the most it takes
+        | if (f/style = 'slider) set a number! set n number! (add-rule f reduce ['min a]  add-rule f reduce ['max n])
+        | 'step set n number! if (f/style = 'slider) (f/step: n)
         | set n integer! (f/cols: n)
         | set p pair! (f/extent: p)
         | set w word! if (all [f/style = 'chart  find chart-kinds w]) (f/kind: w)
@@ -572,6 +577,7 @@ build-faces: function [
                 ]
             ]
             (if f/style = 'rows [rows-fill f])
+            (if f/style = 'slider [slider-fill f pos])
             (if f/style = 'board [
                 unless f/lanes [ui-problem pos "a board takes a block with a word and a label for each lane"]
                 unless f/field [ui-problem pos "a board takes by and the field that names the lane of a card: by status"]
@@ -589,6 +595,27 @@ build-faces: function [
         ]
     ]]
     out
+]
+
+; A slider goes from 0 to 100 unless told, one at a time, and starts at its least.
+slider-fill: function [f place [block!]] [
+    unless rule-of f 'min [add-rule f copy [min 0]]
+    unless rule-of f 'max [add-rule f copy [max 100]]
+    low: rule-of f 'min  high: rule-of f 'max
+    unless all [number? low  number? high  low < high] [
+        ui-problem place "a slider takes its least and its most as two numbers, the least first: 0 100"
+        exit
+    ]
+    if all [f/step  any [f/step <= 0  f/step > (high - low)]] [
+        ui-problem place "a slider's step is a number above 0 and no more than its most less its least"
+    ]
+    if none? f/value [f/value: low]
+]
+
+; Where a slider stands for a number given to it: within its least and most.
+slider-at: function [f v] [
+    unless number? :v [return f/value]
+    max rule-of f 'min min rule-of f 'max v
 ]
 
 spacing: func [n [integer!] place [block!]] [
@@ -1987,6 +2014,7 @@ ui-input: function [
 ] [
     f/value: switch/default f/style [
         number [any [attempt [to decimal! new]  none]]
+        slider [slider-at f attempt [to decimal! new]]
         ; the host gives the amount as 1234.5, whatever the language
         money [all [new  attempt [to money! rejoin [any [f/currency ""] "$" new]]]]
         ; and a date as 2026-11-03
@@ -1994,7 +2022,7 @@ ui-input: function [
         check [to logic! new]
         toggle [to logic! new]
     ] [new]
-    if f/style = 'number [
+    if find [number slider] f/style [
         if all [decimal? f/value  f/value = to integer! f/value] [f/value: to integer! f/value]
     ]
     ; text that is not a number, amount or date stays on screen, with its message

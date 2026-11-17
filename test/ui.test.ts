@@ -202,6 +202,12 @@ describe('layout', () => {
     assert.equal((await problems('view [board jobs [todo "To do"]]'))[0],
       'layout: a board takes by and the field that names the lane of a card: by status');
     assert.equal((await problems('view [board jobs by status]'))[0], 'layout: a board takes a block with a word and a label for each lane');
+    // a slider's ends go least first, and its step fits between them
+    assert.equal((await problems('view [slider v "V" 50 10]'))[0],
+      'layout: a slider takes its least and its most as two numbers, the least first: 0 100');
+    assert.equal((await problems('view [slider v "V" 0 10 step 0]'))[0],
+      'layout: a slider\'s step is a number above 0 and no more than its most less its least');
+    await runSource(host, 'view [slider v "V" step 5]', 'app.trb');
     // an on- word that no event has
     assert.deepEqual(await problems('view [field name on-chnage [print 1]]'),
       ['layout: on-chnage is not an event; did you mean on-change?', '[on-chnage [print 1]]', 'app.trb:1:18']);

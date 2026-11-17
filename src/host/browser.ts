@@ -322,6 +322,8 @@ function build(face: ObjectCell): HTMLElement {
     node = buildCheck(face, m, style === 'toggle');
   } else if (style === 'radio') {
     node = buildRadio(face, m);
+  } else if (style === 'slider') {
+    node = buildSlider(face, m);
   } else if (style === 'upload') {
     node = buildUpload(face, m);
   } else if (style === 'photo') {
@@ -1521,6 +1523,79 @@ function buildCheck(face: ObjectCell, m: Mounted, toggle: boolean): HTMLElement 
   m.label = caption;
   m.error = error;
   return row;
+}
+
+// A slider: the browser's range input on a track filled up to where it stands, and the number it
+// stands at after it, written in the active language. Its arrows, Home, End and Page keys move it.
+function buildSlider(face: ObjectCell, m: Mounted): HTMLElement {
+  const id = `tb-${nextId++}`;
+  const wrap = el('div', 'tb-field');
+  const label = el('label', 'tb-label');
+  label.htmlFor = id;
+  const control = el('div', 'tb-control');
+  const line = el('div', 'tb-slider');
+  const input = el('input', 'tb-range');
+  input.type = 'range';
+  input.id = id;
+  const name = word(face, 'name');
+  if (name !== null) input.name = name;
+  const out = el('output', 'tb-slider-value');
+  out.htmlFor.add(id);
+  const error = el('div', 'tb-error');
+  error.id = `${id}-error`;
+  error.setAttribute('aria-live', 'polite');
+  input.setAttribute('aria-describedby', error.id);
+  input.addEventListener('input', () => {
+    m.typing++;
+    const settled = (): void => { m.typing--; };
+    void fire('ui-input', face, string(input.value)).then(settled, settled);
+  });
+  // letting it go, or a key that moved it, is leaving it: its rules show
+  input.addEventListener('change', () => void fire('ui-blur', face));
+  line.append(input, out);
+  control.append(line, error);
+  wrap.append(label, control);
+  m.input = input;
+  m.label = label;
+  m.error = error;
+  m.box = out;
+  return wrap;
+}
+
+function ruleAmount(face: ObjectCell, rule: string): number | null {
+  const rules = get(face, 'rules');
+  if (rules.t !== K.Block) return null;
+  for (const r of rules.s.data) {
+    if (r.t === K.Block && r.s.data[0]?.t === K.Word && spell((r.s.data[0] as WordCell).sym) === rule) {
+      const v = r.s.data[1];
+      return v === undefined ? null : amountOf(v);
+    }
+  }
+  return null;
+}
+
+function syncSlider(m: Mounted, err: string | null): void {
+  const f = m.face;
+  const input = m.input as HTMLInputElement;
+  m.label!.textContent = str(f, 'text') ?? '';
+  m.label!.classList.toggle('tb-required', required(f));
+  const low = ruleAmount(f, 'min') ?? 0;
+  const high = ruleAmount(f, 'max') ?? 100;
+  const step = amountOf(get(f, 'step')) ?? 1;
+  input.min = String(low);
+  input.max = String(high);
+  input.step = String(step);
+  const v = get(f, 'value');
+  const at = amountOf(v) ?? low;
+  // while it is dragged, the browser draws it where the pointer is
+  if (m.typing === 0 && input.valueAsNumber !== at) input.value = String(at);
+  const shown = v.t === K.None ? low.toLocaleString(activeLanguage(host.rt)) : display(v);
+  m.box!.textContent = shown;
+  input.setAttribute('aria-valuetext', shown);
+  input.style.setProperty('--tb-at', `${high > low ? ((at - low) / (high - low)) * 100 : 0}%`);
+  input.disabled = flag(f, 'disabled') || flag(f, 'readonly');
+  input.setAttribute('aria-invalid', err !== null ? 'true' : 'false');
+  m.error!.textContent = err ?? '';
 }
 
 function buildRadio(face: ObjectCell, m: Mounted): HTMLElement {
@@ -4599,6 +4674,7 @@ function sync(m: Mounted): void {
   space(m.el, 'gap', get(f, 'gap'));
 
   if (style === 'radio') return syncRadio(m, err);
+  if (style === 'slider') return syncSlider(m, err);
   if (style === 'upload') return syncUpload(m, err);
   if (style === 'photo') return syncPhoto(m, err);
   if (style === 'widget') return syncWidget(m, err);
