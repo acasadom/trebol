@@ -1,0 +1,11 @@
+Trebol [title: "A tree whose rows are chosen"]
+
+view [
+    global shop: tree [name] on-select [picked/text: rejoin ["Chosen: " row/name]]
+        menu ["Rename" rename] on-menu [picked/text: rejoin [form event/picked " " row/name]]
+    picked: text "Chosen: nothing"
+]
+
+shop/data: reduce [
+    make map! [name: "Shop" expanded: true children: [#(name: "Bikes" children: [#(name: "Road")]) #(name: "Parts")]]
+]

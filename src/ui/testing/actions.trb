@@ -5,7 +5,7 @@
 text-styles: [field password number money date date-range time area rich slider]
 
 click: function [
-    "Clicks a button, link, tile, check, toggle, tab or a step done, the row of a table or list that shows a text, or a node of an orbit."
+    "Clicks a button, link, tile, check, toggle, tab or a step done, the row of a table, list or tree that shows a text, or a node of an orbit."
     what [string! word!] "What it shows, or a field's name"
     /local f p row id t back done
 ] [
@@ -36,10 +36,10 @@ click: function [
                 ]
             ]
         ]
-        ; a row of a table or list
+        ; a row of a table, list or tree
         foreach [f p] test-shown [
-            if all [find [table list] f/style  block? f/data] [
-                foreach row f/data [
+            if all [find [table list tree] f/style  block? f/data] [
+                foreach row test-row-list f [
                     if find test-cells f row what [
                         if any [f/disabled  f/inert] [do make error! rejoin ["click: " mold what " cannot be used now"]]
                         ui-select f row
@@ -125,7 +125,7 @@ choose: function [
 ]
 
 pick-menu: function [
-    "Chooses an item of the menu a button opens, of the context menu of a face, or of the row of a table or list that shows a text."
+    "Chooses an item of the menu a button opens, of the context menu of a face, or of the row of a table, list or tree that shows a text."
     what [string! word!] "What the face or row shows, or a face's name"
     item [string! block!] {The item's text; ["Move to" "Top"] for one in a submenu}
     /local f p row i
@@ -134,8 +134,8 @@ pick-menu: function [
     if string? what [
         ; foreach keeps its words to itself
         foreach [f p] test-shown [
-            if all [find [table list] f/style  block? f/data  f/menu] [
-                foreach r f/data [if find test-cells f r what [on: f  row: r  break]]
+            if all [find [table list tree] f/style  block? f/data  f/menu] [
+                foreach r test-row-list f [if find test-cells f r what [on: f  row: r  break]]
                 if row [break]
             ]
         ]
@@ -162,7 +162,7 @@ pick-menu: function [
     true
 ]
 
-; [face row index ...] of the rows of the tables and lists on show that show a text.
+; [face row index ...] of the rows of the tables and lists on show that show a text (drag moves them by index).
 test-rows: function [what /local f p] [
     out: copy []
     if string? what [

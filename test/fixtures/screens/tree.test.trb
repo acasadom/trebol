@@ -1,0 +1,8 @@
+Trebol [title: "Choosing the rows of a tree"]
+
+"rows of a tree"
+[see "Shop"  see "Parts"  see/not "Road"]
+[click "Parts"  see "Chosen: Parts"]
+[click "Shop"  see "Chosen: Shop"]
+[pick-menu "Bikes" "Rename"  see "rename Bikes"]
+[error? try [click "Road"]]
