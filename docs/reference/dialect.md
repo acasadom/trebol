@@ -210,6 +210,14 @@ A flag.
 
 Cuts an image to a circle, as for a person's photo: `image %ada.jpg "Ada" 48x48 round`.
 
+(word-count)=
+## count
+
+A flag.
+
+A text, heading or title whose number, percent or amount changes runs from the old one to the new, in about
+half a second: `title count is [total]`. Not the first it shows, nor with less motion asked for.
+
 (word-drag)=
 ## drag
 

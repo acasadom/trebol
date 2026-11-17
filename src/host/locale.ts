@@ -3,9 +3,43 @@
 // core keeps its own language-neutral form/mold.
 
 import {
-  K, native, value, string, form, text, formatDec, spell, ctxFind, intern,
+  K, native, value, string, form, text, formatDec, spell, ctxFind, intern, integer, decimal, percent, money, dec,
+  decToNumber, I64,
   type Cell, type ObjectCell, type StringCell, type WordCell, type MapCell, type Runtime,
 } from '../core/index.ts';
+
+/** How much a number, a percent or an amount is, as a JavaScript number; null for anything else. */
+export function amountOf(c: Cell): number | null {
+  switch (c.t) {
+    case K.Integer: return I64.toNumber(c.v);
+    case K.Decimal: case K.Percent: return c.v;
+    case K.Money: return decToNumber(c.v);
+    default: return null;
+  }
+}
+
+/** The digits after the point a decimal number is written with. */
+function fractionDigits(n: number): number {
+  const m = /\.(\d+)|e-(\d+)/.exec(String(n));
+  return m === null ? 0 : m[1] !== undefined ? m[1].length : Number(m[2]);
+}
+
+/**
+ * What a number that counts shows at x on its way to `to` (a text with `count`): a value of the kind of `to`,
+ * with no more digits than it has, so the run reads as the number it ends on.
+ */
+export function countStep(to: Cell, x: number): Cell {
+  switch (to.t) {
+    case K.Integer: return integer(Math.round(x));
+    case K.Money: return money(dec(BigInt(Math.round(x * 10 ** to.v.e)), to.v.e), to.cur);
+    case K.Decimal: case K.Percent: {
+      const k = 10 ** fractionDigits(to.v);
+      const v = Math.round(x * k) / k;
+      return to.t === K.Decimal ? decimal(v) : percent(v);
+    }
+    default: return to;
+  }
+}
 
 /** The kinds `localize` formats; anything else shows as `form` gives it. */
 export const LOCAL_KINDS: ReadonlySet<number> = new Set([K.Date, K.Time, K.Integer, K.Decimal, K.Percent, K.Money]);

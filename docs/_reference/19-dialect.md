@@ -127,6 +127,11 @@ with `linked`, whose arrow is at the other corner.
 
 Cuts an image to a circle, as for a person's photo: `image %ada.jpg "Ada" 48x48 round`.
 
+## count
+
+A text, heading or title whose number, percent or amount changes runs from the old one to the new, in about
+half a second: `title count is [total]`. Not the first it shows, nor with less motion asked for.
+
 ## drag
 
 It can be dragged: it carries its value, or the row in a table, list or tree.

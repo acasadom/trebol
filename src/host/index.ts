@@ -18,7 +18,7 @@ export { output } from './natives.ts';
 export { fileHandle } from './net.ts';
 export { setShareEnv, type ShareEnv, type ChannelLike, type LocksLike, type Envelope } from './share.ts';
 export { page } from './page.ts';
-export { mapAt, formatLocal, activeLanguage, shown, translate, uiText, editLocal, readLocal, readDate, weekStart, fileSize, LOCAL_KINDS } from './locale.ts';
+export { mapAt, formatLocal, activeLanguage, shown, translate, uiText, editLocal, readLocal, readDate, weekStart, fileSize, LOCAL_KINDS, amountOf, countStep } from './locale.ts';
 export type { Loader } from './modules.ts';
 export * from './scheduler.ts';
 

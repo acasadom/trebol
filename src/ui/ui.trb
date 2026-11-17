@@ -39,6 +39,7 @@ face: make object! [
     mark: none          ; a tile: a second, small icon on its own (#list), and what it says (mark-text)
     mark-text: none
     round: false        ; an image: cut to a circle, as for a person's photo
+    count: false        ; a text whose number changes runs from the old one to the new
     tag: none           ; a widget: the name of the element it is, as the page's JavaScript defines it
     props: none         ; a widget: the element's properties, an object
     poster: none        ; a video: the image shown before it plays
@@ -143,7 +144,7 @@ roles: [primary accent danger success warning muted]
 sizes: [small medium large]
 aligns: [left center right spread]
 valigns: [top middle bottom]
-flags: [fill fit hidden disabled readonly inert narrow-only wide-only linked round drag drop reorder multiple sortable stacked]
+flags: [fill fit hidden disabled readonly inert narrow-only wide-only linked round drag drop reorder multiple sortable stacked count]
 chart-kinds: [bar line area pie]
 simple-rules: [required email url integer]
 letter: charset [#"a" - #"z" #"A" - #"Z"]

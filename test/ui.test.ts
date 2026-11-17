@@ -5,8 +5,8 @@ import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { K, NONE, UNSET, spell, TRUE, FALSE, native, value, mold, form, string, text, money, blockOf, errorField, type Cell, type ObjectCell, type StringCell } from '../src/core/index.ts';
-import { startHost, startUi, runSource, readLocal, editLocal, readDate, weekStart, fileSize, translate, uiText, type Host } from '../src/host/index.ts';
+import { K, NONE, UNSET, load, spell, TRUE, FALSE, native, value, mold, form, string, text, money, blockOf, errorField, type Cell, type ObjectCell, type StringCell } from '../src/core/index.ts';
+import { startHost, startUi, runSource, readLocal, editLocal, readDate, weekStart, fileSize, translate, uiText, amountOf, countStep, shown as shownLocal, type Host } from '../src/host/index.ts';
 import { fileHandle } from '../src/host/net.ts';
 import { themeCss, DEFAULT_THEME, LOOKS, palette, contrast, contrastOverImage, scrimAlpha, CONTRAST_PAIRS } from '../src/host/theme.ts';
 
@@ -1478,4 +1478,17 @@ test('the palette finds screens, buttons, links and menu items on show, and what
   // the view opens on the screen of the link, which the next ones change
   assert.equal(await ev(app + 'found: ui-palette v "ada"  ui-palette-pick v found/2 found/4  main/value'), '[client "1"]');
   assert.equal(await ev(app + 'found: ui-palette v "about"  ui-palette-pick v found/2 found/4  main/value'), '[about]');
+});
+
+test('a number that counts runs through values of the kind and digits of the one it ends on', () => {
+  const lang = 'en';
+  const value = (src: string): Cell => load(src).s.data[0]!;
+  const at = (to: Cell, x: number): string => shownLocal(countStep(to, x), lang);
+  assert.equal(at(value('1200'), 512.7), '513');
+  assert.equal(at(value('12.5'), 3.14159), '3.1');
+  assert.equal(at(value('12.5%'), 0.031234), '3.1%');
+  assert.equal(at(value('EUR$1200'), 512.678), '€513.00');
+  assert.equal(at(value('EUR$12.50'), 3.14159), '€3.10');
+  assert.equal(amountOf(value('EUR$12.50')), 12.5);
+  assert.equal(amountOf(value('"12"')), null);
 });

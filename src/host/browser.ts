@@ -19,7 +19,7 @@ import { logic,
   K, NONE, TRUE, FALSE, native, value, string, form, money, decToNumber, decFromNumber, ctxFind, getWord, intern, spell, text, canon, blockOf, wordOf, char, compare, UNSET, throwError, toJson, parseJson,
   type Cell, type MapCell, type ObjectCell, type BlockCell, type WordCell, type StringCell, type Ctx, type Sym,
 } from '../core/index.ts';
-import { mapAt, startHost, startUi, runSource, report, shown, translate, uiText, activeLanguage, editLocal, readLocal, readDate, weekStart, fileSize, LOCAL_KINDS, type Host } from './index.ts';
+import { mapAt, startHost, startUi, runSource, report, shown, translate, uiText, activeLanguage, editLocal, readLocal, readDate, weekStart, fileSize, LOCAL_KINDS, amountOf, countStep, type Host } from './index.ts';
 import { spawn, runNow, taskResult, handleOf, type HostTask } from './scheduler.ts';
 import { themeCss, DEFAULT_THEME, LOOKS, THEME_WORDS, type ThemeParams } from './theme.ts';
 import { iconNode } from './icons.ts';
@@ -1380,6 +1380,49 @@ function focusProblem(scope: HTMLElement | null): void {
     const m = byNode.get(i);
     if (m !== undefined && get(m.face, 'error').t === K.String) return i.focus();
   }
+}
+
+// --- numbers that count ------------------------------------------------------------
+
+/** A text with `count`: the number it last showed, and the run on its way to a new one. */
+const counts = new WeakMap<Mounted, { was: Cell; now: number; frame: number }>();
+const COUNT_MS = 600;
+
+/**
+ * A text with `count` whose number changed runs from the old one to the new in the kind and digits of the new,
+ * easing out, formatted for the active language at each frame; true while it runs, so sync leaves the text alone.
+ * The first number it shows, a change of kind or currency, or a page that may not move, shows the new one at once.
+ */
+function countRun(m: Mounted, to: Cell): boolean {
+  const end = amountOf(to);
+  const c = counts.get(m);
+  if (end === null) {
+    if (c !== undefined) cancelAnimationFrame(c.frame);
+    counts.delete(m);
+    return false;
+  }
+  if (c === undefined) {
+    counts.set(m, { was: to, now: end, frame: 0 });
+    return false;
+  }
+  const running = c.frame !== 0;
+  const same = c.was.t === to.t && (to.t !== K.Money || (c.was as typeof to).cur === to.cur);
+  if (same && amountOf(c.was) === end) return running;
+  const from = running ? c.now : amountOf(c.was)!;
+  cancelAnimationFrame(c.frame);
+  c.was = to;
+  c.frame = 0;
+  c.now = end;
+  if (!same || from === end || !mayMove()) return false;
+  const start = performance.now();
+  const step = (t: number): void => {
+    const p = Math.min(1, (t - start) / COUNT_MS);
+    c.now = from + (end - from) * (1 - (1 - p) ** 3);
+    m.el.textContent = display(p === 1 ? to : countStep(to, c.now));
+    c.frame = p === 1 ? 0 : requestAnimationFrame(step);
+  };
+  c.frame = requestAnimationFrame(step);
+  return true;
 }
 
 function buildInput(face: ObjectCell, style: string, m: Mounted): HTMLElement {
@@ -4613,6 +4656,7 @@ function sync(m: Mounted): void {
   switch (style) {
     case 'title': case 'heading': case 'text': {
       const tv = get(f, 'text');
+      if (flag(f, 'count') && countRun(m, tv)) break;
       m.el.textContent = tv.t === K.None ? '' : tv.t === K.Map || tv.t === K.Word ? translate(tv, host.rt) : display(tv);
       break;
     }
