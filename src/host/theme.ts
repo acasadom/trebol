@@ -943,6 +943,13 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
 .tb-list-secondary { color: var(--tb-muted); font-size: 13px; }
 .tb-list-secondary:empty { display: none; }
 
+/* a board: its lanes side by side, scrolling sideways when they do not fit, and each card on its own */
+.tb-board { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(200px, 1fr); gap: var(--tb-space-4); align-items: stretch; overflow-x: auto; padding-bottom: var(--tb-space-2); }
+.tb-board > .tb-panel { background: var(--tb-bg); box-shadow: none; padding: var(--tb-space-4); gap: var(--tb-space-3); min-height: 160px; }
+.tb-board .tb-list { display: flex; flex-direction: column; gap: var(--tb-space-2); background: none; border: 0; box-shadow: none; overflow: visible; }
+.tb-board .tb-list > li, .tb-board .tb-list > li:last-child { background: var(--tb-surface); border: var(--tb-line) solid var(--tb-border); border-radius: var(--tb-radius); box-shadow: var(--tb-shadow-1); }
+.tb-board .tb-empty { display: none; }
+
 /* dialogs: centered window, full screen when narrow */
 .tb-dialog {
   border: 0;

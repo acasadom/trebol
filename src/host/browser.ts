@@ -346,6 +346,7 @@ function build(face: ObjectCell): HTMLElement {
         break;
       }
       case 'grid': node = el('div', 'tb-grid'); break;
+      case 'board': node = el('div', 'tb-board'); break;
       case 'desktop': node = el('div', 'tb-desktop'); break;
       case 'scroll': {
         // focusable, so keyboard users can scroll it too
@@ -740,6 +741,8 @@ function moveTargets(face: ObjectCell, payload: Cell): MenuEntry[] {
   for (const z of dropZones) {
     if (!z.el.isConnected) { dropZones.delete(z); continue; }
     if (z.face.ctx === face.ctx || z.el.getClientRects().length === 0) continue;
+    // nor the place it is already in: the lane of a card
+    if (z.el.contains(byCtx.get(face.ctx)?.el ?? null)) continue;
     // a nameless zone around a named one is the same place
     if (str(z.face, 'text') === null && z.el.querySelector('.tb-drop-zone') !== null) continue;
     out.push({
@@ -4679,6 +4682,8 @@ function sync(m: Mounted): void {
       m.el.title = tip === null ? '' : keys === null ? tip : `${tip} (${shortcutLabel(keys)})`;
       break;
     }
+    // its data may have changed: the dialect deals the cards to their lanes again, if they moved
+    case 'board': void fire('ui-board', f); break;
     case 'progress': syncProgress(m); return;
     case 'canvas': syncCanvas(m); return;
     case 'chart': syncChart(m); return;

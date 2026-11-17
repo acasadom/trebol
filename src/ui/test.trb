@@ -103,6 +103,8 @@ test-shown: function [] [
 test-walk: function [f parent out] [
     ; on a wide screen, as the tests see it
     if any [f/hidden  f/narrow-only] [exit]
+    ; a browser deals a board's cards again when its data changes; here, when it is looked at
+    if f/style = 'board [ui-board f]
     append out reduce [f parent]
     unless block? f/pane [exit]
     case [

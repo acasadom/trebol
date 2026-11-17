@@ -162,6 +162,56 @@ workshop/data: bookings
 A list suits a narrow column beside a form, or a phone; a table suits the screen where the rows are the
 work.
 
+## A board
+
+Work that goes through stages reads best as a board: a lane for each stage, and a card for each job in the lane
+it has reached. `board` takes the field that names the stage after `by`, then a word and a label for each lane:
+
+```trebol-ui
+view [
+    global board jobs by status [todo "To do" doing "In the shop" done "Ready"]
+        card [title "Job" customer "Customer"]
+        on-drop [toast reform [event/row/title "is" event/to]]
+]
+
+jobs/data: [
+    #(title: "Fix brakes" customer: "Ada Lovelace" status: todo)
+    #(title: "True wheel" customer: "Grace Hopper" status: todo)
+    #(title: "New chain" customer: "Alan Turing" status: doing)
+]
+```
+
+Dragging a card to another lane, or choosing *Move to* in its menu (right click, or the Menu key), writes that
+lane in its `status` and runs `on-drop`, which sees the row, where it was (`event/from`) and where it went
+(`event/to`). The place to tell the server is there; when `on-drop` gives `false` the card goes back to its
+lane. Giving the board its `data` again deals the cards again, so a change made elsewhere shows.
+
+When each job has a machine, as in the language tutorial's page on machines, the lanes are its states. A card
+moves only where its machine has a way to from where it is, and the drop takes that way:
+
+```trebol-ui
+job: [
+    initial waiting
+    state waiting []
+    state doing []
+    state done []
+    from waiting to doing on start
+    from doing to done on finish
+    from doing to waiting on stop
+]
+
+view [
+    global board jobs by step [waiting "To do" doing "In the shop" done "Ready"]
+]
+
+jobs/data: reduce [
+    make map! reduce ['title "Fix brakes" 'step machine job]
+    make map! reduce ['title "New chain" 'step machine job]
+]
+```
+
+Here *Fix brakes* cannot go straight to *Ready*: it has to be in the shop first.
+
 ## Pictures
 
 A column followed by `image` shows each row's picture instead of its text: the field holds the picture's

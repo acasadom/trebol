@@ -238,3 +238,8 @@ test('attach chooses files next to the test for an upload or photo, refuses what
     '6 tests, 2 failed.',
   ]);
 });
+
+test('a board deals its cards to lanes; a drop sets the field, or takes the way of a machine to that state', async () => {
+  const { passed, lines } = await ran(['test/fixtures/screens/board.test.trb']);
+  assert.ok(passed, lines.join('\n'));
+});

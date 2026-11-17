@@ -123,6 +123,14 @@ so two tiles with the same icon tell what each one is. Its label, a text, a text
 dictionary, goes right after its icon, and a screen reader says it after the tile's: "Records, List". It goes
 with `linked`, whose arrow is at the other corner.
 
+## by
+
+The field that names the lane of each card of a board: `board jobs by status [...]`.
+
+## card
+
+The fields a card of a board shows, as the columns of a list: `card [title "Job" who "Mechanic"]`.
+
 ## round
 
 Cuts an image to a circle, as for a person's photo: `image %ada.jpg "Ada" 48x48 round`.

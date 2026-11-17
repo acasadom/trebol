@@ -255,6 +255,16 @@ field, and `image round` cuts it to a circle: `table people [photo "" image roun
 The same rows as a table, as a list: the first field stands out and the rest go on a second line. The picture of
 a column of images goes first.
 
+## board
+
+Cards in lanes: `board jobs by status [todo "To do" doing "Doing" done "Done"]` makes a lane for each word, with
+its label, and puts in it, as a card, each row of its `data` whose `status` names it, a word or a text. A card
+shows the row's `title`, or the fields of `card [title "Job" who "Mechanic"]`, the first one large, as a list
+does. A card can be dragged to another lane, or moved there from its menu; then its field names that lane and
+`on-drop` runs, with `event/row`, `event/from` and `event/to`: when it gives `false`, the card goes back.
+`on-select` sees the card chosen as `row`. When the field holds a machine, a lane is a state: a card goes to the
+lane only by a way of its machine from where it is to that state, whose event the drop sends.
+
 ## tabs
 
 Tabs, each with its title and its block: `tabs ["General" [...] "Advanced" [...]]`. Its value is the number of

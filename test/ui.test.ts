@@ -197,6 +197,11 @@ describe('layout', () => {
     assert.deepEqual(await problems('view [button "Go" hiden]'),
       ['layout: hiden is not a word of button; did you mean hidden?', '[hiden]', 'app.trb:1:19']);
     assert.deepEqual(await problems('view [text "a" loop]'), ['layout: loop is not a word of text', '[loop]', 'app.trb:1:16']);
+    // a board needs its lanes and the field that names them
+    assert.equal((await problems('view [board jobs by status [todo]]'))[0], 'layout: a board takes a word and a label for each lane');
+    assert.equal((await problems('view [board jobs [todo "To do"]]'))[0],
+      'layout: a board takes by and the field that names the lane of a card: by status');
+    assert.equal((await problems('view [board jobs by status]'))[0], 'layout: a board takes a block with a word and a label for each lane');
     // an on- word that no event has
     assert.deepEqual(await problems('view [field name on-chnage [print 1]]'),
       ['layout: on-chnage is not an event; did you mean on-change?', '[on-chnage [print 1]]', 'app.trb:1:18']);

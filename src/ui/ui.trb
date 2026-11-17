@@ -3,7 +3,7 @@ Trebol [
     exports: [
         face styles stylize rule layout view theme looks open close toast confirm print-page
         validate-face field-error form-values set-values insert-text ui-pane ui-input ui-files ui-remove-file ui-lookup-search ui-lookup-pick ui-lookup-remove ui-blur ui-click ui-select ui-sort ui-close ui-event ui-menu ui-drop ui-reorder ui-crumb ui-expand ui-orbit ui-palette ui-palette-pick ui-toast-undo ui-toast-gone ui-toasts-done ui-toasts-on ui-step ui-step-go
-        go go-back go-forward can-go-back? can-go-forward? unsaved unsaved? ui-route set-language ui-rows ui-check ui-react
+        go go-back go-forward can-go-back? can-go-forward? unsaved unsaved? ui-route set-language ui-rows ui-board ui-check ui-react
     ]
 ]
 
@@ -99,7 +99,7 @@ styles: make map! []
 
 container-styles: [view column row form panel grid dialog scroll split toolbar desktop]
 input-styles: [field password number money date area rich check toggle choice radio upload photo lookup rows widget]
-data-styles: [table list tree chart]
+data-styles: [table list tree chart board]
 
 foreach [name base] [
     view column  column column  row row  form form  panel panel  grid grid  scroll scroll  desktop desktop
@@ -109,7 +109,7 @@ foreach [name base] [
     video video  audio audio  widget widget
     button button  link link  tile tile  table table  list list  tabs tabs  tab tab  steps steps  step step
     toolbar toolbar  breadcrumb breadcrumb  tree tree  screens screens  screen screen  rows rows  entry entry
-    canvas canvas  chart chart  orbit orbit
+    canvas canvas  chart chart  orbit orbit  board board
 ] [
     poke styles name make face [style: base]
 ]
@@ -124,6 +124,8 @@ poke styles 'screens make face [style: 'screens entering: false]   ; entering: t
 poke styles 'split make face [style: 'split value: 1]   ; value: the pane shown on narrow screens
 poke styles 'canvas make face [style: 'canvas extent: 300x150]
 poke styles 'chart make face [style: 'chart kind: 'bar]
+; field: the field of a row that names its lane; lanes: [word label ...]; card: the columns a card shows
+poke styles 'board make face [style: 'board  field: none  lanes: none  card: none]
 
 stylize: function [
     "Defines styles from existing ones: name: base [field: value ...]"
@@ -148,7 +150,7 @@ flags: [fill fit hidden disabled readonly inert narrow-only wide-only linked rou
 chart-kinds: [bar line area pie]
 simple-rules: [required email url integer]
 letter: charset [#"a" - #"z" #"A" - #"Z"]
-rule-words: [min max length pattern match check check-async calc react is width pad gap menu accept known links sorted key morph poster captions mark]
+rule-words: [min max length pattern match check check-async calc react is width pad gap menu accept known links sorted key morph poster captions mark by card]
 media-styles: [video audio]
 media-flags: [loop muted autoplay]   ; of a video or a sound
 
@@ -340,6 +342,7 @@ ui-takes: [
     poster "a file or a url"  captions "a file, a url or a block"  width "small, medium, large or fill"
     pad "a step from 0 to 7, none or wide"  gap "a step from 0 to 7, none or wide"  key "a text or a word"
     morph "a name, 'logo, or a block, [client id]"  mark "an icon and its label, #list ^"List^""
+    by "the field that names the lane of a card, by status"  card "a block of the fields a card shows"
 ]
 
 ; Every word the dialect knows, for ui-suggest.
@@ -474,6 +477,8 @@ build-faces: function [
                         ui-problem pos "split takes two faces, one per pane"
                     ]
                 ]
+                ; board tasks by status [todo "To do" ...]: its lanes; a second block is the action
+                all [f/style = 'board  none? f/lanes] [f/lanes: lanes-of b]
                 find data-styles f/style [f/columns: columns-of b]
                 ; the first block holds the items, the second is the action
                 all [f/style = 'breadcrumb  none? f/data] [f/data: crumbs-of b]
@@ -522,6 +527,8 @@ build-faces: function [
         | 'morph set v [lit-word! | block!] (f/morph: either block? v [v] [to word! v])
         ; tile #folder "Records" mark #list "List": the label goes right after the mark's icon
         | 'mark set v issue! set s text-rule (f/mark: v  f/mark-text: text-of s)
+        | 'by set w word! if (f/style = 'board) (f/field: w)
+        | 'card set b block! if (f/style = 'board) (f/card: columns-of b)
         | 'key set s string! (f/shortcut: s)
         | 'key set w word! (f/key: w)
         | 'sorted set b block! (f/sorted: sort-order b)
@@ -565,6 +572,11 @@ build-faces: function [
                 ]
             ]
             (if f/style = 'rows [rows-fill f])
+            (if f/style = 'board [
+                unless f/lanes [ui-problem pos "a board takes a block with a word and a label for each lane"]
+                unless f/field [ui-problem pos "a board takes by and the field that names the lane of a card: by status"]
+                board-fill f
+            ])
             ; not a style: a problem, then on to the next face
         |   pos: skip (
                 w: first pos
@@ -1387,6 +1399,99 @@ rows-store: function [f] [
     ]
 ]
 
+;--- a board: cards in lanes ------------------------------------------------------
+;
+; board tasks by status [todo "To do" doing "Doing" done "Done"]: a lane for each word, and in each, as
+; cards, the rows of its data whose status names it. A lane is a panel that takes drops, holding a list of
+; its cards that can be dragged; the board makes them, and deals the cards again when its data changes.
+
+lanes-of: function [spec [block!] /local w s] [
+    out: copy []
+    unless parse spec [some [set w word! set s text-rule (append out reduce [w text-of s])]] [
+        ui-problem spec "a board takes a word and a label for each lane"
+    ]
+    out
+]
+
+; The lane of a row: the word its field holds (a text from JSON too), or the state of its machine.
+board-lane: function [f row] [
+    v: attempt [select row f/field]
+    if machine? :v [v: v/state  if path? :v [v: first v]]
+    all [any [word? :v  string? :v]  attempt [to word! v]]
+]
+
+; Makes the lanes, and puts each card in the lane its row names, when the data or a lane changed.
+board-fill: function [f /local id label] [
+    unless all [f/lanes  f/field] [exit]
+    data: any [f/data []]
+    state: reduce [data  map-each row data [board-lane f row]]
+    if all [f/pane  state = f/built] [exit]
+    unless f/pane [
+        f/pane: collect [
+            foreach [id label] f/lanes [
+                cards: make select styles 'list [
+                    drag: true  owner: f  text: ""
+                    columns: any [f/card  columns-of [title]]
+                    events: compose/deep [on-select [board-pick (f) row]]
+                ]
+                keep make select styles 'panel [lane: id  owner: f  text: label  drop: true  pane: reduce [cards]]
+            ]
+        ]
+    ]
+    foreach lane f/pane [
+        lane/pane/1/data: collect [foreach row data [if lane/lane = board-lane f row [keep/only row]]]
+    ]
+    f/built: state
+]
+
+board-pick: function [f row] [
+    f/selected: row
+    if h: handler-for f 'on-select [run-handler f h]
+]
+
+; The event that takes machine m to the state named lane: of the first way from a state it is in to that state
+; (or into it, or to one branch of a choose there) whose event it can take now; none if there is none.
+board-way: function [m lane] [
+    into?: func [p] [all [p  lane = either path? p [first p] [p]]]
+    foreach w select graph-of m 'ways [
+        if in? m select w 'from [
+            if any [
+                into? select w 'to
+                foreach b any [select w 'branches []] [if into? select b 'to [break/return true]]
+            ] [
+                foreach e select w 'on [if can? m e [return e]]
+            ]
+        ]
+    ]
+    none
+]
+
+; A card dropped on a lane: its field names that lane, or its machine takes a way to the state of that name, if
+; it has one. on-drop sees the row moved; false puts it back. (func, so that the to: of the event is no local.)
+board-drop: func [f lane row /local there here v saved r e] [
+    there: lane/lane
+    here: board-lane f :row
+    if any [not here  here = there] [exit]
+    v: select row f/field
+    either machine? :v [
+        unless e: board-way v there [exit]
+        saved: snapshot v
+        send v e
+    ] [
+        poke row f/field either string? :v [form there] [there]
+    ]
+    r: fire-event f 'on-drop reduce [quote row: row  quote from: to lit-word! here  quote to: to lit-word! there]
+    if false = :r [either machine? :v [machine-engine/rewind v saved] [poke row f/field :v]]
+    board-fill f
+]
+
+ui-board: function [
+    "Called by the host when the data of a board may have changed."
+    f
+] [
+    board-fill f
+]
+
 ; A field of a row changed: so did the value of its rows, and of the rows those are in.
 store-around: function [f] [
     e: f/form
@@ -2062,6 +2167,8 @@ ui-drop: function [
     "Called by the host when something is dropped on a face; index is where it goes (1-based), parent the tree node."
     f dropped source index [integer!] parent
 ] [
+    ; a lane of a board
+    if all [f/owner  f/owner/style = 'board] [return board-drop f/owner f :dropped]
     fields: reduce [quote dropped: quoted :dropped  quote source: source  quote index: index]
     if f/style = 'tree [append fields reduce [quote parent: parent]]
     fire-event f 'on-drop fields
