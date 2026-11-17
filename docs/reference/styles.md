@@ -127,6 +127,9 @@ text, or a map with a `value` and a `text`. A title followed by a block is a gro
 `["Repairs" ["Brakes" "Gears"] "Other"]`. The title, like a text, may be a text per language or a word of
 the dictionary.
 
+Until one is picked it shows its hint, or *Choose…*. When it is `required` that line cannot be picked again;
+when it is not, picking it puts the value back to `none`.
+
 (style-toggle)=
 ## toggle
 

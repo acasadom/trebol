@@ -4579,7 +4579,11 @@ function sync(m: Mounted): void {
       const hint = str(f, 'hint');
       if (m.input instanceof HTMLSelectElement) {
         const select = m.input;
-        select.options[0]!.textContent = hint ?? own('choose');
+        // a required choice shows its hint until one is picked, and cannot be put back to none;
+        // one not required keeps the empty option to clear it
+        const empty = select.options[0]!;
+        empty.textContent = hint ?? own('choose');
+        empty.disabled = empty.hidden = required(f);
         optionsOf(f).forEach((o, i) => {
           const opt = select.options[i + 1];
           if (opt) opt.textContent = optionText(o);
