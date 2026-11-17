@@ -83,6 +83,18 @@ Trebol [
 [(exclude [1 2 3] [2]) = [1 3]]
 [(unique "aAbB") = "ab"]
 
+[(union charset "ab" charset "bc") = charset "abc"]
+[(intersect charset "ab" charset "bc") = charset "b"]
+[(difference charset "ab" charset "bc") = charset "ac"]
+[(exclude charset "ab" charset "bc") = charset "a"]
+[s: union complement charset "ab" charset "bc" all [not find/case s #"a" find s #"b" find s #"z"]]
+[s: intersect complement charset "ab" complement charset "bc" all [not find/case s #"c" find s #"d"]]
+[error? try [union charset "a" [1]]]
+
+"find in a bitset"
+[s: charset "ab" all [find s #"a" find s #"A" not find/case s #"A" find s "ba" not find s "az" find s 98 find s [#"a" #"b"]]]
+[(find charset "a" #"b") = false]
+
 "text"
 [(uppercase "abc") = "ABC"]
 [(lowercase "ÀBC") = "àbc"]
