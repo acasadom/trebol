@@ -23,6 +23,7 @@ jobs:
         with:
           node-version: 22
       - uses: astral-sh/setup-uv@v6
+      - run: npm ci
       - run: npm run site
       - uses: actions/upload-pages-artifact@v3
         with:
