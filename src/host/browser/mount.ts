@@ -230,6 +230,7 @@ export function build(face: ObjectCell): HTMLElement {
       case 'title': node = el('h1', 'tb-title'); break;
       case 'heading': node = el('h2', 'tb-heading'); break;
       case 'text': node = el('p', 'tb-text'); break;
+      case 'code': node = el('pre', 'tb-code'); break;
       case 'divider': node = el('hr', 'tb-divider'); break;
       case 'link': {
         const a = el('a', 'tb-link');

@@ -1523,3 +1523,9 @@ test('a number that counts runs through values of the kind and digits of the one
   assert.equal(amountOf(value('EUR$12.50')), 12.5);
   assert.equal(amountOf(value('"12"')), null);
 });
+
+test('code keeps its text as written, with its lines and spaces', async () => {
+  assert.equal(await ev(`
+    c: first layout/only [code {view [^/    text "x"^/]} muted]
+    reduce [c/style c/text c/role]`), '[code {view [\n    text "x"\n]} muted]');
+});

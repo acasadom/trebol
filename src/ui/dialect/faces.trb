@@ -97,7 +97,7 @@ data-styles: [table list tree chart board]
 
 foreach [name base] [
     view column  column column  row row  form form  panel panel  grid grid  scroll scroll  desktop desktop
-    title title  heading heading  text text  divider divider
+    title title  heading heading  text text  code code  divider divider
     field field  password password  number number  money money  date date  date-range date-range  time time  area area  rich rich  check check  choice choice
     toggle toggle  radio radio  upload upload  photo photo  lookup lookup  progress progress  image image  backdrop backdrop  icon icon
     video video  audio audio  widget widget  slider slider

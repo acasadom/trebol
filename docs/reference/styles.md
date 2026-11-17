@@ -70,6 +70,12 @@ A heading inside a page.
 
 Text. A date, a time, a number or an amount is shown in the format of the active language.
 
+(style-code)=
+## code
+
+Code, or any text shown exactly as written: in a fixed-width font, with its lines and spaces kept, and never
+translated. A line too long for the screen scrolls on its own instead of wrapping.
+
 (style-divider)=
 ## divider
 
