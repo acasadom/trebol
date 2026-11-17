@@ -137,6 +137,19 @@ words-of value
 
 - `value` (`any-object!` `map!` `any-function!`)
 
+(fn-keys-of)=
+## keys-of
+
+The words of an object or map, or the arguments, refinements and local words of a function.
+
+```text
+keys-of value
+```
+
+- `value` (`any-object!` `map!` `any-function!`)
+
+The same as `words-of`, as in R3: the keys of a map read better with it.
+
 (fn-values-of)=
 ## values-of
 

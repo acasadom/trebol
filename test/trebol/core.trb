@@ -54,6 +54,7 @@ Trebol [
 [f: func [a] [a + 1] [a + 1] = body-of :f]
 [f: func [a /r b /local c] [a] [a /r b /local c] = words-of :f]
 [[a b] = words-of func [a b] []]
+[["a" b] = keys-of make map! ["a" 1 b 2]]
 [[x /local y] = words-of function [x] [y: x]]
 [none? body-of :append]
 [block? spec-of :append]

@@ -26,6 +26,10 @@ and [contexts](../language/10-contexts.md).
 
 ## words-of
 
+## keys-of
+
+The same as `words-of`, as in R3: the keys of a map read better with it.
+
 ## values-of
 
 ## default
