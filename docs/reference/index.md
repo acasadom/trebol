@@ -82,7 +82,7 @@ draw
 
 ### I
 
-[`if`](#fn-if) · [`import`](#fn-import) · [`in`](#fn-in) · [`in?`](#fn-in-3f) · [`index?`](#fn-index-3f) · [`insert`](#fn-insert) · [`insert-text`](#fn-insert-text) · [`integer?`](#fn-integer-3f) · [`intersect`](#fn-intersect) · [`issue?`](#fn-issue-3f)
+[`iban?`](#fn-iban-3f) · [`if`](#fn-if) · [`import`](#fn-import) · [`in`](#fn-in) · [`in?`](#fn-in-3f) · [`index?`](#fn-index-3f) · [`insert`](#fn-insert) · [`insert-text`](#fn-insert-text) · [`integer?`](#fn-integer-3f) · [`intersect`](#fn-intersect) · [`issue?`](#fn-issue-3f)
 
 ### J
 
@@ -114,7 +114,7 @@ draw
 
 ### R
 
-[`random`](#fn-random) · [`read`](#fn-read) · [`read-clipboard`](#fn-read-clipboard) · [`read-file`](#fn-read-file) · [`reduce`](#fn-reduce) · [`refinement?`](#fn-refinement-3f) · [`reform`](#fn-reform) · [`refresh`](#fn-refresh) · [`rejoin`](#fn-rejoin) · [`remainder`](#fn-remainder) · [`remove`](#fn-remove) · [`remove-each`](#fn-remove-each) · [`remove-local`](#fn-remove-local) · [`repeat`](#fn-repeat) · [`replace`](#fn-replace) · [`restart`](#fn-restart) · [`return`](#fn-return) · [`reverse`](#fn-reverse) · [`reword`](#fn-reword) · [`round`](#fn-round)
+[`random`](#fn-random) · [`read`](#fn-read) · [`read-clipboard`](#fn-read-clipboard) · [`read-file`](#fn-read-file) · [`reduce`](#fn-reduce) · [`refinement?`](#fn-refinement-3f) · [`reform`](#fn-reform) · [`refresh`](#fn-refresh) · [`rejoin`](#fn-rejoin) · [`remainder`](#fn-remainder) · [`remove`](#fn-remove) · [`remove-each`](#fn-remove-each) · [`remove-local`](#fn-remove-local) · [`repeat`](#fn-repeat) · [`replace`](#fn-replace) · [`restart`](#fn-restart) · [`return`](#fn-return) · [`reverse`](#fn-reverse) · [`reword`](#fn-reword) · [`round`](#fn-round) · [`rule`](#fn-rule)
 
 ### S
 

@@ -70,6 +70,22 @@ worse: machine [initial a  state a []  from a to b on go]
   ]);
 });
 
+test('check knows the rules of the program, and finds a rule that cannot be one', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'trebol-check-'));
+  const file = join(dir, 'app.trb');
+  writeFileSync(file, `Trebol [title: "Rules"]
+rule 'even "Enter an even number" [even? to integer! value]
+rule 'email "Mine" [true]
+view [field n "N" even iban  field m "M" evn]
+`);
+  const { clean, lines } = await checked([file]);
+  assert.equal(clean, false);
+  assert.deepEqual(lines.map(l => l.slice(dir.length + 1)), [
+    'app.trb:3:1   rule: email is already a word of the dialect',
+    'app.trb:4:42  evn is not a word of field; did you mean even?',
+  ]);
+});
+
 test('a file that does not load is a problem; a clean one says so', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'trebol-check-'));
   writeFileSync(join(dir, 'bad.trb'), 'view [text "a]');

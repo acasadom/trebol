@@ -282,6 +282,14 @@ A rule.
 
 The text must be an email address.
 
+(word-iban)=
+## iban
+
+A rule, made with [`rule`](#fn-rule) as a program would make one.
+
+The text must be an IBAN: of a country that has them, of its length, with the right check digits
+([`iban?`](#fn-iban-3f)). Spaces between the groups are fine.
+
 (word-url)=
 ## url
 

@@ -296,6 +296,47 @@ describe('validation', () => {
       reduce [u/error c/error]`);
     assert.equal(r, '["That name is taken" "Wrong code"]');
   });
+
+  test('rules of your own, by name', async () => {
+    const r = await ev(`
+      rule 'even "Enter an even number" [all [v: attempt [to integer! value]  even? v]]
+      rule 'shop-code [en "Not a shop code" es "No es un código de la tienda"] [
+        either find/match value "SH-" [to logic! find/match skip value 3 "9"] ["Codes start with SH-"]
+      ]
+      fs: layout/only [field n "N" even  field c "C" shop-code required]
+      n: fs/1  c: fs/2
+      out: copy []
+      foreach v reduce ["3" "4" none] [ui-input n v  append out validate-face n]
+      foreach v ["x" "SH-1" "SH-9"] [ui-input c v  append out validate-face c]
+      i18n/language: 'es  ui-input c "SH-1"  append out validate-face c
+      poke i18n/ui 'even #(en: "Even, please")  i18n/language: 'en  ui-input n "5"  append out validate-face n
+      append/only out n/rules
+      out`);
+    assert.equal(r, '["Enter an even number" none none "Codes start with SH-" "Not a shop code" none "No es un código de la tienda" "Even, please" [[even]]]');
+  });
+
+  test('a rule takes no word of the dialect or of Trebol\'s texts, and a typo names it', async () => {
+    const r = await ev(`
+      rule 'even "Enter an even number" [even? to integer! value]
+      reduce [
+        (rule 'even "Even" [true]) = 'even
+        attempt [rule 'email "x" [true]]
+        attempt [rule 'button "x" [true]]
+        attempt [rule 'yes "x" [true]]
+        attempt [rule 'on-change "x" [true]]
+        to logic! find form try [layout [field n "N" evn]] "did you mean even?"
+      ]`);
+    assert.equal(r, '[true none none none none true]');
+  });
+
+  test('iban', async () => {
+    const r = await ev(`
+      f: first layout/only [field account "Account" iban]
+      collect [foreach v ["ES91 2100 0418 4502 0005 1332" "es9121000418450200051332" "ES91 2100 0418 4502 0005 1333" "XX00"] [
+        ui-input f v  keep validate-face f
+      ]]`);
+    assert.equal(r, '[none none "Enter a valid IBAN" "Enter a valid IBAN"]');
+  });
 });
 
 describe('errors from a server', () => {

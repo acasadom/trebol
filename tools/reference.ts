@@ -197,6 +197,11 @@ const WORD_LISTS: Record<string, string> = {
   flags: 'A flag', 'media-flags': 'A flag of a video or a sound', 'simple-rules': 'A rule', 'rule-words': 'A word followed by its value', 'chart-kinds': 'A kind of chart',
 };
 
+/** The rules Trebol adds with `rule`, as a program would: `rule 'iban ...` at the top of ui.trb. */
+function ownRules(): string[] {
+  return [...readFileSync(UI_TRB, 'utf8').matchAll(/^rule '([a-z?-]+)/gm)].map(m => m[1]!);
+}
+
 /** The events a face can have a handler for: the ones the dialect and the host run. */
 function events(): string[] {
   const names = new Set<string>();
@@ -230,10 +235,11 @@ const KINDS: Record<string, Kind> = {
     },
   },
   'dialect.md': {
-    names: () => [...new Set([...[...wordLists().values()].flat(), ...events()])],
+    names: () => [...new Set([...[...wordLists().values()].flat(), ...ownRules(), ...events()])],
     prefix: 'word',
     describe: (_w, name) => {
       if (name.startsWith('on-')) return 'An event: the block after it runs when it happens.';
+      if (ownRules().includes(name)) return `A rule, made with [\`rule\`](#${label('rule')}) as a program would make one.`;
       const lists = [...wordLists()].filter(([, ws]) => ws.includes(name)).map(([l]) => WORD_LISTS[l]!.toLowerCase());
       return lists.length === 0 ? '' : `${lists.join('; ').replace(/^./, c => c.toUpperCase())}.`;
     },

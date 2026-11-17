@@ -9,6 +9,15 @@ links, and the values of forms. See [building screens](../ui/01-first-screen.md)
 
 ## stylize
 
+## rule
+
+A rule made with `rule` goes after a field like the ones Trebol has, by its name: `field account "Account"
+iban`. Its block runs with `value`, `face` and `values` as a `check` does, only when the field has a value;
+`required` still says when it must have one. It gives true when the value is good, none or false for the
+rule's message, or a string to show instead. The message is kept in `i18n/ui` under the rule's name, so an
+app may change it, or add a language, as with Trebol's own messages. A name the dialect already has, or one of
+Trebol's texts, is an error. Packages add their rules this way: importing the package is enough.
+
 ## theme
 
 ## open

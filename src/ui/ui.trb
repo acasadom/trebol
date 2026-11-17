@@ -1,7 +1,7 @@
 Trebol [
     title: "UI dialect: faces, styles, layout and validation"
     exports: [
-        face styles stylize layout view theme looks open close toast confirm print-page
+        face styles stylize rule layout view theme looks open close toast confirm print-page
         validate-face field-error form-values set-values insert-text ui-pane ui-input ui-files ui-remove-file ui-lookup-search ui-lookup-pick ui-lookup-remove ui-blur ui-click ui-select ui-sort ui-close ui-event ui-menu ui-drop ui-reorder ui-crumb ui-expand ui-orbit ui-palette ui-palette-pick ui-toast-undo ui-toast-gone ui-toasts-done ui-toasts-on ui-step ui-step-go
         go go-back go-forward can-go-back? can-go-forward? unsaved unsaved? ui-route set-language ui-rows ui-check ui-react
     ]
@@ -158,6 +158,28 @@ field-name?: func [w [word!]] [
     ]
 ]
 
+; The rules a program or a package adds, by name: name -> the block that checks a value.
+; Their messages are in i18n/ui, under the same name, so an app can change them.
+custom-rules: make map! []
+
+rule: function [
+    "Adds a rule that a face takes by its name, as it takes required: rule 'even ^"Enter an even number^" [even? value]"
+    name [word!]
+    message [string! map! block!] "What a face that breaks it says: a text, or a text per language"
+    body [block!] "Sees value, face and values; gives true when the value is good, none or false for the message, or a string to say instead"
+] [
+    if any [
+        all [find ui-dialect-words name  not select custom-rules name]
+        event-word? name
+    ] [do make error! rejoin ["rule: " name " is already a word of the dialect"]]
+    if all [select i18n/ui name  not select custom-rules name] [
+        do make error! rejoin ["rule: " name " is already one of Trebol's texts"]
+    ]
+    poke custom-rules name body
+    poke i18n/ui name translated message
+    name
+]
+
 add-rule: func [f rule [block!]] [
     unless f/rules [f/rules: copy []]
     append/only f/rules rule
@@ -199,7 +221,7 @@ ui-checking: none
 ui-check: function [
     "Every problem in the layouts of a program, without running it: [place message ...]"
     code [block!]
-    /local b p
+    /local b p n m
 ] [
     set 'ui-checking copy []
     blocks: copy []
@@ -214,6 +236,8 @@ ui-check: function [
                 walk b
             )
             | 'machine set b block! (append/only blocks reduce ['machine b])
+            ; a rule of the program: its words may follow a style
+            | 'rule set n lit-word! set m [string! | map! | block!] set b block! (append/only blocks reduce ['rule p reduce [to word! n m b]])
             | set b [block! | paren!] (walk b)
             | skip
         ]]
@@ -222,6 +246,7 @@ ui-check: function [
     attempt-at: func [place body] [
         if error? r: try body [append ui-checking reduce [place form r/message]]
     ]
+    foreach p blocks [if 'rule = first p [attempt-at second p [apply/only :rule third p]]]
     foreach p blocks [if 'stylize = first p [attempt-at next p [stylize copy/deep second p]]]
     ; a machine is made without running anything: its data stays unevaluated
     foreach p blocks [
@@ -232,7 +257,7 @@ ui-check: function [
         ]
     ]
     foreach p blocks [
-        unless find [stylize machine] first p [
+        unless find [stylize machine rule] first p [
             attempt-at next p [
                 faces: all-faces layout second p
                 ; screens and rows lay these out when shown
@@ -297,7 +322,7 @@ ui-takes: [
 ui-dialect-words: does [
     unique compose [
         (words-of styles) (roles) (sizes) (aligns) (valigns) (flags) (chart-kinds) (simple-rules)
-        (rule-words) (media-flags) required global
+        (rule-words) (media-flags) required global (words-of custom-rules)
     ]
 ]
 
@@ -478,6 +503,7 @@ build-faces: function [
         | set w word! if (all [f/style = 'row  find valigns w]) (f/valign: w)
         | set w word! if (find flags w) (poke f w true)
         | set w word! if (find simple-rules w) (add-rule f reduce [w])
+        | set w word! if (select custom-rules w) (add-rule f reduce [w])
         ; money price "Price" EUR
         | set w word! if (all [f/style = 'money  parse form w [3 letter]]) (f/currency: to word! uppercase form w)
         ; steps flow [...]: a machine leads the steps (check, which runs nothing, takes the word as one)
@@ -1716,7 +1742,7 @@ validate-face: function [
     ]
     if all [logic-face? f  find/only rules [required]  not v] [return message 'required []]
     foreach r rules [
-        problem: switch first r [
+        problem: switch/default first r [
             email [unless parse v email-rule [message 'email []]]
             url [unless parse v url-rule [message 'url []]]
             integer [unless parse form v [opt "-" some digit] [message 'integer []]]
@@ -1734,19 +1760,24 @@ validate-face: function [
                 if all [other  v <> other/value] [message 'match reduce [label-of other]]
             ]
             check [check-result run-handler f r/2]
+        ] [
+            if b: select custom-rules first r [check-result/as run-handler f b first r]
         ]
         if problem [return problem]
     ]
     f/async-error
 ]
 
-check-result: func [result] [
+check-result: func [result /as key "The message of this rule, not check's"] [
     case [
         string? :result [result]
-        any [none? :result  false = :result] [message 'check []]
+        any [none? :result  false = :result] [message any [key 'check] []]
         true [none]
     ]
 ]
+
+; Rules Trebol adds as a program would
+rule 'iban #(en: "Enter a valid IBAN" es: "Introduce un IBAN válido") [iban? form value]
 
 find-named: function [f name] [
     scope: any [f/form f/root]

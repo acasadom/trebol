@@ -79,8 +79,8 @@ the same way, and shows each title over its options.
 
 ## Rules of your own
 
-The built-in rules cover the usual cases: `required`, `email`, `url`, `integer`, `min` and `max` for
-numbers, amounts and dates, `length 3 20` for text, and `match` for a field that must repeat another. A rule
+The built-in rules cover the usual cases: `required`, `email`, `url`, `integer`, `iban`, `min` and `max`
+for numbers, amounts and dates, `length 3 20` for text, and `match` for a field that must repeat another. A rule
 of the shop's own is a `check` block. It sees the field's value as `value` and says `true` when the value is
 good, or the message to show when it is not:
 
@@ -103,6 +103,35 @@ view [
 
 Pick a Sunday and leave the field. A `check` runs whenever its value changes, so keep it quick; a rule
 that has to ask a server is a `check-async`, which a later page uses.
+
+A rule the shop needs in many fields gets a name with `rule`, and then goes after a field as `email` does.
+The shop's frame numbers are two letters and six digits:
+
+```trebol-ui
+alpha: charset [#"A" - #"Z" #"a" - #"z"]
+digit: charset "0123456789"
+rule 'frame-number #(en: "Enter a frame number, like WT123456" es: "Introduce un número de cuadro, como WT123456") [
+    parse value [2 alpha 6 digit]
+]
+
+view [
+    title "Book a repair"
+    form [
+        field frame "Frame number" required frame-number
+        field old-frame "Frame it replaces" frame-number
+        submit "Book in" [toast "Booked in"]
+    ]
+]
+```
+
+Its block sees `value`, `face` and `values` as a `check` does, and runs only when the field has a value. It
+gives true when the value is good; none or false shows the rule's message, which is a text, or a text per
+language, as the [languages](08-languages.md) page tells; a string shows that string instead. The message is
+kept in `i18n/ui` under the rule's name, so an app can say it its own way:
+`poke i18n/ui 'frame-number #(en: "That is not one of our frames")`.
+
+A package of rules, the ones of a country for instance, is a file of `rule`s: a program that imports it
+can write those words after its fields.
 
 ## Faces that follow others
 

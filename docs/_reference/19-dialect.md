@@ -166,6 +166,11 @@ The field must have a value.
 
 The text must be an email address.
 
+## iban
+
+The text must be an IBAN: of a country that has them, of its length, with the right check digits
+([`iban?`](#fn-iban-3f)). Spaces between the groups are fine.
+
 ## url
 
 The text must be a web address.

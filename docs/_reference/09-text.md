@@ -23,3 +23,9 @@ reads back as the same value. Strings are series too, so every series function w
 ## trim
 
 ## split
+
+## iban?
+
+Spaces between the groups and small letters are fine: `iban? "es91 2100 0418 4502 0005 1332"` is true. The
+country must be one that has IBANs, and the length its own. It checks that the IBAN is well made, not that the
+account exists.
