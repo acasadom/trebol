@@ -6,7 +6,7 @@
 
 import { K, NONE, TRUE, FALSE, string, block, text, throwError, type Cell, type BlockCell, type StringCell, type Runtime } from '../core/index.ts';
 import { native, value } from '../core/natives/define.ts';
-import { schedulerOf, spawnHandler, taskResult, makeHandle, handleOf } from './scheduler.ts';
+import { schedulerOf, hasScheduler, spawnHandler, taskResult, makeHandle, handleOf } from './scheduler.ts';
 
 /** What travels on the channel: text is a value molded with mold/all. */
 export interface Envelope {
@@ -71,9 +71,10 @@ const forever = (): Promise<void> => new Promise(() => {});
 const str = (c: Cell): string => text(c as StringCell);
 
 native('share-open', '["Opens the channel of a shared machine; none when the host has none." name [string!] heard [block!]]', (t, f) => {
-  // with no locks there is no telling who owns the machine: it stays in this tab
+  // with no locks there is no telling who owns the machine, and with no scheduler (the core
+  // alone, as in Node with no host) nothing could hear the other tabs: it stays in this tab
   const env = envOf(t.rt);
-  const ch = env.locks() === null ? null : env.channel(str(f.args[0]!));
+  const ch = env.locks() === null || !hasScheduler(t.rt) ? null : env.channel(str(f.args[0]!));
   if (ch === null) return value(NONE);
   const sch = schedulerOf(t);
   const heard = f.args[1] as BlockCell;
@@ -143,7 +144,7 @@ native('share-lock', '["Takes the lock of a shared machine if it is free (true);
   if (f.phase === 1) return value(v!);
   f.phase = 1;
   const locks = envOf(t.rt).locks();
-  if (locks === null) return value(TRUE);
+  if (locks === null || !hasScheduler(t.rt)) return value(TRUE);
   const sch = schedulerOf(t);
   const name = str(f.args[0]!);
   const took = f.args[1] as BlockCell;

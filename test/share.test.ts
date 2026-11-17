@@ -3,7 +3,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mold, form, errorField, type ObjectCell } from '../src/core/index.ts';
+import { mold, form, errorField, makeRuntime, load, bindSeries, runSync, type ObjectCell } from '../src/core/index.ts';
 import { startHost, runSource, setShareEnv, type ShareEnv, type ChannelLike, type Envelope, type Host } from '../src/host/index.ts';
 
 /** The browser of these tests: channels and locks shared by its tabs. */
@@ -181,4 +181,14 @@ test('with no locks the machine stays in its own tab', async () => {
   const h = startHost({ onError: () => {} });
   setShareEnv(h.rt, { channel: () => assert.fail('no channel without locks'), locks: () => null });
   assert.equal(await run(h, `entered: 0 ${SPEC} send cart [add n: 1] reduce [cart/owner cart/channel cart/data/items]`), '[true none 1]');
+});
+
+test('the core alone, with no scheduler, runs a shared machine in its own tab even where there are locks', () => {
+  // Node 22 and later have navigator.locks: the core's runtime must not reach for them
+  const rt = makeRuntime();
+  setShareEnv(rt, { channel: () => assert.fail('no channel without a scheduler'), locks: () => new Browser().env('a').locks() });
+  const code = load(`entered: 0 ${SPEC} send cart [add n: 1] reduce [cart/owner cart/channel cart/data/items]`);
+  bindSeries(code.s, rt.user, true);
+  const r = runSync(rt, code);
+  assert.equal(r.k === 'done' ? mold(r.v) : r.k, '[true none 1]');
 });

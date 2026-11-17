@@ -69,6 +69,11 @@ export function makeScheduler(rt: Runtime, onError: Scheduler['onError']): Sched
   return sch;
 }
 
+/** Whether a scheduler runs this runtime: a runtime of the core alone has none. */
+export function hasScheduler(rt: Runtime): boolean {
+  return schedulers.has(rt);
+}
+
 /** The scheduler running a task's runtime. */
 export function schedulerOf(t: Task): Scheduler {
   const sch = schedulers.get(t.rt);
