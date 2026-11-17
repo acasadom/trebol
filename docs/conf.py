@@ -25,6 +25,10 @@ exclude_patterns = ["_build", "design.md", "screenshots", "_reference"]
 html_theme = "furo"  # modern, responsive, dark-mode; install via docs/requirements.txt
 html_title = "Trebol"
 html_static_path = ["_static"]
+# the red four-leaf clover; the favicon draws its stem heavier, to show at 16 px
+html_logo = "_static/trebol.svg"
+html_favicon = "_static/favicon.svg"
+html_css_files = ["trebol-docs.css"]
 
 # Resolve in-page links like [text](#a-heading) to heading anchors (h1..h3).
 myst_heading_anchors = 3
