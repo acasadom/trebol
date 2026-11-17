@@ -11,7 +11,7 @@
 
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { STATUS_CODES } from 'node:http';
-import { basename, dirname, extname, join, relative, resolve } from 'node:path';
+import { basename, dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   K, NONE, TRUE, UNSET, makeError, load, LoadError, intern, ctxFind, bindSeries, scriptStart, native, value, string, text, blockOf, form, mold, spell,
@@ -247,7 +247,8 @@ async function* runFile(file: string): AsyncGenerator<Outcome> {
 
 /** Runs the test at index `at` of the file on the app started anew; its problem, or null if it passed. */
 async function runOne(file: string, source: string, start: number, prelude: number, at: number, app: string | null): Promise<string | null> {
-  const base = pathToFileURL(app ?? file).href;
+  // the files of loaded blocks are named from the current folder, as check names them
+  const base = pathToFileURL(process.cwd() + sep).href;
   const host = startHost({
     onError: e => page.errors.push(report(e)),
     loader: { base, read: href => readFile(fileURLToPath(href), 'utf8') },

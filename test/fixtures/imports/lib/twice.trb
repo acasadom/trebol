@@ -1,0 +1,2 @@
+Trebol [title: "A module next to its test" exports: [double]]
+double: func [n] [n * 2]

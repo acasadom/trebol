@@ -143,6 +143,11 @@ test('the tests of the examples pass', async () => {
   assert.ok(passed, lines.join('\n'));
 });
 
+test('a test in a folder imports the files next to it', async () => {
+  const { passed, lines } = await ran(['test/fixtures/imports/lib/twice.test.trb']);
+  assert.ok(passed, lines.join('\n'));
+});
+
 test('say answers the next confirm, and an answer no question took fails the test', async () => {
   const { lines } = await ran(['test/fixtures/screens/confirm.test.trb']);
   const at = (l: string): string => l.replace(/\S*test\/fixtures\/screens\//g, '');

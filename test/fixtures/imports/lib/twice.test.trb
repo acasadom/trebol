@@ -1,0 +1,6 @@
+Trebol [title: "A test in a folder imports the module next to it" app: none]
+
+import %twice.trb
+
+"double"
+[4 = double 2]
