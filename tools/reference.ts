@@ -204,10 +204,15 @@ function ownRules(): string[] {
 
 /** The events a face can have a handler for: the ones the dialect and the host run. */
 function events(): string[] {
-  const names = new Set<string>();
-  for (const m of readFileSync(UI_TRB, 'utf8').matchAll(/'(on-[a-z]+(?:-[a-z]+)*)/g)) names.add(m[1]!);
-  for (const m of readFileSync(BROWSER_TS, 'utf8').matchAll(/['"](on-[a-z]+(?:-[a-z]+)*)['"]/g)) names.add(m[1]!);
-  return [...names].sort();
+  const ui = readFileSync(UI_TRB, 'utf8');
+  const known = /\nui-events: \[([^\]]*)\]/.exec(ui)![1]!.trim().split(/\s+/);
+  // every event the dialect or the host fires is one a layout may name
+  const used = new Set<string>();
+  for (const m of ui.matchAll(/'(on-[a-z]+(?:-[a-z]+)*)/g)) used.add(m[1]!);
+  for (const m of readFileSync(BROWSER_TS, 'utf8').matchAll(/['"](on-[a-z]+(?:-[a-z]+)*)['"]/g)) used.add(m[1]!);
+  const missing = [...used].filter(e => !known.includes(e));
+  if (missing.length > 0) throw new Error(`ui-events in ui.trb lacks ${missing.join(', ')}`);
+  return known.sort();
 }
 
 /** The value a face field holds, as it would be written in a layout. */

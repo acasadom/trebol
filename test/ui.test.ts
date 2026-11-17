@@ -197,6 +197,14 @@ describe('layout', () => {
     assert.deepEqual(await problems('view [button "Go" hiden]'),
       ['layout: hiden is not a word of button; did you mean hidden?', '[hiden]', 'app.trb:1:19']);
     assert.deepEqual(await problems('view [text "a" loop]'), ['layout: loop is not a word of text', '[loop]', 'app.trb:1:16']);
+    // an on- word that no event has
+    assert.deepEqual(await problems('view [field name on-chnage [print 1]]'),
+      ['layout: on-chnage is not an event; did you mean on-change?', '[on-chnage [print 1]]', 'app.trb:1:18']);
+    assert.equal((await problems('view [button "Go" on-clik [print 1]]'))[0],
+      'layout: on-clik is not an event; the block after a face runs when it is clicked');
+    assert.equal((await problems('view [on-clse [true] text "a"]'))[0], 'layout: on-clse is not an event; did you mean on-close?');
+    assert.equal((await problems('view [screens [home "Home" [on-entr [true] text "a"]]]'))[0],
+      'layout: on-entr is not an event; did you mean on-enter?');
     assert.deepEqual(await problems('view ["Hello" text "a"]'),
       ['layout: a face starts with a style, not "Hello"', '["Hello" text "a"]', 'app.trb:1:7']);
     assert.deepEqual((await problems('view [menu ["A" a]]'))[0], 'layout: menu is not a style; it goes after one');

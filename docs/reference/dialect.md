@@ -13,7 +13,9 @@ three capital letters after `money` is its currency, `EUR`.
 `layout` (and `view`, which calls it) reads the whole block before it shows anything, and a value it cannot
 place is a problem: an unknown word, a rule word without what it takes (`min "x"`), a block that is not what
 its face takes. It gives one error with every problem in the block, each with its file, line and column, and
-the word it may have meant when one is close: `buton is not a style; did you mean button?`. The faces of a
+the word it may have meant when one is close: `buton is not a style; did you mean button?`. An `on-` word
+that is no event is a problem too (`on-chnage is not an event; did you mean on-change?`), since its block
+would never run (a `widget` takes any, as its element fires its own); a click is the block after the face, not an `on-click`. The faces of a
 screen or of a row of `rows` are laid out, and checked, when they are first shown.
 
 (word-primary)=
