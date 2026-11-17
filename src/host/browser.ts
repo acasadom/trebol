@@ -32,6 +32,7 @@ import { startDevtools } from './devtools.ts';
 import { get, str, showOwn, word, children } from './browser/faces.ts';
 import { host, byNode, byCtx, dirty, fire, showError, build, setHost } from './browser/mount.ts';
 import { seenKeys, setViewKeys } from './browser/events.ts';
+import { onPick } from './browser/pick.ts';
 import { swipe, onSwipeMove, onSwipeEnd, outsideSwipe } from './browser/swipe.ts';
 import { mountedAbove, dragging, endDrag, onPointerDown, onPointerMove, onReorderKey } from './browser/drag.ts';
 import { onKeyDown, onViewKey } from './browser/keys.ts';
@@ -175,6 +176,7 @@ async function boot(): Promise<void> {
   addEventListener('beforeprint', () => onPrint(true));
   addEventListener('afterprint', () => onPrint(false));
   document.addEventListener('pointerdown', onPointerDown);
+  document.addEventListener('click', onPick);
   document.addEventListener('pointermove', onPointerMove, { passive: false });
   document.addEventListener('pointerup', () => endDrag(true));
   document.addEventListener('pointercancel', () => endDrag(false));

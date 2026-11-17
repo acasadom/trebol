@@ -1316,6 +1316,7 @@ test('a view takes its width at the head; inert faces; screen titles per languag
   // only a row takes top, middle or bottom: after an input style the word still names the field
   assert.equal(await ev('f: first layout/only [field bottom "Bottom"]  reduce [f/name f/valign]'), '[bottom none]');
   assert.equal(await ev('f: first layout/only [grid 3 []]  reduce [f/cols f/pane]'), '[3 []]');
+  assert.equal(await ev('p: first layout/only [column inert on-select [set \'got event/face] [text "a" field b "B"]]  ui-select p p/pane/2  reduce [same? got p/pane/2  same? p/selected p/pane/2]'), '[true true]');
   assert.equal(await ev('f: first layout/only [radio mode "View" ["Design" "Code"] segmented]  reduce [f/name f/segmented]'), '[mode true]');
   assert.equal(await ev('f: first layout/only [grid [small 1 large] [text "a" text "b" text "c"]]  reduce [f/cols length? f/pane]'), '[[small 1 large] 3]');
   link = [];

@@ -170,7 +170,9 @@ Shown and sent with the form, but the person cannot change it, and no rule appli
 
 A flag.
 
-Shown as it is, but neither it nor its children can be used.
+Shown as it is, but neither it nor its children can be used. With `on-select`, a click on it chooses the face
+under the pointer, as on a designer's canvas: `preview: column inert on-select [pick-face event/face] [...]`.
+The face chosen is its `selected`, and is marked; setting `selected` marks another.
 
 (word-narrow-only)=
 ## narrow-only
@@ -681,7 +683,8 @@ When the person types in a lookup: the block gives what was found for `query`.
 
 An event: the block after it runs when it happens.
 
-When a row of a table, list or tree is chosen: it is in `row`.
+When a row of a table, list or tree is chosen: it is in `row`. On an `inert` face, when a face inside it is
+clicked: it is in `event/face`.
 
 (word-on-sort)=
 ## on-sort

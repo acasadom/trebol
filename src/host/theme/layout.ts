@@ -133,6 +133,8 @@ body {
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M0 0h16v16H0z M6 4v2h2.6L4 10.6 5.4 12 10 7.4V10h2V4z' fill-rule='evenodd'/%3E%3C/svg%3E");
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M0 0h16v16H0z M6 4v2h2.6L4 10.6 5.4 12 10 7.4V10h2V4z' fill-rule='evenodd'/%3E%3C/svg%3E");
 }
+/* the face chosen in an inert face with on-select, as on a designer's canvas */
+.tb-picked { outline: 2px solid var(--tb-primary); outline-offset: 2px; border-radius: var(--tb-radius); }
 .tb-grid { --tb-track-small: 240px; --tb-track-medium: 280px; --tb-track-large: 360px; --tb-tracks: initial; --tb-cols: 2; display: grid; gap: var(--tb-space-4); grid-template-columns: var(--tb-tracks, repeat(var(--tb-cols), minmax(0, 1fr))); }
 .tb-panel {
   background: var(--tb-raised);

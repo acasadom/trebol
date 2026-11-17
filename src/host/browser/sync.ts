@@ -11,6 +11,7 @@ import { isData } from './drag.ts';
 import { rangeText } from './calendar.ts';
 import { shortcutAria, shortcutLabel } from './keys.ts';
 import { countRun } from './count.ts';
+import { syncPick } from './pick.ts';
 import { syncSlider, syncProgress, syncIcon, required, syncRadio } from './fields.ts';
 import { syncMedia, syncPhoto, syncUpload } from './uploads.ts';
 import { syncWidget } from './widget.ts';
@@ -61,6 +62,8 @@ export function sync(m: Mounted): void {
   else if (!hidden && (turned || isFolding(m.el))) unfold(m.el);
   // shown as it is, but it and its children cannot be used
   m.el.inert = flag(f, 'inert');
+  // with on-select, a click on it chooses the face under the pointer
+  syncPick(m, m.el.inert);
   // a face you can drag takes the focus, so the keyboard reaches its menu and moves it
   if (flag(f, 'drag') && !isData(m) && m.el.tabIndex < 0) m.el.tabIndex = 0;
   space(m.el, 'padding', get(f, 'pad'));
