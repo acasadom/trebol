@@ -62,6 +62,9 @@ body {
 .tb-fit { flex: 1 1 auto; min-height: 0; }
 .tb-fit > * { min-height: 0; overflow: auto; }
 .tb-fit > * > * { flex-shrink: 0; }
+/* a widget with fit: its element takes the height left, and scrolls itself (a code editor, a map) */
+.tb-field.tb-fit > .tb-control { flex: 1 1 auto; overflow: hidden; }
+.tb-field.tb-fit > .tb-control > .tb-widget { flex: 1 1 auto; min-height: 0; }
 .tb-desktop {
   flex: 1 1 auto;
   min-height: 240px;

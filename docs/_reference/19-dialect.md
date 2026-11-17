@@ -86,7 +86,8 @@ Takes all the width it can.
 
 ## fit
 
-Takes the height the window has left, and its children scroll inside it.
+Takes the height the window has left, and its children scroll inside it. A `widget` with `fit` gives that
+height to its element, which scrolls itself, as a code editor or a map does.
 
 ## hidden
 
