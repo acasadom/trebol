@@ -25,8 +25,8 @@
 
 import {
   K, NONE, UNSET, native, value, text, load, mold, string, context, collectSetWords, bindSeries, bindSelf,
-  copyDeep, setWord, getWord, splice, currentFile, throwError, makeError, scriptStart, LoadError, T, canon, intern, spell, LIBRARY_FILES,
-  type Cell, type BlockCell, type StringCell, type ObjectCell, type Runtime, type WordCell, type Series, type Task,
+  copyDeep, setWord, getWord, splice, currentFile, throwError, makeError, scriptStart, LoadError, T, canon, intern, spell, LIBRARY_FILES, blockOf,
+  type Cell, type BlockCell, type StringCell, type ObjectCell, type Runtime, type WordCell, type Series, type Task, type Step, type NativeFrame,
 } from '../core/index.ts';
 import { jsModule } from './js.ts';
 
@@ -81,6 +81,7 @@ const EXPORTS = canon(intern('exports'));
 const EXPORT = canon(intern('export'));
 const TYPE = canon(intern('type'));
 const MODULE = canon(intern('module'));
+const PARTS = canon(intern('parts'));
 
 /** The value after `name:` in a script header, or null. */
 function headerField(header: BlockCell | null, name: number): Cell | null {
@@ -177,7 +178,13 @@ native('do-file', '["Runs the script in a file, as do does; a module is imported
   return { k: 'do', s: code.s, i: start };
 });
 
-interface ImportState { href: string; entry: ModuleEntry; ctx: ReturnType<typeof context> | null; exports: WordCell[]; lib?: boolean }
+interface ImportState {
+  href: string; entry: ModuleEntry; ctx: ReturnType<typeof context> | null; exports: WordCell[]; lib?: boolean;
+  /** The module's code, kept while its parts are read. */
+  code?: BlockCell; start?: number; parts?: string[];
+  /** What runs, each part and then the module's own body, and which of them runs now. */
+  bodies?: Series<Cell>[]; at?: number;
+}
 
 /** Package names as npm takes them, without a scope (a scope does not fit in a word). */
 const PACKAGE_NAME = /^[a-z0-9][a-z0-9._-]*$/;
@@ -202,6 +209,27 @@ async function packageModule(loader: Loader, from: string, name: string): Promis
     dir = new URL('../', dir);
   }
   throw makeError('access', 'cannot-open', `cannot find the package ${name}: no node_modules/${name}/package.json`);
+}
+
+/** Binds the bodies of a module (its parts, then its own code) to one context and runs the first. */
+function startModule(rt: Runtime, f: NativeFrame, st: ImportState, bodies: Series<Cell>[]): Step {
+  for (const b of bodies) st.exports.push(...takeExports(b));
+  const ctx = context();
+  ctx.self = true;
+  for (const b of bodies) collectSetWords(b, 0, ctx);
+  // Trebol's own modules (the UI dialect) see lib, as R3's modules do, so a word a program sets,
+  // form: or can?, never takes the place of one they use; their exports go to lib too
+  for (const b of bodies) {
+    bindSeries(b, st.lib ? rt.lib : rt.user, true);
+    bindSeries(b, ctx);
+    bindSelf(b, ctx);
+  }
+  st.ctx = ctx;
+  st.bodies = bodies;
+  st.at = 0;
+  f.phase = 2;
+  f.trap = 1 << T.Error;
+  return { k: 'do', s: bodies[0]!, i: 0 };
 }
 
 native('import', '["Runs a module and gives its exports; a word is a package by its name, from node_modules." source [file! url! string! word!]]', (t, f, v) => {
@@ -270,10 +298,9 @@ native('import', '["Runs a module and gives its exports; a word is a package by 
     mods.delete(st.href);
     st.entry.settle(false, e);
   };
-  if (f.phase === 1) {
-    let code: BlockCell;
+  const loadIt = (src: Cell, file: string): BlockCell | Step => {
     try {
-      code = load(text(v as StringCell), { file: st.href });
+      return load(text(src as StringCell), { file });
     } catch (e) {
       // LoadError is the one exception on the normal path; it becomes a value here.
       if (!(e instanceof LoadError)) throw e;
@@ -281,24 +308,50 @@ native('import', '["Runs a module and gives its exports; a word is a package by 
       if (step.k === 'throw') failed(step.e.v);
       return step;
     }
+  };
+  if (f.phase === 1) {
+    const code = loadIt(v!, st.href);
+    if ('k' in code) return code;
     const { header, start } = scriptStart(code);
     const listed = headerField(header, EXPORTS);
     if (listed !== null && listed.t === K.Block) st.exports = listed.s.data.filter(w => w.t === K.Word) as WordCell[];
-    const body = copyDeep(code.s, start);
-    st.exports.push(...takeExports(body));
-    const ctx = context();
-    ctx.self = true;
-    collectSetWords(body, 0, ctx);
-    // Trebol's own modules (the UI dialect) see lib, as R3's modules do, so a word a program sets,
-    // form: or can?, never takes the place of one they use; their exports go to lib too
     st.lib = LIBRARY_FILES.has(st.href);
-    bindSeries(body, st.lib ? rt.lib : rt.user, true);
-    bindSeries(body, ctx);
-    bindSelf(body, ctx);
-    st.ctx = ctx;
-    f.phase = 2;
-    f.trap = 1 << T.Error;
-    return { k: 'do', s: body, i: 0 };
+    // parts: [%a.trb %b.trb] are files of the same module, read before it runs
+    const parts = headerField(header, PARTS);
+    if (parts !== null) {
+      const files = parts.t === K.Block ? parts.s.data.slice(parts.i) : [];
+      if (files.length === 0 || files.some(x => x.t !== K.File)) {
+        const step = throwError('script', 'bad-module', 'parts: takes a block of files');
+        if (step.k === 'throw') failed(step.e.v);
+        return step;
+      }
+      st.code = code;
+      st.start = start;
+      st.parts = files.map(x => new URL(text(x as StringCell), st.href).href);
+      // the parts of Trebol's own modules are Trebol's own code too
+      if (st.lib) for (const h of st.parts) LIBRARY_FILES.add(h);
+      f.phase = 6;
+      const loader = loaders.get(rt)!;
+      return { k: 'await', p: Promise.all(st.parts.map((h, i) => readText(loader, h, files[i]!))).then(texts => blockOf(K.Block, texts)) };
+    }
+    return startModule(rt, f, st, [copyDeep(code.s, start)]);
+  }
+  if (f.phase === 6) {
+    const bodies: Series<Cell>[] = [];
+    const texts = (v as BlockCell).s.data;
+    for (let i = 0; i < texts.length; i++) {
+      const part = loadIt(texts[i]!, st.parts![i]!);
+      if ('k' in part) return part;
+      bodies.push(copyDeep(part.s, scriptStart(part).start));
+    }
+    bodies.push(copyDeep(st.code!.s, st.start!));
+    st.code = undefined;
+    return startModule(rt, f, st, bodies);
+  }
+  // a part ran: the next one, or the module's own body
+  if (f.phase === 2 && f.thrown === null && st.at! + 1 < st.bodies!.length) {
+    st.at!++;
+    return { k: 'do', s: st.bodies![st.at!]!, i: 0 };
   }
   // phase 2: the module body ran
   if (f.thrown !== null) {

@@ -123,6 +123,48 @@ fact that it is given together. `export [a b]` marks several words at once.
 
 There was no "loading the prices": the rules imported the same module the console had imported already.
 
+## A module in several files
+
+A module that grows long can be kept in several files and still be one module. `parts:` in its header lists
+them, each path read from where the module is. They run in that order, and then the module's own body, and
+they share its words: what one part sets, the others and the module use, as if it were all one file.
+
+```trebol
+; file: shop/repairs.trb
+Trebol [
+    title: "The shop's repairs"
+    exports: [quote-repair]
+    parts: [%repairs/labour.trb %repairs/quote.trb]
+]
+```
+
+```trebol
+; file: shop/repairs/labour.trb
+hourly: $30.00
+
+labour: func [hours [number!]] [hours * hourly]
+```
+
+```trebol
+; file: shop/repairs/quote.trb
+; the parts that go in, and the hours of work at the hourly rate
+quote-repair: func [hours [number!] parts [money!]] [parts + labour hours]
+```
+
+A part is plain code and needs no header. `quote.trb` uses `labour` from the other part, and the program
+gets what the module exports, wherever it was set; `export` works in a part too. An error in a part says the
+part's own file and line.
+
+```trebol-console
+>> words-of import %shop/repairs.trb
+== [hourly labour quote-repair]
+>> quote-repair 1.5 $12.00
+== $57.00
+```
+
+Trebol's UI dialect is made this way: `ui.trb` lists the files of its parts, one for faces and styles, one for
+screens, one for validation, and so on.
+
 ## Data in a file
 
 Not every file is a program. The stock is a list of parts and how many are left — data, nothing to run.

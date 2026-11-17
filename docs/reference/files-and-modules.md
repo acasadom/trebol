@@ -52,6 +52,9 @@ import source
 
 - `source` (`file!` `url!` `string!` `word!`)
 
+A module's header may list `parts: [%a.trb %b.trb]`: files of the same module, read from where it is, which run
+in order before its own body and share its words. See [A module in several files](../language/13-modules.md#a-module-in-several-files).
+
 `import 'trebol-es` imports a package: the file its `package.json` names as `"trebol"`, in the first
 `node_modules/trebol-es/` going up from the importing file. See [A package](../language/13-modules.md#a-package).
 

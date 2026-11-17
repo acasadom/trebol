@@ -1,0 +1,3 @@
+hourly: $30.00
+
+labour: func [hours [number!]] [hours * hourly]
