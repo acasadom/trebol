@@ -25,7 +25,7 @@
 
 import {
   K, NONE, UNSET, native, value, text, load, mold, string, context, collectSetWords, bindSeries, bindSelf,
-  copyDeep, setWord, getWord, splice, currentFile, throwError, makeError, scriptStart, LoadError, T, canon, intern, spell,
+  copyDeep, setWord, getWord, splice, currentFile, throwError, makeError, scriptStart, LoadError, T, canon, intern, spell, LIBRARY_FILES,
   type Cell, type BlockCell, type StringCell, type ObjectCell, type Runtime, type WordCell, type Series, type Task,
 } from '../core/index.ts';
 import { jsModule } from './js.ts';
@@ -177,7 +177,7 @@ native('do-file', '["Runs the script in a file, as do does; a module is imported
   return { k: 'do', s: code.s, i: start };
 });
 
-interface ImportState { href: string; entry: ModuleEntry; ctx: ReturnType<typeof context> | null; exports: WordCell[] }
+interface ImportState { href: string; entry: ModuleEntry; ctx: ReturnType<typeof context> | null; exports: WordCell[]; lib?: boolean }
 
 /** Package names as npm takes them, without a scope (a scope does not fit in a word). */
 const PACKAGE_NAME = /^[a-z0-9][a-z0-9._-]*$/;
@@ -289,7 +289,10 @@ native('import', '["Runs a module and gives its exports; a word is a package by 
     const ctx = context();
     ctx.self = true;
     collectSetWords(body, 0, ctx);
-    bindSeries(body, rt.user, true);
+    // Trebol's own modules (the UI dialect) see lib, as R3's modules do, so a word a program sets,
+    // form: or can?, never takes the place of one they use; their exports go to lib too
+    st.lib = LIBRARY_FILES.has(st.href);
+    bindSeries(body, st.lib ? rt.lib : rt.user, true);
     bindSeries(body, ctx);
     bindSelf(body, ctx);
     st.ctx = ctx;
@@ -312,6 +315,7 @@ native('import', '["Runs a module and gives its exports; a word is a package by 
       if (step.k === 'throw') failed(step.e.v);
       return step;
     }
+    if (st.lib) setWord({ t: K.Word, sym: w.sym, bind: rt.lib }, st.ctx!.vals[i]!);
     setWord({ t: K.Word, sym: w.sym, bind: rt.user }, st.ctx!.vals[i]!);
   }
   st.entry.obj = obj;

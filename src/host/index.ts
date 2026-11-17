@@ -9,7 +9,7 @@ import './share.ts';
 import './locale.ts';
 import { setLoader, defaultLoader, type Loader } from './modules.ts';
 import {
-  K, makeRuntime, load, bindSeries, doSource, scriptStart, errorMessage, form, mold,
+  K, makeRuntime, load, bindSeries, doSource, runSync, scriptStart, errorMessage, form, mold,
   LIBRARY_FILES, type Cell, type ObjectCell, type Runtime,
 } from '../core/index.ts';
 import { makeScheduler, spawn, taskResult, type Scheduler } from './scheduler.ts';
@@ -283,7 +283,10 @@ export function startHost(opts: HostOptions = {}): Host {
   const onError = opts.onError ?? (e => console.error(report(e)));
   const rt = makeRuntime();
   setLoader(rt, opts.loader ?? defaultLoader());
-  const r = doSource(rt, HOST_MEZZANINES, 'host');
+  // in lib, as the core's mezzanines: a word a program sets never takes the place of one of them
+  const code = load(HOST_MEZZANINES, { file: 'host' });
+  bindSeries(code.s, rt.lib, true);
+  const r = runSync(rt, code);
   // Host mezzanines failing to load is a bug in Trebol itself.
   if (r.k === 'error') throw new Error(`host mezzanines failed: ${errorMessage(r.e)}`);
   const sch = makeScheduler(rt, e => onError(e));

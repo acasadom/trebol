@@ -255,7 +255,7 @@ function whereInApp(e: ObjectCell, fn: string, face: ObjectCell, args: Cell[]): 
 function fire(fn: string, face: ObjectCell, ...args: Cell[]): Promise<Cell> {
   // a word, path or paren given as data (a dropped `date`) is quoted, so it is passed, not evaluated
   const quote: Cell = { t: K.Word, sym: intern('quote'), bind: host.rt.lib };
-  const call: Cell[] = [{ t: K.Word, sym: intern(fn), bind: host.rt.user }, face, ...args.flatMap(a => ACTIVE.has(a.t) ? [quote, a] : [a])];
+  const call: Cell[] = [{ t: K.Word, sym: intern(fn), bind: host.rt.lib }, face, ...args.flatMap(a => ACTIVE.has(a.t) ? [quote, a] : [a])];
   devLog.event(fn, face, args);
   return taskResult(spawn(host.sch, { data: call }, 0)).catch((e: unknown) => {
     if ((e as Cell).t === K.Error) whereInApp(e as ObjectCell, fn, face, args);
@@ -4450,7 +4450,7 @@ function inTextBox(target: EventTarget | null): boolean {
 function fireRoot(fn: string, id: number): void {
   const n = int(id);
   if (rootFace !== null) void fire(fn, rootFace, n);
-  else spawn(host.sch, { data: [{ t: K.Word, sym: intern(fn), bind: host.rt.user }, NONE, n] }, 0);
+  else spawn(host.sch, { data: [{ t: K.Word, sym: intern(fn), bind: host.rt.lib }, NONE, n] }, 0);
 }
 
 native('show-confirm', '["Asks a question in a small dialog; true when the user says yes." question [string!] yes [string! none!] no [string! none!] kind [word! none!]]', (_t, f, v) => {
@@ -4799,7 +4799,7 @@ function react(): void {
   if (reacting !== null || reactors.size === 0 || (dirty.length === 0 && !newReactor)) return;
   newReactor = false;
   const faces = blockOf(K.Block, [...reactors].map(m => m.face));
-  const ht = runNow(host.sch, { data: [{ t: K.Word, sym: intern('ui-react'), bind: host.rt.user }, faces] }, 0);
+  const ht = runNow(host.sch, { data: [{ t: K.Word, sym: intern('ui-react'), bind: host.rt.lib }, faces] }, 0);
   const warn = (t: HostTask) => {
     if (t.state !== 'done' || t.result.t !== K.Block) return;
     for (const c of (t.result as BlockCell).s.data) {
@@ -5069,13 +5069,13 @@ async function boot(): Promise<void> {
     devLog.repainted();
   };
   // an answer kept by cached that comes: the reactions that read it run
-  const news = getWord({ t: K.Word, sym: intern('ui-cache-news'), bind: host.rt.user });
+  const news = getWord({ t: K.Word, sym: intern('ui-cache-news'), bind: host.rt.lib });
   if (news?.t === K.Object) news.ctx.watch = dirty;
   // the page back into view: what cached kept is asked again
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') spawn(host.sch, { data: [{ t: K.Word, sym: intern('ui-caches-again'), bind: host.rt.user }] }, 0);
+    if (document.visibilityState === 'visible') spawn(host.sch, { data: [{ t: K.Word, sym: intern('ui-caches-again'), bind: host.rt.lib }] }, 0);
     // hidden, maybe closed: what waits for a notice to go is done now (its requests are sent with keepalive)
-    else if (undoToasts.size > 0) spawn(host.sch, { data: [{ t: K.Word, sym: intern('ui-toasts-done'), bind: host.rt.user }] }, 0);
+    else if (undoToasts.size > 0) spawn(host.sch, { data: [{ t: K.Word, sym: intern('ui-toasts-done'), bind: host.rt.lib }] }, 0);
   });
   document.addEventListener('keydown', onKeyDown, true);
   document.addEventListener('keydown', onReorderKey);

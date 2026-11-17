@@ -264,8 +264,8 @@ function progressOf(t: Task, target: Cell): { tell: Progress; end: () => void } 
       return;
     }
     // a host mezzanine: in user, where the host's Trebol code is loaded
-    const i = ctxFind(t.rt.user, intern('show-progress'));
-    const fn = i < 0 ? undefined : t.rt.user.vals[i];
+    const i = ctxFind(t.rt.lib, intern('show-progress'));
+    const fn = i < 0 ? undefined : t.rt.lib.vals[i];
     if (fn !== undefined) spawn(sch, { data: [fn, target, done, total] }, 0);
   };
   const count = (n: number): Cell => ({ t: K.Integer, v: n });

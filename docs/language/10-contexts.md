@@ -42,6 +42,11 @@ them:
 
 The `total` in `rule` is the console's `total`, `$10.00`.
 
+The words Trebol itself gives, `print`, `form` or `append`, live in a context of their own, **lib**, and the
+program's context starts with them. A program may set one of them to something else: it changes for the
+program, not for Trebol. The forms, the screens and every function Trebol brings still find the `form` they
+were written with.
+
 ## bind
 
 `bind` links the words of a block to another context. Bound to `order`, the same rule asks about the order's

@@ -696,6 +696,15 @@ describe('components', () => {
     assert.equal(r, '[#list "List" true "Records" #stack many true]');
   });
 
+  test('a word the program sets never takes the place of one the dialect uses', async () => {
+    const r = await ev(`
+      form: "mine"  tr: func [x] ["hijacked"]  can?: func [a b c] [none]  message: 1  refresh: 2
+      f: first layout/only [field a "A" email]
+      ui-input f "bad"
+      reduce [validate-face f  form  refresh]`);
+    assert.equal(r, '["Enter a valid email address" "mine" 2]');
+  });
+
   test('a toolbar is a container whose --- are separators', async () => {
     const r = await ev(`
       root: view [global bar: toolbar "Actions" [button #plus "New" --- button #trash "Delete"]]

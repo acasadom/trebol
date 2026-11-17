@@ -46,7 +46,7 @@ function fresh(host: Host | null = null, dir = '.') {
   };
 }
 
-const word = (host: Host, w: string): Cell => ({ t: K.Word, sym: intern(w), bind: host.rt.user });
+const word = (host: Host, w: string): Cell => ({ t: K.Word, sym: intern(w), bind: host.rt.lib });
 const strings = (parts: string[]): Cell => blockOf(K.Block, parts.map(p => string(p)));
 
 native('show', '["Draws a face and everything in it." face [object!]]', (_t, f) => value(page.view = f.args[0]!));
@@ -265,7 +265,7 @@ async function runOne(file: string, source: string, start: number, prelude: numb
     const test = s.data[at] as BlockCell;
     const got = await taskResult(spawn(host.sch, test.s, test.i));
     // a notice still waiting goes when the test ends: what waits for it runs, and its requests need answers too
-    await taskResult(spawn(host.sch, { data: [{ t: K.Word, sym: intern('ui-toasts-done'), bind: host.rt.user }] }, 0));
+    await taskResult(spawn(host.sch, { data: [{ t: K.Word, sym: intern('ui-toasts-done'), bind: host.rt.lib }] }, 0));
     const problems = [...unanswered(), ...page.errors, ...unasked()];
     if (got.t !== K.Logic || !got.v) problems.push(`the test gave ${mold(got)}, not true`);
     return problems.length > 0 ? problems.join('\n') : null;

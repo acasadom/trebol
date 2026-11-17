@@ -606,7 +606,7 @@ function truthy(v: Cell | null): boolean {
 }
 
 async function graphOf(m: ObjectCell): Promise<Cell> {
-  const fn: WordCell = { t: K.Word, sym: intern('graph-of'), bind: side.host.rt.user };
+  const fn: WordCell = { t: K.Word, sym: intern('graph-of'), bind: side.host.rt.lib };
   return taskResult(spawn(side.host.sch, { data: [fn, m] } as unknown as BlockCell['s'], 0));
 }
 

@@ -136,8 +136,8 @@ export function weekStart(lang: string): number {
 
 /** The active language: `i18n/language` of the user context, `en` if there is none. */
 export function activeLanguage(rt: Runtime): string {
-  const i = ctxFind(rt.user, intern('i18n'));
-  const obj = i < 0 ? null : rt.user.vals[i]!;
+  const i = ctxFind(rt.lib, intern('i18n'));
+  const obj = i < 0 ? null : rt.lib.vals[i]!;
   if (obj === null || obj.t !== K.Object) return 'en';
   const o = obj as ObjectCell;
   const j = ctxFind(o.ctx, intern('language'));
@@ -149,8 +149,8 @@ export function activeLanguage(rt: Runtime): string {
 
 /** A field of the user's `i18n` object, or null. */
 function i18nField(rt: Runtime, name: string): Cell | null {
-  const i = ctxFind(rt.user, intern('i18n'));
-  const obj = i < 0 ? null : rt.user.vals[i]!;
+  const i = ctxFind(rt.lib, intern('i18n'));
+  const obj = i < 0 ? null : rt.lib.vals[i]!;
   if (obj === null || obj.t !== K.Object) return null;
   const j = ctxFind((obj as ObjectCell).ctx, intern(name));
   return j < 0 ? null : (obj as ObjectCell).ctx.vals[j]!;
