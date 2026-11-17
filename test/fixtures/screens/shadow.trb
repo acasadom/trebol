@@ -1,0 +1,11 @@
+Trebol [title: "An app with words of the same name as the words of the tests"]
+
+; the app's own choose and see, which its code uses
+choose: func [n] [picked/text: rejoin ["Picked " n]]
+see: none
+
+view [
+    button "Pick" [choose 7]
+    choice size "Size" ["Small" "Large"] on-change [picked/text: rejoin ["Size " value]]
+    global picked: text "Nothing yet"
+]

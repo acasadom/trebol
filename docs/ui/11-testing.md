@@ -109,6 +109,8 @@ ok    app.test.trb:33:1  booking a repair
 A test names the faces by what the person sees: the label of a field, the text of a button, a hint. A word
 names a field by its name instead, `type 'due "2026-11-20"`, which still holds when the labels are
 translated.
+In a test these words are always the test's, even when the app has a `choose` or a `see` of its own, which
+its code goes on using.
 
 | Word | What the person does |
 | --- | --- |

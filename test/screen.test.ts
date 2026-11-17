@@ -148,6 +148,11 @@ test('click, pick-menu and drag act on the open rows of a tree, and see sees the
   assert.ok(passed, lines.join('\n'));
 });
 
+test('an app with a choose or see of its own does not hide the words of the tests', async () => {
+  const { passed, lines } = await ran(['test/fixtures/screens/shadow.test.trb']);
+  assert.ok(passed, lines.join('\n'));
+});
+
 test('a test in a folder imports the files next to it', async () => {
   const { passed, lines } = await ran(['test/fixtures/imports/lib/twice.test.trb']);
   assert.ok(passed, lines.join('\n'));
