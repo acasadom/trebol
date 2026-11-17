@@ -249,6 +249,11 @@ test('a range of dates takes two dates, the start first, each within min and max
   assert.ok(passed, lines.join('\n'));
 });
 
+test('a time takes what is one, in the active language, within min and max', async () => {
+  const { passed, lines } = await ran(['test/fixtures/screens/times.test.trb']);
+  assert.ok(passed, lines.join('\n'));
+});
+
 test('a board deals its cards to lanes; a drop sets the field, or takes the way of a machine to that state', async () => {
   const { passed, lines } = await ran(['test/fixtures/screens/board.test.trb']);
   assert.ok(passed, lines.join('\n'));

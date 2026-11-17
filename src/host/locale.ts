@@ -169,6 +169,24 @@ export function readRange(s: string, lang: string): string | null {
   return a <= b ? `${a} ${b}` : `${b} ${a}`;
 }
 
+/**
+ * A time typed in any language, as `09:30`, or null: `9:30`, `9.30`, `9h30`, `930`, `21`, and with am or pm,
+ * `9:30 pm` or `9pm`. Minutes go from 00 to 59 and hours from 0 to 23, or 1 to 12 with am or pm.
+ */
+export function readTime(s: string): string | null {
+  const t = /^(\d{1,2})(?:\s*[:.h]\s*(\d{2})|(\d{2}))?\s*h?\s*(?:([ap])\.?\s*m\.?)?$/i.exec(s.trim());
+  if (t === null) return null;
+  let h = Number(t[1]);
+  const m = Number(t[2] ?? t[3] ?? 0);
+  const half = t[4]?.toLowerCase();
+  if (m > 59) return null;
+  if (half !== undefined) {
+    if (h < 1 || h > 12) return null;
+    h = (h % 12) + (half === 'p' ? 12 : 0);
+  } else if (h > 23) return null;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
 /** The first day of the week in a language, 1 for Monday to 7 for Sunday. */
 export function weekStart(lang: string): number {
   try {

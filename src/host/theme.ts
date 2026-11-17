@@ -1173,6 +1173,8 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
   border-radius: var(--tb-radius-lg);
   box-shadow: var(--tb-shadow-3);
 }
+.tb-times .tb-lookup-option { font-variant-numeric: tabular-nums; }
+.tb-times .tb-lookup-option:focus { outline: none; box-shadow: inset 0 0 0 2px var(--tb-focus); }
 .tb-lookup-option { padding: var(--tb-space-2) var(--tb-space-3); border-radius: var(--tb-radius); cursor: pointer; }
 .tb-lookup-option:hover, .tb-lookup-option[aria-selected="true"] { background: var(--tb-primary-soft); }
 .tb-lookup-none { padding: var(--tb-space-2) var(--tb-space-3); color: var(--tb-muted); }

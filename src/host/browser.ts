@@ -19,7 +19,7 @@ import { logic,
   K, NONE, TRUE, FALSE, native, value, string, form, money, decToNumber, decFromNumber, ctxFind, getWord, intern, spell, text, canon, blockOf, wordOf, char, compare, UNSET, throwError, toJson, parseJson,
   type Cell, type MapCell, type ObjectCell, type BlockCell, type WordCell, type StringCell, type Ctx, type Sym,
 } from '../core/index.ts';
-import { mapAt, startHost, startUi, runSource, report, shown, translate, uiText, activeLanguage, editLocal, readLocal, readDate, readRange, weekStart, fileSize, LOCAL_KINDS, amountOf, countStep, type Host } from './index.ts';
+import { mapAt, startHost, startUi, runSource, report, shown, translate, uiText, activeLanguage, editLocal, readLocal, readDate, readRange, readTime, weekStart, fileSize, LOCAL_KINDS, amountOf, countStep, type Host } from './index.ts';
 import { spawn, runNow, taskResult, handleOf, type HostTask } from './scheduler.ts';
 import { themeCss, DEFAULT_THEME, LOOKS, THEME_WORDS, type ThemeParams } from './theme.ts';
 import { iconNode } from './icons.ts';
@@ -306,7 +306,7 @@ function el<T extends keyof HTMLElementTagNameMap>(tag: T, cls?: string): HTMLEl
   return e;
 }
 
-const INPUTS = new Set(['field', 'password', 'number', 'money', 'date', 'date-range', 'area', 'choice']);
+const INPUTS = new Set(['field', 'password', 'number', 'money', 'date', 'date-range', 'time', 'area', 'choice']);
 
 function build(face: ObjectCell): HTMLElement {
   const style = word(face, 'style') ?? 'face';
@@ -1011,15 +1011,20 @@ function rangeText(v: Cell): string {
   return v.s.data.slice(v.i, v.i + 2).map(display).join(' – ');
 }
 
-/** The date argument of a min or max rule of a face, or null. */
-function dateRule(face: ObjectCell, rule: string): Date | null {
+/** The argument of a rule of a face, as min or max, or none. */
+function ruleArg(face: ObjectCell, rule: string): Cell {
   const rules = get(face, 'rules');
-  if (rules.t !== K.Block) return null;
+  if (rules.t !== K.Block) return NONE;
   for (const r of rules.s.data) {
     if (r.t !== K.Block || r.s.data[0]?.t !== K.Word || spell((r.s.data[0] as WordCell).sym) !== rule) continue;
-    return utcDate(r.s.data[1] ?? NONE);
+    return r.s.data[1] ?? NONE;
   }
-  return null;
+  return NONE;
+}
+
+/** The date argument of a min or max rule of a face, or null. */
+function dateRule(face: ObjectCell, rule: string): Date | null {
+  return utcDate(ruleArg(face, rule));
 }
 
 function openCalendar(face: ObjectCell, opener: HTMLButtonElement): void {
@@ -1228,6 +1233,114 @@ function calendarKey(ev: KeyboardEvent): void {
     focusDay();
   }
   spanTo(to);
+}
+
+// --- times ---------------------------------------------------------------------------
+//
+// The list of a time field: the times from its min to its max, step minutes apart (30 unless told), as a
+// listbox. It opens on the time it holds, or the next one from now. Arrows, Home, End and the Page keys move,
+// Enter or Space picks, Esc closes.
+
+interface Times { face: ObjectCell; opener: HTMLButtonElement; list: HTMLElement }
+let times: Times | null = null;
+
+/** The minutes of a time! cell since midnight, or null. */
+function minutesOf(v: Cell): number | null {
+  return v.t === K.Time ? Math.floor(Number(v.v) / 6e10) : null;
+}
+
+function openTimes(face: ObjectCell, opener: HTMLButtonElement): void {
+  closeTimes(false);
+  closeCalendar(false);
+  const step = Math.max(1, Math.round(amountOf(get(face, 'step')) ?? 30));
+  const low = minutesOf(ruleArg(face, 'min')) ?? 0;
+  const high = minutesOf(ruleArg(face, 'max')) ?? 24 * 60 - 1;
+  const chosen = minutesOf(get(face, 'value'));
+  const now = new Date();
+  const aim = chosen ?? now.getHours() * 60 + now.getMinutes();
+  const fmt = new Intl.DateTimeFormat(activeLanguage(host.rt), { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' });
+  const list = el('ul', 'tb-lookup-list tb-times');
+  list.setAttribute('role', 'listbox');
+  list.setAttribute('aria-label', opener.getAttribute('aria-label') ?? own('choose-time'));
+  list.setAttribute('popover', 'manual');
+  let first: HTMLElement | null = null;
+  for (let t = low; t <= high; t += step) {
+    const li = el('li', 'tb-lookup-option');
+    li.setAttribute('role', 'option');
+    li.setAttribute('aria-selected', t === chosen ? 'true' : 'false');
+    li.tabIndex = -1;
+    const at = `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
+    li.textContent = fmt.format(t * 60000);
+    li.addEventListener('click', () => pickTime(at));
+    list.append(li);
+    if (first === null && t >= aim) first = li;
+  }
+  first ??= list.lastElementChild as HTMLElement | null;
+  if (first !== null) first.tabIndex = 0;
+  times = { face, opener, list };
+  opener.setAttribute('aria-expanded', 'true');
+  list.addEventListener('keydown', timesKey);
+  list.addEventListener('focusout', ev => {
+    if (times?.list === list && !list.contains(ev.relatedTarget as Node | null) && ev.relatedTarget !== null) closeTimes(false);
+  });
+  document.addEventListener('pointerdown', outsideTimes, true);
+  (opener.closest('dialog') ?? document.body).append(list);
+  list.showPopover?.();
+  const r = opener.closest('.tb-date')!.getBoundingClientRect();
+  list.style.width = `${Math.min(r.width, 240)}px`;
+  list.style.left = `${r.right - list.getBoundingClientRect().width}px`;
+  const height = list.getBoundingClientRect().height;
+  list.style.top = `${r.bottom + 4 + height > innerHeight - 8 ? Math.max(8, r.top - 4 - height) : r.bottom + 4}px`;
+  first?.scrollIntoView({ block: 'center' });
+  first?.focus();
+}
+
+function closeTimes(refocus = true): void {
+  if (times === null) return;
+  const { list, opener } = times;
+  times = null;
+  list.hidePopover?.();
+  list.remove();
+  opener.setAttribute('aria-expanded', 'false');
+  document.removeEventListener('pointerdown', outsideTimes, true);
+  if (refocus) opener.focus();
+}
+
+function outsideTimes(ev: PointerEvent): void {
+  if (times !== null && !times.list.contains(ev.target as Node) && !times.opener.contains(ev.target as Node)) closeTimes(false);
+}
+
+function pickTime(at: string): void {
+  const face = times?.face;
+  if (face === undefined) return;
+  closeTimes();
+  void fire('ui-input', face, string(at)).then(() => fire('ui-blur', face));
+}
+
+function timesKey(ev: KeyboardEvent): void {
+  if (times === null) return;
+  seenKeys.add(ev);
+  const items = [...times.list.children] as HTMLElement[];
+  const at = items.indexOf(ev.target as HTMLElement);
+  if (ev.key === 'Escape') {
+    ev.preventDefault();
+    ev.stopPropagation();
+    closeTimes();
+    return;
+  }
+  if (ev.key === 'Enter' || ev.key === ' ') {
+    ev.preventDefault();
+    (ev.target as HTMLElement).click();
+    return;
+  }
+  const moves: Record<string, number> = { ArrowDown: at + 1, ArrowUp: at - 1, Home: 0, End: items.length - 1, PageDown: at + 8, PageUp: at - 8 };
+  if (!(ev.key in moves) || at < 0) return;
+  ev.preventDefault();
+  const to = items[Math.max(0, Math.min(items.length - 1, moves[ev.key]!))]!;
+  items[at]!.tabIndex = -1;
+  to.tabIndex = 0;
+  to.focus();
+  to.scrollIntoView({ block: 'nearest' });
 }
 
 const MODIFIER_KEYS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'AltGraph', 'CapsLock', 'Dead', 'Unidentified']);
@@ -1513,7 +1626,8 @@ function buildInput(face: ObjectCell, style: string, m: Mounted): HTMLElement {
     const lang = activeLanguage(host.rt);
     const typed = style === 'money' ? readLocal(input.value, lang) ?? input.value
       : style === 'date' ? readDate(input.value, lang) ?? input.value
-      : style === 'date-range' ? readRange(input.value, lang) ?? input.value : input.value;
+      : style === 'date-range' ? readRange(input.value, lang) ?? input.value
+      : style === 'time' ? readTime(input.value) ?? input.value : input.value;
     m.typing++;
     const settled = (): void => {
       m.typing--;
@@ -1529,15 +1643,16 @@ function buildInput(face: ObjectCell, style: string, m: Mounted): HTMLElement {
   input.addEventListener('blur', ev => { if (!inDevtools((ev as FocusEvent).relatedTarget)) void fire('ui-blur', face); });
   const iconWord = style === 'area' || style === 'choice' ? null : iconName(face);
   const svg = iconWord !== null ? icon(iconWord) : null;
-  if (style === 'date' || style === 'date-range') {
+  if (style === 'date' || style === 'date-range' || style === 'time') {
     const box = el('div', 'tb-date');
     const pick = el('button', 'tb-date-button');
     pick.type = 'button';
-    pick.setAttribute('aria-haspopup', 'dialog');
+    pick.setAttribute('aria-haspopup', style === 'time' ? 'listbox' : 'dialog');
     pick.setAttribute('aria-expanded', 'false');
-    const cal = icon('calendar');
+    const cal = icon(style === 'time' ? 'clock' : 'calendar');
     if (cal !== null) pick.append(cal);
-    pick.addEventListener('click', () => (calendar?.opener === pick ? closeCalendar() : openCalendar(face, pick)));
+    if (style === 'time') pick.addEventListener('click', () => (times?.opener === pick ? closeTimes() : openTimes(face, pick)));
+    else pick.addEventListener('click', () => (calendar?.opener === pick ? closeCalendar() : openCalendar(face, pick)));
     box.append(input, pick);
     control.append(box, error);
   } else if (svg !== null) {
@@ -4745,7 +4860,7 @@ function sync(m: Mounted): void {
         if (m.input.dataset.options !== optionsKey(f)) fillSelect(m.input, f);
       }
       const want = v.t === K.None ? str(f, 'typed') ?? '' : style === 'date-range' ? rangeText(v)
-        : style === 'money' || style === 'date' ? display(v) : form(v);
+        : style === 'money' || style === 'date' || style === 'time' ? display(v) : form(v);
       // never fight the user's typing: with the focus, only a value code set is drawn (set-values
       // after Enter sent the form); a read-only field has no typing to fight
       const theirs = document.activeElement === m.input && !flag(f, 'readonly') && (m.typing > 0 || v === m.typed);
@@ -4774,10 +4889,10 @@ function sync(m: Mounted): void {
     const typing = m.input instanceof HTMLTextAreaElement || (m.input instanceof HTMLInputElement && m.input.type !== 'checkbox');
     if (typing) (m.input as HTMLInputElement | HTMLTextAreaElement).readOnly = readonly;
     m.input.disabled = flag(f, 'disabled') || (readonly && !typing);
-    if (style === 'date' || style === 'date-range') {
+    if (style === 'date' || style === 'date-range' || style === 'time') {
       const pick = m.input.nextElementSibling as HTMLButtonElement;
       pick.disabled = m.input.disabled || readonly;
-      const what = style === 'date' ? 'choose-date' : 'choose-dates';
+      const what = style === 'date' ? 'choose-date' : style === 'time' ? 'choose-time' : 'choose-dates';
       pick.setAttribute('aria-label', t !== null ? own(`${what}-of`, t) : own(what));
     }
     m.input.setAttribute('aria-required', required(f) ? 'true' : 'false');

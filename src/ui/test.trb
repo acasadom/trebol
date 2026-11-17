@@ -163,7 +163,7 @@ test-texts: function [/local f p t] [
         v: f/value
         case [
             string? :v [append out v]
-            find [number money date slider] f/style [if v [append out localize v]]
+            find [number money date slider time] f/style [if v [append out localize v]]
             all [f/style = 'date-range  v] [append out rejoin [localize v/1 " – " localize v/2]]
         ]
         if all [f/style = 'lookup  v] [
@@ -229,7 +229,7 @@ test-face: function [action [word!] styles [block!] what /local f p] [
 
 ; --- what the user does ---------------------------------------------------------
 
-text-styles: [field password number money date date-range area rich slider]
+text-styles: [field password number money date date-range time area rich slider]
 
 click: function [
     "Clicks a button, link, tile, check, toggle, tab or a step done, the row of a table or list that shows a text, or a node of an orbit."

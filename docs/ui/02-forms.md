@@ -114,6 +114,23 @@ view [
 Its value is a block of two dates, the start first: `[3-Nov-2026 10-Nov-2026]`. The field shows them in the
 active language, and they can be typed too, apart by a dash. `min` holds for the start and `max` for the end.
 
+## A time of day
+
+A `time` takes an hour and its minutes. Its button lists the times of the day, half an hour apart, or `step`
+minutes apart; `min` and `max` keep them within opening hours:
+
+```trebol-ui
+view [
+    form [
+        date day "Day" required
+        time drop-off "Drop-off" required min 8:30 max 18:00 step 15
+        submit "Book" [toast rejoin ["Drop-off at " localize values/drop-off]]
+    ]
+]
+```
+
+Its value is a `time!`, shown in the active language. It can be typed as `9:30`, `9.30` or `9:30 pm`.
+
 ## Rules of your own
 
 The built-in rules cover the usual cases: `required`, `email`, `url`, `integer`, `iban`, `min` and `max`

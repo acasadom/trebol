@@ -65,7 +65,7 @@ face: make object! [
     links: none         ; a lookup: the screen each value links to when readonly, a map
     query: none         ; a lookup: the text last searched for
     currency: none      ; a money field's currency code: EUR
-    step: none          ; a slider: how far one move takes it; none is 1
+    step: none          ; a slider: how far one move takes it, none is 1; a time: minutes between those listed, none is 30
     reactions: none     ; react, is and calc: a block of reaction objects
     template: none      ; rows: the block of the fields of one row
     built: none         ; rows: what its rows were last made from
@@ -99,13 +99,13 @@ face: make object! [
 styles: make map! []
 
 container-styles: [view column row form panel grid dialog scroll split toolbar desktop]
-input-styles: [field password number money date date-range area rich check toggle choice radio upload photo lookup rows widget slider]
+input-styles: [field password number money date date-range time area rich check toggle choice radio upload photo lookup rows widget slider]
 data-styles: [table list tree chart board]
 
 foreach [name base] [
     view column  column column  row row  form form  panel panel  grid grid  scroll scroll  desktop desktop
     title title  heading heading  text text  divider divider
-    field field  password password  number number  money money  date date  date-range date-range  area area  rich rich  check check  choice choice
+    field field  password password  number number  money money  date date  date-range date-range  time time  area area  rich rich  check check  choice choice
     toggle toggle  radio radio  upload upload  photo photo  lookup lookup  progress progress  image image  backdrop backdrop  icon icon
     video video  audio audio  widget widget  slider slider
     button button  link link  tile tile  table table  list list  tabs tabs  tab tab  steps steps  step step
@@ -337,14 +337,14 @@ ui-fail: function [found [block!] /local place m] [
 
 ; What a rule word takes, for a problem when what follows it is something else.
 ui-takes: [
-    min "a number, an amount or a date"  max "a number, an amount or a date"  length "two integers"
+    min "a number, an amount, a date or a time"  max "a number, an amount, a date or a time"  length "two integers"
     pattern "a block"  check "a block"  check-async "a block"  calc "a block"  react "a block, after later or not"  is "a block"  accept "a block"
     menu "a block"  sorted "a block"  known "a map"  links "a map"  match "the name of a field"
     poster "a file or a url"  captions "a file, a url or a block"  width "small, medium, large or fill"
     pad "a step from 0 to 7, none or wide"  gap "a step from 0 to 7, none or wide"  key "a text or a word"
     morph "a name, 'logo, or a block, [client id]"  mark "an icon and its label, #list ^"List^""
     by "the field that names the lane of a card, by status"  card "a block of the fields a card shows"
-    step "a number above 0"
+    step "a number above 0; for a time, minutes"
 ]
 
 ; Every word the dialect knows, for ui-suggest.
@@ -503,12 +503,12 @@ build-faces: function [
         | set v lit-path! (f/value: to path! v)
         ; slider volume "Volume" 0 100: the least and the most it takes
         | if (f/style = 'slider) set a number! set n number! (add-rule f reduce ['min a]  add-rule f reduce ['max n])
-        | 'step set n number! if (f/style = 'slider) (f/step: n)
+        | 'step set n number! if (find [slider time] f/style) (f/step: n)
         | set n integer! (f/cols: n)
         | set p pair! (f/extent: p)
         | set w word! if (all [f/style = 'chart  find chart-kinds w]) (f/kind: w)
-        | 'min set n [number! | money! | date!] (add-rule f reduce ['min n])
-        | 'max set n [number! | money! | date!] (add-rule f reduce ['max n])
+        | 'min set n [number! | money! | date! | time!] (add-rule f reduce ['min n])
+        | 'max set n [number! | money! | date! | time!] (add-rule f reduce ['max n])
         | 'length set a integer! set n integer! (add-rule f reduce ['length a n])
         | 'pattern set b block! (add-rule f reduce ['pattern b])
         | 'accept set b block! (f/accept: b)
@@ -578,6 +578,9 @@ build-faces: function [
             ]
             (if f/style = 'rows [rows-fill f])
             (if f/style = 'slider [slider-fill f pos])
+            (if all [f/style = 'time  f/step  any [not integer? f/step  f/step < 1  f/step > 720]] [
+                ui-problem pos "a time's step is a whole number of minutes from 1 to 720"
+            ])
             (if f/style = 'board [
                 unless f/lanes [ui-problem pos "a board takes a block with a word and a label for each lane"]
                 unless f/field [ui-problem pos "a board takes by and the field that names the lane of a card: by status"]
@@ -1895,7 +1898,7 @@ validate-face: function [
     if f/typed [
         if f/style = 'upload [return message 'accept reduce [list-of f/accept]]
         if f/style = 'photo [return either f/accept [message 'accept reduce [list-of f/accept]] [message 'images []]]
-        return message select [number number money amount date date date-range date-range] f/style []
+        return message select [number number money amount date date date-range date-range time time] f/style []
     ]
     if blank? :v [
         return either find/only rules [required] [message 'required []] [f/async-error]
@@ -1909,11 +1912,11 @@ validate-face: function [
             ; a range of dates keeps both its ends within them
             min [
                 low: either f/style = 'date-range [v/1] [v]
-                if all [any [number? low  money? low  date? low]  low < r/2] [message 'min reduce [r/2]]
+                if all [any [number? low  money? low  date? low  time? low]  low < r/2] [message 'min reduce [r/2]]
             ]
             max [
                 high: either f/style = 'date-range [v/2] [v]
-                if all [any [number? high  money? high  date? high]  high > r/2] [message 'max reduce [r/2]]
+                if all [any [number? high  money? high  date? high  time? high]  high > r/2] [message 'max reduce [r/2]]
             ]
             length [
                 n: length? form v
@@ -2027,6 +2030,8 @@ ui-input: function [
         ; and a date as 2026-11-03
         date [all [new  attempt [to date! new]]]
         ; and a range of dates as 2026-11-03 2026-11-10, the start first
+        ; and a time as 09:30
+        time [all [new  attempt [to time! new]]]
         date-range [all [new  attempt [range: load new  all [block? range  2 = length? range  date? range/1  date? range/2  range/1 <= range/2  range]]]]
         check [to logic! new]
         toggle [to logic! new]
@@ -2035,7 +2040,7 @@ ui-input: function [
         if all [decimal? f/value  f/value = to integer! f/value] [f/value: to integer! f/value]
     ]
     ; text that is not a number, amount or date stays on screen, with its message
-    f/typed: all [find [number money date date-range] f/style  new  none? f/value  new]
+    f/typed: all [find [number money date date-range time] f/style  new  none? f/value  new]
     changed f
 ]
 

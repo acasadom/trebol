@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { K, NONE, UNSET, load, spell, TRUE, FALSE, native, value, mold, form, string, text, money, blockOf, errorField, type Cell, type ObjectCell, type StringCell } from '../src/core/index.ts';
-import { startHost, startUi, runSource, readLocal, editLocal, readDate, readRange, weekStart, fileSize, translate, uiText, amountOf, countStep, shown as shownLocal, type Host } from '../src/host/index.ts';
+import { startHost, startUi, runSource, readLocal, editLocal, readDate, readRange, readTime, weekStart, fileSize, translate, uiText, amountOf, countStep, shown as shownLocal, type Host } from '../src/host/index.ts';
 import { fileHandle } from '../src/host/net.ts';
 import { themeCss, DEFAULT_THEME, LOOKS, palette, contrast, contrastOverImage, scrimAlpha, CONTRAST_PAIRS } from '../src/host/theme.ts';
 
@@ -188,7 +188,7 @@ describe('layout', () => {
    app.trb:3:5  buton is not a style; did you mean button?
    app.trb:4:23 requird is not a word of field; did you mean required?
    app.trb:5:5  feild is not a style; did you mean field?
-   app.trb:6:26 min takes a number, an amount or a date
+   app.trb:6:26 min takes a number, an amount, a date or a time
    app.trb:7:15 text does not take 1.5
    app.trb:8:17 table columns are words, each with an optional label, then image or image round
    app.trb:9:11 pad takes a step from 0 to 7`,
@@ -205,6 +205,8 @@ describe('layout', () => {
     // a slider's ends go least first, and its step fits between them
     assert.equal((await problems('view [slider v "V" 50 10]'))[0],
       'layout: a slider takes its least and its most as two numbers, the least first: 0 100');
+    assert.equal((await problems('view [time t "T" step 7.5]'))[0],
+      'layout: a time\'s step is a whole number of minutes from 1 to 720');
     assert.equal((await problems('view [slider v "V" 0 10 step 0]'))[0],
       'layout: a slider\'s step is a number above 0 and no more than its most less its least');
     await runSource(host, 'view [slider v "V" step 5]', 'app.trb');
@@ -1221,6 +1223,15 @@ test('dates are read in the order of the language', () => {
   ];
   for (const [typed, lang, want] of cases) assert.equal(readDate(typed, lang), want, `${lang} ${typed}`);
   assert.deepEqual(['es', 'en', 'en-GB'].map(weekStart), [1, 7, 1]);
+});
+
+test('a time is read in any language, with am or pm', () => {
+  const cases: [string, string | null][] = [
+    ['9:30', '09:30'], ['9.30', '09:30'], ['9h30', '09:30'], ['930', '09:30'], ['21', '21:00'], ['21 h', '21:00'],
+    ['9:30 pm', '21:30'], ['9pm', '21:00'], ['12 a.m.', '00:00'], ['12:15 PM', '12:15'], ['24:00', null],
+    ['9:60', null], ['13 pm', null], ['x', null],
+  ];
+  for (const [typed, want] of cases) assert.equal(readTime(typed), want, typed);
 });
 
 test('a range of dates is read as two dates, the start first', () => {

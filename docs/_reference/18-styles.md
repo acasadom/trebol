@@ -91,6 +91,13 @@ Two dates, a start and an end, picked on one calendar: `date-range stay "Stay"`.
 both in the active language, and they are typed apart by a dash, as `3/11/2026 – 10/11/2026`. `min` holds for
 the start and `max` for the end. A screen test sets it with `type "Stay" [3-Nov-2026 10-Nov-2026]`.
 
+## time
+
+A field for a time of day, with a list of times: `time start "Start" step 15`. Its value is a `time!`. It is
+shown in the active language and typed as `9:30`, `9.30`, `930` or `9:30 pm`. The list goes from its `min`
+to its `max`, the whole day unless given, `step` minutes apart, 30 unless given, and opens on the time it holds
+or the next one from now.
+
 ## area
 
 Several lines of text.

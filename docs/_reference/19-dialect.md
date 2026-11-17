@@ -134,7 +134,8 @@ The fields a card of a board shows, as the columns of a list: `card [title "Job"
 ## step
 
 How far one move takes a slider: `slider volume "Volume" 0 50 step 5`. A number above 0; a decimal step gives
-decimal values.
+decimal values. On a `time`, the minutes between the times its list offers, from 1 to 720: `time start "Start"
+step 15`.
 
 ## round
 
@@ -209,7 +210,7 @@ The text must be a whole number.
 ## min
 
 `min 18`: the value must be at least that. On `rows`, the fewest rows; on `date-range`, its start. Numbers,
-amounts and dates.
+amounts, dates and times.
 
 ## max
 
