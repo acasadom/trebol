@@ -265,6 +265,11 @@ describe('layout', () => {
     assert.equal(mold(await runSource(host, 'v: layout [\n  who: field name "Name" required\n  row [button "b"]]  reduce [v/pane/1/written  v/pane/2/written  v/pane/2/pane/1/written]', 'x.trb')),
       '[["x.trb:2:3" "x.trb:2:26"] ["x.trb:3:3" "x.trb:3:7"] ["x.trb:3:8" "x.trb:3:15"]]');
   });
+
+  test('ui-sketch lays a block out running none of its code, with its problems', async () => {
+    assert.equal(mold(await runSource(host, 'r: ui-sketch [text (crash) button "Go" [crash] buton "y"]  reduce [length? r/1/pane  r/1/pane/2/text  r/2/2]', 'x.trb')),
+      '[2 "Go" "buton is not a style; did you mean button?"]');
+  });
 });
 
 describe('validation', () => {

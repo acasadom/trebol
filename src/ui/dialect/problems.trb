@@ -27,6 +27,20 @@ ui-build: function [spec [block!] labels [block!]] [
 ; While ui-check runs: the problems of every block, and no code of the program is run.
 ui-checking: none
 
+; For tools such as a designer: a block laid out as check does, running none of its code. The faces keep
+; where they were written (place, written); problems do not stop it.
+ui-sketch: function [
+    "A layout of the block that runs none of its code, and its problems: [view problems]"
+    spec [block!]
+] [
+    set 'ui-checking copy []
+    r: try [layout spec]
+    found: ui-checking
+    set 'ui-checking none
+    if error? r [append found reduce [spec form r/message]]
+    reduce [either error? r [none] [r] found]
+]
+
 ; It lays out each block after view or layout (styles of stylize first), and the
 ; faces of each screen and row of rows, which a running app lays out only when shown.
 ui-check: function [
