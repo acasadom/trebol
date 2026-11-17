@@ -11,12 +11,17 @@ const picking = new Set<Mounted>();
 const marked = new WeakMap<Mounted, HTMLElement>();
 
 /** Keeps a face in the picking set while it is inert and has on-select, and marks its selected face. */
-export function syncPick(m: Mounted, inert: boolean): void {
+export function syncPick(m: Mounted, inert: boolean, retry = false): void {
   const on = inert && handlerFor(m.face, 'on-select');
   if (on) picking.add(m);
   else picking.delete(m);
   const s = get(m.face, 'selected');
   const now = on && s.t === K.Object ? byCtx.get((s as ObjectCell).ctx)?.el ?? null : null;
+  // a face chosen in a new pane is mounted after its container: mark it once it is
+  if (on && s.t === K.Object && now === null && !retry) {
+    requestAnimationFrame(() => syncPick(m, m.el.inert, true));
+    return;
+  }
   const was = marked.get(m);
   if (was === now) return;
   was?.classList.remove('tb-picked');

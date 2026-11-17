@@ -21,6 +21,9 @@ export const FORMS = String.raw`
 .tb-form > .tb-steps > .tb-steps-nav { grid-column: 2; }
 :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel, .tb-form > .tb-steps > .tb-step-panel) > * { grid-column: 1 / -1; }
 :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel, .tb-form > .tb-steps > .tb-step-panel) > .tb-field { display: contents; }
+/* a field of a form chosen on a designer's canvas (inert, on-select) has no box of its own: its control is marked */
+:is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel, .tb-form > .tb-steps > .tb-step-panel) > .tb-field.tb-picked > .tb-control { outline: 2px solid var(--tb-primary); outline-offset: 4px; border-radius: var(--tb-radius); }
+:is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel, .tb-form > .tb-steps > .tb-step-panel) > .tb-field.tb-picked > .tb-label { color: var(--tb-primary); }
 :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel, .tb-form > .tb-steps > .tb-step-panel) > .tb-field > .tb-label { grid-column: 1; padding-top: calc((var(--tb-control) - 1.5em) / 2); }
 :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel, .tb-form > .tb-steps > .tb-step-panel) > .tb-field > .tb-control { grid-column: 2; }
 :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel, .tb-form > .tb-steps > .tb-step-panel) > .tb-actions, :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel, .tb-form > .tb-steps > .tb-step-panel) > .tb-check-row { grid-column: 2; }
