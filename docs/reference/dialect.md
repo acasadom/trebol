@@ -283,6 +283,14 @@ A flag.
 
 A chart whose series sit on top of each other, so each bar or area shows the total too.
 
+(word-segmented)=
+## segmented
+
+A flag.
+
+A radio whose options are buttons joined in a bar, the chosen one pressed, as the switch between the views of a
+page: `radio view "View" ["Design" "Split" "Code"] segmented`. Its text is read out, not shown.
+
 (word-bar)=
 ## bar
 

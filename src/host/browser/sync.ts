@@ -41,6 +41,7 @@ export function sync(m: Mounted): void {
   if (flag(f, 'narrow-only')) cls.push('tb-narrow-only');
   if (flag(f, 'wide-only')) cls.push('tb-wide-only');
   if (flag(f, 'fit')) cls.push('tb-fit');
+  if (flag(f, 'segmented')) cls.push('tb-segmented');
   if (flag(f, 'drop')) cls.push('tb-drop-zone');
   if (role !== null && !INPUTS.has(style)) cls.push(`tb-${role}`);
   const size = word(f, 'size');

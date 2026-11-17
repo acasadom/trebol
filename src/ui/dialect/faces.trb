@@ -80,6 +80,7 @@ face: make object! [
     totals: none        ; a table: a row shown at the foot, never chosen nor sorted
     kind: none          ; a chart: bar line area pie
     stacked: false      ; a chart: its series one on top of another
+    segmented: false    ; a radio: its options as buttons joined in a bar, one pressed
     draw: none          ; a canvas: the block of the draw dialect it shows
     extent: none        ; a canvas: the size of its drawing space, a pair
     form: none          ; the enclosing form, if any

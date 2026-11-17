@@ -140,7 +140,7 @@ its least. The arrow keys, Home, End, Page Up and Page Down move it too. A scree
 ## radio
 
 Options to choose one from, all shown: the same options as a `choice`, groups included, each with its title
-over its options.
+over its options. `segmented` shows them as buttons joined in a bar, the chosen one pressed.
 
 ## upload
 
