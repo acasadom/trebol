@@ -19,12 +19,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # the designer, built into designer/ as a demo
+      - uses: actions/checkout@v4
+        with:
+          repository: acasadom/trebol-dev
+          path: _trebol-dev
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - uses: astral-sh/setup-uv@v6
       - run: npm ci
       - run: npm run site
+        env:
+          TREBOL_DEV: _trebol-dev
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
