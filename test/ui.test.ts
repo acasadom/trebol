@@ -260,6 +260,11 @@ describe('layout', () => {
       '["x.trb:2:3" "x.trb:3:8"]');
     assert.equal(await ev('first reduce [get in first layout/only compose [(to word! "text") "a"] \'place]'), 'none');
   });
+
+  test('a face keeps where its first and last values were written, label included', async () => {
+    assert.equal(mold(await runSource(host, 'v: layout [\n  who: field name "Name" required\n  row [button "b"]]  reduce [v/pane/1/written  v/pane/2/written  v/pane/2/pane/1/written]', 'x.trb')),
+      '[["x.trb:2:3" "x.trb:2:26"] ["x.trb:3:3" "x.trb:3:7"] ["x.trb:3:8" "x.trb:3:15"]]');
+  });
 });
 
 describe('validation', () => {

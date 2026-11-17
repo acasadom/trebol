@@ -85,6 +85,7 @@ face: make object! [
     form: none          ; the enclosing form, if any
     root: none          ; the view this face belongs to
     place: none         ; where the face was written, file:line:col; none if made at run time
+    written: none       ; [first last]: where its first value (a label, if any) and its last were written, as place
     submit: false
 ]
 

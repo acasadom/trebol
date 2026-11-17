@@ -170,6 +170,7 @@ build-faces: function [
     ]
     parse spec [any [
         (label: none  global?: false)
+        began:
         opt ['global (global?: true)]
         opt [set label set-word!]
         [
@@ -195,6 +196,7 @@ build-faces: function [
                     if (ui-meant-style first pos) any [not face-start skip]
                 ]
             ]
+            ended: (f/written: reduce [loaded-at began  loaded-at back ended])
             (if f/style = 'rows [rows-fill f])
             (if f/style = 'slider [slider-fill f pos])
             (if all [f/style = 'time  f/step  any [not integer? f/step  f/step < 1  f/step > 720]] [
