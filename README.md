@@ -64,7 +64,7 @@ npx trebol --version              # the version installed
 into `~/.vscode/extensions/trebol` and restart VS Code.
 
 A JavaScript program can run Trebol too, through `trebol/host` and `trebol/core`; see
-[using Trebol from JavaScript](https://acasadom.github.io/trebol/guides/architecture.html#using-trebol-from-javascript).
+[using Trebol from JavaScript](https://trebol-lang.com/docs/guides/architecture.html#using-trebol-from-javascript).
 
 ## Working on Trebol
 
@@ -84,7 +84,8 @@ the tagged commit and stages it on npm, where a maintainer approves it with `npm
 
 ## Documentation
 
-The documentation is at <https://acasadom.github.io/trebol/>. It has two tutorials,
+The website, <https://trebol-lang.com/>, is itself an app in Trebol (`site/`): a gallery of components, each
+beside its code, and two small games. The documentation is at <https://trebol-lang.com/docs/>. It has two tutorials,
 one for the language and one for the screens, where every example is run by the test suite and every UI
 example is the real app running under its code; a reference of every function; a guide for people who know
 Rebol; and guides to how Trebol is built.
@@ -100,7 +101,8 @@ Rebol; and guides to how Trebol is built.
 | `src/ui` | the UI dialect, written in Trebol |
 | `test` | tests in TypeScript, and the language suites in Trebol (`test/trebol`) |
 | `examples` | sample apps: `signup`, `clients`, `gallery`, `live`, `designer` |
-| `docs` | the documentation site |
+| `site` | the website, trebol-lang.com: the front page, the gallery and the games, in Trebol |
+| `docs` | the documentation, served under the website's `docs/` |
 | `tools` | the `trebol` command, the console, the documentation builders |
 | `editors` | the Visual Studio Code extension and its TextMate grammar |
 

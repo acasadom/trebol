@@ -1,0 +1,105 @@
+Trebol [title: "Clover Hunt"]
+
+; Clover Hunt: four four-leaf clovers hide in a field of seven by seven. A patch you search with no clover in
+; it tells how many of the clovers still hidden grow in its row and its column together. Find all four before
+; your searches run out.
+
+clover-hunt: context [
+    size: 7  hidden: 4  searches: 16
+    clovers: none    ; the patches, 1 to 49, where a clover grows
+    found: none      ; the clovers found
+    left: 0          ; searches left
+    state: 'playing  ; playing, won or lost
+
+    row-of: func [i] [to integer! i - 1 / size]
+    col-of: func [i] [i - 1 // size]
+
+    ; the clovers not found yet in the row or the column of a patch
+    hint: func [i /local n] [
+        n: 0
+        foreach c clovers [
+            if all [
+                not find found c
+                any [(row-of c) = (row-of i)  (col-of c) = (col-of i)]
+            ] [n: n + 1]
+        ]
+        n
+    ]
+
+    start: func [/local c] [
+        random/seed now/precise
+        clovers: copy []
+        while [hidden > length? clovers] [
+            c: random size * size
+            unless find clovers c [append clovers c]
+        ]
+        found: copy []
+        left: searches
+        state: 'playing
+        foreach f hunt-field/pane [
+            f/text: ""
+            f/role: none
+        ]
+        show
+    ]
+
+    search: func [i f] [
+        ; a patch searched keeps what it said, and searching it again costs nothing
+        if any [state <> 'playing  not empty? f/text] [exit]
+        left: left - 1
+        either find clovers i [
+            append found i
+            f/text: "🍀"
+            f/role: 'success
+            if hidden = length? found [state: 'won]
+        ] [
+            f/text: form hint i
+        ]
+        if all [state = 'playing  left = 0] [
+            state: 'lost
+            ; show where the rest were
+            foreach c clovers [
+                unless find found c [
+                    f: pick hunt-field/pane c
+                    f/text: "🍀"
+                    f/role: 'danger
+                ]
+            ]
+        ]
+        show
+    ]
+
+    show: func [] [
+        hunt-left/text: form left
+        hunt-found/text: rejoin [length? found " of " hidden]
+        hunt-state/text: switch state [
+            playing ["A number counts the clovers still hidden in that row and that column."]
+            won [rejoin ["You found them all with " left " searches to spare."]]
+            lost ["Out of searches. The red ones were still hiding."]
+        ]
+        hunt-state/role: switch state [playing ['muted] won ['success] lost ['danger]]
+    ]
+]
+
+clover-hunt-screen: compose/deep [
+    on-enter [clover-hunt/start]
+    title "Clover Hunt"
+    text muted {Four four-leaf clovers hide in the field. A patch with no clover tells how many of those
+still hidden grow in its row and its column together. Find all four before your searches run out.}
+    row top [
+        global hunt-field: grid 7 gap 1 [
+            (collect [
+                repeat i 49 [keep compose/deep [button "" [clover-hunt/search (i) face]]]
+            ])
+        ]
+        column [
+            grid 2 [
+                text muted "Searches left" global hunt-left: text "16"
+                text muted "Found" global hunt-found: text "0 of 4"
+            ]
+            button primary "New field" [clover-hunt/start]
+        ]
+    ]
+    global hunt-state: text muted ""
+    link #external "See the code of this game" https://github.com/acasadom/trebol/blob/main/site/games/clover-hunt.trb
+]

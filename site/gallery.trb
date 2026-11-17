@@ -1,0 +1,180 @@
+Trebol [title: "Gallery"]
+
+; The gallery: each sample is a layout, live, with its own code beside it. The code shown is the sample's
+; block itself, molded, so it can never drift from what runs.
+
+samples: copy []
+
+; Adds a sample: a title, what it shows, the layout, and the code that gives it data once it is on show.
+sample: func [title [string!] about [string!] body [block!] /data setup [block!]] [
+    append/only samples reduce [title about body any [setup []]]
+]
+
+indent: func [s [string!]] [replace/all copy s newline rejoin [newline "    "]]
+
+code-of: func [body setup /local s] [
+    s: rejoin ["view [" newline "    " indent mold/only body newline "]"]
+    unless empty? setup [append s rejoin [newline newline mold/only setup]]
+    s
+]
+
+sample "Buttons" "Roles say what a button means; the theme gives each its color, in light and dark." [
+    row [
+        button primary #plus "New client" [toast "Created"]
+        button #edit "Edit" [toast "Editing"]
+        button danger #trash "Delete" [
+            if confirm/role "Delete the client?" 'danger [toast/role "Deleted" 'danger]
+        ]
+        button "Undo" [toast/undo "Draft deleted" [toast "Draft back"]]
+    ]
+]
+
+sample "A form that checks itself" "Each field says what is wrong when you leave it; Save waits until all are right." [
+    form [
+        field name "Name" required
+        field mail "Email" email required
+        money price "Price" EUR min 0
+        date due "Due date"
+        choice kind "Kind" ["Person" "Company"]
+        check terms "I accept the terms" required
+        submit "Save" [toast/role rejoin ["Saved " values/name] 'success]
+    ]
+]
+
+sample "Live values" "A face that is worked out from others changes the moment they do." [
+    form [
+        slider qty "Bikes" 1 10
+        money each "Each" EUR
+        text is [rejoin ["Total: " form values/qty * any [values/each EUR$0]]]
+    ]
+]
+
+sample/data "A table" "Sorted by a click on a column; on a phone each row becomes a card." [
+    global table repairs [bike "Bike" owner "Owner" due "Due" cost "Cost"] sortable sorted [due asc]
+] [
+    repairs/data: [
+        #(id: 1 bike: "Road" owner: "Ada Lovelace" due: 12-Nov-2026 cost: EUR$120.00)
+        #(id: 2 bike: "Mountain" owner: "Alan Turing" due: 3-Nov-2026 cost: EUR$85.50)
+        #(id: 3 bike: "City" owner: "Grace Hopper" due: 28-Oct-2026 cost: EUR$43.00)
+    ]
+]
+
+sample "A dialog" "A dialog is laid out like the rest, and opened from any action." [
+    global note: dialog "New note" [
+        form [
+            area body "Note" required
+            submit "Keep it" [close note toast/role "Kept" 'success]
+        ]
+    ]
+    button "Write a note" [open note]
+]
+
+sample "Tabs" "Each tab keeps its fields while you look at another." [
+    tabs [
+        "General" [field "Company" "Cog & Chain" check "Active"]
+        "Billing" [money "Credit" EUR text muted "Paid by transfer."]
+    ]
+]
+
+sample "Steps" "A form in steps, one at a time; a step can be there only when it applies." [
+    form [
+        steps [
+            "Who" [radio who "You are" ["A person" "A company"] required]
+            "Company" when [values/who = "A company"] [field tax-id "Tax id" required]
+            "Request" [area request "What you need" required]
+        ]
+        submit "Send" [toast/role "Sent" 'success]
+    ]
+]
+
+sample/data "Charts" "A chart reads rows, the same as a table." [
+    grid 2 [
+        global chart bar income small "Income" [month "Month" repairs "Repairs" parts "Parts"]
+        global chart pie jobs small "Jobs" [job "Job" count "Count"]
+    ]
+] [
+    income/data: [
+        #(month: "Jul" repairs: 1200 parts: 340) #(month: "Aug" repairs: 1450 parts: 410)
+        #(month: "Sep" repairs: 1620 parts: 380) #(month: "Oct" repairs: 1380 parts: 520)
+    ]
+    jobs/data: [#(job: "Brakes" count: 14) #(job: "Chains" count: 9) #(job: "Wheels" count: 6)]
+]
+
+sample "Drawing" "Red's draw dialect, drawn as lines: sharp at any size, in the theme's colors." [
+    row [
+        canvas 120x120 "A wheel" [
+            pen text line-width 4 fill-pen surface circle 60x60 52
+            line-width 2 pen muted
+            line 60x8 60x112 line 8x60 112x60 line 23x23 97x97 line 97x23 23x97
+            pen primary fill-pen primary circle 60x60 10
+        ]
+        canvas 160x120 "Shapes" [
+            fill-pen orange box 10x10 70x50 6
+            fill-pen teal triangle 90x50 150x50 120x10
+            pen purple line-width 3 fill-pen off arc 40x90 25x25 180 180
+            pen red curve 90x110 120x60 150x110
+        ]
+    ]
+]
+
+sample/data "A tree" "Branches open on a click, and can be filled only when they are opened." [
+    global tree places [name] on-select [toast row/name]
+] [
+    places/data: [
+        #(id: 1 name: "Europe" expanded: true children: [
+            #(id: 2 name: "Spain" children: [#(id: 3 name: "Madrid") #(id: 4 name: "Seville")])
+            #(id: 5 name: "Italy")
+        ])
+        #(id: 6 name: "America")
+    ]
+]
+
+sample "Progress" "A bar that fills, or that only says it is busy when nobody knows how long it takes." [
+    global upload: progress "Uploading photos" 40%
+    progress "Waiting for the server"
+    row [
+        button #minus "Less" [upload/value: max 0% upload/value - 10%]
+        button #plus "More" [upload/value: min 100% upload/value + 10%]
+    ]
+]
+
+sample "Orbit" "Things and how they are linked, around the one in focus." [
+    orbit "Workshop" small [
+        focus road
+        nodes [
+            road "Road bike" [teal count 2]
+            ada "Ada Lovelace" [accent]
+            brake "Rear brake" [orange steps 3 at 2]
+            chain "Chain" [orange dashed]
+        ]
+        edges [ada road "Rides"  road brake "Repair"  road chain "Repair" [dashed]]
+    ] [toast rejoin ["Picked " value]]
+]
+
+sample "A desktop" "Tiles to open, as on a desktop, with a menu of its own." [
+    desktop menu ["New folder" new] on-menu [toast "New folder"] [
+        tile #folder "Reports" [toast "Reports"]
+        tile #user "Clients" [toast "Clients"]
+        tile #folder "Archive" linked [toast "Archive"]
+    ]
+]
+
+gallery-screen: compose [
+    on-enter [foreach s samples [do s/4]]
+    title "Gallery"
+    text muted {Every face here is a few words of Trebol, and the words are beside it. Change the look or switch
+to dark at the top: no sample says a color or a size, so all of them follow.}
+    (collect [
+        foreach s samples [
+            keep compose/deep/only [
+                panel (s/1) [
+                    text muted (s/2)
+                    grid [1 1] [
+                        column (s/3)
+                        code (code-of s/3 s/4)
+                    ]
+                ]
+            ]
+        ]
+    ])
+]
