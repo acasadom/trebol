@@ -5,7 +5,7 @@
 // `makeRuntime`; every registered native ends up in lib.
 
 import { K, KIND_NAMES, TYPESETS, type Kind } from './kinds.ts';
-import { intern, canon } from './symbols.ts';
+import { intern } from './symbols.ts';
 import { NONE, TRUE, FALSE, datatype, typeset, context, type Cell, type BlockCell } from './values.ts';
 import { ctxAdd, ctxFind, bindSeries } from './ctx.ts';
 import { load } from './lexer.ts';

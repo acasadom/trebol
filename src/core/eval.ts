@@ -14,7 +14,7 @@
 // Errors, `break`, `return` and `throw` travel as a `Thrown` that unwinds
 // frames until a native that traps it, or a function call for `return`.
 
-import { K, kindName, kindBit } from './kinds.ts';
+import { K, kindName } from './kinds.ts';
 import { spell, canon, type Sym } from './symbols.ts';
 import {
   NONE, UNSET, TRUE, string, blockOf,

@@ -15,7 +15,6 @@ import {
 import { getWord, setWord } from '../ctx.ts';
 import { foldCase, toDec } from '../compare.ts';
 import { load, LoadError } from '../lexer.ts';
-import { form } from '../mold.ts';
 import { typesOf } from '../func.ts';
 import { textOf, utf8, at, type SeriesCell } from '../series.ts';
 import { T, type Feed, type Step } from '../eval.ts';

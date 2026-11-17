@@ -9,7 +9,7 @@ import './share.ts';
 import './locale.ts';
 import { setLoader, defaultLoader, type Loader } from './modules.ts';
 import {
-  K, makeRuntime, load, bindSeries, doSource, runSync, scriptStart, errorMessage, form, mold,
+  makeRuntime, load, bindSeries, runSync, scriptStart, errorMessage, form,
   LIBRARY_FILES, type Cell, type ObjectCell, type Runtime,
 } from '../core/index.ts';
 import { makeScheduler, spawn, taskResult, type Scheduler } from './scheduler.ts';

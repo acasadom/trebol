@@ -69,7 +69,7 @@ export function buildRows(face: ObjectCell, style: string, m: Mounted): HTMLElem
     const tr = el('tr');
     tr.setAttribute('role', 'row');
     const cols = columns(face);
-    for (const c of cols) {
+    for (const _ of cols) {
       const th = el('th');
       th.scope = 'col';
       th.setAttribute('role', 'columnheader');

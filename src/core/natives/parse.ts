@@ -17,7 +17,7 @@ import { intern, canon, spell } from '../symbols.ts';
 import * as I64 from '../int64.ts';
 import {
   NONE, TRUE, logic, strictEqual,
-  type Cell, type BlockCell, type StringCell, type WordCell, type Series, type BitsetCell,
+  type Cell, type BlockCell, type WordCell, type Series, type BitsetCell,
 } from '../values.ts';
 import { getWord, setWord } from '../ctx.ts';
 import { isEqual, foldCase } from '../compare.ts';
