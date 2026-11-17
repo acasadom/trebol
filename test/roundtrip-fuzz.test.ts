@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  K, load, mold, strictEqual, I64,
+  K, load, loadSpans, mold, strictEqual, I64,
   integer, decimal, percent, money, char, pair, tuple, date, time, string, stringOf,
   binary, wordOf, blockOf, map, object, context, intern, dec, NONE, TRUE, FALSE,
   type Cell, type WordKind,
@@ -129,5 +129,31 @@ test('2000 random values survive load(mold/all)', () => {
     }
     // Objects mold their fields one per line; ignore newline markers when comparing.
     assert.ok(strictEqual(v, back), `case ${n} changed:\n${text}\n${mold(back, { all: true })}`);
+  }
+});
+
+/** Checks that every span of `spans` cuts out of `cps` text that loads back as the matching value of `values`. */
+function spansMatch(cps: string[], values: Cell[], spans: Cell[], where: string): void {
+  assert.equal(spans.length, values.length, `${where}: one span per value`);
+  values.forEach((v, i) => {
+    const sp = spans[i]!;
+    const own = (sp.t === K.Block ? sp.s.data[0]! : sp) as { t: number; x: number; y: number };
+    assert.equal(own.t, K.Pair, `${where}: a pair`);
+    const cut = cps.slice(own.x - 1, own.x - 1 + own.y).join('');
+    assert.ok(strictEqual(load(cut).s.data[0]!, v), `${where}/${i}: ${cut}`);
+    if (sp.t === K.Block) {
+      assert.ok(v.t === K.Block || v.t === K.Paren, `${where}/${i}: a block span is a block or paren`);
+      const b = v as { s: { data: Cell[] }; i: number };
+      spansMatch(cps, b.s.data.slice(b.i), (sp.s.data as Cell[]).slice(1), `${where}/${i}`);
+    }
+  });
+}
+
+test('2000 random values: load-spans cuts out each value', () => {
+  for (let n = 0; n < 2000; n++) {
+    const v = blockOf(K.Block, [randomValue(0)]);
+    const text = mold(v, { all: true, only: true }) + ' ; a comment\n';
+    const b = load(text);
+    spansMatch(Array.from(text), b.s.data, loadSpans(text).s.data, `case ${n}`);
   }
 });

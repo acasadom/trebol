@@ -13,7 +13,7 @@ import {
 import { bindSeries, bindSelf, collectSetWords, copyDeep, ctxFind, getWord, setWord } from '../ctx.ts';
 import { makeError } from '../errors.ts';
 import { makeFunc, typesOf, P, type FuncDef, type NativeDef, type OpDef } from '../func.ts';
-import { load, LoadError } from '../lexer.ts';
+import { load, loadSpans, LoadError } from '../lexer.ts';
 import { mold, form } from '../mold.ts';
 import { pick, poke, blockFind } from '../access.ts';
 import type { Runtime, Step } from '../eval.ts';
@@ -69,6 +69,15 @@ native('load', '["Reads Trebol source text, or a file of it, into values: the va
   if (r.k !== 'value' || f.args[1] === TRUE) return r;
   const b = r.v as BlockCell;
   return b.s.data.length === 1 ? value(b.s.data[0]!) : r;
+});
+
+native('load-spans', '["Where each value of Trebol source text sits in it, as an index x length pair; a block or paren gives a block of its own pair and its values\' spans." source [string!]]', (_t, f) => {
+  try {
+    return value(loadSpans(text(f.args[0] as StringCell)));
+  } catch (e) {
+    if (e instanceof LoadError) return fail('syntax', 'load', e.message);
+    throw e;
+  }
 });
 
 native('mold', '["The value as Trebol source text, the way you would type it." value [any-type!] /only /all]', (_t, f) =>

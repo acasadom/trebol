@@ -217,6 +217,14 @@ Trebol [
 [(load-query "?my%20key=1") = #("my key" "1")]
 [(load-query http://x.es/p?a=1&b=2#top) = #(a: "1" b: "2")]
 [(load-query http://x.es/p) = #()]
+
+"load-spans"
+[(load-spans "a [b 10] ; note") = [1x1 [3x6 4x1 6x2]]]
+[(load-spans "") = []]
+[(load-spans {Trebol [] x}) = [1x6 [8x2] 11x1]]
+[(load-spans "é 😀 x") = [1x1 3x1 5x1]]
+[t: "say {hi} (1 + 2)" s: load-spans t (copy/part at t s/3/1/x s/3/1/y) = "(1 + 2)"]
+[error? try [load-spans "[a"]]
 [q: #(q: "a&b=ñ" n: "1") (load-query to-query q) = q]
 [(checksum "" 'md5) = #{D41D8CD98F00B204E9800998ECF8427E}]
 [(checksum "abc" 'md5) = #{900150983CD24FB0D6963F7D28E17F72}]

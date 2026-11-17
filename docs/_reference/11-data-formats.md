@@ -5,6 +5,21 @@ base 64 and hexadecimal, checksums and compressed bytes.
 
 ## load
 
+## load-spans
+
+Where each value sits in the text, for tools that change part of a file and leave the rest as it was: its
+comments, spacing and order. Each value gives a pair, `index x length`, counted in characters from 1, so
+`copy/part at text span/x span/y` is its source. A block or a paren gives a block instead: its own pair, then the
+spans of its values. The shape is the one `load/all` gives, except that a script header is kept: when the text
+starts with `Trebol [...]`, its first two spans are the header's.
+
+```trebol-console
+>> load-spans {say [hi (1 + 2)] ; a comment}
+== [1x3 [5x12 6x2 [9x7 10x1 12x1 14x1]]]
+```
+
+Text that does not load is the same `syntax` error as in `load`.
+
 ## to-json
 
 ## load-json

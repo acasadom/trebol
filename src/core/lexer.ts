@@ -42,6 +42,19 @@ export interface LoadOptions {
   file?: string;
 }
 
+/**
+ * Where each value of `src` sits in the text, in the shape `load` gives it: a pair
+ * `index x length` (1-based, in code points) for each value, and for a block or a paren a block
+ * whose first value is its own pair and the rest its values' spans. A script header is kept.
+ * Throws LoadError on malformed input, as `load`.
+ */
+export function loadSpans(src: string): BlockCell {
+  const lx = new Lexer(src);
+  lx.track = true;
+  lx.parseSeries(null);
+  return { t: K.Block, s: { data: lx.lastSpans! }, i: 0 };
+}
+
 /** Loads source text into a block. Throws LoadError on malformed input. */
 export function load(src: string, opts: LoadOptions = {}): BlockCell {
   const lx = new Lexer(src, opts.file);
@@ -111,11 +124,31 @@ class Lexer {
   private lineStart = 0;
   private readonly src: string;
   private readonly file: string | undefined;
+  /** Set by loadSpans: record where each value sits. */
+  track = false;
+  /** loadSpans only: the spans of the series read last. */
+  lastSpans: Cell[] | null = null;
+  /** loadSpans only: code points before each UTF-16 index, when the text has surrogates. */
+  private cps: number[] | null = null;
+  private readonly bom: number;
 
   constructor(src: string, file?: string) {
     // A leading byte-order mark is not part of the source.
-    this.src = src.charCodeAt(0) === 0xfeff ? src.slice(1) : src;
+    this.bom = src.charCodeAt(0) === 0xfeff ? 1 : 0;
+    this.src = this.bom ? src.slice(1) : src;
     this.file = file;
+  }
+
+  /** The 1-based code point index of UTF-16 index `u` in the text as given, byte-order mark included. */
+  private cpIndex(u: number): number {
+    if (this.cps === null && /[\uD800-\uDBFF]/.test(this.src)) {
+      this.cps = [0];
+      for (let j = 0; j < this.src.length; j++) {
+        const c = this.src.charCodeAt(j);
+        this.cps.push(this.cps[j]! + (c >= 0xdc00 && c <= 0xdfff ? 0 : 1));
+      }
+    }
+    return (this.cps === null ? u : this.cps[u]!) + this.bom + 1;
   }
 
   private fail(msg: string, at = this.i): never {
@@ -164,6 +197,7 @@ class Lexer {
     const nl: boolean[] = [];
     const pos: number[] = [];
     const openAt = this.i - 1;
+    const spans: Cell[] | null = this.track ? [] : null;
     for (;;) {
       const sawNewline = this.skipSpace();
       const c = this.src[this.i];
@@ -177,10 +211,20 @@ class Lexer {
         break;
       }
       const p = packPos(this.line, this.col());
-      data.push(this.parseValue());
+      const from = this.i;
+      this.lastSpans = null;
+      const v = this.parseValue();
+      data.push(v);
       nl.push(sawNewline);
       pos.push(p);
+      if (spans !== null) {
+        const at = this.cpIndex(from);
+        const span = pair(at, this.cpIndex(this.i) - at);
+        const inner = (c === '[' || c === '(') && (v.t === K.Block || v.t === K.Paren) ? this.lastSpans : null;
+        spans.push(inner === null ? span : { t: K.Block, s: { data: [span, ...inner] }, i: 0 });
+      }
     }
+    if (spans !== null) this.lastSpans = spans;
     const out: Series<Cell> = { data, nl, pos };
     if (this.file !== undefined) out.file = this.file;
     return out;
