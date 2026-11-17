@@ -143,7 +143,8 @@ Takes all the width it can.
 A flag.
 
 Takes the height the window has left, and its children scroll inside it. A `widget` with `fit` gives that
-height to its element, which scrolls itself, as a code editor or a map does.
+height to its element, which scrolls itself, as a code editor or a map does. Inside a pane of a `grid fit`,
+a face with `fit` takes the height the pane has left: `scroll fit [...]` above a row with a field is a chat.
 
 (word-hidden)=
 ## hidden

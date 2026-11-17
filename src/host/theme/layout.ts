@@ -62,6 +62,9 @@ body {
 .tb-fit { flex: 1 1 auto; min-height: 0; }
 .tb-fit > * { min-height: 0; overflow: auto; }
 .tb-fit > * > * { flex-shrink: 0; }
+/* a face with fit inside a pane of a fit grid takes the height the pane has left (a chat's messages above its box) */
+.tb-fit > * > .tb-fit { flex: 1 1 0; }
+.tb-scroll.tb-fit { max-height: none; }
 /* a widget with fit: its element takes the height left, and scrolls itself (a code editor, a map) */
 .tb-field.tb-fit > .tb-control { flex: 1 1 auto; overflow: hidden; }
 .tb-field.tb-fit > .tb-control > .tb-widget { flex: 1 1 auto; min-height: 0; }
