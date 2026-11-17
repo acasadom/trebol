@@ -223,9 +223,11 @@ export function sync(m: Mounted): void {
     case 'grid': {
       const cols = get(f, 'cols');
       m.el.style.setProperty('--tb-cols', cols.t === K.Integer ? String(cols.v) : '2');
-      // [1 4 1]: a column per weight, never narrower than what it holds
-      const weights = cols.t === K.Block ? cols.s.data.slice(cols.i).filter(c => c.t === K.Integer) : [];
-      if (weights.length > 0) m.el.style.setProperty('--tb-tracks', weights.map(w => `minmax(min-content, ${form(w)}fr)`).join(' '));
+      // [1 4 1]: a column per weight, never narrower than what it holds; [small 1 small]: small, medium
+      // and large are columns of a width the theme sets
+      const weights = cols.t === K.Block ? cols.s.data.slice(cols.i).filter(c => c.t === K.Integer || c.t === K.Word) : [];
+      if (weights.length > 0) m.el.style.setProperty('--tb-tracks', weights.map(w => w.t === K.Word
+        ? `var(--tb-track-${form(w)})` : `minmax(min-content, ${form(w)}fr)`).join(' '));
       else m.el.style.removeProperty('--tb-tracks');
       break;
     }

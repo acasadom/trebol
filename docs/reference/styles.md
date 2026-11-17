@@ -40,7 +40,7 @@ A group on a raised background, with a title when it is given a text.
 (style-grid)=
 ## grid
 
-Columns: `grid 3 [...]` gives three equal ones, `grid [1 4 1] [...]` the weight of each. On a narrow screen, as
+Columns: `grid 3 [...]` gives three equal ones, `grid [1 4 1] [...]` the weight of each, and `small`, `medium` or `large` in that block a column of a fixed width the theme sets (`grid [small 1 small]`). On a narrow screen, as
 many as fit, down to one.
 
 (style-scroll)=

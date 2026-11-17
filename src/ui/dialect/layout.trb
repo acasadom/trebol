@@ -86,8 +86,9 @@ build-faces: function [
         )
         | pos: set b block! (
             case [
-                ; grid [1 4 1] [...]: the weight of each column, then the children
-                all [f/style = 'grid  none? f/pane  not empty? b  parse b [some integer!]] [f/cols: b]
+                ; grid [1 4 1] [...]: the weight of each column, then the children;
+                ; small, medium or large is a column as wide as the theme says: grid [small 1 small]
+                all [f/style = 'grid  none? f/pane  not empty? b  parse b [some [integer! | 'small | 'medium | 'large]]] [f/cols: b]
                 ; rows items [...]: the fields of a row; a second block is the action
                 all [f/style = 'rows  none? f/template] [f/template: b]
                 find container-styles f/style [

@@ -42,7 +42,9 @@ view [
 
 `grid 3` would make three columns. A block of numbers gives each column a weight instead: `grid [3 2]`
 makes the first column three fifths of the width and the second two fifths. A column is never squeezed
-narrower than what it holds.
+narrower than what it holds. The words `small`, `medium` and `large` give a column a fixed width the theme sets,
+and the numbers share what is left: `grid fit [small 1 medium]` is a desktop app, with a narrow list on the left,
+the work in the middle and a pane on the right.
 
 ## Lining up
 
