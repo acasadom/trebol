@@ -127,6 +127,12 @@ export function sync(m: Mounted): void {
     return;
   }
   switch (style) {
+    case 'code': {
+      // code is shown as written: never translated, never formatted for the language
+      const tv = get(f, 'text');
+      m.el.textContent = tv.t === K.None ? '' : form(tv);
+      break;
+    }
     case 'title': case 'heading': case 'text': {
       const tv = get(f, 'text');
       if (flag(f, 'count') && countRun(m, tv)) break;

@@ -9,7 +9,7 @@
     "ui",
     "web"
   ],
-  "homepage": "https://github.com/acasadom/trebol",
+  "homepage": "https://trebol-lang.com",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/acasadom/trebol.git"
@@ -60,6 +60,8 @@
     "r3check": "node --disable-warning=ExperimentalWarning tools/r3check.ts",
     "supplier": "node --disable-warning=ExperimentalWarning tools/cli.ts supplier",
     "docs:serve": "npm run docs && node --disable-warning=ExperimentalWarning tools/cli.ts dev docs/_build/html --port 8000",
+    "site": "npm run docs && node --disable-warning=ExperimentalWarning tools/web.ts",
+    "site:serve": "npm run site && node --disable-warning=ExperimentalWarning tools/cli.ts dev _site --port 8000",
     "docs": "uv run --quiet --no-project --with-requirements docs/requirements.txt sphinx-build -q -E -b html docs docs/_build/html",
     "grammar": "node --disable-warning=ExperimentalWarning tools/grammar.ts"
   },

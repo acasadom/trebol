@@ -158,6 +158,12 @@ body {
 .tb-title { margin: 0; font-family: var(--tb-headings); font-size: 28px; line-height: 1.2; font-weight: 650; letter-spacing: -0.02em; }
 .tb-heading { margin: 0; font-family: var(--tb-headings); font-size: 20px; line-height: 1.3; font-weight: 600; letter-spacing: -0.01em; }
 .tb-text { margin: 0; }
+.tb-code {
+  margin: 0; box-sizing: border-box; contain: inline-size; /* a long line scrolls; it never widens what holds it */
+  padding: var(--tb-space-3) var(--tb-space-4); overflow-x: auto; white-space: pre; tab-size: 4;
+  font-family: var(--tb-mono); font-size: 13px; line-height: 1.55;
+  background: var(--tb-surface); border: var(--tb-line) solid var(--tb-border); border-radius: var(--tb-radius);
+}
 .tb-small { font-size: 13px; }
 .tb-muted { color: var(--tb-muted); }
 .tb-text.tb-danger { color: var(--tb-danger); }

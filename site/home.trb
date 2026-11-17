@@ -1,0 +1,77 @@
+Trebol [title: "Home"]
+
+; The front page: what Trebol is, a sample running beside its code, what it can do, and how to start.
+
+hello: [
+    form [
+        field name "Your name" required
+        heading is [rejoin ["Hello, " any [values/name "world"] "!"]]
+        submit "Say hello" [toast/role rejoin ["Nice to meet you, " values/name] 'success]
+    ]
+]
+
+console-sample: {>> total: EUR$19.99 * 3
+== EUR$59.97
+>> 17-Nov-2026 + 30
+== 17-Dec-2026
+>> 0.1 + 0.2
+== 0.3
+>> 1:30 * 4
+== 6:00
+>> length? "año"
+== 3}
+
+feature: func [icon title about] [compose/deep [panel [row [icon (icon) primary heading (title)] text muted (about)]]]
+
+home-screen: compose/deep [
+    column [
+        image %trebol.svg "" 96x96
+        title "Trebol"
+        heading "Beautiful web apps in a few plain words."
+        text muted {A language of the Rebol family, with a dialect for interfaces built in. No HTML, no CSS,
+no build step: what you write is what runs, and it looks right on any screen, in light and dark.}
+        row [
+            button primary "See the gallery" [go 'gallery]
+            button "Play a game" [go 'games]
+            link #external "Start the tutorial" %docs/language/01-getting-started.html
+        ]
+    ]
+
+    panel "Try it" [
+        text muted "This is a real app, not a picture of one. Type your name."
+        grid [1 1] [
+            column [(hello)]
+            code (code-of hello [])
+        ]
+    ]
+
+    panel "A language you read at a glance" [
+        text muted {Money, dates, times and percents are values of their own, so the code says what it means.
+Amounts are exact decimals: no cent is ever lost to rounding.}
+        code (console-sample)
+    ]
+
+    grid 3 [
+        (feature #edit "Interfaces as a dialect" "view reads a block of plain words: forms, tables, dialogs, charts, drawings. The theme does the rest.")
+        (feature #star "Nine looks" "From a calm minimal to the grey buttons of the nineties, in light and dark, with readable contrast checked.")
+        (feature #link "Screens with links" "Every screen has its own link to bookmark or share, and Back works as people expect.")
+        (feature #check "Forms that check themselves" "Rules in words: required, email, min, max. Each field says what is wrong when you leave it.")
+        (feature #settings "State machines" "Flows written as states and events, saved and resumed, and one machine shared by every tab.")
+        (feature #user "Every language" "Texts per language; dates, numbers and money shown as the reader is used to.")
+        (feature #info "Tests in Trebol" "trebol test opens a screen, types, clicks and checks what it shows, with no browser to drive.")
+        (feature #external "One file to publish" "trebol build makes one index.html with everything inside, ready for any web server.")
+        (feature #home "Nothing else to install" "The interpreter is TypeScript with no runtime dependencies, and the page needs no framework.")
+    ]
+
+    panel "Start" [
+        text muted "Trebol needs Node 22.18 or later. In a new folder:"
+        code {npm install trebol
+npx trebol dev}
+        text muted "Then write app.trb, open http://localhost:5173/ and the page follows every save."
+        row [
+            link "The language tutorial" %docs/language/01-getting-started.html
+            link "The UI tutorial" %docs/ui/01-first-screen.html
+            link "The reference" %docs/reference/index.html
+        ]
+    ]
+]

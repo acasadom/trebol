@@ -1,0 +1,218 @@
+Trebol [title: "Leaf Fall"]
+
+; Leaf Fall: leaves of three fall into a narrow bed. Fill a row from side to side and it is raked away.
+; The pieces are trominoes, three cells each, straight or bent; every ten rows they fall faster.
+
+leaf-fall: context [
+    cols: 8  rows: 14  cell: 28
+    ; each piece: its turns, each turn the cells it covers around its pivot
+    shapes: [
+        [[-1x0 0x0 1x0] [0x-1 0x0 0x1]]
+        [[0x0 1x0 0x1] [0x0 1x0 1x1] [1x0 1x1 0x1] [0x0 0x1 1x1]]
+    ]
+    colors: [teal orange purple sky gold pink green]
+
+    bed: array/initial reduce [rows cols] none   ; rows of cells, each none or the color of the leaf there
+    piece: none  turn: 1  at: 0x0  color: none
+    next-piece: none  next-color: none
+    score: 0  lines: 0  level: 1
+    timer: none  state: 'ready   ; ready, playing, paused or over
+
+    cells: func [t p /local out] [
+        out: copy []
+        foreach o pick piece t [append out p + o]
+        out
+    ]
+
+    free?: func [cs] [
+        foreach c cs [
+            if any [c/x < 0  c/x >= cols  c/y >= rows] [return false]
+            if all [c/y >= 0  pick pick bed c/y + 1 c/x + 1] [return false]
+        ]
+        true
+    ]
+
+    ; moves the piece when it fits there; true if it moved
+    shift: func [t p] [
+        either free? cells t p [turn: t  at: p  true] [false]
+    ]
+
+    deal: func [] [
+        piece: next-piece  color: next-color
+        next-piece: random/only shapes  next-color: random/only colors
+        turn: 1  at: 3x0
+        unless free? cells turn at [finish]
+    ]
+
+    start: func [] [
+        random/seed now/precise
+        bed: array/initial reduce [rows cols] none
+        score: 0  lines: 0  level: 1
+        next-piece: random/only shapes  next-color: random/only colors
+        state: 'playing
+        deal
+        pace
+        show
+    ]
+
+    ; the timer that pulls the piece down, faster at each level
+    pace: func [] [
+        if timer [cancel timer]
+        timer: every max 0.1 0.7 - (level - 1 * 0.06) [fall]
+    ]
+
+    stop: func [] [
+        if timer [cancel timer  timer: none]
+    ]
+
+    pause: func [] [
+        switch state [
+            playing [state: 'paused  stop  show]
+            paused [state: 'playing  pace  show]
+        ]
+    ]
+
+    finish: func [] [
+        state: 'over
+        stop
+    ]
+
+    fall: func [] [
+        if state <> 'playing [exit]
+        unless shift turn at + 0x1 [settle]
+        show
+    ]
+
+    drop: func [/local n] [
+        n: 0
+        while [shift turn at + 0x1] [n: n + 1]
+        score: score + (2 * n)
+        settle
+        show
+    ]
+
+    settle: func [/local kept full] [
+        foreach c cells turn at [
+            if c/y < 0 [finish  exit]
+            poke pick bed c/y + 1 c/x + 1 color
+        ]
+        kept: copy []
+        foreach r bed [if find-gap r [append/only kept r]]
+        full: rows - length? kept
+        if full > 0 [
+            loop full [insert/only kept array/initial cols none]
+            bed: kept
+            lines: lines + full
+            score: score + (level * pick [100 300 500 800] full)
+            if level < (1 + to integer! lines / 10) [level: level + 1  pace]
+        ]
+        deal
+    ]
+
+    find-gap: func [r] [
+        foreach x r [unless x [return true]]
+        false
+    ]
+
+    key: func [k] [
+        if state = 'ready [if find [#" " #"^M"] k [start]  exit]
+        if state = 'over [if find [#" " #"^M"] k [start]  exit]
+        if find [#"p" #"P" #"^["] k [pause  exit]
+        if state <> 'playing [exit]
+        switch/default k [
+            left [shift turn at - 1x0]
+            right [shift turn at + 1x0]
+            up [rotate]
+            down [if shift turn at + 0x1 [score: score + 1]]
+            #" " [drop  exit]
+        ] [exit]
+        show
+    ]
+
+    ; a turn that does not fit tries one cell to each side, so a piece against a wall still turns
+    rotate: func [/local t] [
+        t: turn // (length? piece) + 1
+        any [shift t at  shift t at + 1x0  shift t at - 1x0]
+    ]
+
+    ; --- drawing ---------------------------------------------------------------
+
+    leaf: func [d p col /ghost] [
+        append d either ghost [
+            compose [pen (col) fill-pen off line-width 2 box (p * cell + 3x3) (p * cell + (cell - 3 * 1x1)) 5]
+        ] [
+            compose [pen off fill-pen (col) box (p * cell + 2x2) (p * cell + (cell - 2 * 1x1)) 5]
+        ]
+    ]
+
+    picture: func [/local d p g] [
+        d: compose [pen off fill-pen surface box 0x0 (as-pair cols * cell rows * cell) 8]
+        repeat y rows [
+            repeat x cols [
+                p: pick pick bed y x
+                if p [leaf d as-pair x - 1 y - 1 p]
+            ]
+        ]
+        if find [playing paused] state [
+            ; where the piece would land, drawn as an outline
+            g: at
+            while [free? cells turn g + 0x1] [g: g + 0x1]
+            if g <> at [foreach c cells turn g [if c/y >= 0 [leaf/ghost d c color]]]
+            foreach c cells turn at [if c/y >= 0 [leaf d c color]]
+        ]
+        d
+    ]
+
+    preview: func [/local d] [
+        d: copy [pen off fill-pen surface box 0x0 112x112 8]
+        if next-piece [
+            foreach o first next-piece [leaf d o + 1x1 next-color]   ; 4 cells across, the piece around the second
+        ]
+        d
+    ]
+
+    show: func [] [
+        fall-bed/draw: picture
+        fall-next/draw: preview
+        fall-score/text: form score
+        fall-lines/text: form lines
+        fall-level/text: form level
+        fall-state/text: switch state [
+            ready ["Press Space or Start to play."]
+            playing ["Arrows move and turn, Space drops, P pauses."]
+            paused ["Paused. Press P to go on."]
+            over [rejoin ["Game over: " score " points. Space plays again."]]
+        ]
+        fall-play/text: either find [ready over] state ["Start"] ["Restart"]
+    ]
+]
+
+leaf-fall-screen: [
+    ; playing (in app.trb) sends the keys of the page here while this screen is on show
+    on-enter [playing: 'leaf-fall  leaf-fall/show]
+    on-leave [playing: none  if leaf-fall/state = 'playing [leaf-fall/pause]  true]
+    title "Leaf Fall"
+    text muted "Leaves of three fall into a narrow bed. Fill a row from side to side and it is raked away."
+    row top [
+        global fall-bed: canvas 224x392 "The bed where the leaves fall" []
+        column [
+            panel "Next" [global fall-next: canvas 112x112 "The next piece" []]
+            grid 2 [
+                text muted "Score" global fall-score: text count "0"
+                text muted "Rows" global fall-lines: text "0"
+                text muted "Level" global fall-level: text "0"
+            ]
+            global fall-play: button primary "Start" [leaf-fall/start]
+            button "Pause" [leaf-fall/pause]
+        ]
+    ]
+    global fall-state: text muted ""
+    ; for a phone, where there are no arrows
+    row narrow-only [
+        button "←" [leaf-fall/key 'left]
+        button "↻" [leaf-fall/key 'up]
+        button "→" [leaf-fall/key 'right]
+        button "↓" [leaf-fall/key #" "]
+    ]
+    link #external "See the code of this game" https://github.com/acasadom/trebol/blob/main/site/games/leaf-fall.trb
+]

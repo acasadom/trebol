@@ -97,6 +97,19 @@ test('a page in Latin has only the Latin fonts', async () => {
   const page = readFileSync((await buildApp(root, out)).page, 'utf8');
   assert.equal(page.slice(0, page.indexOf('</style>')).match(/@font-face/g)?.length, 2);
   assert.match(page, /<title>Trebol<\/title>/);
+  assert.doesNotMatch(page, /<meta name="description"|<link rel="icon"/);
+});
+
+test('the header gives the page its description and icon', async () => {
+  const root = folder({
+    'app.trb': 'Trebol [title: "Cog" description: {Bikes "fixed" & <fast>} icon: %img/cog.svg]\nview [text "x"]\n',
+    'img/cog.svg': '<svg/>',
+  });
+  const b = await buildApp(root);
+  const page = readFileSync(b.page, 'utf8');
+  assert.match(page, /<meta name="description" content="Bikes &quot;fixed&quot; &amp; &lt;fast&gt;">/);
+  assert.match(page, /<link rel="icon" href="img\/cog.svg" type="image\/svg\+xml">/);
+  assert.deepEqual(b.copied, ['img/cog.svg']);
 });
 
 test('with csp the page has no inline script or style, and the runtime and fonts sit next to it', async () => {

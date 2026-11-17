@@ -1,0 +1,76 @@
+Trebol [
+    title: "Trebol"
+    description: "Trebol is a language of the Rebol family that builds beautiful web apps in a few plain words, with no HTML, no CSS and no build step."
+    icon: %favicon.svg
+]
+
+; trebol-lang.com: the front page, the gallery and the games, one app with a screen for each.
+; The documentation is built apart, by Sphinx, and served under docs/.
+
+do %gallery.trb
+do %home.trb
+do %games/leaf-fall.trb
+do %games/clover-hunt.trb
+
+look: 'minimal
+mode: 'auto
+retheme: does [theme compose [look: (look) mode: (mode) base: 150]]
+retheme
+
+; the screen on show, so the keys reach the game being played and nothing else
+playing: none
+
+games-screen: [
+    title "Games"
+    text muted {Two small games, each one file of Trebol: a timer, the keys, a drawing redrawn many times a second,
+and a grid of buttons that remember what they hide.}
+    grid 2 [
+        panel "Leaf Fall" [
+            canvas 160x80 "Leaves falling" [
+                pen off fill-pen teal box 2x42 18x58 4 box 22x42 38x58 4 box 42x42 58x58 4
+                fill-pen orange box 62x62 78x78 4 box 82x62 98x78 4 box 62x42 78x58 4
+                fill-pen purple box 102x2 118x18 4 box 102x22 118x38 4 box 122x22 138x38 4
+            ]
+            text muted "Leaves of three fall; fill a row and it is raked away."
+            button primary "Play" [go 'leaf-fall]
+        ]
+        panel "Clover Hunt" [
+            canvas 160x80 "A field of patches" [
+                pen off fill-pen surface
+                box 2x2 38x38 4 box 42x2 78x38 4 box 82x2 118x38 4 box 122x2 158x38 4
+                box 2x42 38x78 4 box 42x42 78x78 4 box 82x42 118x78 4 box 122x42 158x78 4
+                pen text text 16x12 "2" text 56x52 "1" fill-pen success pen off circle 100x60 10
+            ]
+            text muted "Four clovers hide in the field; the numbers tell where."
+            button primary "Play" [go 'clover-hunt]
+        ]
+    ]
+]
+
+view compose/deep/only [
+    on-key [if playing = 'leaf-fall [leaf-fall/key event/key]]
+    width large
+    row spread [
+        row [
+            image %trebol.svg "" 32x32
+            link "Trebol" 'home
+        ]
+        row [
+            link "Gallery" 'gallery
+            link "Games" 'games
+            link "Docs" %docs/
+            link #external "GitHub" https://github.com/acasadom/trebol
+            button #settings "Look" menu (looks) on-menu [look: event/picked retheme]
+            button "Mode" menu ["Light" light "Dark" dark "Auto" auto] on-menu [mode: event/picked retheme]
+        ]
+    ]
+    screens [
+        home "Trebol" (home-screen)
+        gallery "Gallery" (gallery-screen)
+        games "Games" (games-screen)
+        leaf-fall "Leaf Fall" (leaf-fall-screen)
+        clover-hunt "Clover Hunt" (clover-hunt-screen)
+    ]
+    divider
+    text muted small "Trebol is free software under the Apache 2.0 license."
+]
