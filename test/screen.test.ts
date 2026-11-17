@@ -143,7 +143,7 @@ test('the tests of the examples pass', async () => {
   assert.ok(passed, lines.join('\n'));
 });
 
-test('click and pick-menu choose the open rows of a tree, and see sees them', async () => {
+test('click, pick-menu and drag act on the open rows of a tree, and see sees them', async () => {
   const { passed, lines } = await ran(['test/fixtures/screens/tree.test.trb']);
   assert.ok(passed, lines.join('\n'));
 });

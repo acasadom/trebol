@@ -177,14 +177,43 @@ test-rows: function [what /local f p] [
     out
 ]
 
+; [face row index parent ...] of the open rows of the trees on show that show a text: index among the
+; children of parent, the row above it (none at the top).
+test-tree-rows: function [what /local f p] [
+    out: copy []
+    walk: function [f rows up] [
+        repeat i length? rows [
+            r: pick rows i
+            if find test-cells f r what [append out reduce [f r i up]]
+            if all [block? select r 'children  select r 'expanded] [walk f r/children r]
+        ]
+    ]
+    if string? what [
+        foreach [f p] test-shown [if all [f/style = 'tree  block? f/data] [walk f f/data none]]
+    ]
+    out
+]
+
 drag: function [
-    "Drags a face, or the row of a table or list that shows a text, onto another: in a list that can be reordered it takes that place, else it is dropped on it."
+    "Drags a face, or the row of a table, list or tree that shows a text, onto another: in a list that can be reordered it takes that place, else it is dropped on it."
     what [string! word!] "What the face or row shows, or a face's name"
     onto [string! word!] "The place it goes: a face, or the row it goes before"
     /local f p row i
 ] [
     shown: test-shown
     styles: collect [foreach [f p] shown [keep f/style]]
+    ; a row of a tree takes the place of another among the children of the same row
+    unless empty? moved: test-tree-rows what [
+        set [from payload index parent] moved
+        unless from/reorder [do make error! rejoin ["drag: the rows of " mold what " cannot be dragged"]]
+        foreach [f row i up] test-tree-rows onto [
+            if all [same? f from  same? up parent] [
+                ui-reorder from index i parent
+                return true
+            ]
+        ]
+        do make error! rejoin ["drag: " mold what " moves only among the rows beside it, and " mold onto " is not one"]
+    ]
     ; what is dragged: its face, what it carries, where it is, and the face it moves in
     either not empty? rows: test-rows what [
         set [from payload index] rows

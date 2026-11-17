@@ -6,3 +6,7 @@ Trebol [title: "Choosing the rows of a tree"]
 [click "Shop"  see "Chosen: Shop"]
 [pick-menu "Bikes" "Rename"  see "rename Bikes"]
 [error? try [click "Road"]]
+
+"moving the rows of a tree"
+[drag "Parts" "Bikes"  see "Moved 2 to 1 in Shop"]
+[error? try [drag "Parts" "Shop"]]
