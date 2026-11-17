@@ -124,25 +124,33 @@ async function packagesOf(root: string, texts: Record<string, string>): Promise<
   return out;
 }
 
-/** The title in the header of app.trb, or null. */
-function titleOf(src: string): string | null {
+/** The header's `title:`, `description:` (strings) and `icon:` (a file), as the page's head shows them. */
+interface Head { title?: string; description?: string; icon?: string }
+function headOf(src: string): Head {
   let header;
   try {
     header = scriptStart(load(src)).header;
   } catch {
-    return null; // the page shows the load error when it runs
+    return {}; // the page shows the load error when it runs
   }
-  if (header === null) return null;
+  if (header === null) return {};
+  const head: Head = {};
   const d = header.s.data;
   for (let i = header.i; i + 1 < d.length; i++) {
     const c = d[i]!;
     const v = d[i + 1]!;
-    if (c.t === K.SetWord && spell(c.sym).toLowerCase() === 'title' && v.t === K.String) return text(v as StringCell);
+    if (c.t !== K.SetWord) continue;
+    const name = spell(c.sym).toLowerCase();
+    if ((name === 'title' || name === 'description') && v.t === K.String) head[name] ??= text(v as StringCell);
+    if (name === 'icon' && v.t === K.File) head.icon ??= text(v as StringCell);
   }
-  return null;
+  return head;
 }
 
-const escapeHtml = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const escapeHtml = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/** The type of an icon, by its extension; none when the browser can tell. */
+const ICON_TYPES: Record<string, string> = { '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon' };
 
 /** JavaScript that can sit inside a <script>: no `</script` or `<!--` in its text (`\x3C` is `<` in a string or a regex). */
 export function scriptSafe(js: string): string {
@@ -196,7 +204,14 @@ export async function buildApp(folder: string, out?: string, options: BuildOptio
   for (const f of faces) data.set(f.file, (await readFile(join(fonts, f.file))).toString('base64'));
   const license = (await readFile(join(fonts, 'OFL.txt'), 'utf8')).trim();
 
-  const title = escapeHtml(titleOf(texts['app.trb']!) ?? 'Trebol');
+  const meta = headOf(texts['app.trb']!);
+  const title = escapeHtml(meta.title ?? 'Trebol');
+  let extra = '';
+  if (meta.description !== undefined) extra += `<meta name="description" content="${escapeHtml(meta.description)}">\n`;
+  if (meta.icon !== undefined) {
+    const type = ICON_TYPES[extname(meta.icon).toLowerCase()];
+    extra += `<link rel="icon" href="${escapeHtml(meta.icon)}"${type ? ` type="${type}"` : ''}>\n`;
+  }
   // < as < keeps the JSON from closing its script
   const json = JSON.stringify(texts).replace(/</g, '\\u003c');
   const head = `<!doctype html>
@@ -206,7 +221,7 @@ export async function buildApp(folder: string, out?: string, options: BuildOptio
 <meta name="viewport" content="width=device-width, initial-scale=1">
 ${MARK}
 <title>${title}</title>
-`;
+${extra}`;
   const tail = `<script type="text/trebol" src="app.trb"></script>
 </head>
 <body></body>

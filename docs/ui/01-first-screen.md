@@ -144,6 +144,13 @@ builds another folder into `site`. A second build replaces the folder of the fir
 is left alone, with an error. For a server with a strict Content-Security-Policy, `trebol build --csp` puts
 Trebol and the fonts next to the page as files ([A strict Content-Security-Policy](../strict-csp.md)).
 
+The header of `app.trb` gives the page its head: `title:` names the browser tab before the view does,
+`description:` is what a search engine shows under the link, and `icon:` is the file shown in the tab:
+
+```text
+Trebol [title: "Cog & Chain" description: "Bicycle repairs, done right." icon: %cog.svg]
+```
+
 The page has the fonts its own text needs: Latin always, Cyrillic, Greek and Vietnamese only when some `.trb`
 file has one of their letters. Other letters show in the system font.
 
