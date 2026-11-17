@@ -1,3 +1,5 @@
+<img src="https://raw.githubusercontent.com/acasadom/trebol/main/docs/_static/trebol.svg" alt="" width="96" height="96">
+
 # Trebol
 
 *Rebol's language, in the browser, for beautiful interfaces with no HTML or CSS.*
