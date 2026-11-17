@@ -5,8 +5,8 @@ import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { K, NONE, spell, TRUE, FALSE, native, value, mold, form, string, text, money, blockOf, errorField, type Cell, type ObjectCell, type StringCell } from '../src/core/index.ts';
-import { startHost, startUi, runSource, readLocal, editLocal, readDate, weekStart, fileSize, translate, uiText, type Host } from '../src/host/index.ts';
+import { K, NONE, UNSET, load, spell, TRUE, FALSE, native, value, mold, form, string, text, money, blockOf, errorField, type Cell, type ObjectCell, type StringCell } from '../src/core/index.ts';
+import { startHost, startUi, runSource, readLocal, editLocal, readDate, readRange, readTime, weekStart, fileSize, translate, uiText, amountOf, countStep, shown as shownLocal, type Host } from '../src/host/index.ts';
 import { fileHandle } from '../src/host/net.ts';
 import { themeCss, DEFAULT_THEME, LOOKS, palette, contrast, contrastOverImage, scrimAlpha, CONTRAST_PAIRS } from '../src/host/theme.ts';
 
@@ -16,11 +16,13 @@ native('show', '[root [object!]]', (_t, f) => {
   shown = f.args[0]!;
   return value(shown);
 });
+native('ui-watch', '[object [object!]]', (_t, f) => value(f.args[0]!));
 let toasts: string[] = [];
-native('show-toast', '[message [string!] kind [word! none!]]', (_t, f) => {
+native('show-toast', '[message [string!] kind [word! none!] undo [integer! none!]]', (_t, f) => {
   toasts.push(mold(f.args[0]!) + ' ' + mold(f.args[1]!));
   return value(f.args[0]!);
 });
+native('hide-toast', '[id [integer!]]', () => value(UNSET));
 let asked: string[] = [];
 native('show-confirm', '[question [string!] yes [string! none!] no [string! none!] kind [word! none!]]', (_t, f) => {
   asked.push(f.args.slice(0, 4).map(a => mold(a)).join(' '));
@@ -186,7 +188,7 @@ describe('layout', () => {
    app.trb:3:5  buton is not a style; did you mean button?
    app.trb:4:23 requird is not a word of field; did you mean required?
    app.trb:5:5  feild is not a style; did you mean field?
-   app.trb:6:26 min takes a number, an amount or a date
+   app.trb:6:26 min takes a number, an amount, a date or a time
    app.trb:7:15 text does not take 1.5
    app.trb:8:17 table columns are words, each with an optional label, then image or image round
    app.trb:9:11 pad takes a step from 0 to 7`,
@@ -195,15 +197,37 @@ describe('layout', () => {
     assert.deepEqual(await problems('view [button "Go" hiden]'),
       ['layout: hiden is not a word of button; did you mean hidden?', '[hiden]', 'app.trb:1:19']);
     assert.deepEqual(await problems('view [text "a" loop]'), ['layout: loop is not a word of text', '[loop]', 'app.trb:1:16']);
+    // a board needs its lanes and the field that names them
+    assert.equal((await problems('view [board jobs by status [todo]]'))[0], 'layout: a board takes a word and a label for each lane');
+    assert.equal((await problems('view [board jobs [todo "To do"]]'))[0],
+      'layout: a board takes by and the field that names the lane of a card: by status');
+    assert.equal((await problems('view [board jobs by status]'))[0], 'layout: a board takes a block with a word and a label for each lane');
+    // a slider's ends go least first, and its step fits between them
+    assert.equal((await problems('view [slider v "V" 50 10]'))[0],
+      'layout: a slider takes its least and its most as two numbers, the least first: 0 100');
+    assert.equal((await problems('view [time t "T" step 7.5]'))[0],
+      'layout: a time\'s step is a whole number of minutes from 1 to 720');
+    assert.equal((await problems('view [slider v "V" 0 10 step 0]'))[0],
+      'layout: a slider\'s step is a number above 0 and no more than its most less its least');
+    await runSource(host, 'view [slider v "V" step 5]', 'app.trb');
+    // an on- word that no event has
+    assert.deepEqual(await problems('view [field name on-chnage [print 1]]'),
+      ['layout: on-chnage is not an event; did you mean on-change?', '[on-chnage [print 1]]', 'app.trb:1:18']);
+    assert.equal((await problems('view [button "Go" on-clik [print 1]]'))[0],
+      'layout: on-clik is not an event; the block after a face runs when it is clicked');
+    assert.equal((await problems('view [on-clse [true] text "a"]'))[0], 'layout: on-clse is not an event; did you mean on-close?');
+    assert.equal((await problems('view [screens [home "Home" [on-entr [true] text "a"]]]'))[0],
+      'layout: on-entr is not an event; did you mean on-enter?');
     assert.deepEqual(await problems('view ["Hello" text "a"]'),
       ['layout: a face starts with a style, not "Hello"', '["Hello" text "a"]', 'app.trb:1:7']);
     assert.deepEqual((await problems('view [menu ["A" a]]'))[0], 'layout: menu is not a style; it goes after one');
     assert.deepEqual((await problems('view [button "a" menu ["A"]]'))[0],
-      'layout: a menu takes a label and a word per item, a block for a submenu, or ---');
+      'layout: a menu takes a label and a word per item, danger before one that removes, a block for a submenu, or ---');
     assert.deepEqual((await problems('view [tabs ["A" [text "a"] "B" 1]]')).slice(0, 2),
       ['layout: tabs take a label and a block per tab', '["B" 1]']);
     assert.deepEqual((await problems('view [split [text "a"]]'))[0], 'layout: split takes two faces, one per pane');
     assert.deepEqual((await problems('view [table [a] sorted [a up]]'))[0], 'layout: sorted takes a column and asc or desc');
+    assert.deepEqual((await problems('view [text "a" morph 3]'))[0], "layout: morph takes a name, 'logo, or a block, [client id]");
     assert.deepEqual((await problems('view [breadcrumb ["A" a "B" "C"]]')).slice(0, 2),
       ['layout: a breadcrumb takes a label and a word per item; only the last may have no word', '["C"]']);
     assert.deepEqual((await problems('view [screens [home "Home" [1] [text "a"]]]')).slice(0, 2),
@@ -292,6 +316,47 @@ describe('validation', () => {
       ui-input c "41" ui-blur c
       reduce [u/error c/error]`);
     assert.equal(r, '["That name is taken" "Wrong code"]');
+  });
+
+  test('rules of your own, by name', async () => {
+    const r = await ev(`
+      rule 'even "Enter an even number" [all [v: attempt [to integer! value]  even? v]]
+      rule 'shop-code [en "Not a shop code" es "No es un código de la tienda"] [
+        either find/match value "SH-" [to logic! find/match skip value 3 "9"] ["Codes start with SH-"]
+      ]
+      fs: layout/only [field n "N" even  field c "C" shop-code required]
+      n: fs/1  c: fs/2
+      out: copy []
+      foreach v reduce ["3" "4" none] [ui-input n v  append out validate-face n]
+      foreach v ["x" "SH-1" "SH-9"] [ui-input c v  append out validate-face c]
+      i18n/language: 'es  ui-input c "SH-1"  append out validate-face c
+      poke i18n/ui 'even #(en: "Even, please")  i18n/language: 'en  ui-input n "5"  append out validate-face n
+      append/only out n/rules
+      out`);
+    assert.equal(r, '["Enter an even number" none none "Codes start with SH-" "Not a shop code" none "No es un código de la tienda" "Even, please" [[even]]]');
+  });
+
+  test('a rule takes no word of the dialect or of Trebol\'s texts, and a typo names it', async () => {
+    const r = await ev(`
+      rule 'even "Enter an even number" [even? to integer! value]
+      reduce [
+        (rule 'even "Even" [true]) = 'even
+        attempt [rule 'email "x" [true]]
+        attempt [rule 'button "x" [true]]
+        attempt [rule 'yes "x" [true]]
+        attempt [rule 'on-change "x" [true]]
+        to logic! find form try [layout [field n "N" evn]] "did you mean even?"
+      ]`);
+    assert.equal(r, '[true none none none none true]');
+  });
+
+  test('iban', async () => {
+    const r = await ev(`
+      f: first layout/only [field account "Account" iban]
+      collect [foreach v ["ES91 2100 0418 4502 0005 1332" "es9121000418450200051332" "ES91 2100 0418 4502 0005 1333" "XX00"] [
+        ui-input f v  keep validate-face f
+      ]]`);
+    assert.equal(r, '[none none "Enter a valid IBAN" "Enter a valid IBAN"]');
   });
 });
 
@@ -585,7 +650,7 @@ describe('components', () => {
     const r = await ev(`
       got: none
       root: view [
-        global list people [name] menu [#edit "Edit" edit --- "Move to" ["Top" top]] on-menu [got: reduce [event/picked row/name]]
+        global list people [name] menu [#edit "Edit" edit --- "Move to" ["Top" top] danger #trash "Delete" delete] on-menu [got: reduce [event/picked row/name]]
         button "File" menu ["New" new]
       ]
       m: people/menu
@@ -594,8 +659,8 @@ describe('components', () => {
       a: got
       sub: third m
       ui-menu people first sub/items none
-      reduce [a got length? m m/2/divider m/1/icon sub/text people/selected/id]`);
-    assert.equal(r, '[[edit "Alan"] [top "Alan"] 3 true #edit "Move to" 2]');
+      reduce [a got length? m m/2/divider m/1/icon sub/text people/selected/id m/1/danger m/4/danger m/4/icon]`);
+    assert.equal(r, '[[edit "Alan"] [top "Alan"] 4 true #edit "Move to" 2 false true #trash]');
     await assert.rejects(runSource(host, 'view [text "x" menu ["A"]]'));
   });
 
@@ -641,6 +706,24 @@ describe('components', () => {
       root: view [desktop [global a: tile #folder "Here" []  global b: tile #folder "Elsewhere" linked []]]
       reduce [a/linked b/linked]`);
     assert.equal(r, '[false true]');
+  });
+
+  test('a tile takes a mark: an icon and its label, right after it', async () => {
+    const r = await ev(`
+      fs: layout/only [tile #folder "Records" [] mark #list "List" linked  tile #invoice "Bills" mark #stack 'many []]
+      out: reduce [fs/1/mark fs/1/mark-text fs/1/linked fs/1/text fs/2/mark fs/2/mark-text]
+      append out to logic! find form try [layout [tile #folder "X" mark #list]] "mark takes an icon and its label, #list"
+      out`);
+    assert.equal(r, '[#list "List" true "Records" #stack many true]');
+  });
+
+  test('a word the program sets never takes the place of one the dialect uses', async () => {
+    const r = await ev(`
+      form: "mine"  tr: func [x] ["hijacked"]  can?: func [a b c] [none]  message: 1  refresh: 2
+      f: first layout/only [field a "A" email]
+      ui-input f "bad"
+      reduce [validate-face f  form  refresh]`);
+    assert.equal(r, '["Enter a valid email address" "mine" 2]');
   });
 
   test('a toolbar is a container whose --- are separators', async () => {
@@ -740,6 +823,21 @@ describe('components', () => {
     assert.deepEqual(links, ['push client/7']);
     await assert.rejects(runSource(host, 'go [nowhere 1]'));
     await assert.rejects(runSource(host, 'view [screens [home "Home" [1] []]]'));
+  });
+
+  test('morph names a face for the next screen: a word as written, or a block whose first word stays and the rest is evaluated', async () => {
+    link = ['nowhere'];
+    const r = await ev(`
+      root: view [
+        global main: screens [
+          home "Home" [global people: table morph 'person [name] image %logo.svg morph 'logo]
+          person "Person" [id] [global who: title morph [person id] global code: text morph [label 1 + 1]]
+        ]
+      ]
+      a: reduce [people/morph main/pane/1/pane/2/morph]
+      go [person 7]
+      reduce [a who/morph code/morph]`);
+    assert.equal(r, '[[person logo] [person "7"] [label 2]]');
   });
 
   test('a form on a screen entered later starts with its submit disabled until its fields are valid', async () => {
@@ -1127,6 +1225,24 @@ test('dates are read in the order of the language', () => {
   assert.deepEqual(['es', 'en', 'en-GB'].map(weekStart), [1, 7, 1]);
 });
 
+test('a time is read in any language, with am or pm', () => {
+  const cases: [string, string | null][] = [
+    ['9:30', '09:30'], ['9.30', '09:30'], ['9h30', '09:30'], ['930', '09:30'], ['21', '21:00'], ['21 h', '21:00'],
+    ['9:30 pm', '21:30'], ['9pm', '21:00'], ['12 a.m.', '00:00'], ['12:15 PM', '12:15'], ['24:00', null],
+    ['9:60', null], ['13 pm', null], ['x', null],
+  ];
+  for (const [typed, want] of cases) assert.equal(readTime(typed), want, typed);
+});
+
+test('a range of dates is read as two dates, the start first', () => {
+  const cases: [string, string, string | null][] = [
+    ['3/11/2026 – 10/11/2026', 'es', '2026-11-03 2026-11-10'], ['11/10/2026 - 11/3/2026', 'en', '2026-11-03 2026-11-10'],
+    ['2026-11-03 2026-11-10', 'en', '2026-11-03 2026-11-10'], ['3/11/2026', 'es', null],
+    ['3/11/2026 – 31/2/2026', 'es', null], ['1/1/2026 2/1/2026 3/1/2026', 'es', null],
+  ];
+  for (const [typed, lang, want] of cases) assert.equal(readRange(typed, lang), want, `${lang} ${typed}`);
+});
+
 test('amounts are read and edited in the format of the language', () => {
   const cases: [string, string, string | null][] = [
     ['1234,56', 'es', '1234.56'], ['1.234,56 €', 'es', '1234.56'], ['12.5', 'es', '12.5'],
@@ -1275,6 +1391,39 @@ test('react and is: a face follows the facets its block reads', async () => {
   assert.match(await ev(`v: view [t: text is [1 / 0]  u: text is ["ok"]]  e: try [ui-react v]  reduce [v/pane/2/text e/id]`), /"ok"/);
 });
 
+test('react and is follow any object down a path: a machine, its data, settings', async () => {
+  const m = `m: machine [
+      data [bike: none  parts: 0]
+      initial received
+      state received []
+      state repairing []
+      from received to repairing on start set [bike: event/bike]
+      from repairing to received on again
+    ]
+    settings: make object! [look: make object! [dark: false]]
+    v: view [
+      text is [form m/state]
+      text is [either in? m 'repairing ["Working"] ["Waiting"]]
+      text is [any [m/data/bike "None"]]
+      text is [either settings/look/dark ["Dark"] ["Light"]]
+    ]
+    shown: does [ui-react v  collect [foreach f v/pane [keep f/text]]]  `;
+  assert.equal(await ev(m + 'shown'), '["received" "Waiting" "None" "Light"]');
+  assert.equal(await ev(m + 'shown  send m [start bike: "Brompton"]  shown'), '["repairing" "Working" "Brompton" "Light"]');
+  // restart makes new data: the reaction reads the new one
+  assert.equal(await ev(m + 'send m [start bike: "Brompton"]  shown  restart m  shown'), '["received" "Waiting" "None" "Light"]');
+  // an object put in place of another, deeper down
+  assert.equal(await ev(m + 'shown  settings/look: make object! [dark: true]  shown'), '["received" "Waiting" "None" "Dark"]');
+  // a path to a field the object has not is not read
+  assert.equal(await ev(`o: make object! [a: 1]  v: view [text is [any [attempt [o/b] "no"]]]  ui-react v  v/pane/1/text`), '"no"');
+});
+
+test('steps led by a machine: a state it has not, or a when, is a problem', async () => {
+  const m = `m: machine [initial start  state start []  state finish []  from start to finish on next]  `;
+  assert.match(await ev(m + `e: try [view [form [steps m [start "A" [] finsh "B" []]]]]  e/message`), /m has no state finsh; did you mean finish\?/);
+  assert.match(await ev(m + `e: try [view [form [steps m [start "A" [] finish "B" when [true] []]]]]  e/message`), /it chooses where Next goes, with no when/);
+});
+
 test('a lookup keeps what was chosen, and only the answer to the last search', async () => {
   const r = await ev(`
     people: [#(value: "1" text: "Ana") #(value: "2" text: "Luis")]
@@ -1329,4 +1478,48 @@ test('a lookup drops what a search answers once the user has typed on, and works
     ui-lookup-search fs/2 "x"
     reduce [fs/1/options fs/2/options]`);
   assert.equal(r, '[none []]');
+});
+
+test('the palette finds screens, buttons, links and menu items on show, and what on-find gives', async () => {
+  link = ['home'];
+  const app = `
+    picked: none
+    v: view [
+      on-find [either value = "ada" [["Ada Lovelace" [client 1]]] [[]]]
+      global main: screens [
+        home "Home" [
+          button "Save" key "Ctrl+S" [picked: 'save]
+          button "Gone" hidden
+          button "Off" disabled
+          button "Export" menu ["As CSV" csv "More" ["As PDF" pdf]] on-menu [picked: event/picked]
+          tabs ["One" [link "Help" https://example.com] "Two" [button "Hidden in two"]]
+        ]
+        about "About" [text "x"]
+        client "Client" [id] [text "y"]
+      ]
+    ]
+    labels: func [found] [collect [foreach [l k s t] found [keep l]]]
+  `;
+  assert.equal(await ev(app + 'labels ui-palette v ""'),
+    '["Home" "About" "Save" "Export › As CSV" "Export › More › As PDF" "Help"]');
+  assert.equal(await ev(app + 'found: ui-palette v "sav"  reduce [found/2 found/3]'), '[action "Ctrl+S"]');
+  assert.equal(await ev(app + 'labels ui-palette v "pdf"'), '["Export › More › As PDF"]');
+  assert.equal(await ev(app + 'labels ui-palette v "ada"'), '["Ada Lovelace"]');
+  assert.equal(await ev(app + 'found: ui-palette v "pdf"  ui-palette-pick v found/2 found/4  picked'), 'pdf');
+  // the view opens on the screen of the link, which the next ones change
+  assert.equal(await ev(app + 'found: ui-palette v "ada"  ui-palette-pick v found/2 found/4  main/value'), '[client "1"]');
+  assert.equal(await ev(app + 'found: ui-palette v "about"  ui-palette-pick v found/2 found/4  main/value'), '[about]');
+});
+
+test('a number that counts runs through values of the kind and digits of the one it ends on', () => {
+  const lang = 'en';
+  const value = (src: string): Cell => load(src).s.data[0]!;
+  const at = (to: Cell, x: number): string => shownLocal(countStep(to, x), lang);
+  assert.equal(at(value('1200'), 512.7), '513');
+  assert.equal(at(value('12.5'), 3.14159), '3.1');
+  assert.equal(at(value('12.5%'), 0.031234), '3.1%');
+  assert.equal(at(value('EUR$1200'), 512.678), '€513.00');
+  assert.equal(at(value('EUR$12.50'), 3.14159), '€3.10');
+  assert.equal(amountOf(value('EUR$12.50')), 12.5);
+  assert.equal(amountOf(value('"12"')), null);
 });

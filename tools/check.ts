@@ -2,16 +2,20 @@
 //
 // It lays out each block after view or layout, as the app would when it shows it, and the faces of
 // every screen and row of rows, which the app lays out only when they are shown. Code of the app
-// is not run: a block built by code (view compose [...]) is not checked.
+// is not run: a block built by code (view compose [...]) is not checked. The imports at the top of a
+// file are, since a module only defines things: the rules of a package are known after them.
 
 import { readFile } from 'node:fs/promises';
 import { K, load, LoadError, intern, bindSeries, sourceOf, text, type Cell, type BlockCell, type ObjectCell, type StringCell } from '../src/core/index.ts';
+import { pathToFileURL } from 'node:url';
 import { startHost, startUi, report } from '../src/host/index.ts';
+import { defaultLoader } from '../src/host/modules.ts';
 import { spawn, taskResult } from '../src/host/scheduler.ts';
 
 /** Checks the files; writes each problem as "file:line:col  message". True when there is none. */
 export async function check(files: string[], write: (line: string) => void = console.log): Promise<boolean> {
-  const host = startHost({ onError: () => {} });
+  // a file named from the working directory imports what is next to it
+  const host = startHost({ onError: () => {}, loader: { ...defaultLoader(), base: pathToFileURL(process.cwd() + '/').href } });
   await startUi(host);
   let clean = true;
   for (const file of files) {

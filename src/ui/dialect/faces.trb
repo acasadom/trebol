@@ -1,0 +1,135 @@
+; A part of the UI dialect: see ui.trb, whose words it shares.
+
+; --- faces ---------------------------------------------------------------------
+;
+; A face is an object. The host keeps one DOM node per face and copies these
+; fields to it after every scheduler slice, so code changes a face by
+; setting a field: `total/text: "42"`.
+
+face: make object! [
+    style: 'face        ; what the host renders
+    name: none          ; field name: the key in `values`, and a word in handlers
+    text: none          ; label, caption or content
+    value: none         ; a field's value; also a progress (0-1 or percent) or an image (file or url)
+    hint: none          ; placeholder
+    role: none          ; primary accent danger success warning muted
+    size: none          ; small medium large
+    align: none         ; left center right spread
+    valign: none        ; a row's children, top middle bottom; none lines them up on the controls
+    cols: none          ; columns of a grid: a number, or the weight of each [1 4 1]
+    icon: none
+    fill: false
+    fit: false          ; takes the height the window has left, and its children scroll inside
+    pad: none           ; inner and between-children spacing, a step of the spacing scale (0-7)
+    gap: none
+    narrow-only: false  ; shown only on narrow screens
+    wide-only: false    ; hidden on narrow screens
+    hidden: false
+    disabled: false
+    readonly: false     ; shown and sent, but the user cannot change it, and no rule applies
+    inert: false        ; shown as it is, but neither it nor its children can be used
+    linked: false       ; a tile that stands for something kept elsewhere: marked with an arrow
+    mark: none          ; a tile: a second, small icon on its own (#list), and what it says (mark-text)
+    mark-text: none
+    round: false        ; an image: cut to a circle, as for a person's photo
+    count: false        ; a text whose number changes runs from the old one to the new
+    tag: none           ; a widget: the name of the element it is, as the page's JavaScript defines it
+    props: none         ; a widget: the element's properties, an object
+    poster: none        ; a video: the image shown before it plays
+    captions: none      ; a video: its captions, a .vtt file, or a block of one per language [en %a.vtt es %b.vtt]
+    looping: false      ; a video or a sound starts again when it ends (loop in the dialect)
+    silent: false       ; a video or a sound plays without its sound (muted in the dialect)
+    autoplay: false     ; a video or a sound plays on its own, always silent, as browsers allow
+    drag: false         ; can be dragged: carries its value, or the row in a table, list or tree
+    drop: false         ; accepts drops (on-drop)
+    reorder: false      ; its children or rows can be moved around (on-reorder)
+    rules: none         ; validation: a block of [rule args...] blocks
+    error: none         ; current message, shown once the face is touched
+    touched: false
+    pending: false      ; an asynchronous check is running
+    sent: none          ; an upload or photo: how far its files went up, 0-1; none hides the bar
+    async-error: none   ; result of the last asynchronous check
+    action: none        ; the block after the face: click, change
+    events: none        ; [on-change [...] on-select [...]]
+    shortcut: none      ; a key that activates a button or link: "Ctrl+S"
+    menu: none          ; context menu (or the menu a button opens): a block of menu items; on-menu runs
+    options: none       ; choices of a choice or radio; what a lookup's search found
+    known: none         ; a lookup: what each value shows as, a map; a value not in it shows as itself
+    links: none         ; a lookup: the screen each value links to when readonly, a map
+    query: none         ; a lookup: the text last searched for
+    currency: none      ; a money field's currency code: EUR
+    step: none          ; a slider: how far one move takes it, none is 1; a time: minutes between those listed, none is 30
+    reactions: none     ; react, is and calc: a block of reaction objects
+    template: none      ; rows: the block of the fields of one row
+    built: none         ; rows: what its rows were last made from
+    owner: none         ; a row of rows: the rows face it belongs to
+    typed: none         ; what the user typed in a number, money or date field when it is not one;
+                        ; in an upload or photo, the names of the files it refused
+    multiple: false     ; an upload or a lookup takes more than one
+    accept: none        ; the files an upload takes: ["pdf" "image/*"]; a photo, images unless told
+    pane: none
+    columns: none       ; table, list and tree: [field "Label" ...]; a column of images, [field ["Label" image round]]
+    data: none          ; table, list and tree: a block of map! or object! rows (a tree's
+                        ; have their own in `children`); breadcrumb: its items; orbit: its focus, nodes, edges and trail
+    key: 'id            ; the row field that identifies a row
+    morph: none         ; a name shared with a face of the next screen, which this one becomes as the screen
+                        ; changes: a word, or a block of values; a table or list gives each row its name and key
+    selected: none      ; the row last chosen
+    sortable: false     ; a table the host sorts, from the rows it has, when a header is chosen
+    sorted: none        ; a table: the order shown, [column asc] or [column desc]
+    totals: none        ; a table: a row shown at the foot, never chosen nor sorted
+    kind: none          ; a chart: bar line area pie
+    stacked: false      ; a chart: its series one on top of another
+    draw: none          ; a canvas: the block of the draw dialect it shows
+    extent: none        ; a canvas: the size of its drawing space, a pair
+    form: none          ; the enclosing form, if any
+    root: none          ; the view this face belongs to
+    place: none         ; where the face was written, file:line:col; none if made at run time
+    submit: false
+]
+
+; style name -> prototype face
+styles: make map! []
+
+container-styles: [view column row form panel grid dialog scroll split toolbar desktop]
+input-styles: [field password number money date date-range time area rich check toggle choice radio upload photo lookup rows widget slider]
+data-styles: [table list tree chart board]
+
+foreach [name base] [
+    view column  column column  row row  form form  panel panel  grid grid  scroll scroll  desktop desktop
+    title title  heading heading  text text  divider divider
+    field field  password password  number number  money money  date date  date-range date-range  time time  area area  rich rich  check check  choice choice
+    toggle toggle  radio radio  upload upload  photo photo  lookup lookup  progress progress  image image  backdrop backdrop  icon icon
+    video video  audio audio  widget widget  slider slider
+    button button  link link  tile tile  table table  list list  tabs tabs  tab tab  steps steps  step step
+    toolbar toolbar  breadcrumb breadcrumb  tree tree  screens screens  screen screen  rows rows  entry entry
+    canvas canvas  chart chart  orbit orbit  board board
+] [
+    poke styles name make face [style: base]
+]
+poke styles 'view make face [style: 'view]
+poke styles 'submit make face [style: 'button role: 'primary submit: true]
+poke styles 'dialog make face [style: 'dialog hidden: true]
+poke styles 'tabs make face [style: 'tabs value: 1]
+; value: the step on show, counting every step; flow: the word of a machine that leads them; trail: the
+; snapshots of that machine before each Next, which Back puts back
+poke styles 'steps make face [style: 'steps value: 1  flow: none  trail: none]
+poke styles 'screens make face [style: 'screens entering: false]   ; entering: the screen on show is still the old one
+poke styles 'split make face [style: 'split value: 1]   ; value: the pane shown on narrow screens
+poke styles 'canvas make face [style: 'canvas extent: 300x150]
+poke styles 'chart make face [style: 'chart kind: 'bar]
+; field: the field of a row that names its lane; lanes: [word label ...]; card: the columns a card shows
+poke styles 'board make face [style: 'board  field: none  lanes: none  card: none]
+
+stylize: function [
+    "Defines styles from existing ones: name: base [field: value ...]"
+    spec [block!]
+] [
+    parse spec [some [
+        set name set-word! set base word! set defaults block! (
+            proto: select styles base
+            unless proto [do make error! rejoin ["stylize: unknown style " base ui-suggest base words-of styles]]
+            poke styles to word! name make proto defaults
+        )
+    ]]
+]

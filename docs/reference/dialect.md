@@ -13,7 +13,9 @@ three capital letters after `money` is its currency, `EUR`.
 `layout` (and `view`, which calls it) reads the whole block before it shows anything, and a value it cannot
 place is a problem: an unknown word, a rule word without what it takes (`min "x"`), a block that is not what
 its face takes. It gives one error with every problem in the block, each with its file, line and column, and
-the word it may have meant when one is close: `buton is not a style; did you mean button?`. The faces of a
+the word it may have meant when one is close: `buton is not a style; did you mean button?`. An `on-` word
+that is no event is a problem too (`on-chnage is not an event; did you mean on-change?`), since its block
+would never run (a `widget` takes any, as its element fires its own); a click is the block after the face, not an `on-click`. The faces of a
 screen or of a row of `rows` are laid out, and checked, when they are first shown.
 
 (word-primary)=
@@ -191,12 +193,53 @@ A flag.
 
 Marks a tile with an arrow: it stands for something kept elsewhere, like a shortcut.
 
+(word-mark)=
+## mark
+
+A word followed by its value.
+
+`tile #folder "Records" [...] mark #list "List"`: a second icon, small, at the bottom right of the tile's icon,
+so two tiles with the same icon tell what each one is. Its label, a text, a text per language or a word of the
+dictionary, goes right after its icon, and a screen reader says it after the tile's: "Records, List". It goes
+with `linked`, whose arrow is at the other corner.
+
+(word-by)=
+## by
+
+A word followed by its value.
+
+The field that names the lane of each card of a board: `board jobs by status [...]`.
+
+(word-card)=
+## card
+
+A word followed by its value.
+
+The fields a card of a board shows, as the columns of a list: `card [title "Job" who "Mechanic"]`.
+
+(word-step)=
+## step
+
+A word followed by its value.
+
+How far one move takes a slider: `slider volume "Volume" 0 50 step 5`. A number above 0; a decimal step gives
+decimal values. On a `time`, the minutes between the times its list offers, from 1 to 720: `time start "Start"
+step 15`.
+
 (word-round)=
 ## round
 
 A flag.
 
 Cuts an image to a circle, as for a person's photo: `image %ada.jpg "Ada" 48x48 round`.
+
+(word-count)=
+## count
+
+A flag.
+
+A text, heading or title whose number, percent or amount changes runs from the old one to the new, in about
+half a second: `title count is [total]`. Not the first it shows, nor with less motion asked for.
 
 (word-drag)=
 ## drag
@@ -282,6 +325,14 @@ A rule.
 
 The text must be an email address.
 
+(word-iban)=
+## iban
+
+A rule, made with [`rule`](#fn-rule) as a program would make one.
+
+The text must be an IBAN: of a country that has them, of its length, with the right check digits
+([`iban?`](#fn-iban-3f)). Spaces between the groups are fine.
+
 (word-url)=
 ## url
 
@@ -301,14 +352,15 @@ The text must be a whole number.
 
 A word followed by its value.
 
-`min 18`: the value must be at least that. On `rows`, the fewest rows. Numbers, amounts and dates.
+`min 18`: the value must be at least that. On `rows`, the fewest rows; on `date-range`, its start. Numbers,
+amounts, dates and times.
 
 (word-max)=
 ## max
 
 A word followed by its value.
 
-`max 99`: the value must be at most that. On `rows`, the most rows.
+`max 99`: the value must be at most that. On `rows`, the most rows; on `date-range`, its end.
 
 (word-length)=
 ## length
@@ -408,7 +460,14 @@ A word followed by its value.
 A word followed by its value.
 
 `menu ["Edit" edit "Delete" delete]`: on a button or a link, the menu it opens; on anything else, its context
-menu. Each item is a text and the word that `on-menu` receives in `event/picked`.
+menu. Each item is a text and the word that `on-menu` receives in `event/picked`, with an icon before the text if
+it has one: `#trash "Delete" delete`. `danger` before an item says it removes or cannot be undone, and shows it
+red: `danger #trash "Delete" delete`. `---` draws a line between items, and a block after a text in place of the
+word is a submenu.
+
+On a phone, swiping a row of a table or list with a menu to the left shows its first two items behind it, as
+buttons, the `danger` ones red, and *More* for the whole menu when it has others. A swipe less than halfway
+goes back, as does a touch anywhere else or a scroll.
 
 (word-accept)=
 ## accept
@@ -437,6 +496,27 @@ A word followed by its value.
 A word followed by its value.
 
 `sorted [due desc]`: the order a table shows, by a column, `asc` or `desc`.
+
+(word-key)=
+## key
+
+A word followed by its value.
+
+`key code`: the field that tells the rows of a table, list or tree apart, `id` unless told; a row keeps its
+place in the selection and moves as itself when the rows change. `key "Ctrl+S"`: the shortcut of a button or
+link.
+
+(word-morph)=
+## morph
+
+A word followed by its value.
+
+`morph 'logo`: a name the face shares with a face of the next screen; as the screen changes, one becomes the
+other, moving and growing from where it was to where the other is. `morph [client id]` is a name made of a
+word, as written, and the values after it, evaluated when the screen is entered, so the title of a client's
+screen can carry the client's id. On a table or a list, `morph 'client` names each row by the word and its
+key, `client 7`, so the row chosen becomes the face of the next screen named `[client id]`. Only faces on
+show in both screens move; the rest go with their screen.
 
 (word-poster)=
 ## poster
@@ -525,6 +605,16 @@ On a screen of `screens`: when the screen is entered, before it shows. A `go` in
 An event: the block after it runs when it happens.
 
 When a row of a tree opens.
+
+(word-on-find)=
+## on-find
+
+An event: the block after it runs when it happens.
+
+On a view: when the user types in the palette (Ctrl+K, ⌘K on a Mac), with what was typed as `value`. It gives
+a block of a label and a link for each thing it found, as a breadcrumb's items: `["Ada Lovelace" [booking 1]]`.
+They show under the screens, buttons and menu items that match, and choosing one goes to its link. It may wait
+for a server.
 
 (word-on-focus)=
 ## on-focus

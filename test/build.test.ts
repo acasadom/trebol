@@ -30,6 +30,8 @@ test('the installed command runs a script and serves an app', async () => {
   const run = spawnSync(process.execPath, [cli], { input: 'print 1 + 2', encoding: 'utf8', cwd: project });
   assert.equal(run.stderr, '');
   assert.equal(run.stdout, '3\n');
+  const version = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version;
+  assert.equal(spawnSync(process.execPath, [cli, '--version'], { encoding: 'utf8' }).stdout, `trebol ${version}\n`);
   // the tutorial's supplier, with ws inside (port 8089 may be taken by the docs tests: only its loading is checked)
   const bad = spawnSync(process.execPath, [cli, 'supplier', 'extra'], { encoding: 'utf8', cwd: project });
   assert.match(bad.stderr, /trebol supplier/);
@@ -97,12 +99,13 @@ test('the browser runtime is one module with the UI dialect inside', async () =>
   const { pkg } = await installed();
   const js = readFileSync(join(pkg, 'dist', 'trebol.js'), 'utf8');
   // the one dynamic import is the app's own: import %x.js, by an address known only when it runs
-  assert.doesNotMatch(js, /^import\b|\bimport\s*\(\s*["'`]|\bfrom\s*["']/m);
+  // `from "./x.js"`, not the text "from" (a word of the machines' graph)
+  assert.doesNotMatch(js, /^import\b|\bimport\s*\(\s*["'`]|\bfrom\s*["'][\w./@-]/m);
   assert.equal(js.match(/\bimport\s*\(/g)?.length, 1);
   // with Inter next to it, and next to the host of trebol/browser
   for (const dir of ['fonts', join('lib', 'host', 'fonts')]) assert.ok(existsSync(join(pkg, 'dist', dir, 'inter-latin.woff2')), dir);
-  for (const name of ['ui.trb', 'i18n.trb']) {
-    const first = readFileSync(join(ROOT, 'src', 'ui', name), 'utf8').split('\n')[0]!;
+  for (const name of ['ui.trb', 'i18n.trb', 'dialect/faces.trb', 'dialect/events.trb']) {
+    const first = readFileSync(join(ROOT, 'src', 'ui', name), 'utf8').split('\n').find(l => l !== '' && !l.startsWith('; A part'))!;
     assert.ok(js.includes(JSON.stringify(first).slice(1, -1)), `${name} is inside`);
   }
 });

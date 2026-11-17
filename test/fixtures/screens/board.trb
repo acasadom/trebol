@@ -1,0 +1,35 @@
+Trebol [title: "Jobs on a board: a lane for each status, and one led by a machine"]
+
+moves: copy []
+
+; a job goes from waiting to doing to done, and back from doing; never straight to done
+job: [
+    initial waiting
+    state waiting []
+    state doing []
+    state done []
+    from waiting to doing on start
+    from doing to done on finish
+    from doing to waiting on stop
+]
+
+view [
+    global board jobs by status [todo "To do" doing "Doing" done "Done"]
+        card [title "Job" who "Mechanic"]
+        on-drop [
+            append moves reduce [event/row/title event/from event/to]
+            ; a job is done only when someone did it
+            not all [event/to = 'done  none? event/row/who]
+        ]
+        on-select [append moves row/title]
+    global board flow by step [waiting "Waiting" doing "In the shop" done "Ready"]
+]
+
+jobs/data: [
+    #(title: "Fix brakes" who: "Ana" status: todo)
+    #(title: "True wheel" status: todo)
+    #(title: "New chain" who: "Ana" status: "doing")
+]
+flow/data: reduce [
+    make map! reduce ['title "Paint frame" 'step machine job]
+]

@@ -3,9 +3,43 @@
 // core keeps its own language-neutral form/mold.
 
 import {
-  K, native, value, string, form, text, formatDec, spell, ctxFind, intern,
+  K, native, value, string, form, text, formatDec, spell, ctxFind, intern, integer, decimal, percent, money, dec,
+  decToNumber, I64,
   type Cell, type ObjectCell, type StringCell, type WordCell, type MapCell, type Runtime,
 } from '../core/index.ts';
+
+/** How much a number, a percent or an amount is, as a JavaScript number; null for anything else. */
+export function amountOf(c: Cell): number | null {
+  switch (c.t) {
+    case K.Integer: return I64.toNumber(c.v);
+    case K.Decimal: case K.Percent: return c.v;
+    case K.Money: return decToNumber(c.v);
+    default: return null;
+  }
+}
+
+/** The digits after the point a decimal number is written with. */
+function fractionDigits(n: number): number {
+  const m = /\.(\d+)|e-(\d+)/.exec(String(n));
+  return m === null ? 0 : m[1] !== undefined ? m[1].length : Number(m[2]);
+}
+
+/**
+ * What a number that counts shows at x on its way to `to` (a text with `count`): a value of the kind of `to`,
+ * with no more digits than it has, so the run reads as the number it ends on.
+ */
+export function countStep(to: Cell, x: number): Cell {
+  switch (to.t) {
+    case K.Integer: return integer(Math.round(x));
+    case K.Money: return money(dec(BigInt(Math.round(x * 10 ** to.v.e)), to.v.e), to.cur);
+    case K.Decimal: case K.Percent: {
+      const k = 10 ** fractionDigits(to.v);
+      const v = Math.round(x * k) / k;
+      return to.t === K.Decimal ? decimal(v) : percent(v);
+    }
+    default: return to;
+  }
+}
 
 /** The kinds `localize` formats; anything else shows as `form` gives it. */
 export const LOCAL_KINDS: ReadonlySet<number> = new Set([K.Date, K.Time, K.Integer, K.Decimal, K.Percent, K.Money]);
@@ -121,6 +155,38 @@ export function readDate(s: string, lang: string): string | null {
   return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 }
 
+/**
+ * Two dates typed for a range, as `2026-11-03 2026-11-10` with the start first, or null. They are
+ * written apart by a dash with spaces around it, as `3/11/2026 – 10/11/2026` or `3/11/2026 - 10/11/2026`,
+ * or by a space alone; a range typed end first is turned round.
+ */
+export function readRange(s: string, lang: string): string | null {
+  let parts = s.trim().split(/\s*[\u2013\u2014]\s*|\s+-\s+/);
+  if (parts.length === 1) parts = s.trim().split(/\s+/);
+  if (parts.length !== 2) return null;
+  const [a, b] = parts.map(p => readDate(p, lang));
+  if (a == null || b == null) return null;
+  return a <= b ? `${a} ${b}` : `${b} ${a}`;
+}
+
+/**
+ * A time typed in any language, as `09:30`, or null: `9:30`, `9.30`, `9h30`, `930`, `21`, and with am or pm,
+ * `9:30 pm` or `9pm`. Minutes go from 00 to 59 and hours from 0 to 23, or 1 to 12 with am or pm.
+ */
+export function readTime(s: string): string | null {
+  const t = /^(\d{1,2})(?:\s*[:.h]\s*(\d{2})|(\d{2}))?\s*h?\s*(?:([ap])\.?\s*m\.?)?$/i.exec(s.trim());
+  if (t === null) return null;
+  let h = Number(t[1]);
+  const m = Number(t[2] ?? t[3] ?? 0);
+  const half = t[4]?.toLowerCase();
+  if (m > 59) return null;
+  if (half !== undefined) {
+    if (h < 1 || h > 12) return null;
+    h = (h % 12) + (half === 'p' ? 12 : 0);
+  } else if (h > 23) return null;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
 /** The first day of the week in a language, 1 for Monday to 7 for Sunday. */
 export function weekStart(lang: string): number {
   try {
@@ -136,8 +202,8 @@ export function weekStart(lang: string): number {
 
 /** The active language: `i18n/language` of the user context, `en` if there is none. */
 export function activeLanguage(rt: Runtime): string {
-  const i = ctxFind(rt.user, intern('i18n'));
-  const obj = i < 0 ? null : rt.user.vals[i]!;
+  const i = ctxFind(rt.lib, intern('i18n'));
+  const obj = i < 0 ? null : rt.lib.vals[i]!;
   if (obj === null || obj.t !== K.Object) return 'en';
   const o = obj as ObjectCell;
   const j = ctxFind(o.ctx, intern('language'));
@@ -149,8 +215,8 @@ export function activeLanguage(rt: Runtime): string {
 
 /** A field of the user's `i18n` object, or null. */
 function i18nField(rt: Runtime, name: string): Cell | null {
-  const i = ctxFind(rt.user, intern('i18n'));
-  const obj = i < 0 ? null : rt.user.vals[i]!;
+  const i = ctxFind(rt.lib, intern('i18n'));
+  const obj = i < 0 ? null : rt.lib.vals[i]!;
   if (obj === null || obj.t !== K.Object) return null;
   const j = ctxFind((obj as ObjectCell).ctx, intern(name));
   return j < 0 ? null : (obj as ObjectCell).ctx.vals[j]!;

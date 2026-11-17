@@ -18,7 +18,7 @@
 // looks for them.
 
 import { build, type BuildOptions, type Plugin } from 'esbuild';
-import { cpSync, readFileSync } from 'node:fs';
+import { cpSync, readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
@@ -33,12 +33,17 @@ const sources: Plugin = {
     b.onResolve({ filter: /^trebol:sources$/ }, () => ({ path: SOURCES, namespace: 'trebol' }));
     b.onLoad({ filter: /.*/, namespace: 'trebol' }, () => {
       const text = (name: string): string => JSON.stringify(readFileSync(join(ROOT, 'src', 'ui', name), 'utf8'));
+      // the parts of a module, under the address it reads them from
+      const partsOf = (dir: string, module: string): string => readdirSync(join(ROOT, 'src', 'ui', dir)).filter(f => f.endsWith('.trb'))
+        .map(f => `addBuiltIn(new URL('${dir}/${f}', ${module}).href, ${text(`${dir}/${f}`)});`).join('\n');
       return {
         resolveDir: ROOT,
         loader: 'js',
         contents: `import { addBuiltIn } from './src/host/modules.ts';
 import { UI_SOURCE, I18N_SOURCE, TEST_SOURCE } from './src/host/index.ts';
 addBuiltIn(UI_SOURCE, ${text('ui.trb')});
+${partsOf('dialect', 'UI_SOURCE')}
+${partsOf('testing', 'TEST_SOURCE')}
 addBuiltIn(I18N_SOURCE, ${text('i18n.trb')});
 addBuiltIn(TEST_SOURCE, ${text('test.trb')});`,
       };

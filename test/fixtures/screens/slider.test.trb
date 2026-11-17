@@ -1,0 +1,23 @@
+Trebol [title: "Screen tests of sliders"]
+
+"a slider starts at its least and shows where it stands"
+[
+    see "Volume"
+    click "Save"
+    all [sent/volume = 0  sent/level = 0  sent/speed = 0.5]
+]
+"moving it sets a number, never past its most"
+[
+    type "Volume" 35
+    type "Level" 120
+    type "Speed" 1.75
+    click "Save"
+    all [sent/volume = 35  integer? sent/volume  sent/level = 100  sent/speed = 1.75  moved = 1]
+]
+"what is no number leaves it where it was"
+[
+    type "Volume" 20
+    type "Volume" "loud"
+    click "Save"
+    sent/volume = 20
+]

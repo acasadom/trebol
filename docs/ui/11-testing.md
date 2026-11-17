@@ -119,17 +119,21 @@ translated.
 | `pick-menu "Ana Ruiz" "Remove"` | chooses an item of the menu a button opens, of a face's context menu, or of the menu of the row of a table or list that shows that text; `["Move to" "Top"]` names one in a submenu |
 | `drag "Rest" "Write"` | drags a face, or the row that shows that text, onto another: where things can be reordered it takes the place of the other, else it is dropped on a face with `drop`, or before a row of one |
 | `press "Ctrl+S"` | presses a key: the button or link with that `key` as its shortcut, or else the view's `on-key` |
-| `press/on "Enter" "Customer"` | presses it with the cursor in a face: its `on-key`, or the nearest one around it; Enter in a field of a form clicks its submit, Escape closes a dialog |
+| `press/on "Enter" "Customer"` | presses it with the cursor in a face: its `on-key`, or the nearest one around it; Enter in a field of a form clicks its submit (in a form in steps, Next until the last step), Escape closes a dialog |
 | `say no` | answers no to the next question of `confirm`; with nothing said, the answer is yes |
+| `click "Undo"` | clicks the *Undo* of the newest notice that has one, as `toast/undo` shows it |
+| `dismiss "Ana Ruiz removed"` | lets the notice that shows that text go, as if its time had passed: the block of `toast/then` runs |
 | `see "Booked in."` | checks that the text is on the screen: in a face, a field, a row, a message, a notice or a question asked |
 | `see/not "Booked in."` | checks that it is not |
+| `see-mark "Records" #list` | checks the mark of the tile that shows that text; `none`, that it has none |
 
 Each of them gives `true`, so a test whose last step is one of them passes when every step does. A test can
 end in any other check instead, as long as it gives `true`: after `click "Ana Ruiz"`,
 `board/selected/id = 1`.
 
 Only what is on show counts, as for a person: a dialog until it opens, the faces of a tab until it is chosen,
-a screen until the app goes to it. The screen is a wide one.
+the fields of a step until *Next* reaches it (a step done is chosen again with `click` and its title), a
+screen until the app goes to it. The screen is a wide one.
 
 A `confirm` is answered yes, unless `say no` comes before the step that asks it; each `say` answers one
 question, and one that no question took fails the test, since the app did not ask what the test expected:
@@ -144,6 +148,10 @@ question, and one that no question took fails the test, since the app did not as
     see "Ana Ruiz"
 ]
 ```
+
+No time passes in a test, so a notice with *Undo* waits until the test clicks it, dismisses it or goes to
+another screen; one still waiting when the test ends goes then, and the request its `/then` sends needs an
+answer from `serve` like any other.
 
 ## What the server answers
 

@@ -1,0 +1,98 @@
+; A part of the UI dialect: see ui.trb, whose words it shares.
+
+; --- walking faces -------------------------------------------------------------
+
+all-faces: function [f] [
+    out: copy []
+    collect-faces f out
+    out
+]
+
+collect-faces: function [f out] [
+    append out f
+    if f/pane [foreach c f/pane [collect-faces c out]]
+]
+
+; Faces that belong to a scope: nested forms keep their own fields and submits.
+own-faces: function [scope] [
+    out: reduce [scope]
+    if scope/pane [foreach c scope/pane [collect-own c out]]
+    out
+]
+
+collect-own: function [f out] [
+    append out f
+    if all [f/style = 'step  f/hidden] [exit]
+    if all [f/pane  f/style <> 'form] [foreach c f/pane [collect-own c out]]
+]
+
+; The fields of a row are not fields of the form: rows holds their values.
+named-faces: function [scope] [
+    out: copy []
+    collect-named scope out
+    out
+]
+
+collect-named: function [f out] [
+    if f/name [append out f]
+    if all [f/style = 'step  f/hidden] [exit]
+    if all [f/pane  f/style <> 'rows] [foreach c f/pane [collect-named c out]]
+]
+
+form-values: function [
+    "The values of the named fields of a form (or view), as a map."
+    scope
+] [
+    m: make map! []
+    foreach f named-faces scope [poke m f/name f/value]
+    m
+]
+
+set-values: function [
+    "Fills the named fields of a form (or view) from a map or object; none clears them."
+    scope data [map! object! none!]
+] [
+    foreach f named-faces scope [
+        v: either data [select data f/name] [none]
+        f/value: either logic-face? f [true = v] [v]
+        f/touched: false
+        f/typed: none
+        f/async-error: none
+        if f/style = 'rows [
+            f/built: none
+            rows-fill f
+        ]
+    ]
+    refresh-form scope
+]
+
+insert-text: function [
+    "Puts text where the cursor of a field, area or rich text was last, in place of what was selected, as if the user typed it."
+    face [object!]
+    text [string!]
+] [
+    unless find [field area rich] face/style [
+        do make error! rejoin ["insert-text: a " face/style " has no cursor"]
+    ]
+    if any [face/readonly  face/disabled  empty? text] [exit]
+    ; the host gives the value with the text in; at its end when the face has had no cursor
+    ui-input face insert-at-caret face text
+    face
+]
+
+field-error: function [
+    "Shows a message on a named field until the user changes it: what a server refused. False if there is no such field."
+    scope name [word! string!] text [string!]
+] [
+    name: to word! name
+    foreach f named-faces scope [
+        if f/name = name [
+            f/async-error: text
+            f/error: text
+            f/touched: true
+            refresh-form scope
+            return true
+        ]
+    ]
+    false
+]

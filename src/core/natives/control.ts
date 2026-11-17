@@ -4,7 +4,7 @@
 // call with the arguments; later phases receive the value of the block or
 // expression the native asked the evaluator for.
 
-import { K, kindName } from '../kinds.ts';
+import { K } from '../kinds.ts';
 import * as I64 from '../int64.ts';
 import { NONE, UNSET, TRUE, block, context, type Cell, type BlockCell, type Ctx, type WordCell } from '../values.ts';
 import { bindSeries, copyDeep, setWord } from '../ctx.ts';

@@ -44,7 +44,13 @@ A screen is built again every time it is entered, from its block, so it starts w
 own fresh faces. What must last from one screen to the next lives outside them, like `bookings` here.
 `on-enter`, at the top of a screen's block, runs as the screen is entered, with its faces already made:
 the place to give a table its rows. The screen shows only once `on-enter` has finished, so the reader never
-sees it half filled.
+sees it half filled. If `on-enter` keeps the reader waiting, longer than 300 ms, say for a slow server, the
+new screen comes anyway, and what has no data yet (an empty title or text, a table or list with no rows)
+shows as gray bars until `on-enter` ends: the reader sees at once where they went and what is coming.
+
+The new screen slides in as the old one slides out, the way the reader went: going to a screen, it comes
+from the side ahead; going back, from the side behind, as on a phone. The theme sets how long it takes, and
+a reader who asked their system for less motion gets the new screen at once.
 
 ## A screen for each booking
 
@@ -98,6 +104,85 @@ The `breadcrumb` shows where the screen sits: pairs of a label and a screen, and
 screen itself. Choosing a step runs its block with the screen's name in `value`. `go-back` returns to the
 screen the reader came from, as the browser's back button would; if they arrived straight at this booking
 from a link, there is nothing to go back to, and it goes to the screen it names instead.
+
+## A row that becomes the screen
+
+`morph` ties a face of one screen to a face of the next, so that as the screen changes one becomes the
+other. On a table, `morph 'booking` names each row by the word and the booking's id; on the booking's
+screen, `morph [booking id]` gives the title the same name, the word as written and the id it was entered
+with:
+
+```trebol-ui
+bookings: [
+    #(id: 1 customer: "Ada Lovelace" bike: "Road")
+    #(id: 2 customer: "Grace Hopper" bike: "City")
+    #(id: 3 customer: "Alan Turing" bike: "Mountain")
+]
+
+view [
+    screens [
+        workshop "Workshop" [
+            on-enter [board/data: bookings]
+            title "In the workshop"
+            table board morph 'booking [customer "Customer" bike "Bike"] on-select [go [booking row/id]]
+        ]
+        booking "Booking" [id] [
+            on-enter [
+                foreach b bookings [if id = form b/id [who/text: b/customer]]
+            ]
+            who: title morph [booking id]
+            row [button "Back" [go-back 'workshop]]
+        ]
+    ]
+]
+```
+
+Choose a booking: its row moves up and grows into the title of its screen, and going back it shrinks into
+its row again. A face with the same name on both screens is enough, a picture of a product that becomes the
+large one, `morph 'photo`, or a button that becomes the dialog-like panel it opens; everything else slides
+with its screen.
+
+## Finding with Ctrl+K
+
+Every app has a box that finds things: Ctrl+K opens it (⌘K on a Mac). Typing narrows what it offers: the
+screens that need no arguments, and the buttons, links and menu items on show, each with its shortcut if it
+has one. Choosing one, with the arrows and Enter or the pointer, goes to the screen or does what the button
+does. The app adds what only it can find with `on-find` on the view: `value` is the text typed, and it gives a
+label and a link for each thing found, as a breadcrumb's items:
+
+```trebol-ui
+bookings: [
+    #(id: 1 customer: "Ada Lovelace" bike: "Road")
+    #(id: 2 customer: "Grace Hopper" bike: "City")
+]
+
+view [
+    on-find [
+        collect [
+            foreach b bookings [
+                if find b/customer value [keep b/customer  keep/only reduce ['booking b/id]]
+            ]
+        ]
+    ]
+    screens [
+        workshop "Workshop" [
+            on-enter [board/data: bookings]
+            row [title "In the workshop"  button "New booking" key "Ctrl+B" [toast "A new booking"]]
+            table board [customer "Customer" bike "Bike"] on-select [go [booking row/id]]
+        ]
+        settings "Settings" [title "Settings"  row [button "Back" [go-back 'workshop]]]
+        booking "Booking" [id] [
+            on-enter [foreach b bookings [if id = form b/id [who/text: b/customer]]]
+            who: title
+            row [button "Back" [go-back 'workshop]]
+        ]
+    ]
+]
+```
+
+Click the example, press Ctrl+K and type `gra`: Grace Hopper's booking is there, found by `on-find`, under
+what the page itself has. `on-find` may ask a server, as a search does, and the box shows the answer when it
+comes.
 
 ## The link
 

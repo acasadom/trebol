@@ -157,3 +157,12 @@ export function appendText(src: string, text: string): string {
 export function safeHref(href: string): boolean {
   return /^(https?:|mailto:)/i.test(href.trim());
 }
+
+/** What a link face may open: web, mail and phone addresses and addresses with no scheme (a path,
+ * a #screen); anything else (javascript:, data:...) is null. Spaces before it and tabs or line
+ * breaks inside it are dropped first, as the browser does, so "java\tscript:" is caught too. */
+export function linkHref(href: string): string | null {
+  const plain = href.replace(/[\t\n\r]/g, '').replace(/^[\x00-\x20]+/, '');
+  const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(plain);
+  return scheme === null || /^(https?|mailto|tel)$/i.test(scheme[1]!) ? href : null;
+}

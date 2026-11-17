@@ -1,0 +1,1090 @@
+Trebol [
+    title: "Machine tests"
+    ; Statecharts: which hooks run and in what order, where the machine ends up.
+    ; Many cases come from the engine semantics of harel, which machine follows.
+]
+
+"hooks run only at their own level"
+[
+    trace: copy []
+    log: func [w] [append trace w]
+    m: machine [
+        initial outer
+        state outer [
+            on-enter [log 'oe]  on-exit [log 'ox]
+            initial in1
+            state in1 [on-enter [log 'in1e]]
+            state in2 []
+            from in1 to in2 on go
+            from in2 to in1 on back
+        ]
+    ]
+    send m 'go
+    all [trace = [oe in1e]  m/state = 'outer/in2  not m/done]
+]
+
+"enter outermost first, exit innermost first"
+[
+    trace: copy []
+    log: func [w] [append trace w]
+    m: machine [
+        initial a
+        state a [on-enter [log 'ae]  on-exit [log 'ax]]
+        state outer [
+            on-enter [log 'oe]  on-exit [log 'ox]
+            initial in1
+            state in1 [on-enter [log 'in1e]  on-exit [log 'in1x]]
+            state in2 [on-enter [log 'in2e]]
+            from in1 to in2 on step
+        ]
+        from a to outer/in1 on go
+        from outer to a on back
+    ]
+    send m 'go
+    send m 'back
+    all [trace = [ae ax oe in1e in1x ox ae]  m/state = 'a]
+]
+
+"descending runs each level's own enter"
+[
+    trace: copy []
+    log: func [w] [append trace w]
+    m: machine [
+        initial l1
+        state l1 [
+            on-enter [log 'l1e]
+            initial l2
+            state l2 [
+                on-enter [log 'l2e]
+                initial leaf
+                state leaf [on-enter [log 'leafe]]
+            ]
+        ]
+    ]
+    trace = [l1e l2e leafe]
+]
+
+"a transition to the state itself runs nothing"
+[
+    trace: copy []
+    log: func [w] [append trace w]
+    m: machine [
+        data [pick: true]
+        initial decide
+        state decide [on-enter [log 'de]  on-exit [log 'dx]]
+        state other [on-enter [log 'oe]]
+        from decide choose on go [when [data/pick] to decide  else to other]
+    ]
+    send m 'go
+    trace = [de]
+]
+[
+    m/data/pick: false
+    send m 'go
+    all [trace = [de dx oe]  m/state = 'other]
+]
+
+"activity runs only the active state's own hook"
+[
+    trace: copy []
+    log: func [w] [append trace w]
+    m: machine [
+        initial w
+        state w [on-enter [log 'we]  on-activity [log 'wa]]
+        state n [on-enter [log 'ne]]
+        from w to n on go
+        from n to w on again
+    ]
+    send m 'ping  send m 'go  send m 'ping
+    all [trace = [we wa ne]  m/state = 'n]
+]
+
+"events, guards and data"
+[
+    m: machine [
+        data [email: none  visits: 0]
+        initial account
+        state account []
+        state profile [on-enter [data/visits: data/visits + 1]]
+        from account to profile on next where [event/email <> ""] set [email: event/email]
+        from profile to account on back
+    ]
+    send m [next email: ""]
+    m/state = 'account
+]
+[
+    send m [next email: "ana@example.com"]
+    all [m/state = 'profile  m/data/email = "ana@example.com"  m/data/visits = 1]
+]
+[
+    send m 'back  send m [next email: "b@example.com"]
+    all [m/data/visits = 2  m/data/email = "b@example.com"]
+]
+; a guard that cannot be worked out does not hold
+[send m 'back  send m 'next  m/state = 'account]
+[send m [next email: 5]  m/state = 'profile]
+
+"an event with several names"
+[
+    m: machine [
+        initial a  state a []  state b []
+        from a to b on [go run]
+        from b to a on back
+    ]
+    send m 'run  r: m/state = 'b
+    send m 'back  send m 'go
+    all [r  m/state = 'b]
+]
+
+"an event the state has no way for changes nothing"
+[
+    m: machine [initial a  state a []  state b []  state c []  from a to b on go  from b to c on on-to]
+    send m 'on-to
+    all [m/state = 'a  not m/done]
+]
+"an event no way of the machine names is an error, with what it may have meant"
+[
+    m: machine [initial a  state a []  state b []  from a to b on start]
+    e: try [send m 'strat]
+    all [error? e  e/message = "send: the machine has no way on strat; did you mean start?"  m/state = 'a]
+]
+[
+    ; with on-activity (or ttl) any event counts
+    n: machine [initial a  state a [on-activity [1]]  state b []  from a to b on go]
+    send n 'ping
+    n/state = 'a
+]
+
+"set works out every value before anything changes"
+[
+    trace: copy []
+    m: machine [
+        data [a: 1  b: 2]
+        initial x
+        state x [on-exit [append trace data/a]]
+        state y [on-enter [append trace data/a]]
+        from x to y on swap set [a: data/b  b: data/a]
+    ]
+    send m 'swap
+    all [m/data/a = 2  m/data/b = 1  trace = [1 2]]
+]
+[
+    ; set writes only fields the data has
+    error? try [machine [data [a: 1] initial x  state x []  state y []  from x to y on go set [b: 2]]]
+]
+
+"the innermost level wins; the ones around it catch what it does not take"
+[
+    m: machine [
+        initial outer
+        state outer [
+            initial a
+            state a []  state b []
+            from a to b on go
+            from b to a on back
+        ]
+        state elsewhere []
+        from outer to elsewhere on go
+        from outer to elsewhere on leave
+    ]
+    send m 'go
+    r: m/state = 'outer/b
+    send m 'leave
+    all [r  m/state = 'elsewhere]
+]
+
+"a target is looked for inside, then further out"
+[
+    m: machine [
+        initial work
+        state work [
+            initial fixing
+            state fixing []
+            from fixing to ready on fixed
+        ]
+        state ready []
+        from ready to work on again
+    ]
+    send m 'fixed
+    r: m/state = 'ready
+    send m 'again
+    all [r  m/state = 'work/fixing]
+]
+
+"a transition with no event follows at once"
+[
+    trace: copy []
+    log: func [w] [append trace w]
+    m: machine [
+        initial a
+        state a [on-enter [log 'a]]
+        state b [on-enter [log 'b]]
+        state c [on-enter [log 'c]]
+        from a to b
+        from b to c on go
+    ]
+    all [trace = [a b]  m/state = 'b]
+]
+
+"choose takes the first when that holds"
+[
+    m: machine [
+        data [n: 5]
+        initial a
+        state a []  state big []  state small []  state zero []
+        from a choose on go [
+            when [data/n > 3] to big
+            when [data/n > 0] to small set [n: data/n - 1]
+            else to zero
+        ]
+        from big to a on back
+        from small to a on back
+        from zero to a on back
+    ]
+    send m 'go
+    r1: m/state = 'big
+    m/data/n: 2
+    send m 'back  send m 'go
+    r2: all [m/state = 'small  m/data/n = 1]
+    m/data/n: 0
+    send m 'back  send m 'go
+    all [r1  r2  m/state = 'zero]
+]
+[
+    ; with no else and no when that holds, the transition does not happen
+    m: machine [
+        data [n: 0]
+        initial a  state a []  state b []
+        from a choose on go [when [data/n > 0] to b]
+    ]
+    send m 'go
+    m/state = 'a
+]
+[
+    ; a choose with no event is worked out as the machine settles
+    m: machine [
+        data [ok: true]
+        initial a  state a []  state yes []  state no []
+        from a choose [when [data/ok] to yes  else to no]
+    ]
+    m/state = 'yes
+]
+
+"history"
+[
+    m: machine [
+        initial work
+        state work [
+            initial one
+            state one []  state two []
+            from one to two on next
+            from two to one on back
+        ]
+        state pause []
+        from work to pause on pause
+        from pause to work on resume
+    ]
+    send m 'next  send m 'pause  send m 'resume
+    m/state = 'work/two
+]
+[
+    m: machine [
+        initial work
+        state work [
+            no history
+            initial one
+            state one []  state two []
+            from one to two on next
+            from two to one on back
+        ]
+        state pause []
+        from work to pause on pause
+        from pause to work on resume
+    ]
+    send m 'next  send m 'pause  send m 'resume
+    m/state = 'work/one
+]
+
+"final states and outcomes"
+[
+    m: machine [
+        initial work
+        state work []
+        state done []
+        final failed failed
+        from work to done on ok
+        from work to failed on boom
+    ]
+    send m 'boom
+    all [m/state = 'failed  m/done  m/outcome = 'failed]
+]
+[
+    restart m
+    send m 'ok
+    all [m/state = 'done  m/done  none? m/outcome]
+]
+[
+    ; a machine that is done takes no more events
+    send m 'boom
+    m/state = 'done
+]
+[
+    ; restart clears the outcome
+    restart m
+    send m 'boom
+    restart m
+    all [m/state = 'work  not m/done  none? m/outcome]
+]
+
+"a state with nowhere to go ends its level"
+[
+    trace: copy []
+    log: func [w] [append trace w]
+    m: machine [
+        initial pay
+        state pay [
+            on-exit [log 'pay-out]
+            initial card
+            state card []
+            final paid [on-exit [log 'paid-out]]
+            from card to paid on charged
+        ]
+        state shipped [on-enter [log 'shipped]]
+        from pay to shipped
+    ]
+    send m 'charged
+    all [trace = [paid-out pay-out shipped]  m/state = 'shipped]
+]
+
+[
+    ; at the top, that ends the machine
+    m: machine [initial a  state a []]
+    all [m/done  m/state = 'a  none? m/outcome]
+]
+
+"on error"
+[
+    trace: copy []
+    m: machine [
+        initial calling
+        state calling [on-enter [1 / 0]]
+        final failed failed [on-enter [append trace event/id]]
+        from calling to failed on error
+    ]
+    all [m/state = 'failed  m/outcome = 'failed  trace = [zero-divide]  m/error/id = 'zero-divide]
+]
+[
+    ; a guard picks by the error
+    m: machine [
+        initial calling
+        state calling [on-enter [do make error! "boom"]]
+        state math []  state other []
+        from calling to math on error where [event/type = 'math]
+        from calling to other on error
+    ]
+    m/state = 'other
+]
+[
+    ; the failure of a state entered by a transition
+    m: machine [
+        initial idle
+        state idle []
+        state calling [on-enter [1 / 0]]
+        final failed failed
+        from idle to calling on dial
+        from calling to failed on error
+    ]
+    send m 'dial
+    m/state = 'failed
+]
+[
+    ; the failure while descending into a state
+    m: machine [
+        initial line
+        state line [
+            initial dialing
+            state dialing [on-enter [1 / 0]]
+        ]
+        final failed failed
+        from line to failed on error
+    ]
+    m/state = 'failed
+]
+[
+    ; with no on error the failure reaches the caller
+    m: machine [
+        initial idle
+        state idle []
+        state calling [on-enter [1 / 0]]
+        from idle to calling on dial
+    ]
+    e: try [send m 'dial]
+    all [error? e  e/id = 'zero-divide]
+]
+[
+    ; a failure on the way out never routes
+    m: machine [
+        initial leaf
+        state leaf [on-exit [1 / 0]]
+        state other []  state recovered []
+        from leaf to other on go
+        from leaf to recovered on error
+    ]
+    e: try [send m 'go]
+    all [error? e  m/state <> 'recovered]
+]
+[
+    ; a set that cannot be worked out fails before any state is left
+    trace: copy []
+    m: machine [
+        data [n: 0]
+        initial a
+        state a [on-exit [append trace 'ax]]
+        state b []
+        state broken []
+        from a to b on go set [n: 1 / data/n]
+        from a to broken on error
+    ]
+    send m 'go
+    all [m/state = 'broken  trace = [ax]]
+]
+
+"events sent while one is handled wait their turn"
+[
+    trace: copy []
+    m: none
+    m: machine [
+        initial a
+        state a []
+        state b [on-enter [send m 'go  append trace 'b]]
+        state c [on-enter [append trace 'c]]
+        from a to b on go
+        from b to c on go
+    ]
+    send m 'go
+    all [trace = [b c]  m/state = 'c]
+]
+
+"in?"
+[
+    m: machine [
+        initial shop
+        state shop [
+            initial cart
+            state cart []
+            state pay []
+            from cart to pay on next
+            from pay to cart on back
+        ]
+    ]
+    send m 'next
+    all [in? m 'shop  in? m 'pay  in? m 'shop/pay  not in? m 'cart  not in? m 'shop/cart  not in? m 'pay/shop]
+]
+
+"each machine has its own data"
+[
+    spec: [data [n: 0] initial a  state a []  from a to a on add set [n: data/n + 1]]
+    m1: machine spec  m2: machine spec
+    send m1 'add  send m1 'add  send m2 'add
+    all [m1/data/n = 2  m2/data/n = 1]
+]
+
+"a way out with no event is looked for only in the state the machine is in"
+[
+    ; three levels deep as two: the inner state waits for its event, the outer one does not leave
+    m: machine [
+        initial top
+        state top [
+            initial o
+            state o [initial a  state a []  state b []  from a to b on go]
+            state x []
+            from o to x
+        ]
+    ]
+    m/state = 'top/o/a
+]
+
+"parallel: every state inside is on at once"
+[
+    trace: copy []
+    log: func [w] [append trace w]
+    m: machine [
+        initial verifying
+        parallel verifying [
+            on-enter [log 've]  on-exit [log 'vx]
+            state fraud [
+                on-enter [log 'fe]  on-exit [log 'fx]
+                initial screening
+                state screening [on-exit [log 'sx]]
+                final cleared
+                from screening to cleared on fraud-ok
+            ]
+            state stock [
+                on-enter [log 'ke]  on-exit [log 'kx]
+                initial checking
+                state checking []
+                final reserved
+                from checking to reserved on stock-ok
+            ]
+        ]
+        final approved
+        from verifying to approved
+    ]
+    start: m/state
+    started: copy trace
+    send m 'stock-ok
+    half: m/state
+    send m 'fraud-ok
+    all [
+        start = [verifying/fraud/screening verifying/stock/checking]
+        started = [ve fe ke]
+        half = 'verifying/fraud/screening
+        trace = [ve fe ke kx sx fx vx]
+        m/state = 'approved
+        m/done
+    ]
+]
+[
+    ; an event goes to every state of the parallel
+    m: machine [
+        initial p
+        parallel p [
+            state a [initial a1  state a1 []  state a2 []  from a1 to a2 on go  from a2 to a1 on back]
+            state b [initial b1  state b1 []  state b2 []  from b1 to b2 on go  from b2 to b1 on back]
+        ]
+    ]
+    send m 'go
+    all [m/state = [p/a/a2 p/b/b2]  in? m 'a2  in? m 'p/b/b2  not in? m 'b1]
+]
+[
+    ; the states inside take an event first; the ways out of the parallel only when none does
+    m: machine [
+        initial p
+        parallel p [
+            state a [initial a1  state a1 []  state a2 []  from a1 to a2 on go  from a2 to a1 on back]
+            state b [initial b1  state b1 []  from b1 to b1 on nothing]
+        ]
+        state out []
+        from p to out on go
+        from p to out on leave
+        from out to p on back
+    ]
+    send m 'go  inside: m/state
+    send m 'leave  left: m/state
+    send m 'back
+    all [inside = [p/a/a2 p/b/b1]  left = 'out  m/state = [p/a/a2 p/b/b1]]
+]
+[
+    ; a way out with no event and a choose see in event how each state ended
+    m: machine [
+        initial verifying
+        parallel verifying [
+            state fraud [
+                initial screening  state screening []
+                final cleared  final rejected
+                from screening to cleared on fraud-ok
+                from screening to rejected on fraud-bad
+            ]
+            state stock [initial checking  state checking []  final reserved  from checking to reserved on stock-ok]
+        ]
+        final approved success
+        final refused failed
+        from verifying choose [
+            when [event/fraud = 'rejected] to refused
+            when [all [event/fraud = 'cleared  event/stock = 'reserved]] to approved
+        ]
+    ]
+    send m 'fraud-bad
+    all [m/outcome = 'failed  m/done]
+]
+[
+    ; the outcomes inside a parallel are not the machine's
+    m: machine [
+        initial p
+        parallel p [
+            state a [initial a1  state a1 []  final a2 lost  from a1 to a2 on go]
+            state b [initial b1  state b1 []  final b2  from b1 to b2 on go]
+        ]
+        final end won
+        from p to end
+    ]
+    send m 'go
+    all [m/outcome = 'won]
+]
+[
+    ; going into one state of a parallel enters the others too
+    m: machine [
+        initial off
+        state off []
+        parallel p [
+            state a [initial a1  state a1 []  state a2 []  from a1 to a2 on go  from a2 to a1 on back]
+            state b [initial b1  state b1 []  from b1 to b1 on x]
+        ]
+        from off to p/a/a2 on jump
+    ]
+    send m 'jump
+    m/state = [p/a/a2 p/b/b1]
+]
+"invoke: another machine as one state"
+[
+    payment: [
+        data [amount: 0]
+        initial deciding
+        state deciding []
+        final ok authorized
+        final no declined
+        from deciding choose [when [data/amount <= 100] to ok  else to no]
+    ]
+    order: func [amount] [
+        machine compose/deep [
+            data [amount: (amount)  paid: none]
+            initial charge
+            state charge [invoke payment with [amount: data/amount]]
+            final paid success
+            final cancelled failed
+            from charge choose on done [
+                when [event/outcome = 'authorized] to paid set [paid: event/data/amount]
+                else to cancelled
+            ]
+        ]
+    ]
+    m1: order 50  m2: order 500
+    all [m1/outcome = 'success  m1/data/paid = 50  m2/outcome = 'failed  none? m2/data/paid]
+]
+[
+    ; the machine invoked may be written in the block
+    m: machine [
+        data [amount: 50  paid: none]
+        initial charge
+        state charge [invoke [data [amount: 0] initial s  state s []  final ok yes  final no nope
+            from s choose [when [data/amount < 100] to ok else to no]] with [amount: data/amount]]
+        final paid success
+        final cancelled failed
+        from charge choose on done [when [event/outcome = 'yes] to paid set [paid: event/data/amount]  else to cancelled]
+    ]
+    all [m/outcome = 'success  m/data/paid = 50]
+]
+[
+    ; a machine invoked that fails on the way in fails the state that invoked it
+    m: machine [
+        initial charge
+        state charge [invoke [initial s  state s [on-enter [1 / 0]]]]
+        state failed []
+        from charge to failed on error
+        from charge to failed on done
+    ]
+    m/state = 'failed
+]
+
+"invoke ... for: one machine for each item, done when all of them are"
+[
+    ship: [
+        data [parcel: none]
+        initial shipping
+        state shipping []
+        final shipped success
+        final lost failed
+        from shipping choose [when [data/parcel <> "C"] to shipped  else to lost]
+    ]
+    order: func [parcels] [
+        machine compose/deep [
+            data [parcels: [(parcels)]  outcomes: none  got: none]
+            initial dispatching
+            state dispatching [invoke ship for p in data/parcels with [parcel: p]]
+            final delivered success
+            final stuck failed
+            from dispatching choose on done [
+                when [parse event/outcomes [any 'success]] to delivered
+                    set [outcomes: event/outcomes  got: collect [foreach d event/data [keep d/parcel]]]
+                else to stuck set [outcomes: event/outcomes]
+            ]
+        ]
+    ]
+    m1: order ["A" "B"]  m2: order ["A" "C" "B"]  m3: order []
+    all [
+        m1/outcome = 'success  m1/data/got = ["A" "B"]
+        m2/outcome = 'failed  m2/data/outcomes = [success failed success]
+        m3/outcome = 'success  m3/data/outcomes = []
+    ]
+]
+[
+    ; the word of for is the item, only inside with; each machine gets its own data
+    m: machine [
+        data [xs: [1 2 3]  sum: 0]
+        initial adding
+        state adding [invoke [data [n: 0  twice: 0] initial s  state s [on-enter [data/twice: data/n * 2]]  final f
+            from s to f] for x in data/xs with [n: x]]
+        final added
+        from adding to added on done set [sum: collect [foreach d event/data [keep d/twice]]]
+    ]
+    m/data/sum = [2 4 6]
+]
+[
+    says?: func [code text /local e] [e: try code  all [error? e  to logic! find e/message text]]
+    all [
+        says? [machine [data [xs: []] initial a  state a [invoke [initial s state s []] for x in data/ys]  from a to a on done]] "data has no ys"
+        says? [machine [data [xs: []] initial a  state a [invoke [initial s state s []] for x data/xs]  from a to a on done]] "takes a word, in and data/field"
+        says? [machine [data [xs: []] initial a  state a [invoke [initial s state s []] for x in xs]  from a to a on done]] "takes data/field"
+        says? [machine [data [xs: 3] initial a  state a [invoke [initial s state s []] for x in data/xs]  from a to a on done]] "goes over a block"
+    ]
+]
+
+"snapshot and machine/from: a machine kept as data and resumed"
+[
+    ; nested states, history and data survive mold/all and load; no on-enter runs again
+    entered: 0
+    spec: [
+        data [email: none]
+        initial account
+        state account []
+        state profile [
+            on-enter [entered: entered + 1]
+            initial name  state name []  state photo []
+            from name to photo on next
+            from photo to name on back
+        ]
+        state help []
+        final done success
+        from account to profile on next set [email: event/email]
+        from profile to help on help
+        from help to profile on back
+        from profile to done on finish
+    ]
+    m: machine spec
+    send m [next email: "a@x.es"]
+    send m 'next
+    send m 'help
+    m2: machine/from spec load mold/all snapshot m
+    before: entered
+    resumed: m2/state
+    send m2 'back
+    all [resumed = 'help  m2/state = 'profile/photo  m2/data/email = "a@x.es"  entered = (before + 1)]
+]
+[
+    ; events held by defer, with their fields, and how the states of a parallel ended
+    spec: [
+        data [got: none]
+        defer confirm
+        initial p
+        parallel p [
+            state a [initial a1  state a1 []  final a2 ok  from a1 to a2 on go-a]
+            state b [initial b1  state b1 []  final b2  from b1 to b2 on go-b]
+        ]
+        state waiting []
+        final done
+        from p to waiting
+        from waiting to done on confirm set [got: event/n]
+    ]
+    m: machine spec
+    send m [confirm n: 7]
+    send m 'go-a
+    m2: machine/from spec load mold/all snapshot m
+    first-state: m2/state
+    send m2 'go-b
+    all [first-state = 'p/b/b1  m2/state = 'done  m2/data/got = 7]
+]
+[
+    ; on-save runs after each event with the snapshot; a done machine resumes done
+    saves: copy []
+    spec: [initial a  state a []  final b won  from a to b on go]
+    m: machine append copy spec [on-save [append/only saves snapshot]]
+    send m 'go
+    m2: machine/from spec last saves
+    all [2 = length? saves  m2/done  m2/outcome = 'won  m2/state = 'b]
+]
+[
+    says?: func [code text /local e] [e: try code  all [error? e  to logic! find e/message text]]
+    spec: [data [n: 0]  initial a  state a []]
+    all [
+        says? [machine/from spec [on [[z]]]] "no state z"
+        says? [machine/from spec [on [[a]] data [m: 1]]] "data has no m"
+        says? [machine [initial a  state a [on-save []]]] "on-save goes at the top"
+    ]
+]
+
+"mistakes in a machine"
+[
+    says?: func [code text /local e] [e: try code  all [error? e  to logic! find e/message text]]
+    true
+]
+[says? [machine []] "needs a state"]
+[says? [machine [state a []]] "no initial state"]
+[says? [machine [initial b  state a []]] "no state b"]
+[says? [machine [initial a  state a []  from a to b on go]] "no state b"]
+[says? [machine [initial a  state a []  from z to a on go]] "no state z"]
+[says? [machine [initial a  state a []  state a []]] "two states called a"]
+[says? [machine [initial a  state a []  stat b []]] "stat is not a word"]
+[says? [machine [initial a  state a [state b []]]] "a has no initial"]
+[says? [machine [data [n: 0]  initial a  state a [on-enter [data/m: 1]]]] "data has no m"]
+[says? [machine [data [n: 0]  initial a  state a []  from a to a on go set [m: 1]]] "data has no m"]
+[says? [machine [initial a  state a []  state b []  from a to b  from a to a]] "two transitions with no event leave a"]
+[says? [machine [initial a  state a []  state b []  from a to b where [true]]] "where goes after on"]
+[says? [machine [initial a  on-enter [] state a []]] "goes inside a state"]
+[
+    e: try [machine [initial a  state a []  from a to nowhere on go]]
+    all [e/near = [from a to nowhere]  to logic! find e/at "machine.trb:"]
+]
+[e: try [send machine [initial a state a []] 'error]  error? e]
+[e: try [send machine [initial a state a []] 'timeout]  error? e]
+
+"defer: an event that comes early waits for a state that takes it"
+[
+    trace: copy []
+    m: machine [
+        defer confirmed
+        initial charging
+        state charging [on-activity [append trace 'activity]]
+        state hook []
+        final done success
+        from charging to hook on ack
+        from hook to done on confirmed
+    ]
+    send m 'confirmed
+    held: length? m/deferred
+    send m 'ack
+    all [held = 1  m/outcome = 'success  empty? trace  empty? m/deferred]
+]
+[
+    ; held in the order they came; the fields of the event come with it
+    m: machine [
+        data [got: none]
+        defer [b c]
+        initial s1
+        state s1 []
+        state s2 []
+        state s3 []
+        final s4
+        from s1 to s2 on a
+        from s2 to s3 on b set [got: event/n]
+        from s3 to s4 on c
+    ]
+    send m [c]  send m [b n: 7]  send m 'a
+    all [m/done  m/data/got = 7]
+]
+[
+    ; a defer in a state holds only there; one held stays held after it is left
+    spec: [
+        initial a
+        state a [defer late]
+        state b []
+        state c []
+        final d
+        from a to b on go
+        from b to c on go
+        from c to d on late
+    ]
+    m1: machine spec  send m1 'late  send m1 'go  send m1 'go
+    m2: machine spec  send m2 'go  send m2 'late  send m2 'go
+    all [m1/done  m2/state = 'c]
+]
+
+"select: a block works out the branch"
+[
+    m: machine [
+        data [tries: 0]
+        initial asking
+        state asking []
+        final gave-up failed
+        from asking select [data/tries: data/tries + 1  either data/tries < 3 ['again] ['stop]] on no [
+            again to asking
+            stop to gave-up
+        ]
+    ]
+    send m 'no  send m 'no  one: m/state
+    send m 'no
+    all [one = 'asking  m/outcome = 'failed  m/data/tries = 3]
+]
+[
+    m: machine [
+        data [code: none]
+        initial waiting
+        state waiting []
+        state done []
+        state missing []
+        state broken []
+        from waiting select [event/status] on answer [
+            200 to done set [code: event/status]
+            404 to missing
+            else to broken
+        ]
+    ]
+    send m [answer status: 404]  a: m/state
+    restart m  send m [answer status: 500]  b: m/state
+    restart m  send m [answer status: 200]
+    all [a = 'missing  b = 'broken  m/data/code = 200]
+]
+[
+    ; a value no branch takes is a mistake, and on error can take it
+    m: machine [
+        initial a
+        state a []
+        state b []
+        state oops []
+        from a select [3] on go [1 to b]
+        from a to oops on error
+    ]
+    send m 'go
+    all [m/state = 'oops  to logic! find m/error/message "select gave 3"]
+]
+"mistakes with time, defer and select"
+[
+    says?: func [code text /local e] [e: try code  all [error? e  to logic! find e/message text]]
+    true
+]
+[says? [machine [initial a  state a [timeout 1]  state b []  from a to b on go]] "has a timeout and no transition on timeout"]
+[says? [machine [initial a  state a []  state b []  from a to b on timeout]] "which has no timeout"]
+[says? [machine [initial a  timeout 1  state a []]] "goes inside a state"]
+[says? [machine [initial a  state a []  final b [timeout 1]]] "final state takes no timeout"]
+[says? [machine [initial a  state a [timeout "x"]]] "timeout takes seconds"]
+[says? [machine [data [x: 1]  initial a  state a [timeout data/y]  from a to a on timeout]] "data has no y"]
+[says? [machine [initial a  state a [ttl 1]]] "ttl goes at the top"]
+[says? [machine [initial a  state a []  final b  from a to b on expired]] "needs ttl"]
+[says? [machine [ttl 1  initial a  state a []  state b []  from a to b on expired]] "goes to a final state"]
+[says? [machine [initial a  state a []  defer timeout]] "cannot wait"]
+[says? [machine [initial a  state a []  from a select [1] [1 to a  1 to a]]] "two branches for 1"]
+[says? [machine [initial a  state a []  from a select [1] [1 to a  else to a  else to a]]] "select has two else"]
+[says? [machine [initial a  state a []  from a select [1] [1 a]]] "a branch of select takes to"]
+[says? [machine [initial p  parallel p [state a []]]] "needs two states"]
+[says? [machine [initial p  parallel p [initial a  state a []  state b []]]] "has no initial"]
+[says? [machine [initial p  parallel p [state a []  final b]]] "not final ones"]
+[says? [machine [initial p  parallel p [state a []  state b []  from a to b on go]]] "no ways between them"]
+[says? [machine [initial a  state a []  state b []  from a to b on done]] "which has no run or invoke"]
+[says? [machine [initial a  state a [run [1]  run [2]]]] "runs one thing"]
+[says? [machine [initial a  run [1]  state a []]] "run goes inside a state"]
+[says? [machine [initial a  state a [invoke [initial z]]]] "no state z"]
+[says? [machine [initial a  state a [invoke 3]]] "invoke takes the block"]
+[says? [machine [initial a  state a [invoke [data [x: 1] initial s state s []] with [y: 2]]]] "has no data y"]
+[says? [machine [initial a  state a []  defer done]] "cannot wait"]
+[says? [machine [initial a  state a [shared cart]]] "shared goes at the top"]
+[says? [machine [shared "cart"  initial a  state a []]] "shared takes a name"]
+[says? [machine [initial a  state a [invoke [shared c  initial s  state s []]]]] "cannot be shared"]
+; did you mean
+[says? [machine [initial start  state start []  state finish []  from start to finsh on go]] "no state finsh; did you mean finish?"]
+[says? [machine [initial strat  state start []]] "no state strat here; did you mean start?"]
+[says? [machine [initial start  state start []  stat finish []]] "stat is not a word of machine; did you mean state?"]
+[says? [machine [data [email: none]  initial a  state a [on-enter [print data/emial]]]] "data has no emial; did you mean email?"]
+; a state no way leads to
+[says? [machine [initial a  state a []  state b []  state c []  from a to b on go]] "no way leads to state c"]
+[says? [machine [initial a  state a []  state w [initial x  state x []  state y []]  from a to w on go]] "no way leads to state y"]
+[says? [machine [initial a  state a []  state b [initial x  state x []]  from b to a on go]] "no way leads to state b"]
+; a choose that may never be taken
+[says? [machine [data [n: 0]  initial a  state a []  state b []  from a choose [when [data/n > 0] to b]]] "may stay in a for good"]
+
+"what reaches a state"
+[
+    ; a state inside one reached by a way to it, the states of a parallel, a way out of an outer state
+    m: machine [
+        initial a
+        state a []
+        state w [initial x  state x []  state y []]
+        parallel p [state r [initial i  state i []]  state q [initial j  state j []]]
+        state z []
+        from a to w/y on go
+        from w to p on go
+        from p to z on go
+    ]
+    send m 'go  send m 'go  send m 'go
+    m/state = 'z
+]
+[
+    ; a choose with no else is fine when the state has another way out, or the choose has an event
+    m: machine [data [n: 0]  initial a  state a []  state b []  from a choose [when [data/n > 0] to b]  from a to b on go]
+    n: machine [data [n: 0]  initial a  state a []  state b []  from a choose on go [when [data/n > 0] to b]]
+    send n 'go
+    all [m/state = 'a  n/state = 'a]
+]
+
+"shared"
+[
+    ; with no other tab to share it with, a shared machine runs in its own
+    m: machine [shared cart  data [n: 0]  initial a  state a []  state b []  from a to b on go set [n: 1]]
+    send m 'go
+    all [m/owner  m/state = 'b  m/data/n = 1  (select snapshot m 'on) = [[b]]]
+]
+
+"can?"
+[
+    m: machine [
+        initial a
+        state a []
+        state w [initial x  state x []  state y []  from x to y on go]
+        from a to w on next where [false]
+        from w to a on reset
+    ]
+    ; a way whose where is false still counts: where is not asked
+    r: reduce [can? m 'next  can? m 'reset  can? m 'go]
+    m: machine [initial w  state w [initial x  state x []  state y []  from x to y on go]  state a []  from w to a on reset]
+    all [r = reduce [true false false]  can? m 'go  can? m 'reset  not can? m 'next]
+]
+
+"rewind: a machine back where a snapshot left it, in place"
+[
+    n: 0
+    m: machine [
+        data [k: none]
+        initial a
+        state a []
+        state b [on-enter [n: n + 1]]
+        state c []
+        from a to b on next set [k: event/k]
+        from b to c on next
+    ]
+    s: snapshot m
+    send m [next k: 1]
+    send m 'next
+    r: reduce [m/state m/data/k]
+    machine-engine/rewind m s
+    all [r = [c 1]  m/state = 'a  none? m/data/k  n = 1  (select snapshot m 'on) = [[a]]]
+]
+
+"graph-of"
+[
+    spec: [
+        data [parts: 0]
+        initial received
+        state received []
+        state work [
+            initial checking
+            state checking [timeout 30]
+            state waiting [invoke [initial s  state s []]]
+            state fixing []
+            from checking choose on found [when [data/parts > 0] to waiting set [parts: 1]  else to fixing]
+            from checking to fixing on timeout
+        ]
+        final ready done
+        from received to work on start where [true]
+        from work to ready on fixed
+    ]
+    g: graph-of spec
+    states: select g 'states
+    ways: select g 'ways
+    c: select/only states 'work/checking
+    all [
+        (extract states 2) = load "[received work work/checking work/waiting work/fixing ready]"
+        none? select g 'state
+        (select g 'data) = [parts]
+        (select c 'timeout) = 30
+        true = select c 'initial
+        false = select c 'on
+        'final = select select states 'ready 'kind
+        'done = select select states 'ready 'outcome
+        block? select select/only states 'work/waiting 'invoke
+        (select first ways 'on) = [start]
+        (select first ways 'where) = [true]
+        'choose = pick third ways 3
+        2 = length? select third ways 'branches
+        (load mold/all g) = g
+    ]
+]
+[
+    m: machine [initial a  state a []  state b [initial x  state x []  state y []  from x to y on turn]  from a to b on go]
+    send m 'go
+    g: graph-of m
+    s: select g 'states
+    all [
+        (select g 'state) = load "b/x"
+        false = select select s 'a 'on
+        true = select select s 'b 'on
+        true = select select/only s load "b/x" 'on
+    ]
+]

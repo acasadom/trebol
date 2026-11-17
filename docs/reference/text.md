@@ -128,3 +128,18 @@ split series dlm
 
 - `series` (`any-string!` `block!`)
 - `dlm` (`any-string!` `char!` `integer!`)
+
+(fn-iban-3f)=
+## iban?
+
+True if the text is an IBAN (ISO 13616) of a country that has them, of that country's length and with the right check digits. Spaces may separate its groups.
+
+```text
+iban? text
+```
+
+- `text` (`string!`)
+
+Spaces between the groups and small letters are fine: `iban? "es91 2100 0418 4502 0005 1332"` is true. The
+country must be one that has IBANs, and the length its own. It checks that the IBAN is well made, not that the
+account exists.

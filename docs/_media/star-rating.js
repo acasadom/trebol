@@ -1,6 +1,17 @@
 // <star-rating>: from one to five stars, with the mouse or the arrow keys.
 // Its colors are the theme's, which reach it as --tb-* custom properties.
 
+// A constructed style sheet, not a <style>, so it works on a page whose Content-Security-Policy
+// says style-src 'self'.
+const sheet = new CSSStyleSheet();
+sheet.replaceSync(`
+  :host { display: inline-flex; gap: 2px; }
+  button { font: inherit; font-size: 1.75rem; line-height: 1; padding: 2px; border: 0; border-radius: var(--tb-radius);
+           background: none; color: var(--tb-border-strong); cursor: pointer; }
+  button.on { color: var(--tb-primary); }
+  button:focus-visible { outline: 2px solid var(--tb-focus); outline-offset: 1px; }
+`);
+
 class StarRating extends HTMLElement {
   #value = null;
   #stars = [];
@@ -8,13 +19,7 @@ class StarRating extends HTMLElement {
   constructor() {
     super();
     const root = this.attachShadow({ mode: 'open' });
-    root.innerHTML = `<style>
-      :host { display: inline-flex; gap: 2px; }
-      button { font: inherit; font-size: 1.75rem; line-height: 1; padding: 2px; border: 0; border-radius: var(--tb-radius);
-               background: none; color: var(--tb-border-strong); cursor: pointer; }
-      button.on { color: var(--tb-primary); }
-      button:focus-visible { outline: 2px solid var(--tb-focus); outline-offset: 1px; }
-    </style>`;
+    root.adoptedStyleSheets = [sheet];
     for (let n = 1; n <= 5; n++) {
       const star = document.createElement('button');
       star.type = 'button';

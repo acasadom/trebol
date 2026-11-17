@@ -123,6 +123,48 @@ fact that it is given together. `export [a b]` marks several words at once.
 
 There was no "loading the prices": the rules imported the same module the console had imported already.
 
+## A module in several files
+
+A module that grows long can be kept in several files and still be one module. `parts:` in its header lists
+them, each path read from where the module is. They run in that order, and then the module's own body, and
+they share its words: what one part sets, the others and the module use, as if it were all one file.
+
+```trebol
+; file: shop/repairs.trb
+Trebol [
+    title: "The shop's repairs"
+    exports: [quote-repair]
+    parts: [%repairs/labour.trb %repairs/quote.trb]
+]
+```
+
+```trebol
+; file: shop/repairs/labour.trb
+hourly: $30.00
+
+labour: func [hours [number!]] [hours * hourly]
+```
+
+```trebol
+; file: shop/repairs/quote.trb
+; the parts that go in, and the hours of work at the hourly rate
+quote-repair: func [hours [number!] parts [money!]] [parts + labour hours]
+```
+
+A part is plain code and needs no header. `quote.trb` uses `labour` from the other part, and the program
+gets what the module exports, wherever it was set; `export` works in a part too. An error in a part says the
+part's own file and line.
+
+```trebol-console
+>> words-of import %shop/repairs.trb
+== [hourly labour quote-repair]
+>> quote-repair 1.5 $12.00
+== $57.00
+```
+
+Trebol's UI dialect is made this way: `ui.trb` lists the files of its parts, one for faces and styles, one for
+screens, one for validation, and so on.
+
 ## Data in a file
 
 Not every file is a program. The stock is a list of parts and how many are left — data, nothing to run.
@@ -226,6 +268,34 @@ checks its arguments:
 inchesToCm.spec = '["A wheel size in centimetres." inches [number!]]';
 ```
 
+## A package
+
+Modules other people wrote come as packages, installed with npm as JavaScript ones are:
+
+```sh
+npm install trebol-es
+```
+
+`import` of a word, not a file, imports a package by its name. It is looked for in `node_modules/`, next to the
+file that imports it or in a folder above, as Node finds a package, and its `package.json` says which file is
+the module:
+
+```text
+>> import 'trebol-es
+```
+
+```json
+{
+  "name": "trebol-es",
+  "trebol": "es.trb"
+}
+```
+
+That file is a module as any other: it runs once, its exports become words of the program, and it imports its
+own files by their path from it. A package can be a whole library or only a few words, like the
+[rules](../ui/02-forms.md#rules-of-your-own) of a country's forms. `trebol build` puts the packages an app imports
+inside its page, and `trebol dev` serves them from the `node_modules/` of the app's folder or of one above it.
+
 ## When the file is not there
 
 A file that cannot be read is an `access` error, so `try` catches it as any other (page 7):
@@ -240,7 +310,7 @@ A file that cannot be read is an `access` error, so `try` catches it as any othe
 ```
 
 A module that lists in `exports:` a word it never sets is an error too: the header promised something the file
-does not give.
+does not give. So is a package that is not in `node_modules/`, or whose `package.json` names no `"trebol"` file.
 
 ## What's next
 

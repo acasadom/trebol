@@ -25,8 +25,8 @@ const DOCS = join(import.meta.dirname, '..', 'docs');
 export const NOTES = join(DOCS, '_reference');
 export const OUT = join(DOCS, 'reference');
 
-/** Functions the host calls from DOM events: no program calls them. */
-const HOST_ONLY = /^ui-/;
+/** Functions the host calls from DOM events, and those only the machine engine calls: no program calls them. */
+const HOST_ONLY = /^(ui-|share-)/;
 
 interface Topic { file: string; title: string; intro: string; sections: Array<{ name: string; notes: string }> }
 
@@ -172,13 +172,19 @@ function describe(name: string, fn: Cell): string {
   return out.join('\n\n');
 }
 
-/** The UI dialect's source, where its words are listed. */
+/** The UI dialect's source, where its words are listed: ui.trb and the parts in dialect/, in order. */
 const UI_TRB = join(import.meta.dirname, '..', 'src', 'ui', 'ui.trb');
-const BROWSER_TS = join(import.meta.dirname, '..', 'src', 'host', 'browser.ts');
+const UI_PARTS = join(import.meta.dirname, '..', 'src', 'ui', 'dialect');
+const uiSource = (): string => [readFileSync(UI_TRB, 'utf8'),
+  ...[...readFileSync(UI_TRB, 'utf8').matchAll(/%dialect\/([a-z-]+\.trb)/g)].map(m => readFileSync(join(UI_PARTS, m[1]!), 'utf8'))].join('\n');
+/** The browser host: browser.ts and its parts in browser/. */
+const BROWSER = join(import.meta.dirname, '..', 'src', 'host', 'browser');
+const browserSource = (): string => [readFileSync(`${BROWSER}.ts`, 'utf8'),
+  ...readdirSync(BROWSER).filter(f => f.endsWith('.ts')).map(f => readFileSync(join(BROWSER, f), 'utf8'))].join('\n');
 
 /** The lists of words of the dialect in ui.trb (`roles: [primary ...]`), by the name of each list. */
 function wordLists(): Map<string, string[]> {
-  const code = load(readFileSync(UI_TRB, 'utf8'));
+  const code = load(uiSource());
   const d = code.s.data;
   const out = new Map<string, string[]>();
   for (let i = code.i; i + 1 < d.length; i++) {
@@ -197,12 +203,22 @@ const WORD_LISTS: Record<string, string> = {
   flags: 'A flag', 'media-flags': 'A flag of a video or a sound', 'simple-rules': 'A rule', 'rule-words': 'A word followed by its value', 'chart-kinds': 'A kind of chart',
 };
 
+/** The rules Trebol adds with `rule`, as a program would: `rule 'iban ...` at the top of ui.trb. */
+function ownRules(): string[] {
+  return [...uiSource().matchAll(/^rule '([a-z?-]+)/gm)].map(m => m[1]!);
+}
+
 /** The events a face can have a handler for: the ones the dialect and the host run. */
 function events(): string[] {
-  const names = new Set<string>();
-  for (const m of readFileSync(UI_TRB, 'utf8').matchAll(/'(on-[a-z]+(?:-[a-z]+)*)/g)) names.add(m[1]!);
-  for (const m of readFileSync(BROWSER_TS, 'utf8').matchAll(/['"](on-[a-z]+(?:-[a-z]+)*)['"]/g)) names.add(m[1]!);
-  return [...names].sort();
+  const ui = uiSource();
+  const known = /\nui-events: \[([^\]]*)\]/.exec(ui)![1]!.trim().split(/\s+/);
+  // every event the dialect or the host fires is one a layout may name
+  const used = new Set<string>();
+  for (const m of ui.matchAll(/'(on-[a-z]+(?:-[a-z]+)*)/g)) used.add(m[1]!);
+  for (const m of browserSource().matchAll(/['"](on-[a-z]+(?:-[a-z]+)*)['"]/g)) used.add(m[1]!);
+  const missing = [...used].filter(e => !known.includes(e));
+  if (missing.length > 0) throw new Error(`ui-events in ui.trb lacks ${missing.join(', ')}`);
+  return known.sort();
 }
 
 /** The value a face field holds, as it would be written in a layout. */
@@ -230,10 +246,11 @@ const KINDS: Record<string, Kind> = {
     },
   },
   'dialect.md': {
-    names: () => [...new Set([...[...wordLists().values()].flat(), ...events()])],
+    names: () => [...new Set([...[...wordLists().values()].flat(), ...ownRules(), ...events()])],
     prefix: 'word',
     describe: (_w, name) => {
       if (name.startsWith('on-')) return 'An event: the block after it runs when it happens.';
+      if (ownRules().includes(name)) return `A rule, made with [\`rule\`](#${label('rule')}) as a program would make one.`;
       const lists = [...wordLists()].filter(([, ws]) => ws.includes(name)).map(([l]) => WORD_LISTS[l]!.toLowerCase());
       return lists.length === 0 ? '' : `${lists.join('; ').replace(/^./, c => c.toUpperCase())}.`;
     },

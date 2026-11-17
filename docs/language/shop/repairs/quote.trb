@@ -1,0 +1,2 @@
+; the parts that go in, and the hours of work at the hourly rate
+quote-repair: func [hours [number!] parts [money!]] [parts + labour hours]

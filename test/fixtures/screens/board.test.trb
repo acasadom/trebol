@@ -1,0 +1,47 @@
+Trebol [app: %board.trb]
+
+"A board"
+[
+    drag "Fix brakes" "Doing"
+    all [
+        jobs/data/1/status = 'doing
+        moves = ["Fix brakes" todo doing]
+        2 = length? jobs/pane/2/pane/1/data
+    ]
+]
+[
+    ; a field that came as text keeps a text
+    drag "New chain" "Done"
+    jobs/data/3/status = "done"
+]
+[
+    ; on-drop gives false: the card goes back
+    drag "True wheel" "Done"
+    all [
+        jobs/data/2/status = 'todo
+        2 = length? jobs/pane/1/pane/1/data
+    ]
+]
+[
+    click "Fix brakes"
+    moves = ["Fix brakes"]
+]
+[
+    ; the data given again: the cards are dealt again
+    jobs/data: [#(title: "Oil" who: "Luis" status: done)]
+    see "Oil"
+    see/not "Fix brakes"
+]
+
+"A board led by machines"
+[
+    ; a way the machine has not: it stays
+    drag "Paint frame" "Ready"
+    m: flow/data/1/step
+    in? m 'waiting
+]
+[
+    drag "Paint frame" "In the shop"
+    drag "Paint frame" "Ready"
+    in? flow/data/1/step 'done
+]

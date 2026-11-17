@@ -61,6 +61,24 @@ letter: charset [#"a" - #"z"]
 == true
 ```
 
+Charsets go together like the sets of the series chapter: `union` gives the characters of either one,
+`intersect` those of both, `exclude` those of the first that are not in the second, and `complement` every
+character a charset does not have. `find` says whether a charset has a character, or every one of a text;
+a letter counts in either case unless `/case`:
+
+```trebol
+code-char: union letter digit
+```
+
+```trebol-console
+>> parse "b2b" [some code-char]
+== true
+>> find digit #"7"
+== true
+>> find letter "a1"
+== false
+```
+
 ## Rules with names
 
 A rule can be a word whose value is a block of rules, so a long shape can be built from short pieces with

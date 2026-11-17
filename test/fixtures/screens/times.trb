@@ -1,0 +1,11 @@
+Trebol [title: "Times"]
+
+sent: none
+
+view [
+    form [
+        time start "Start" required min 8:00 max 18:00 step 15
+        time alarm "Alarm"
+        submit "Save" [sent: values]
+    ]
+]

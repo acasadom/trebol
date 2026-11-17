@@ -11,6 +11,7 @@
     "verbatimModuleSyntax": true,
     "erasableSyntaxOnly": true,
     "noImplicitOverride": true,
+    "noUnusedLocals": true,
     "noFallthroughCasesInSwitch": true,
     "skipLibCheck": true
   },

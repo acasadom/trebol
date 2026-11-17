@@ -1,0 +1,12 @@
+Trebol [title: "Tiles with a mark"]
+
+i18n/texts/many: #(en: "Many" es: "Varios")
+
+"the mark of a tile"
+[see-mark "Records" #list]
+[see-mark "Invoices" #stack]
+[see-mark "Plain" none]
+[see "List"  see "Many"]
+[error? try [see-mark "Records" #stack]]
+[error? try [see-mark "Nothing" #list]]
+[click "Mark it"  see-mark "Plain" #star]

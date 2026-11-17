@@ -1,0 +1,87 @@
+; A part of the UI dialect: see ui.trb, whose words it shares.
+
+; --- the palette -----------------------------------------------------------------
+;
+; Ctrl+K opens a box that finds what the page can do: its screens without
+; arguments, the buttons and links on show and the items of their menus, and
+; what the view's on-find gives for the text typed (its value), as pairs of a
+; label and a link, as a breadcrumb's.
+
+; The faces on show in f, as the user sees them on a wide screen.
+palette-walk: function [f out [block!]] [
+    if any [f/hidden  f/narrow-only] [exit]
+    append out f
+    unless block? f/pane [exit]
+    case [
+        f/style = 'tabs [
+            repeat i length? f/pane [
+                t: pick f/pane i
+                if all [i = f/value  block? t/pane] [foreach c t/pane [palette-walk c out]]
+            ]
+        ]
+        ; the step on show and the buttons
+        f/style = 'steps [
+            repeat i length? f/pane [
+                t: pick f/pane i
+                if any [i = f/value  t/style <> 'step] [palette-walk t out]
+            ]
+        ]
+        true [foreach c f/pane [palette-walk c out]]
+    ]
+]
+
+; The items of a menu that match, with the labels of the menus they are in.
+palette-menu: function [f items [block!] path [string!] match [function!] out [block!] /local i] [
+    foreach i items [
+        unless i/divider [
+            label: rejoin [path " › " tr i/text]
+            either i/items [palette-menu f i/items label :match out] [
+                if match label [append out reduce [label 'menu none reduce [f i]]]
+            ]
+        ]
+    ]
+]
+
+ui-palette: function [
+    "Called by the host as the user types in the palette (Ctrl+K) of view v: label, kind, keys and target of each thing that matches the text."
+    v [object!] text [string!]
+    /local n t a b f
+] [
+    out: copy []
+    match: func [label] [any [empty? text  find label text]]
+    if router [
+        foreach [n t a b] router/data [
+            if empty? a [
+                label: tr t
+                if match label [append out reduce [label 'screen none n]]
+            ]
+        ]
+    ]
+    faces: copy []
+    palette-walk v faces
+    foreach f faces [
+        if all [find [button link] f/style  not f/disabled] [
+            label: any [all [f/text  tr f/text]  f/hint]
+            if all [string? label  not empty? label] [
+                either f/menu [palette-menu f f/menu label :match out] [
+                    if match label [append out reduce [label 'action f/shortcut f]]
+                ]
+            ]
+        ]
+    ]
+    if all [not empty? text  h: handler-for v 'on-find] [
+        found: run-handler/given v h text
+        if block? :found [foreach [label link] found [append out reduce [tr label 'found none :link]]]
+    ]
+    out
+]
+
+ui-palette-pick: function [
+    "Called by the host when the user chooses in the palette of view v: goes to a screen or link, or chooses a menu item."
+    v [object!] kind [word!] target
+] [
+    switch kind [
+        screen found [go :target]
+        menu [ui-menu target/1 target/2 none]
+    ]
+]

@@ -236,8 +236,13 @@ native('spec-of', '["A copy of a function\'s spec block." value [any-function!]]
   return value({ t: K.Block, s: copyDeep(spec.s, spec.i), i: 0 });
 });
 
-native('body-of', '["A copy of a function\'s body block, or none for a native." value [any-function!]]', (_t, f) => {
+native('body-of', '["A copy of a function\'s body block, or none for a native; for an object, its fields as field: value." value [any-function! any-object!]]', (_t, f) => {
   const c = underOp(f.args[0]!);
+  if (c.t === K.Object || c.t === K.Error) {
+    const out: Cell[] = [];
+    c.ctx.keys.forEach((k, i) => out.push(wordOf(K.SetWord, k), c.ctx.vals[i]!));
+    return value(blockOf(K.Block, out));
+  }
   return value(c.t === K.Function ? { t: K.Block, s: copyDeep(((c as OpaqueCell).p as FuncDef).body), i: 0 } : NONE);
 });
 

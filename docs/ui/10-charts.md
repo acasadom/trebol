@@ -130,6 +130,27 @@ reader reads every chart as a table of the same numbers. A chart with no rows sa
 `chart/data: rows` draws it again, so a chart that follows a server is a `fetch` and an assignment, as the
 workshop board was on the last page.
 
+## Numbers that count
+
+A number on its own often says more than a chart: the takings of the day, the bikes still waiting. With
+`count`, a text, heading or title whose number changes runs from the old one to the new, so the eye sees
+how much it moved:
+
+```trebol-ui
+today: make object! [takings: $1240.00]
+view [
+    panel "Today" [
+        title count is [today/takings]
+        button "A repair paid" [today/takings: today/takings + $85.50]
+    ]
+]
+```
+
+It runs for about half a second, slowing as it arrives, through numbers of the kind and digits of the one it
+ends on, each written in the active language. The number it first shows does not run, nor one that comes when
+the user asked the system for less motion: it is there at once. A number, a percent and an amount count; a
+text that is no number shows as it is.
+
 ## Moving through a graph
 
 Some things are not rows but a web: customers ride bikes, bikes have repairs, repairs need parts. An `orbit`

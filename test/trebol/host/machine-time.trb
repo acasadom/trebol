@@ -1,0 +1,299 @@
+Trebol [
+    title: "Machine time tests"
+    ; timeout and ttl: they need the timers of a host.
+]
+
+"timeout: entering a state arms a timer, leaving it stops it"
+[
+    m: machine [
+        initial waiting
+        state waiting [timeout 0.03]
+        state paid []
+        final cancelled cancelled
+        from waiting to paid on pay
+        from waiting to cancelled on timeout
+    ]
+    first-state: m/state
+    wait 0.08
+    all [first-state = 'waiting  m/state = 'cancelled  m/outcome = 'cancelled  m/done]
+]
+[
+    m: machine [
+        initial waiting
+        state waiting [timeout 0.03]
+        state paid []
+        final cancelled cancelled
+        from waiting to paid on pay
+        from waiting to cancelled on timeout
+    ]
+    send m 'pay
+    wait 0.08
+    all [m/state = 'paid  empty? collect [foreach [k x] m/timers [if x [keep k]]]]
+]
+[
+    ; a timer that was stopped and armed again goes off only once, from the new start
+    m: machine [
+        data [n: 0]
+        initial a
+        state a [timeout 0.05]
+        state away []
+        state b []
+        from a to away on leave
+        from away to a on back
+        from a to b on timeout set [n: data/n + 1]
+    ]
+    wait 0.03  send m 'leave  send m 'back
+    wait 0.03  here: m/state
+    wait 0.06
+    all [here = 'a  m/state = 'b  m/data/n = 1]
+]
+[
+    ; the time can be read from the data as the state is entered
+    m: machine [
+        data [wait: 0.02]
+        initial a
+        state a [timeout data/wait]
+        final b
+        from a to b on timeout
+    ]
+    wait 0.06
+    m/done
+]
+[
+    ; a timeout is taken from its own state first, then from the ones around it
+    m: machine [
+        initial outer
+        state outer [
+            timeout 0.03
+            initial in1
+            state in1 [timeout 0.01]
+            state in2 []
+            from in1 to in2 on timeout
+            from in2 to in1 on back
+        ]
+        final out
+        from outer to out on timeout
+    ]
+    wait 0.015  inside: m/state
+    wait 0.05
+    all [inside = 'outer/in2  m/state = 'out]
+]
+[
+    m: machine [initial a  state a [timeout 0.01]  final b  from a to b on timeout]
+    restart m
+    wait 0.04
+    m/done
+]
+
+"ttl: a machine that hears nothing for a while expires"
+[
+    m: machine [
+        ttl 0.05
+        initial open
+        state open []
+        final closed expired
+        from open to open on ping
+        from open to closed on expired
+    ]
+    wait 0.03  send m 'ping
+    wait 0.03  send m 'ping
+    alive: m/state
+    wait 0.08
+    all [alive = 'open  m/state = 'closed  m/outcome = 'expired]
+]
+[
+    ; with ttl, an event no way names still counts: it keeps the machine alive
+    m: machine [ttl 0.05  initial a  state a []  final b  from a to b on go]
+    wait 0.03  send m 'still-here
+    wait 0.03
+    all [not m/done  m/state = 'a]
+]
+[
+    ; with no on expired it just ends, where it was
+    m: machine [ttl 0.02  initial a  state a []  from a to a on ping]
+    wait 0.05
+    all [m/done  m/outcome = 'expired  m/state = 'a]
+]
+
+"timeout in a parallel"
+[
+    ; a state of a parallel has its own time; leaving the parallel stops every timer inside
+    m: machine [
+        initial p
+        parallel p [
+            state a [initial a1  state a1 [timeout 0.02]  final late  from a1 to late on timeout]
+            state b [initial b1  state b1 [timeout 0.2]  state b2 []  from b1 to b2 on timeout  from b2 to b1 on back]
+        ]
+        final out
+        from p choose [when [event/a = 'late] to out]
+    ]
+    wait 0.06
+    all [m/state = 'out  m/done  empty? collect [foreach [k x] m/timers [if x [keep k]]]]
+]
+
+"run: a task while the machine is in a state"
+[
+    m: machine [
+        data [rows: none]
+        initial loading
+        state loading [run [wait 0.02  [1 2 3]]]
+        state shown []
+        state failed []
+        from loading to shown on done set [rows: event/value]
+        from loading to failed on error
+        from shown to loading on reload
+    ]
+    first-state: m/state
+    wait 0.06
+    all [first-state = 'loading  m/state = 'shown  m/data/rows = [1 2 3]]
+]
+[
+    ; a failure is taken by on error, with the error as the event
+    m: machine [
+        data [said: none]
+        initial loading
+        state loading [run [wait 0.01  1 / 0]]
+        state failed [on-enter [data/said: event/id]]
+        state shown []
+        from loading to shown on done
+        from loading to failed on error
+    ]
+    wait 0.04
+    all [m/state = 'failed  m/data/said = 'zero-divide]
+]
+[
+    ; leaving the state stops its task
+    said: none
+    m: machine [
+        initial loading
+        state loading [run [wait 0.03  said: 'late]]
+        state gone []
+        from loading to gone on away
+        from gone to loading on back
+        from loading to gone on done
+    ]
+    send m 'away
+    wait 0.06
+    all [m/state = 'gone  none? said]
+]
+
+"invoke ... for: machines that take their time"
+[
+    ; each machine ends on its own; done comes once all have, in the order of the items
+    m: machine [
+        data [waits: [0.03 0.01 0.02]  order: none]
+        initial working
+        state working [invoke [data [t: 0] initial s  state s [timeout data/t]  final f
+            from s to f on timeout] for t in data/waits with [t: t]]
+        final finished
+        from working to finished on done set [order: collect [foreach d event/data [keep d/t]]]
+    ]
+    first-state: m/state
+    wait 0.08
+    all [first-state = 'working  m/state = 'finished  m/data/order = [0.03 0.01 0.02]]
+]
+[
+    ; leaving the state stops every machine it started
+    said: copy []
+    m: machine [
+        data [xs: [1 2]]
+        initial working
+        state working [invoke [data [x: 0] initial s  state s [run [wait 0.03  append said data/x]]  final f
+            from s to f on done] for x in data/xs with [x: x]]
+        state gone []
+        final finished
+        from working to gone on away
+        from working to finished on done
+    ]
+    send m 'away
+    wait 0.06
+    all [m/state = 'gone  empty? said]
+]
+
+"snapshot and machine/from: timers, tasks and machines invoked go on"
+[
+    ; a timeout goes off when it was going to, counted from when the state was entered
+    spec: [initial waiting  state waiting [timeout 0.06]  final late  from waiting to late on timeout]
+    m: machine spec
+    wait 0.03
+    saved: load mold/all snapshot m
+    machine-engine/stop m
+    m2: machine/from spec saved
+    wait 0.015
+    early: m2/state
+    wait 0.04
+    all [early = 'waiting  m2/state = 'late]
+]
+[
+    ; one already past goes off at once
+    spec: [initial a  state a [timeout 0.02]  state b []  from a to b on timeout]
+    m: machine spec
+    saved: snapshot m
+    machine-engine/stop m
+    wait 0.04
+    m2: machine/from spec saved
+    wait 0.01
+    m2/state = 'b
+]
+[
+    ; and so does the ttl
+    spec: [ttl 0.02  initial a  state a []  state b []  from a to b on go]
+    m: machine spec
+    saved: snapshot m
+    machine-engine/stop m
+    wait 0.04
+    m2: machine/from spec saved
+    wait 0.01
+    all [m2/done  m2/outcome = 'expired]
+]
+[
+    ; a run starts over
+    runs: 0
+    spec: [
+        data [v: none]
+        initial loading
+        state loading [run [runs: runs + 1  wait 0.02  42]]
+        state shown []
+        from loading to shown on done set [v: event/value]
+    ]
+    m: machine spec
+    wait 0.005
+    saved: snapshot m
+    machine-engine/stop m
+    m2: machine/from spec saved
+    wait 0.05
+    all [runs = 2  m2/state = 'shown  m2/data/v = 42]
+]
+[
+    ; a machine invoked, and each machine of a fan-out, go on where they were
+    inner: [data [t: 0]  initial s  state s [timeout data/t]  final f ok  from s to f on timeout]
+    spec: [
+        data [ts: [0.01 0.05]  outs: none]
+        initial working
+        state working [invoke inner for t in data/ts with [t: t]]
+        final finished
+        from working to finished on done set [outs: event/outcomes]
+    ]
+    m: machine spec
+    wait 0.03
+    saved: load mold/all snapshot m
+    machine-engine/stop m
+    m2: machine/from spec saved
+    mid: m2/state
+    wait 0.05
+    all [mid = 'working  m2/state = 'finished  m2/data/outs = [ok ok]]
+]
+[
+    ; on-save runs too when a machine invoked moves on its own
+    saves: 0
+    m: machine [
+        on-save [saves: saves + 1]
+        initial working
+        state working [invoke [initial s  state s [timeout 0.01]  state s2 [timeout 0.01]  final f
+            from s to s2 on timeout  from s2 to f on timeout]]
+        final finished
+        from working to finished on done
+    ]
+    wait 0.05
+    all [m/state = 'finished  saves >= 3]
+]

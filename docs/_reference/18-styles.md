@@ -84,6 +84,20 @@ it is being edited, as a plain number in the language's way.
 A field for a date, with a calendar. Its value is a `date!`; it is typed in the order of the active language, or
 as `2026-12-02`.
 
+## date-range
+
+Two dates, a start and an end, picked on one calendar: `date-range stay "Stay"`. Its value is a block of two
+`date!` values, the start first, or `none`. The first day picked stays marked until the second; the field shows
+both in the active language, and they are typed apart by a dash, as `3/11/2026 – 10/11/2026`. `min` holds for
+the start and `max` for the end. A screen test sets it with `type "Stay" [3-Nov-2026 10-Nov-2026]`.
+
+## time
+
+A field for a time of day, with a list of times: `time start "Start" step 15`. Its value is a `time!`. It is
+shown in the active language and typed as `9:30`, `9.30`, `930` or `9:30 pm`. The list goes from its `min`
+to its `max`, the whole day unless given, `step` minutes apart, 30 unless given, and opens on the time it holds
+or the next one from now.
+
 ## area
 
 Several lines of text.
@@ -104,9 +118,19 @@ text, or a map with a `value` and a `text`. A title followed by a block is a gro
 `["Repairs" ["Brakes" "Gears"] "Other"]`. The title, like a text, may be a text per language or a word of
 the dictionary.
 
+Until one is picked it shows its hint, or *Choose…*. When it is `required` that line cannot be picked again;
+when it is not, picking it puts the value back to `none`.
+
 ## toggle
 
 A switch. Its value is `true` or `false`.
+
+## slider
+
+A number picked by moving a handle along a line, with the number it stands at after it:
+`slider volume "Volume" 0 50 step 5`. The two numbers are the least and the most it takes, 0 and 100 unless
+given, and `step` how far one move takes it, 1 unless given; a decimal step gives decimal values. It starts at
+its least. The arrow keys, Home, End, Page Up and Page Down move it too. A screen test sets it with `type`.
 
 ## radio
 
@@ -228,12 +252,14 @@ A button: the block after it runs when it is pressed. With a `menu`, it opens th
 ## link
 
 A link to a screen of the app: `link "Clients" 'clients`. It is a link for the browser too, so it opens in a
-new tab when the person asks.
+new tab when the person asks. Given a url or text instead, `link "Web" client/website`, it opens a web, mail
+(`mailto:`) or phone (`tel:`) address or one with no scheme; any other (`javascript:`, `data:`) shows as a link
+that goes nowhere, so data from a server can never run code. The same holds for the `links` of a lookup.
 
 ## tile
 
 A large icon with its name under it, for a desktop: `tile #folder "Reports" [...]`. `linked` marks with an arrow
-one that stands for something kept elsewhere.
+one that stands for something kept elsewhere, and `mark #list "List"` puts a second, small icon on its icon.
 
 ## table
 
@@ -250,6 +276,16 @@ field, and `image round` cuts it to a circle: `table people [photo "" image roun
 The same rows as a table, as a list: the first field stands out and the rest go on a second line. The picture of
 a column of images goes first.
 
+## board
+
+Cards in lanes: `board jobs by status [todo "To do" doing "Doing" done "Done"]` makes a lane for each word, with
+its label, and puts in it, as a card, each row of its `data` whose `status` names it, a word or a text. A card
+shows the row's `title`, or the fields of `card [title "Job" who "Mechanic"]`, the first one large, as a list
+does. A card can be dragged to another lane, or moved there from its menu; then its field names that lane and
+`on-drop` runs, with `event/row`, `event/from` and `event/to`: when it gives `false`, the card goes back.
+`on-select` sees the card chosen as `row`. When the field holds a machine, a lane is a state: a card goes to the
+lane only by a way of its machine from where it is to that state, whose event the drop sends.
+
 ## tabs
 
 Tabs, each with its title and its block: `tabs ["General" [...] "Advanced" [...]]`. Its value is the number of
@@ -258,6 +294,22 @@ the tab shown.
 ## tab
 
 One tab of `tabs`, which makes it: it is not written in a layout.
+
+## steps
+
+A form filled in one step at a time: `steps ["Who" [...] "Company" when [values/kind = "Company"] [...] "Check"
+[...]]`, each step a title and its block. A bar on top numbers the titles, and on a narrow screen a line says
+"Step 2 of 3". Back and Next go under the step; Next shows the messages of the step's fields and moves on only
+when they are all valid, and Enter in a field presses it. The submit buttons of the form show on the last step,
+next to Back, and `values` holds the fields of every step. A step with `when` applies only while its block is
+true: the bar leaves it out, and its fields are neither checked nor in `values`. Its value is the number of the
+step on show, counting every step: setting it shows that step without checking anything. A step done is chosen
+again with its title; each step moved on to is an entry in the browser's history, so Back returns to the one
+before.
+
+## step
+
+One step of `steps`, which makes it: it is not written in a layout.
 
 ## toolbar
 

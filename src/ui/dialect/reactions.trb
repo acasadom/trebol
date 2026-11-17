@@ -1,0 +1,198 @@
+; A part of the UI dialect: see ui.trb, whose words it shares.
+
+; --- reactions -------------------------------------------------------------------
+;
+; `react [...]` after a face runs the block when the face is shown, and again
+; whenever a facet it reads changes: `total/text`, `face/value`, `values/qty`.
+; Which facets it reads is found by reading the block, not by running it. The
+; host checks them at the end of each round, before it repaints, against what
+; they were when the block last ran. `is [...]` gives the face's main facet what
+; the block gives, and `calc [...]` its value, which the user cannot change.
+
+reaction: make object! [
+    kind: 'react        ; react, is or calc
+    body: none
+    later: false        ; runs on a change only, not when the face is shown
+    sources: none       ; the [face facet ...] it reads, found the first time it is checked
+    targets: none       ; the [face facet ...] it sets, so that it runs before what reads them
+    last: none          ; what its sources were when it last ran
+]
+
+add-reaction: function [f k b l] [
+    unless f/reactions [f/reactions: copy []]
+    append f/reactions make reaction [kind: k  body: b  later: l]
+]
+
+value-styles: append copy input-styles [progress image video audio]
+
+; The facet `is` sets: data for a table, list, tree or chart, a canvas's draw,
+; an input's value, and text for the rest.
+main-facet: func [f] [
+    case [
+        find data-styles f/style ['data]
+        f/style = 'orbit ['data]
+        f/style = 'canvas ['draw]
+        find value-styles f/style ['value]
+        true ['text]
+    ]
+]
+
+face?: func [v] [all [object? :v  in v 'style  in v 'pane]]
+
+; Puts in out the face and facet a path names: name/facet (a label), face/facet
+; (the face itself), values/field (the value of the field of that name). Any
+; other word that holds an object reads down the path from it, at any depth:
+; m/state, m/data/qty, settings/dark. Its words are kept as a block, walked on
+; each check, so an object put in place of another (restart makes new data) is
+; followed.
+react-path: function [f p out [block!]] [
+    w: first p
+    unless all [word? :w  word? pick p 2] [exit]
+    facet: second p
+    g: case [
+        w = 'face [f]
+        w = 'values [facet: 'value  attempt [find-named f second p]]
+        true [attempt [get w]]
+    ]
+    case [
+        face? :g [if in g facet [append out reduce [g facet]]]
+        object? :g [
+            ws: copy []
+            foreach v next to block! p [either word? :v [append ws v] [break]]
+            if in g first ws [append out reduce [g ws]]
+        ]
+    ]
+]
+
+react-scan: function [f b [block! paren!] sources [block!] targets [block!] /local v] [
+    forall b [
+        v: first b
+        case [
+            any [block? :v  paren? :v] [react-scan f v sources targets]
+            any [path? :v  get-path? :v] [react-path f v sources]
+            set-path? :v [react-path f v targets]
+            ; whether a machine is in a state: what it reads is its state
+            all [word? :v  v = 'in?  word? second b] [react-path f to path! reduce [second b 'state] sources]
+            ; an answer kept: of its url if written out, else of any
+            all [word? :v  v = 'cached] [
+                append sources either any [url? second b  string? second b] [
+                    reduce [ui-cache-entry second b 'version]
+                ] [
+                    reduce [ui-cache-news 'version]
+                ]
+            ]
+        ]
+    ]
+]
+
+; What the sources are now. Down a path of an object, each object met is
+; watched by the host, so that a change to it (a timer of a machine, another
+; tab) runs the reactions at the end of that round.
+react-now: function [r /local g facet] [
+    out: copy []
+    foreach [g facet] r/sources [
+        either word? facet [append/only out select g facet] [
+            foreach w facet [
+                either object? :g [ui-watch g  g: select g w] [g: none  break]
+            ]
+            append/only out :g
+        ]
+    ]
+    out
+]
+
+; Faces compare by content, so finding one in a block needs same?.
+find-same: function [b [block!] v] [
+    foreach x b [if same? x v [return true]]
+    false
+]
+
+react-due?: func [r] [not strict-equal? r/last react-now r]
+
+; True if a reaction sets something b reads.
+feeds?: function [a b /local g m h n] [
+    foreach [g m] a/targets [
+        foreach [h n] b/sources [if all [same? g h  m = n] [return true]]
+    ]
+    false
+]
+
+react-run: function [f r] [
+    if r/kind = 'react [
+        run-handler f r/body
+        exit
+    ]
+    m: either r/kind = 'calc ['value] [main-facet f]
+    ; a formula that fails, or lacks a value, leaves the field empty
+    v: either r/kind = 'calc [attempt [run-handler f r/body]] [run-handler f r/body]
+    unless strict-equal? :v select f m [
+        poke f m :v
+        if m = 'value [store-around f]
+    ]
+]
+
+ui-react: function [
+    "Called by the host at the end of each round: runs the reactions of the faces whose facets they read changed. Gives the cycles it cut, as texts."
+    faces [block! object!] "The faces, or a face to take every face in it"
+    /local f r
+] [
+    if object? faces [faces: all-faces faces]
+    fs: copy []
+    rs: copy []
+    foreach f faces [
+        foreach r any [select f 'reactions []] [
+            unless r/sources [
+                r/sources: copy []
+                r/targets: copy []
+                react-scan f r/body r/sources r/targets
+                if r/kind <> 'react [append r/targets reduce [f either r/kind = 'calc ['value] [main-facet f]]]
+                ; none is never a list of values: due, so it runs when shown
+                r/last: either r/later [react-now r] [none]
+            ]
+            append fs f
+            append rs r
+        ]
+    ]
+    cut: copy []
+    failed: none
+    ; a second cascade, for what the forms changed after the first (an error, a disabled submit)
+    loop 2 [
+        ran: copy []
+        forever [
+            due: copy []
+            repeat i length? rs [if all [not find ran i  react-due? pick rs i] [append due i]]
+            if empty? due [break]
+            ; the first that no other one due feeds; if they all feed each other, the first
+            i: first due
+            foreach j due [
+                ok: true
+                foreach k due [if all [k <> j  feeds? pick rs k pick rs j] [ok: false  break]]
+                if ok [i: j  break]
+            ]
+            r: pick rs i
+            e: try [react-run pick fs i r  none]
+            if all [error? :e  not failed] [failed: :e]
+            r/last: react-now r
+            append ran i
+        ]
+        if empty? ran [break]
+        ; what reads again what changed after it ran is in a cycle: it waits for the next change
+        foreach i ran [
+            r: pick rs i
+            if react-due? r [
+                where: loaded-at r/body
+                append cut rejoin [either where [rejoin [where " "]] [""] r/kind ": left out, what it reads changed again after it ran (a cycle)"]
+                r/last: react-now r
+            ]
+        ]
+        scopes: copy []
+        foreach i ran [
+            f: pick fs i
+            s: any [f/form f/root]
+            if all [s  not find-same scopes s] [append scopes s]
+        ]
+        foreach s scopes [refresh-form s]
+    ]
+    if failed [do :failed]
+    cut
+]

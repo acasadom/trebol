@@ -15,6 +15,7 @@ view compose/deep/only [
         button "Confirm" [
             either confirm/role "Delete the draft?" 'danger [toast/role "Deleted" 'danger] [toast "Kept"]
         ]
+        button "Undo" [toast/undo "Draft deleted" [toast "Draft back"]]
     ]
     global edit: dialog "Edit client" [
         form [
@@ -87,6 +88,20 @@ view compose/deep/only [
         tabs [
             "General" [field "Company" "Acme" check "Active"]
             "Billing" [money "Credit" EUR text muted "Paid by transfer."]
+        ]
+    ]
+    panel "Steps" [
+        form [
+            steps [
+                "Who" [
+                    radio applicant "Applicant" ["Person" "Company"] required
+                    field name "Name" required
+                ]
+                "Company" when [values/applicant = "Company"] [field tax-id "Tax id" required]
+                "Request" [area request "What you ask for" required]
+                "Check" [text is [rejoin [any [values/name ""] " asks: " any [values/request ""]]]]
+            ]
+            submit "Send" [toast/role "Request sent" 'success]
         ]
     ]
     panel "Progress" [

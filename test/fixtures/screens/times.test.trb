@@ -1,0 +1,23 @@
+Trebol [title: "Screen tests of times"]
+
+"a time is typed and shows in the active language"
+[
+    type "Start" 9:30
+    see "9:30 AM"
+    click "Save"
+    all [sent/start = 9:30  time? sent/start  none? sent/alarm]
+]
+"what is no time stays, with its message"
+[
+    type "Alarm" "soon"
+    see "Enter a valid time"
+    type "Alarm" 7:05
+    error? try [see "Enter a valid time"]
+]
+"min and max hold"
+[
+    type "Start" 7:45
+    see "Must be at least 8:00 AM"
+    type "Start" 18:30
+    see "Must be at most 6:00 PM"
+]

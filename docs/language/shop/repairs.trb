@@ -1,0 +1,5 @@
+Trebol [
+    title: "The shop's repairs"
+    exports: [quote-repair]
+    parts: [%repairs/labour.trb %repairs/quote.trb]
+]

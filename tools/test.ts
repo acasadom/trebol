@@ -14,7 +14,7 @@ import { STATUS_CODES } from 'node:http';
 import { basename, dirname, extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
-  K, NONE, TRUE, makeError, load, LoadError, intern, ctxFind, bindSeries, scriptStart, native, value, string, text, blockOf, form, mold, spell,
+  K, NONE, TRUE, UNSET, makeError, load, LoadError, intern, ctxFind, bindSeries, scriptStart, native, value, string, text, blockOf, form, mold, spell,
   sourceOf, type Cell, type BlockCell, type ObjectCell, type StringCell, type WordCell,
 } from '../src/core/index.ts';
 import { startHost, startUi, runSource, report, fileHandle, TEST_SOURCE, type Host } from '../src/host/index.ts';
@@ -46,12 +46,14 @@ function fresh(host: Host | null = null, dir = '.') {
   };
 }
 
-const word = (host: Host, w: string): Cell => ({ t: K.Word, sym: intern(w), bind: host.rt.user });
+const word = (host: Host, w: string): Cell => ({ t: K.Word, sym: intern(w), bind: host.rt.lib });
 const strings = (parts: string[]): Cell => blockOf(K.Block, parts.map(p => string(p)));
 
 native('show', '["Draws a face and everything in it." face [object!]]', (_t, f) => value(page.view = f.args[0]!));
 native('shown-view', '["The view on show; none before the first." ]', () => value(page.view));
 native('apply-theme', '["Changes the look of the whole screen." spec [object!]]', (_t, f) => value(f.args[0]!));
+// no rounds here: the tests run the reactions themselves
+native('ui-watch', '["Marks an object a reaction reads, so that a change to it runs the reactions at the end of the round." object [object!]]', (_t, f) => value(f.args[0]!));
 native('repaint', '["Redraws the faces that changed." ]', () => value(blockOf(K.Block, [])));
 native('print-faces', '["Opens the print dialog for the page, or for one face only." face [object! none!]]', () => value(NONE));
 // a test has no cursor: the text goes at the end
@@ -65,10 +67,11 @@ native('insert-at-caret', '["The value of a field, area or rich text with text p
   const rich = style?.t === K.Word && spell((style as WordCell).sym) === 'rich';
   return value(string(rich ? appendText(old, add) : old + add));
 });
-native('show-toast', '["Shows a short message at the edge of the screen." message [string!] kind [word! none!]]', (_t, f) => {
+native('show-toast', '["Shows a short message at the edge of the screen." message [string!] kind [word! none!] undo [integer! none!]]', (_t, f) => {
   page.toasts.push(text(f.args[0] as StringCell));
   return value(f.args[0]!);
 });
+native('hide-toast', '["Takes away a notice with an Undo button, by its id." id [integer!]]', () => value(UNSET));
 native('shown-toasts', '["The notices the page has shown." ]', () => value(strings(page.toasts)));
 // the user says what say told, or yes
 native('show-confirm', '["Asks a question in a small dialog; true when the user says yes." question [string!] yes [string! none!] no [string! none!] kind [word! none!]]', (_t, f) => {
@@ -159,7 +162,9 @@ async function answer(input: string | URL | Request, init: RequestInit = {}): Pr
     return new Response('', { status: 404, statusText: 'Not Found' });
   }
   const [status, json] = got.s.data.slice(got.i) as [{ v: number }, StringCell];
-  return new Response(text(json), { status: status.v, statusText: STATUS_CODES[status.v] ?? '', headers: { 'content-type': 'application/json' } });
+  // 204, 205 and 304 are answers with no body: Response refuses one
+  const empty = status.v === 204 || status.v === 205 || status.v === 304;
+  return new Response(empty ? null : text(json), { status: status.v, statusText: STATUS_CODES[status.v] ?? '', headers: { 'content-type': 'application/json' } });
 }
 
 /** What a form or multipart body sent, as JSON for serve: a file as its name, size and type. */
@@ -259,6 +264,8 @@ async function runOne(file: string, source: string, start: number, prelude: numb
     if (app !== null) await runSource(host, await readFile(app, 'utf8'), relative(process.cwd(), app) || app);
     const test = s.data[at] as BlockCell;
     const got = await taskResult(spawn(host.sch, test.s, test.i));
+    // a notice still waiting goes when the test ends: what waits for it runs, and its requests need answers too
+    await taskResult(spawn(host.sch, { data: [{ t: K.Word, sym: intern('ui-toasts-done'), bind: host.rt.lib }] }, 0));
     const problems = [...unanswered(), ...page.errors, ...unasked()];
     if (got.t !== K.Logic || !got.v) problems.push(`the test gave ${mold(got)}, not true`);
     return problems.length > 0 ? problems.join('\n') : null;

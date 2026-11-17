@@ -1,0 +1,40 @@
+Trebol [title: "A form in steps led by a machine"]
+
+sent: none
+entered: 0
+
+apply: machine [
+    data [kind: none]
+    initial who
+    state who []
+    state company [on-enter [entered: entered + 1]]
+    state what []
+    state check []
+    from who choose on next [
+        when [event/values/kind = "Company"] to company set [kind: event/values/kind]
+        else to what set [kind: event/values/kind]
+    ]
+    from company to what on next
+    from what to check on next
+]
+
+view [
+    form [
+        steps apply [
+            who "Who" [
+                choice kind "Applicant" ["Person" "Company"] required
+                field name "Name" required
+            ]
+            company "Company" [
+                field tax-id "Tax id" required
+            ]
+            what "What" [
+                area request "Request" required
+            ]
+            check "Check" [
+                text is [rejoin [any [values/name ""] ": " any [values/request ""]]]
+            ]
+        ]
+        submit "Send" [sent: values]
+    ]
+]

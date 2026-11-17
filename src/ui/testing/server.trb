@@ -1,0 +1,73 @@
+; A part of the words of screen tests: see test.trb, whose words it shares.
+
+; --- answers of the server ------------------------------------------------------
+
+; [method path handler ...] of every serve
+test-routes: copy []
+
+serve: function [
+    "Answers the requests of the app: a method, a path and a block that gives the answer, for each; a later serve comes first."
+    routes [block!] {GET "/api/clients/:id" [...]: the block sees body, query and the :words of the path}
+    /local m p b pos
+] [
+    new: copy []
+    parse routes [any [
+        set m ['GET | 'POST | 'PUT | 'PATCH | 'DELETE] set p string! set b block! (append new reduce [m p b])
+        | pos: skip (do make error! rejoin ["serve takes a method, a path and a block, not " mold/flat first pos])
+    ]]
+    ; a later serve, as one in a test, answers before those it follows
+    insert test-routes new
+    true
+]
+
+reply: func [
+    "An answer of serve with its status: reply 422 #(errors: ...)."
+    status [integer!]
+    data [any-type!]
+] [
+    make object! [reply-status: status  reply-data: :data]
+]
+
+; The words a path gives: "/api/clients/:id" and "/api/clients/42" -> [id: "42"]; none if they do not match.
+test-match: function [pattern [string!] path [string!]] [
+    want: split pattern #"/"
+    got: split path #"/"
+    if (length? want) <> length? got [return none]
+    words: copy []
+    repeat i length? want [
+        w: pick want i  g: pick got i
+        case [
+            #":" = first w [append words reduce [to set-word! next w  dehex g]]
+            w <> g [return none]
+        ]
+    ]
+    words
+]
+
+test-answer: function [
+    "Called by the host for each request of the app: its status and its body as JSON, or none when serve has no answer for it."
+    method [word!] url [string!] body [string! none!]
+] [
+    path: url
+    query: make map! []
+    if q: find url #"?" [
+        path: copy/part url q
+        foreach part split next q #"&" [
+            kv: split part #"="
+            poke query to word! dehex first kv  either second kv [dehex second kv] [""]
+        ]
+    ]
+    foreach [m pattern b] test-routes [
+        if all [m = method  words: test-match pattern path] [
+            data: all [body  any [attempt [load-json body]  body]]
+            append words compose/only [body: (data) query: (query)]
+            r: do bind copy/deep b make object! words
+            return either all [object? :r  in r 'reply-status] [
+                reduce [r/reply-status  to-json :r/reply-data]
+            ] [
+                reduce [200  to-json :r]
+            ]
+        ]
+    ]
+    none
+]

@@ -8,7 +8,8 @@
 //   <script type="module">import 'trebol/browser';</script>
 //
 // A folder with an app.trb and no index.html is served as that app, so an app
-// needs no HTML at all.
+// needs no HTML at all. A file under /node_modules/ that the folder does not have is
+// looked for in the node_modules of the folders above it, as Node would find a package.
 //
 // An app can bring its own backend: `api` names a module whose `handleApi`
 // answers requests, and whose `handleUpgrade`, if it has one, takes the
@@ -19,7 +20,7 @@ import type { Socket } from 'node:net';
 import type { Duplex } from 'node:stream';
 import { readFile, stat } from 'node:fs/promises';
 import { readFileSync, watch, type FSWatcher } from 'node:fs';
-import { join, extname, normalize, resolve, sep } from 'node:path';
+import { dirname, join, extname, normalize, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { stripTypeScriptTypes } from 'node:module';
 
@@ -98,6 +99,15 @@ function inside(dir: string, urlPath: string): string | null {
   return path === dir || path.startsWith(dir.endsWith(sep) ? dir : dir + sep) ? path : null;
 }
 
+/** A path of node_modules/ in a folder above `root` (the nearest that has it), or null. */
+async function above(root: string, urlPath: string): Promise<string | null> {
+  for (let dir = dirname(root); ; dir = dirname(dir)) {
+    const path = inside(join(dir, 'node_modules'), urlPath.slice('/node_modules'.length));
+    if (path !== null && await stat(path).catch(() => null)) return path;
+    if (dirname(dir) === dir) return null;
+  }
+}
+
 /** Starts the dev server; resolves once it listens. */
 export async function startDev(options: DevOptions = {}): Promise<Dev> {
   const root = normalize(resolve(options.root ?? '.'));
@@ -124,6 +134,8 @@ export async function startDev(options: DevOptions = {}): Promise<Dev> {
     if (api !== null && await api(req, res, url)) return;
     const name = decodeURIComponent(url.pathname);
     let path = name.startsWith(PREFIX) ? inside(TREBOL, name.slice(PREFIX.length)) : inside(root, name);
+    // import 'name looks for node_modules/name/ going up: the folder's own, or one of a folder above it
+    if (path !== null && name.startsWith('/node_modules/') && !(await stat(path).catch(() => null))) path = await above(root, name) ?? path;
     if (path === null) {
       res.writeHead(403).end();
       return;

@@ -264,8 +264,8 @@ function progressOf(t: Task, target: Cell): { tell: Progress; end: () => void } 
       return;
     }
     // a host mezzanine: in user, where the host's Trebol code is loaded
-    const i = ctxFind(t.rt.user, intern('show-progress'));
-    const fn = i < 0 ? undefined : t.rt.user.vals[i];
+    const i = ctxFind(t.rt.lib, intern('show-progress'));
+    const fn = i < 0 ? undefined : t.rt.lib.vals[i];
     if (fn !== undefined) spawn(sch, { data: [fn, target, done, total] }, 0);
   };
   const count = (n: number): Cell => ({ t: K.Integer, v: n });
@@ -346,6 +346,8 @@ native('http-request', '["Sends an HTTP request; used by fetch." url [url! strin
     let problem: string | null = null;
     try {
       const init: RequestInit = { method: verb, headers, body, credentials, signal: ctl.signal };
+      // a page being hidden may close: a small request still goes (an Undo notice ending sends its delete)
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden' && (body === undefined || (typeof body === 'string' && body.length < 60000))) init.keepalive = true;
       const res = shown !== null && typeof XMLHttpRequest !== 'undefined'
         ? await sendXhr(url, init, shown.tell)
         : await sendFetch(url, init, shown === null ? null : shown.tell);

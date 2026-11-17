@@ -76,6 +76,16 @@ test('insert-text puts text in a field, area or rich text as the user would type
   ]);
 });
 
+test('a form in steps led by a machine: it chooses the next step, Back puts it back', async () => {
+  const { passed, lines } = await ran(['test/fixtures/screens/flow.test.trb']);
+  assert.ok(passed, lines.join('\n'));
+});
+
+test('see-mark sees the mark of a tile, and see its label', async () => {
+  const { passed, lines } = await ran(['test/fixtures/screens/tiles.test.trb']);
+  assert.ok(passed, lines.join('\n'));
+});
+
 test('going back goes one step, as the browser does', async () => {
   const { passed, lines } = await ran(['test/fixtures/screens/steps.test.trb']);
   assert.ok(passed, lines.join('\n'));
@@ -89,6 +99,41 @@ test('on-leave keeps the screen when the user goes back or follows a link', asyn
 test('react, is and calc follow what they read, between the steps of a test', async () => {
   const { passed, lines } = await ran(['test/fixtures/screens/react.test.trb']);
   assert.ok(passed, lines.join('\n'));
+});
+
+test('cached gives the last answer and asks again after a post or a refresh', async () => {
+  const { passed, lines } = await ran(['test/fixtures/screens/cached.test.trb']);
+  assert.ok(passed, lines.join('\n'));
+});
+
+test('toast/undo: click "Undo" runs its back block, dismiss and a new screen run its then block', async () => {
+  const { passed, lines } = await ran(['test/fixtures/screens/undo.test.trb']);
+  assert.equal(passed, false);
+  const at = (l: string): string => l.replace(/\S*test\/fixtures\/screens\//g, '');
+  const out = lines.map(at).filter(l => !/\*\* (Where|Near|At):/.test(l));
+  assert.deepEqual(out.slice(0, 4), [
+    'ok    undo.test.trb:7:1  undo',
+    'ok    undo.test.trb:15:1  undo',
+    'ok    undo.test.trb:24:1  undo',
+    'ok    undo.test.trb:32:1  what waits is done when the screen changes',
+  ], lines.join('\n'));
+  assert.deepEqual(out.slice(4, 8), [
+    'FAIL  undo.test.trb:38:1  errors',
+    '        ** User error: dismiss: no notice waiting to go shows "Nobody removed"',
+    'FAIL  undo.test.trb:39:1  errors',
+    '        ** User error: click: nothing on the screen is "Undo"',
+  ], lines.join('\n'));
+});
+
+test('steps: one step on show, Next and Enter check it, a step with when is skipped, only a step done is chosen', async () => {
+  const { passed, lines } = await ran(['test/fixtures/screens/wizard.test.trb']);
+  assert.equal(passed, false);
+  const out = lines.map(l => l.replace(/\S*test\/fixtures\/screens\//g, '')).filter(l => !/\*\* (Where|Near|At):/.test(l));
+  assert.equal(out.filter(l => l.startsWith('ok ')).length, 8, lines.join('\n'));
+  assert.deepEqual(out.slice(7, 9), [
+    'FAIL  wizard.test.trb:71:1  errors',
+    '        ** User error: click: "What" cannot be used now',
+  ], lines.join('\n'));
 });
 
 test('the tests of the examples pass', async () => {
@@ -192,4 +237,24 @@ test('attach chooses files next to the test for an upload or photo, refuses what
     '        ** At: files.test.trb:35:2',
     '6 tests, 2 failed.',
   ]);
+});
+
+test('a slider starts at its least, takes numbers within its ends, and keeps its place for what is no number', async () => {
+  const { passed, lines } = await ran(['test/fixtures/screens/slider.test.trb']);
+  assert.ok(passed, lines.join('\n'));
+});
+
+test('a range of dates takes two dates, the start first, each within min and max', async () => {
+  const { passed, lines } = await ran(['test/fixtures/screens/stay.test.trb']);
+  assert.ok(passed, lines.join('\n'));
+});
+
+test('a time takes what is one, in the active language, within min and max', async () => {
+  const { passed, lines } = await ran(['test/fixtures/screens/times.test.trb']);
+  assert.ok(passed, lines.join('\n'));
+});
+
+test('a board deals its cards to lanes; a drop sets the field, or takes the way of a machine to that state', async () => {
+  const { passed, lines } = await ran(['test/fixtures/screens/board.test.trb']);
+  assert.ok(passed, lines.join('\n'));
 });

@@ -230,6 +230,26 @@ received. `total` is `none` when the server does not say how many bytes come, an
 without saying how far. The block runs at most ten times a second, and always once at the end, when `total`
 is known: `done` and `total` are then the bytes that came.
 
+## Answers kept
+
+A board many people change wants to show at once what it had, and the latest a moment later. `cached` gives
+the last answer it got for an address, at once, and asks the server again behind; `is` puts it in the table,
+and when the new answer comes the table follows by itself:
+
+```trebol-ui
+view [
+    title "Workshop"
+    table is [cached "/api/bookings"] [customer "Customer" bike "Bike" due "Due back"]
+    text muted is [either b: cached "/api/bookings" [rejoin [length? b " bookings"]] ["Loading…"]]
+    button "Refresh" [refresh "/api/bookings"]
+]
+```
+
+The first time there is no answer yet, `none`, and the table shows empty for a moment. After that, coming
+back to the screen shows the board as it was, and asks again. It also asks again when the reader comes back
+to the tab from another one, and after the app sends a booking or removes one (a `fetch` with `'POST`,
+`'PUT`, `'PATCH` or `'DELETE` to `/api/bookings` or an address under it). `refresh` asks now, for a button.
+
 ## What's next
 
 The bookings live on a server now. The next page draws: the shop's logo, and its takings as charts.

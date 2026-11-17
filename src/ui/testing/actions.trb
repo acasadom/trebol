@@ -1,0 +1,421 @@
+; A part of the words of screen tests: see test.trb, whose words it shares.
+
+; --- what the user does ---------------------------------------------------------
+
+text-styles: [field password number money date date-range time area rich slider]
+
+click: function [
+    "Clicks a button, link, tile, check, toggle, tab or a step done, the row of a table or list that shows a text, or a node of an orbit."
+    what [string! word!] "What it shows, or a field's name"
+    /local f p row id t back done
+] [
+    ; the Undo of the newest notice that has one
+    if all [string? what  what = tr select i18n/ui 'undo] [
+        undos: copy []
+        foreach [id t back done] ui-toasts-on [if back [append undos id]]
+        unless empty? undos [
+            foreach [f p] test-shown [
+                if all [find [button link tile] f/style  test-called? f what] [
+                    do make error! rejoin ["click: a notice and a face on the screen are " mold what]
+                ]
+            ]
+            ui-toast-undo none last undos
+            return true
+        ]
+    ]
+    if string? what [
+        ; a neighbour of an orbit, or a node of its trail
+        foreach [f p] test-shown [
+            if f/style = 'orbit [
+                foreach [id t back] test-orbit-nodes f [
+                    if t = what [
+                        if any [f/disabled  f/inert] [do make error! rejoin ["click: " mold what " cannot be used now"]]
+                        ui-orbit f id back
+                        return true
+                    ]
+                ]
+            ]
+        ]
+        ; a row of a table or list
+        foreach [f p] test-shown [
+            if all [find [table list] f/style  block? f/data] [
+                foreach row f/data [
+                    if find test-cells f row what [
+                        if any [f/disabled  f/inert] [do make error! rejoin ["click: " mold what " cannot be used now"]]
+                        ui-select f row
+                        return true
+                    ]
+                ]
+            ]
+        ]
+    ]
+    found: test-face 'click [button link tile check toggle tab step] what
+    test-activate first found second found
+]
+
+; Does what a click on a face does; parent is the face it is in.
+test-activate: function [f parent] [
+    switch/default f/style [
+        check toggle [ui-input f not f/value  ui-blur f]
+        tab [ui-input parent index? find parent/pane f]
+        ; only a step already done can be chosen by its title
+        step [
+            n: index? find parent/pane f
+            if n >= parent/value [do make error! rejoin ["click: " mold test-text f/text " cannot be used now"]]
+            ui-step-go parent n
+        ]
+        link [
+            case [
+                f/action [ui-click f]
+                any [word? f/value  path? f/value] [go f/value]
+            ]
+        ]
+    ] [ui-click f]
+    true
+]
+
+type: function [
+    "Types a text in a field, then leaves it; an empty text clears it. A slider moves to the number typed."
+    what [string! word!] "Its label or hint, or its name"
+    text [any-type!] "What to type; a number or date is typed as written, and a range as its two dates"
+] [
+    f: first test-face 'type text-styles what
+    text: case [string? :text [text]  block? :text [mold/only :text]  true [form :text]]
+    ui-input f either empty? text [none] [text]
+    ui-blur f
+    true
+]
+
+choose: function [
+    "Chooses an option of a choice, radio or lookup by the text it shows."
+    what [string! word!] "Its label, or its name"
+    option [string!]
+    /local o
+] [
+    f: first test-face 'choose [choice radio lookup] what
+    if f/style = 'lookup [
+        ui-lookup-search f option
+        foreach o any [f/options []] [
+            if option = test-text o/text [
+                ui-lookup-pick f o
+                ui-blur f
+                return true
+            ]
+        ]
+        do make error! rejoin ["choose: " mold what " finds no " mold option]
+    ]
+    ; a group of options is a title then a block of them
+    options: collect [
+        opts: any [f/options []]
+        forall opts [
+            case [
+                block? first opts [keep first opts]
+                not block? pick opts 2 [keep/only first opts]
+            ]
+        ]
+    ]
+    foreach o options [
+        if option = either map? o [test-text o/text] [form o] [
+            ui-input f form either map? o [o/value] [o]
+            ui-blur f
+            return true
+        ]
+    ]
+    do make error! rejoin ["choose: " mold what " has no option " mold option]
+]
+
+pick-menu: function [
+    "Chooses an item of the menu a button opens, of the context menu of a face, or of the row of a table or list that shows a text."
+    what [string! word!] "What the face or row shows, or a face's name"
+    item [string! block!] {The item's text; ["Move to" "Top"] for one in a submenu}
+    /local f p row i
+] [
+    on: none  row: none
+    if string? what [
+        ; foreach keeps its words to itself
+        foreach [f p] test-shown [
+            if all [find [table list] f/style  block? f/data  f/menu] [
+                foreach r f/data [if find test-cells f r what [on: f  row: r  break]]
+                if row [break]
+            ]
+        ]
+    ]
+    either on [f: on] [
+        f: first test-face 'pick-menu collect [foreach [f p] test-shown [keep f/style]] what
+        unless block? f/menu [do make error! rejoin ["pick-menu: " mold what " has no menu"]]
+    ]
+    if any [f/disabled  f/inert] [do make error! rejoin ["pick-menu: " mold what " cannot be used now"]]
+    items: f/menu
+    texts: either block? item [item] [reduce [item]]
+    forall texts [
+        found: none
+        foreach i items [if all [not i/divider  (first texts) = test-text i/text] [found: i  break]]
+        unless found [do make error! rejoin ["pick-menu: the menu of " mold what " has no " mold first texts]]
+        either tail? next texts [
+            if found/items [do make error! rejoin ["pick-menu: " mold first texts " opens a submenu"]]
+        ] [
+            unless found/items [do make error! rejoin ["pick-menu: " mold first texts " has no submenu"]]
+            items: found/items
+        ]
+    ]
+    ui-menu f found row
+    true
+]
+
+; [face row index ...] of the rows of the tables and lists on show that show a text.
+test-rows: function [what /local f p] [
+    out: copy []
+    if string? what [
+        foreach [f p] test-shown [
+            if all [find [table list] f/style  block? f/data] [
+                repeat i length? f/data [
+                    if find test-cells f pick f/data i what [append out reduce [f  pick f/data i  i]]
+                ]
+            ]
+        ]
+    ]
+    out
+]
+
+drag: function [
+    "Drags a face, or the row of a table or list that shows a text, onto another: in a list that can be reordered it takes that place, else it is dropped on it."
+    what [string! word!] "What the face or row shows, or a face's name"
+    onto [string! word!] "The place it goes: a face, or the row it goes before"
+    /local f p row i
+] [
+    shown: test-shown
+    styles: collect [foreach [f p] shown [keep f/style]]
+    ; what is dragged: its face, what it carries, where it is, and the face it moves in
+    either not empty? rows: test-rows what [
+        set [from payload index] rows
+        ; rows the user sorted by a header are not in the order of their data
+        sorted: all [from/sortable  from/sorted  not all [from/events  select from/events 'on-sort]]
+        within: all [from/reorder  not sorted  from]
+        unless any [from/drag  within] [do make error! rejoin ["drag: the rows of " mold what " cannot be dragged"]]
+    ] [
+        set [from p] test-face 'drag styles what
+        payload: from/value
+        within: all [p  p/reorder  not find [table list tree] p/style  p]
+        index: all [within  index? find/same within/pane from]
+        unless any [from/drag  within] [do make error! rejoin ["drag: " mold what " cannot be dragged"]]
+    ]
+    ; moved to another place among its own
+    if within [
+        place: none
+        either find [table list] within/style [
+            foreach [f row i] test-rows onto [if same? f within [place: i  break]]
+        ] [
+            foreach c within/pane [if all [not c/hidden  test-called? c onto] [place: index? find/same within/pane c  break]]
+        ]
+        if place [
+            ui-reorder within index place none
+            return true
+        ]
+    ]
+    ; dropped on a face, or before a row of one
+    zone: none
+    ; foreach keeps its words to itself
+    foreach [f row i] test-rows onto [if f/drop [zone: f  at: i  break]]
+    either zone [
+        if same? zone from [do make error! rejoin ["drag: " mold what " is already in " mold onto]]
+    ] [
+        zone: first test-face 'drag styles onto
+        unless zone/drop [do make error! rejoin ["drag: " mold onto " takes nothing dropped"]]
+        if test-inside? zone from shown [do make error! rejoin ["drag: " mold what " cannot go into itself"]]
+        at: 1 + length? either find [table list tree] zone/style [any [zone/data []]] [any [zone/pane []]]
+    ]
+    ui-drop zone :payload from at none
+    true
+]
+
+; Does an upload or photo whose accept is list take a file? As the browser's picker: "pdf" and ".pdf"
+; by its name, "image/png" and "image/*" by its type.
+test-accepts?: function [list [block!] name [string!] type [string!]] [
+    if empty? list [return true]
+    name: lowercase copy name
+    type: lowercase copy type
+    foreach x list [
+        x: lowercase trim form x
+        if either find x #"/" [
+            either #"*" = last x [find/match type copy/part x (length? x) - 1] [type = x]
+        ] [
+            unless #"." = first x [x: join "." x]
+            all [(length? name) >= length? x  x = skip tail name negate length? x]
+        ] [return true]
+    ]
+    false
+]
+
+attach: function [
+    "Chooses files for an upload or photo, as the user picks them or drops them on it; the ones its accept refuses are refused, as the browser does."
+    what [string! word!] "Its label, or its name"
+    files [file! block!] "A file next to the test, or a block of them"
+] [
+    f: first test-face 'attach [upload photo] what
+    list: either block? f/accept [f/accept] [either f/style = 'photo [["image/*"]] [[]]]
+    taken: copy []
+    refused: copy []
+    foreach file either block? files [files] [reduce [files]] [
+        one: test-file file
+        either test-accepts? list one/1 one/3 [append taken one] [append refused one/1]
+    ]
+    ; one file unless it takes more
+    unless f/multiple [taken: copy/part taken 4]
+    ui-files f taken refused
+    true
+]
+
+; The face a face is in, among the faces on show.
+test-parent: function [f shown /local g p] [
+    foreach [g p] shown [if same? g f [return p]]
+    none
+]
+
+; Is f inside the face outer (or outer itself)?
+test-inside?: function [f outer shown] [
+    while [f] [
+        if same? f outer [return true]
+        f: test-parent f shown
+    ]
+    false
+]
+
+; "Ctrl+Shift+K" -> [ctrl shift alt key] as the browser compares them: Ctrl and Cmd are one, names as
+; the browser gives them, a letter in lower case
+test-keys: function [spec [string!] /local k] [
+    parts: split lowercase copy spec #"+"
+    foreach k parts [trim k]
+    k: take/last parts
+    if empty? k [k: "+"]
+    k: any [select ["esc" "escape" "del" "delete" "up" "arrowup" "down" "arrowdown" "left" "arrowleft" "right" "arrowright" "space" " "] k  k]
+    any-of: func [names] [not empty? intersect parts names]
+    reduce [any-of ["ctrl" "control" "cmd" "meta"]  any-of ["shift"]  any-of ["alt" "option"]  k]
+]
+
+; The key of "Ctrl+S" as on-key gets it in event/key: a char (#"s", #"^M" for Enter) or a word ('left, 'F2).
+test-key: function [spec [string!]] [
+    k: last split spec #"+"
+    if empty? k [k: "+"]
+    shift: find spec "shift+"
+    case [
+        c: select ["enter" #"^M" "escape" #"^[" "esc" #"^[" "tab" #"^-" "backspace" #"^H" "space" #" "] k [c]
+        1 = length? k [either shift [uppercase first k] [lowercase first k]]
+        w: select [
+            "left" left "arrowleft" left "right" right "arrowright" right "up" up "arrowup" up "down" down "arrowdown" down
+            "home" home "end" end "pageup" page-up "pagedown" page-down "insert" insert "delete" delete "del" delete
+        ] k [w]
+        parse k [#"F" some digit] [to word! uppercase copy k]
+        true [do make error! rejoin ["press: " mold spec " is not a key"]]
+    ]
+]
+
+digit: charset "0123456789"
+
+press: function [
+    "Presses a key, as Enter or Ctrl+S: the button or link with it as its shortcut, or else the on-key of the face with the cursor, or of the view."
+    key [string!] {"Enter", "Escape", "Ctrl+S", "Shift+Tab", "a"}
+    /on "With the cursor in a face"
+    what [string! word!] "Its label, hint or text, or its name"
+    /local f p
+] [
+    shown: test-shown
+    want: test-keys key
+    ; a dialog on show keeps the rest of the page out of reach
+    dialog: none
+    foreach [f p] shown [if f/style = 'dialog [dialog: f]]
+    foreach [f p] shown [
+        if all [
+            f/shortcut
+            find [button link] f/style
+            want = test-keys f/shortcut
+            any [none? dialog  test-inside? f dialog shown]
+        ] [
+            if any [f/disabled  f/inert] [do make error! rejoin ["press: " mold key " cannot be used now"]]
+            return test-activate f p
+        ]
+    ]
+    at: none
+    if on [at: first test-face 'press collect [foreach [f p] shown [keep f/style]] what]
+    k: test-key key
+    fields: reduce [
+        quote key: either word? k [to lit-word! k] [k]
+        quote ctrl?: to logic! find key "ctrl+"  quote shift?: to logic! find key "shift+"  quote alt?: to logic! find key "alt+"
+        quote meta?: to logic! any [find key "cmd+"  find key "meta+"]
+    ]
+    ; the face with the cursor or the nearest around it that has an on-key, or the view
+    f: any [at  shown-view]
+    while [all [f  not all [f/events  select f/events 'on-key]]] [f: either at [test-parent f shown] [none]]
+    if f [ui-event f 'on-key fields]
+    ; a form in steps with Next on show: Enter in a one-line field of the step presses it
+    steps: at
+    while [all [steps  steps/style <> 'steps]] [steps: test-parent steps shown]
+    next-face: all [steps  pick get in last steps/pane 'pane 2]
+    case [
+        all [at  k = #"^M"  find [field password number money date] at/style  next-face  not next-face/hidden] [
+            ui-step steps 1
+        ]
+        ; Enter in a one-line field of a form clicks its submit, if it can be clicked
+        all [at  k = #"^M"  find [field password number money date] at/style  at/form  at/form/style = 'form] [
+            foreach [f p] test-shown [
+                if all [f/submit  same? f/form at/form] [
+                    unless any [f/disabled  f/inert] [ui-click f]
+                    break
+                ]
+            ]
+        ]
+        ; Escape closes the dialog on show
+        all [k = #"^["  dialog] [ui-close dialog]
+    ]
+    true
+]
+
+dismiss: function [
+    "The notice that shows a text goes as if its time had passed: what waits for it (toast/then) runs now."
+    text [string!]
+    /local id t back done
+] [
+    foreach [id t back done] ui-toasts-on [
+        if find t text [
+            ui-toast-gone none id
+            return true
+        ]
+    ]
+    do make error! rejoin ["dismiss: no notice waiting to go shows " mold text]
+]
+
+say: func [
+    "Says how the user answers the next question of confirm, which is yes when nothing is said; a test that leaves one unasked fails."
+    yes [logic!] "yes or no"
+] [
+    test-say yes
+]
+
+see-mark: function [
+    "True if the tile on the screen called title has that mark (none: no mark); an error otherwise."
+    title [string! word!] "Its text, or its name"
+    mark [issue! none!]
+    /local f p
+] [
+    found: copy []
+    foreach [f p] test-shown [if all [f/style = 'tile  test-called? f title] [append found f]]
+    if empty? found [do make error! rejoin ["see-mark: no tile on the screen is " mold title]]
+    if 1 < length? found [do make error! rejoin ["see-mark: " length? found " tiles on the screen are " mold title]]
+    has: found/1/mark
+    unless has = mark [
+        do make error! rejoin ["see-mark: " mold title " has " either has [mold has] ["no mark"] ", not " either mark [mold mark] ["none"]]
+    ]
+    true
+]
+
+see: function [
+    "True if a text is on the screen, in a face, a field, a row or a notice; an error otherwise."
+    text [string!]
+    /not "True if it is not on the screen"
+] [
+    there: false
+    foreach t test-texts [if find t text [there: true  break]]
+    if there = to logic! not [
+        do make error! rejoin ["see: " mold text either not [" is on the screen"] [" is not on the screen"]]
+    ]
+    true
+]

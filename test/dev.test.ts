@@ -59,6 +59,27 @@ test('a folder with only an app.trb is served as that app', async () => {
   }
 });
 
+test('node_modules missing from the folder is looked for in the folders above it', async () => {
+  const top = mkdtempSync(join(tmpdir(), 'trebol-work-'));
+  const app = join(top, 'apps', 'shop');
+  mkdirSync(app, { recursive: true });
+  mkdirSync(join(top, 'node_modules', 'trebol-x'), { recursive: true });
+  mkdirSync(join(app, 'node_modules', 'own'), { recursive: true });
+  writeFileSync(join(top, 'node_modules', 'trebol-x', 'package.json'), '{"trebol": "x.trb"}');
+  writeFileSync(join(app, 'node_modules', 'own', 'package.json'), '{"trebol": "own.trb"}');
+  writeFileSync(join(app, 'app.trb'), "import 'trebol-x");
+  const dev = await startDev({ root: app, port: 0 });
+  const base = `http://localhost:${dev.port}`;
+  try {
+    assert.equal(await (await fetch(`${base}/node_modules/trebol-x/package.json`)).text(), '{"trebol": "x.trb"}');
+    assert.equal(await (await fetch(`${base}/node_modules/own/package.json`)).text(), '{"trebol": "own.trb"}');
+    assert.equal((await fetch(`${base}/node_modules/nope/package.json`)).status, 404);
+    assert.equal((await fetch(`${base}/node_modules/../../secret`)).status, 404);
+  } finally {
+    await dev.close();
+  }
+});
+
 test('a page reloads when a file it asked for changes, not for another one in the folder', async () => {
   const app = realpathSync(mkdtempSync(join(tmpdir(), 'trebol-app-')));
   writeFileSync(join(app, 'index.html'), '<html><head></head><body></body></html>');

@@ -1,0 +1,276 @@
+; A part of the UI dialect: see ui.trb, whose words it shares.
+
+; --- events --------------------------------------------------------------------
+;
+; The host calls these from DOM events, each in its own task.
+
+; A handler block runs with face, value, values and, as in Red, event bound;
+; event is an object (event/key, event/away? ...) or none. Named fields are
+; not bound: their values are in values, their faces reached through labels.
+run-handler: function [f body [block!] /with ev [object!] /on node "row is this node, not the selected one" /given v "value is this, not the face's"] [
+    scope: any [f/form f/root]
+    ; /only: a value that is a block stays one block
+    words: compose/only [
+        face: (f)
+        value: (quoted either given [:v] [f/value])
+        values: (form-values any [scope f])
+    ]
+    if find data-styles f/style [append words compose [row: (either on [node] [f/selected])]]
+    append words compose [event: (either with [ev] [none])]
+    ctx: make object! words
+    do bind copy/deep body ctx
+]
+
+; A value as it must appear in a block given to make object!
+quoted: func [v] [
+    case [
+        word? :v [to lit-word! :v]
+        path? :v [to lit-path! :v]
+        true [:v]
+    ]
+]
+
+handler-for: function [f name] [
+    all [f/events  select f/events name]
+]
+
+ui-input: function [
+    "Called by the host when the user changes a field."
+    f new
+] [
+    f/value: switch/default f/style [
+        number [any [attempt [to decimal! new]  none]]
+        slider [slider-at f attempt [to decimal! new]]
+        ; the host gives the amount as 1234.5, whatever the language
+        money [all [new  attempt [to money! rejoin [any [f/currency ""] "$" new]]]]
+        ; and a date as 2026-11-03
+        date [all [new  attempt [to date! new]]]
+        ; and a range of dates as 2026-11-03 2026-11-10, the start first
+        ; and a time as 09:30
+        time [all [new  attempt [to time! new]]]
+        date-range [all [new  attempt [range: load new  all [block? range  2 = length? range  date? range/1  date? range/2  range/1 <= range/2  range]]]]
+        check [to logic! new]
+        toggle [to logic! new]
+    ] [new]
+    if find [number slider] f/style [
+        if all [decimal? f/value  f/value = to integer! f/value] [f/value: to integer! f/value]
+    ]
+    ; text that is not a number, amount or date stays on screen, with its message
+    f/typed: all [find [number money date date-range time] f/style  new  none? f/value  new]
+    changed f
+]
+
+changed: function [f] [
+    f/async-error: none
+    store-around f
+    refresh-form any [f/form f/root]
+    if f/action [run-handler f f/action]
+    if h: handler-for f 'on-change [run-handler f h]
+    if all [f/form  f/form/style = 'entry] [changed f/form/owner]
+]
+
+; An upload's value is none or a block of objects [name size type file];
+; file is a handle the host keeps, read with read-file or sent with multipart.
+; A photo's is none, the object of the image chosen, or the address of one kept elsewhere.
+ui-files: function [
+    "Called by the host when the user chooses or drops files: name size type file for each, and the names it refused."
+    f files [block!] refused [block!]
+] [
+    chosen: collect [
+        foreach [n s t h] files [keep make object! [name: n size: s type: t file: h]]
+    ]
+    unless empty? chosen [
+        f/value: case [
+            f/style = 'photo [first chosen]
+            f/multiple [append copy any [f/value []] chosen]
+            true [copy/part chosen 1]
+        ]
+    ]
+    f/typed: either empty? refused [none] [refused]
+    f/touched: true
+    changed f
+]
+
+ui-remove-file: function [
+    "Called by the host when the user removes the file at a position of an upload, or a photo's."
+    f index [integer!]
+] [
+    f/value: either f/style = 'photo [none] [
+        files: remove at copy f/value index
+        either empty? head files [none] [head files]
+    ]
+    f/typed: none
+    f/touched: true
+    changed f
+]
+
+; A lookup's value is none, one value, or with `multiple` a block of them. Its on-search
+; answers the options for event/query: maps with value and text, as a choice takes them.
+ui-lookup-search: function [
+    "Called by the host when the user opens a lookup or types in it."
+    f text [string!]
+] [
+    f/query: text
+    found: fire-event f 'on-search compose [query: (text)]
+    ; the user may have typed on while this was answering
+    if f/query = text [f/options: either block? :found [found] [copy []]]
+]
+
+ui-lookup-pick: function [
+    "Called by the host when the user chooses an option of a lookup."
+    f option [map!]
+] [
+    unless f/known [f/known: make map! []]
+    poke f/known option/value option/text
+    f/value: either f/multiple [
+        any [
+            all [f/value  find f/value option/value  f/value]
+            append copy any [f/value []] option/value
+        ]
+    ] [option/value]
+    changed f
+]
+
+ui-lookup-remove: function [
+    "Called by the host when the user removes the value at a position of a multiple lookup."
+    f index [integer!]
+] [
+    chosen: head remove at copy f/value index
+    f/value: either empty? chosen [none] [chosen]
+    changed f
+]
+
+ui-blur: function [
+    "Called by the host when the user leaves a field."
+    f
+] [
+    f/touched: true
+    check-async f
+    refresh-form any [f/form f/root]
+]
+
+ui-click: function [
+    "Called by the host when the user activates a button."
+    f
+] [
+    if f/submit [
+        scope: any [f/form f/root]
+        faces: own-faces scope
+        foreach g faces [if g/rules [g/touched: true]]
+        foreach g faces [check-async g]
+        refresh-form scope
+        if f/disabled [exit]
+    ]
+    if f/action [run-handler f f/action]
+]
+
+ui-select: function [
+    "Called by the host when the user chooses a row of a table or list."
+    f row
+] [
+    f/selected: row
+    if h: handler-for f 'on-select [run-handler f h]
+]
+
+ui-sort: function [
+    "Called by the host when the user chooses the header of a column of a table."
+    f column [word!]
+] [
+    order: either all [block? f/sorted  f/sorted/1 = column  f/sorted/2 = 'asc] ['desc] ['asc]
+    f/sorted: reduce [column order]
+    fire-event f 'on-sort reduce [quote column: to lit-word! column  quote order: to lit-word! order]
+]
+
+ui-close: function [
+    "Called by the host when the user dismisses a dialog."
+    f
+] [
+    f/hidden: true
+    if h: handler-for f 'on-close [run-handler f h]
+]
+
+; Runs the on-xxx handler of an event with event bound to an object made of
+; type (the event name without on-) and the given [word: value ...] fields.
+fire-event: function [f name [word!] fields [block!]] [
+    if h: handler-for f name [
+        type: to word! skip form name 3
+        run-handler/with f h make object! append reduce [quote type: to lit-word! type] fields
+    ]
+]
+
+ui-event: function [
+    "Called by the host for on-focus, on-unfocus, on-over, on-dbl-click and on-key."
+    f name [word!] fields [block!]
+] [
+    fire-event f name fields
+]
+
+ui-crumb: function [
+    "Called by the host when the user chooses an item of a breadcrumb."
+    f item [word! path!]
+] [
+    f/value: item
+    if f/action [run-handler f f/action]
+]
+
+ui-menu: function [
+    "Called by the host when the user chooses a menu item; row is the row it was opened on."
+    f item row
+] [
+    if row [f/selected: row]
+    fire-event f 'on-menu reduce [quote picked: quoted item/id]
+]
+
+ui-drop: function [
+    "Called by the host when something is dropped on a face; index is where it goes (1-based), parent the tree node."
+    f dropped source index [integer!] parent
+] [
+    ; a lane of a board
+    if all [f/owner  f/owner/style = 'board] [return board-drop f/owner f :dropped]
+    fields: reduce [quote dropped: quoted :dropped  quote source: source  quote index: index]
+    if f/style = 'tree [append fields reduce [quote parent: parent]]
+    fire-event f 'on-drop fields
+]
+
+ui-reorder: function [
+    "Called by the host when the user moves a child or row of a face; in a tree, among the children of parent."
+    f from [integer!] to [integer!] parent
+] [
+    fields: reduce [quote from: from  quote to: to]
+    case [
+        f/style = 'tree [
+            either parent [parent/children: move-item parent/children from to] [f/data: move-item f/data from to]
+            f/data: f/data      ; repaint the tree
+            append fields reduce [quote parent: parent]
+        ]
+        find data-styles f/style [f/data: move-item f/data from to]
+        true [f/pane: move-item f/pane from to]
+    ]
+    fire-event f 'on-reorder fields
+]
+
+ui-orbit: function [
+    "Called by the host when the user picks a node of an orbit: a neighbour, or one of the trail when back is true."
+    f id back [logic!]
+] [
+    f/value: id
+    ; with no on-back, stepping back is one more pick
+    either all [back  handler-for f 'on-back] [fire-event f 'on-back []] [if f/action [run-handler f f/action]]
+]
+
+ui-expand: function [
+    "Called by the host when the user opens a node of a tree."
+    f node
+] [
+    if h: handler-for f 'on-expand [
+        run-handler/with/on f h make object! [type: 'expand] node
+    ]
+]
+
+move-item: function [items [block!] from [integer!] to [integer!]] [
+    items: copy items
+    x: pick items from
+    remove at items from
+    insert/only at items to :x
+    items
+]

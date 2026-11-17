@@ -437,7 +437,7 @@ Finds a value in a series; gives the series where it is, or none.
 find series value
 ```
 
-- `series` (`series!` `none!` `typeset!`)
+- `series` (`series!` `none!` `typeset!` `bitset!`)
 - `value` (`any-type!`)
 - `/part length` (`integer!` `series!`): Look only this far
 - `/only`: A block is one value
@@ -578,8 +578,8 @@ The values that are in either series, each once.
 union a b
 ```
 
-- `a` (`series!`)
-- `b` (`series!`)
+- `a` (`series!` `bitset!`)
+- `b` (`series!` `bitset!`)
 - `/case`
 
 (fn-intersect)=
@@ -591,8 +591,8 @@ The values that are in both series.
 intersect a b
 ```
 
-- `a` (`series!`)
-- `b` (`series!`)
+- `a` (`series!` `bitset!`)
+- `b` (`series!` `bitset!`)
 - `/case`
 
 (fn-difference)=
@@ -604,8 +604,8 @@ The values that are in one series but not the other; of two dates, the time betw
 difference a b
 ```
 
-- `a` (`series!` `date!`)
-- `b` (`series!` `date!`)
+- `a` (`series!` `date!` `bitset!`)
+- `b` (`series!` `date!` `bitset!`)
 - `/case`
 
 (fn-exclude)=
@@ -617,6 +617,6 @@ The values of the first series that are not in the second.
 exclude a b
 ```
 
-- `a` (`series!`)
-- `b` (`series!`)
+- `a` (`series!` `bitset!`)
+- `b` (`series!` `bitset!`)
 - `/case`

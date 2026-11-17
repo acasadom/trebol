@@ -40,6 +40,48 @@ The options of `/with`, a block or an object:
 A network failure, a timeout and, without `full`, an answer with an HTTP error are access errors, which
 `try` catches.
 
+(fn-cached)=
+## cached
+
+The last answer to a GET of url, at once (none the first time), and asks again behind: a reaction (is, react) that reads it runs again when the answer comes.
+
+```text
+cached url
+```
+
+- `url` (`url!` `string!`)
+
+For a face that shows what a server has, with `is` or `react`: `table is [cached "/api/bookings"] [...]`. The
+first time it gives `none`, the face shows what it shows empty, and the answer fills it when it comes; after
+that it gives the answer it has at once, and asks again behind, and the face changes only if the answer did.
+
+It asks again for a url when a screen is entered and reads it, when the page comes back into view (the
+reader went to another tab and came back), after a `fetch` with `method` `'POST`, `'PUT`, `'PATCH` or
+`'DELETE` to the same path or one above or under it (`/api/bookings/7` for `/api/bookings`), and on `refresh`.
+A request that fails keeps the last answer, says why in the console, and is asked again the next time.
+
+A reaction whose url is written out, `cached "/api/bookings"`, runs again when that url's answer comes; one
+whose url is computed runs again when any answer comes.
+
+```trebol-ui
+view [
+    title "Workshop"
+    table is [cached "/api/bookings"] [customer "Customer" bike "Bike"]
+    text is [either b: cached "/api/bookings" [rejoin [length? b " bookings"]] ["Loading…"]]
+]
+```
+
+(fn-refresh)=
+## refresh
+
+Asks again for an answer kept by cached, now; reactions that read it run again when it comes.
+
+```text
+refresh url
+```
+
+- `url` (`url!` `string!`)
+
 (fn-show-progress)=
 ## show-progress
 
@@ -126,18 +168,6 @@ on-error stream body
 
 - `stream` (`handle!`)
 - `body` (`block!`)
-
-(fn-send)=
-## send
-
-Sends a value on a socket.
-
-```text
-send stream data
-```
-
-- `stream` (`handle!`)
-- `data` (`any-value!`)
 
 (fn-close-stream)=
 ## close-stream

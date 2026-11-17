@@ -1,0 +1,110 @@
+; A part of the UI dialect: see ui.trb, whose words it shares.
+
+; --- the blocks faces take, and view ---------------------------------------------
+
+; [home "Home" [...] client "Client" [id] [...]] -> [name title args body ...]
+screens-of: function [spec [block!] /local n t a b p] [
+    out: copy []
+    if empty? spec [ui-problem spec "screens take a name, a title, an optional block of arguments and a block per screen"]
+    parse spec [any [
+        set n word! set t text-rule (a: copy []) opt [ahead [block! block!] set a block!] set b block! (
+            forall a [unless word? first a [ui-problem a "the arguments of a screen are words"]]
+            append out reduce [n text-of t head a b]
+        )
+        | p: skip (ui-problem p "screens take a name, a title, an optional block of arguments and a block per screen") to end
+    ]]
+    out
+]
+
+menu-item: make object! [
+    text: none
+    icon: none
+    id: none            ; the word on-menu gets in event/picked
+    items: none         ; a submenu
+    divider: false
+    danger: false       ; it removes or cannot be undone: red
+]
+
+; As in Red: ["Edit" edit danger #trash "Delete" delete --- "Move to" ["Top" top]] -> menu items
+menu-of: function [spec [block!] /local i d label w b p] [
+    out: copy []
+    parse spec [any [
+        '--- (append out make menu-item [divider: true])
+        | (i: none d: false) opt ['danger (d: true)] opt [set i issue!] set label text-rule (label: text-of label) [
+            set b block! (append out make menu-item [text: label icon: i items: menu-of b danger: d])
+            | set w word! (append out make menu-item [text: label icon: i id: w danger: d])
+        ]
+        | p: skip (ui-problem p "a menu takes a label and a word per item, danger before one that removes, a block for a submenu, or ---") to end
+    ]]
+    out
+]
+
+; [focus id  nodes [id "Title" [hints] ...]  edges [from to "Label" [dashed] ...]  trail [id ...]]
+; The host reads the hints (a role or color, many, dashed, count n, steps n at k); this checks the shape.
+orbit-id: [word! | integer! | string! | issue!]
+orbit-of: function [spec [block!] /local b p] [
+    parse spec [any [
+        'focus orbit-id
+        | 'nodes set b block! (parse b [
+            any [orbit-id text-rule opt block!]
+            [end | p: (ui-problem p "nodes takes an id and a title for each, then a block of hints if it has any")]
+        ])
+        | 'edges set b block! (parse b [
+            any [orbit-id orbit-id opt text-rule opt [into ['solid | 'dashed | 'faint]]]
+            [end | p: (ui-problem p "edges takes two ids for each, then a label and [solid], [dashed] or [faint] if it has them")]
+        ])
+        | 'trail set b block! (parse b [
+            any orbit-id [end | p: (ui-problem p "trail takes the ids of nodes, the most recent last")]
+        ])
+        | p: skip (ui-problem p "an orbit takes focus id, nodes [...], edges [...] and trail [...]") to end
+    ]]
+    copy spec
+]
+
+; ["Home" home "Clients" clients "Ada"]: a label and a word per item; the last one may have no word
+crumbs-of: function [spec [block!] /local label w p] [
+    parse spec [
+        any [set label [string! | map!] set w [word! | path!]] opt [string! | map!]
+        [end | p: (ui-problem p "a breadcrumb takes a label and a word per item; only the last may have no word")]
+    ]
+    copy spec
+]
+
+; The options of a choice or radio: each reduced, and so are those of a group,
+; a title followed by a block: ["Bikes" ["Road" "City"] "Other"].
+options-of: function [spec [block!]] [
+    if ui-checking [return copy spec]
+    opts: reduce spec
+    forall opts [if block? first opts [change/only opts reduce first opts]]
+    opts
+]
+
+; Links each face to its view and form, so handlers can find `values`.
+attach: function [f root form] [
+    f/root: root
+    f/form: form
+    if f/pane [
+        inner: either find [form entry] f/style [f] [form]
+        foreach c f/pane [attach c root inner]
+    ]
+]
+
+view: function [
+    "Shows a layout (a block of the dialect, or a face from layout) as the page."
+    spec [block! object!]
+] [
+    root: either block? spec [layout spec] [spec]
+    attach root root none
+    set 'page root
+    entered: copy []
+    foreach f all-faces root [
+        if f/style = 'screens [
+            set 'router f
+            append entered follow-link f route
+        ]
+    ]
+    foreach f all-faces root [refresh-form f]
+    show root
+    foreach s entered [run-enter s]
+    root
+]

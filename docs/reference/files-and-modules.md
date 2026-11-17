@@ -44,13 +44,19 @@ do-file file
 (fn-import)=
 ## import
 
-Runs a module and gives its exports.
+Runs a module and gives its exports; a word is a package by its name, from node\_modules.
 
 ```text
 import source
 ```
 
-- `source` (`file!` `url!` `string!`)
+- `source` (`file!` `url!` `string!` `word!`)
+
+A module's header may list `parts: [%a.trb %b.trb]`: files of the same module, read from where it is, which run
+in order before its own body and share its words. See [A module in several files](../language/13-modules.md#a-module-in-several-files).
+
+`import 'trebol-es` imports a package: the file its `package.json` names as `"trebol"`, in the first
+`node_modules/trebol-es/` going up from the importing file. See [A package](../language/13-modules.md#a-package).
 
 A `.js` or `.mjs` file is a JavaScript module: the object has a function for each function it exports, with its
 name in Trebol's way (`inchesToCm` is `inches-to-cm`) and its parameters as the spec, or the Trebol spec in its

@@ -161,6 +161,67 @@ yes first. `/role 'danger` paints the yes in red and starts on the no, so pressi
 cannot be undone. Esc answers no. Like a toast, the question can be a text per language or a word of the
 dictionary.
 
+## Undo instead of asking
+
+A question stops the work to ask something the person nearly always answers yes. Often it is kinder to do
+the thing at once and offer to take it back: `toast/undo` shows the notice with an *Undo* button, and its
+block runs only if the person clicks it.
+
+```trebol-ui
+bookings: [
+    #(customer: "Ada Lovelace" bike: "Road")
+    #(customer: "Grace Hopper" bike: "City")
+    #(customer: "Alan Turing" bike: "Mountain")
+]
+
+view [
+    title "In the workshop"
+    global table workshop "No bikes in the workshop" [customer "Customer" bike "Bike"]
+        menu ["Collected" collected]
+        on-menu [
+            remove find/same bookings row
+            workshop/data: bookings
+            toast/undo rejoin [row/customer " collected the bike."] [
+                append bookings row
+                workshop/data: bookings
+            ]
+        ]
+]
+
+workshop/data: bookings
+```
+
+Open the menu of a row, with a right click (a long press on a phone, Shift+F10 from the keyboard), and choose
+*Collected*: the row goes, and *Undo* brings it back. A notice with *Undo* stays eight seconds, and waits
+while the pointer or the keyboard is on it, so the person has time to read it and choose. Ctrl+Z (⌘Z on a
+Mac) clicks the *Undo* of the newest notice, unless the cursor is in a box of text, which undoes its own
+typing.
+
+On a phone, swiping a row to the left also shows the first two items of its menu behind it, as buttons, and
+*More* for the rest. An item that removes or cannot be undone says so with `danger` before it, and shows red
+there and in the menu: `menu ["Collected" collected danger #trash "Lost" lost]`.
+
+The block keeps the words of the handler it was written in: `row` is still the booking that was collected,
+even when the person collects another one before the first notice goes. A word the handler sets, `place: ...`,
+is one word for the whole app; to keep its value of the moment, write it into the block with `compose`.
+
+When the server must forget the booking too, it is simpler to tell it only once the person can no longer
+undo. `toast/undo/then` takes a second block, which runs when the notice goes without *Undo*:
+
+```text
+toast/undo/then rejoin [row/customer " collected the bike."] [
+    append bookings row
+    workshop/data: bookings
+] [
+    fetch/with rejoin ["/api/bookings/" row/id] [method: 'DELETE]
+]
+```
+
+The server then needs no way to bring a booking back. The second block also runs at once when the app goes
+to another screen, since the *Undo* block may need faces of the screen that is leaving, and when the page is
+hidden, as when the person switches tab or closes it; a request sent then still leaves, even if the page
+closes.
+
 ## What's next
 
 The shop now books bikes in, keeps the board and takes bikes off it, all on one screen. The
