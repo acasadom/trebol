@@ -50,6 +50,7 @@ i18n: make object! [
         close #(en: "Close" es: "Cerrar")
         undo #(en: "Undo" es: "Deshacer")
         move-to #(en: "Move to" es: "Mover a")
+        more-actions #(en: "More" es: "Más")
         resize-panes #(en: "Resize panes" es: "Cambiar el tamaño de los paneles")
         breadcrumb #(en: "Breadcrumb" es: "Ruta de navegación")
         more-levels #(en: "Show more levels" es: "Mostrar más niveles")

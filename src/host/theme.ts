@@ -1216,6 +1216,19 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
 .tb-menu-gap { width: 16px; flex: none; }
 .tb-menu-item:focus { outline: none; background: var(--tb-primary-soft); }
 .tb-menu-item[aria-expanded="true"] { background: var(--tb-bg); }
+.tb-menu-item.tb-danger, .tb-menu-item.tb-danger svg { color: var(--tb-danger); }
+.tb-menu-item.tb-danger:focus { background: var(--tb-danger-soft); }
+.tb-swipe-actions { position: fixed; z-index: 20; display: flex; justify-content: flex-end; overflow: hidden; }
+.tb-swipe-action {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  flex: none; width: 76px; padding: 0 var(--tb-space-1); border: 0;
+  background: var(--tb-primary); color: var(--tb-on-primary); font: inherit; font-size: 12px; font-weight: 550;
+}
+.tb-swipe-action > span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-swipe-action svg { width: 20px; height: 20px; }
+.tb-swipe-action.tb-danger { background: var(--tb-danger); color: var(--tb-on-danger); }
+.tb-swipe-action.tb-swipe-more { background: var(--tb-bg); color: var(--tb-text); }
+.tb-swipe-settle { transition: transform 200ms var(--tb-ease), left 200ms var(--tb-ease), width 200ms var(--tb-ease); }
 .tb-menu-divider { height: 1px; margin: var(--tb-space-1) calc(-1 * var(--tb-space-1)); background: var(--tb-border); }
 @keyframes tb-pop { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: none; } }
 
@@ -1507,6 +1520,7 @@ ol.tb-dev-entries .tb-dev-warning .tb-dev-kind { color: var(--tb-warning); }
   .tb-table-wrap { overflow: visible; background: none; border: 0; box-shadow: none; }
   .tb-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .tb-table, .tb-table tbody, .tb-table tfoot, .tb-table tr, .tb-table td { display: block; }
+  .tb-swipe :is(tbody tr, .tb-list > li) { touch-action: pan-y; }
   .tb-table tfoot { margin-top: var(--tb-space-3); }
   .tb-table tfoot tr { background: var(--tb-bg); }
   .tb-table tfoot td { background: none; }

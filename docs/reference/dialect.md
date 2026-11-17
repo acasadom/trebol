@@ -460,7 +460,14 @@ A word followed by its value.
 A word followed by its value.
 
 `menu ["Edit" edit "Delete" delete]`: on a button or a link, the menu it opens; on anything else, its context
-menu. Each item is a text and the word that `on-menu` receives in `event/picked`.
+menu. Each item is a text and the word that `on-menu` receives in `event/picked`, with an icon before the text if
+it has one: `#trash "Delete" delete`. `danger` before an item says it removes or cannot be undone, and shows it
+red: `danger #trash "Delete" delete`. `---` draws a line between items, and a block after a text in place of the
+word is a submenu.
+
+On a phone, swiping a row of a table or list with a menu to the left shows its first two items behind it, as
+buttons, the `danger` ones red, and *More* for the whole menu when it has others. A swipe less than halfway
+goes back, as does a touch anywhere else or a scroll.
 
 (word-accept)=
 ## accept

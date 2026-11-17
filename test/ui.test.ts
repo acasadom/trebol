@@ -222,7 +222,7 @@ describe('layout', () => {
       ['layout: a face starts with a style, not "Hello"', '["Hello" text "a"]', 'app.trb:1:7']);
     assert.deepEqual((await problems('view [menu ["A" a]]'))[0], 'layout: menu is not a style; it goes after one');
     assert.deepEqual((await problems('view [button "a" menu ["A"]]'))[0],
-      'layout: a menu takes a label and a word per item, a block for a submenu, or ---');
+      'layout: a menu takes a label and a word per item, danger before one that removes, a block for a submenu, or ---');
     assert.deepEqual((await problems('view [tabs ["A" [text "a"] "B" 1]]')).slice(0, 2),
       ['layout: tabs take a label and a block per tab', '["B" 1]']);
     assert.deepEqual((await problems('view [split [text "a"]]'))[0], 'layout: split takes two faces, one per pane');
@@ -650,7 +650,7 @@ describe('components', () => {
     const r = await ev(`
       got: none
       root: view [
-        global list people [name] menu [#edit "Edit" edit --- "Move to" ["Top" top]] on-menu [got: reduce [event/picked row/name]]
+        global list people [name] menu [#edit "Edit" edit --- "Move to" ["Top" top] danger #trash "Delete" delete] on-menu [got: reduce [event/picked row/name]]
         button "File" menu ["New" new]
       ]
       m: people/menu
@@ -659,8 +659,8 @@ describe('components', () => {
       a: got
       sub: third m
       ui-menu people first sub/items none
-      reduce [a got length? m m/2/divider m/1/icon sub/text people/selected/id]`);
-    assert.equal(r, '[[edit "Alan"] [top "Alan"] 3 true #edit "Move to" 2]');
+      reduce [a got length? m m/2/divider m/1/icon sub/text people/selected/id m/1/danger m/4/danger m/4/icon]`);
+    assert.equal(r, '[[edit "Alan"] [top "Alan"] 4 true #edit "Move to" 2 false true #trash]');
     await assert.rejects(runSource(host, 'view [text "x" menu ["A"]]'));
   });
 

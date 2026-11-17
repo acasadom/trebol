@@ -540,21 +540,13 @@ function listen(m: Mounted, style: string): void {
       openMenu(trebolEntries(f, menu as BlockCell, NONE), r.left, r.bottom + 4, node);
     });
   } else if (menu.t === K.Block || flag(f, 'drag')) {
+    if (menu.t === K.Block && (style === 'table' || style === 'list')) swipeRows(node, f);
     node.addEventListener('contextmenu', ev => {
       const target = ev.target as Element;
       const data = style === 'table' || style === 'list' || style === 'tree';
       const item = data ? target.closest(style === 'tree' ? '[role="treeitem"]' : 'tr, li') : null;
-      if (item === null && data && menu.t !== K.Block) return;
-      const row = item !== null ? rowOf.get(item) ?? NONE : NONE;
-      const entries = menu.t === K.Block ? trebolEntries(f, menu as BlockCell, row) : [];
-      // faces you can drag can also be moved to a drop zone from the menu, without a mouse
-      if (flag(f, 'drag')) {
-        const zones = moveTargets(f, item !== null ? row : get(f, 'value'));
-        if (zones.length > 0) {
-          if (entries.length > 0) entries.push({ text: '', divider: true });
-          entries.push({ text: own('move-to'), sub: zones });
-        }
-      }
+      if (item === null && data && get(f, 'menu').t !== K.Block) return;
+      const entries = contextEntries(f, item);
       if (entries.length === 0) return;
       ev.preventDefault();
       ev.stopPropagation();
@@ -568,6 +560,183 @@ function listen(m: Mounted, style: string): void {
       openMenu(entries, x, y, (item as HTMLElement | null) ?? (target as HTMLElement));
     });
   }
+}
+
+/** The context menu of a face, or of one of its rows: its own items, then "Move to" if it can be dragged. */
+function contextEntries(f: ObjectCell, item: Element | null): MenuEntry[] {
+  const menu = get(f, 'menu');
+  const row = item !== null ? rowOf.get(item) ?? NONE : NONE;
+  const entries = menu.t === K.Block ? trebolEntries(f, menu as BlockCell, row) : [];
+  // faces you can drag can also be moved to a drop zone from the menu, without a mouse
+  if (flag(f, 'drag')) {
+    const zones = moveTargets(f, item !== null ? row : get(f, 'value'));
+    if (zones.length > 0) {
+      if (entries.length > 0) entries.push({ text: '', divider: true });
+      entries.push({ text: own('move-to'), sub: zones });
+    }
+  }
+  return entries;
+}
+
+// --- swipe ---------------------------------------------------------------------------
+//
+// On a phone, swiping a row of a table or list that has a menu to the left
+// shows its first actions behind it, as mail apps do, the danger ones red, and
+// More for the whole menu. A move more down than across still scrolls.
+
+interface Swipe {
+  face: ObjectCell; row: HTMLElement; x: number; y: number; id: number;
+  /** Where the row stood when the finger went down (0, or open), and where it is now: 0 or less. */
+  from: number; at: number; on: boolean; box: HTMLElement; width: number;
+}
+/** The row under the finger, and the one left open. */
+let swipe: Swipe | null = null;
+let swiped: Swipe | null = null;
+
+const SWIPE_BUTTON = 76;
+
+function swipeRows(node: HTMLElement, f: ObjectCell): void {
+  node.classList.add('tb-swipe');
+  node.addEventListener('pointerdown', ev => {
+    if (ev.pointerType !== 'touch' || swipe !== null || !matchMedia('(max-width: 640px)').matches) return;
+    const row = (ev.target as Element).closest<HTMLElement>('tr, li');
+    // a row of this face, not of one inside it
+    if (row === null || !rowOf.has(row) || mountedAbove(row)?.el !== node) return;
+    if (swiped !== null && swiped.row !== row) closeSwipe();
+    const open = swiped?.row === row ? swiped : null;
+    const box = open?.box ?? swipeBox(f, row);
+    if (box === null) return;
+    swipe = {
+      face: f, row, x: ev.clientX, y: ev.clientY, id: ev.pointerId,
+      from: open?.at ?? 0, at: open?.at ?? 0, on: false, box, width: box.childElementCount * SWIPE_BUTTON,
+    };
+  });
+}
+
+/** The buttons behind a row: its first two plain actions, and More if the menu has others. */
+function swipeBox(f: ObjectCell, row: HTMLElement): HTMLElement | null {
+  const all = contextEntries(f, row);
+  const shown = all.filter(e => !e.divider && e.sub === undefined).slice(0, 2);
+  if (shown.length === 0) return null;
+  const box = el('div', 'tb-swipe-actions');
+  // its corners are those of the row, or of the list a first or last row is the edge of
+  const rs = getComputedStyle(row);
+  const list = getComputedStyle(row.parentElement!);
+  const first = row.previousElementSibling === null;
+  const last = row.nextElementSibling === null;
+  box.style.borderTopRightRadius = first && rs.borderTopRightRadius === '0px' ? list.borderTopRightRadius : rs.borderTopRightRadius;
+  box.style.borderBottomRightRadius = last && rs.borderBottomRightRadius === '0px' ? list.borderBottomRightRadius : rs.borderBottomRightRadius;
+  box.style.borderTopLeftRadius = rs.borderTopLeftRadius;
+  box.style.borderBottomLeftRadius = rs.borderBottomLeftRadius;
+  const button = (e: MenuEntry, cls: string, run: (b: HTMLElement) => void): void => {
+    const b = el('button', cls);
+    b.type = 'button';
+    const svg = e.icon ? icon(e.icon) : null;
+    const text = el('span');
+    text.textContent = e.text;
+    b.append(...(svg !== null ? [svg] : []), text);
+    b.addEventListener('click', () => run(b));
+    box.append(b);
+  };
+  if (all.filter(e => !e.divider).length > shown.length) {
+    button({ text: own('more-actions'), icon: 'menu' }, 'tb-swipe-action tb-swipe-more', b => {
+      const r = b.getBoundingClientRect();
+      closeSwipe();
+      openMenu(all, r.left, r.bottom, row);
+    });
+  }
+  for (const e of shown.reverse()) {
+    button(e, e.danger ? 'tb-swipe-action tb-danger' : 'tb-swipe-action', () => {
+      closeSwipe();
+      e.run?.();
+    });
+  }
+  return box;
+}
+
+/** Shows the row moved to at (0 or less) and the buttons in the room it leaves. */
+function placeSwipe(s: Swipe): void {
+  s.row.style.transform = s.at === 0 ? '' : `translateX(${s.at}px)`;
+  // where the row ends without the move, so it holds while the row settles
+  const r = s.row.getBoundingClientRect();
+  const right = r.right - (new DOMMatrix(getComputedStyle(s.row).transform).m41);
+  Object.assign(s.box.style, {
+    top: `${r.top}px`, height: `${r.height}px`, left: `${right + s.at}px`, width: `${-s.at}px`,
+  });
+}
+
+function settleSwipe(s: Swipe, at: number): void {
+  s.at = at;
+  s.row.classList.add('tb-swipe-settle');
+  s.box.classList.add('tb-swipe-settle');
+  placeSwipe(s);
+  if (at === 0) {
+    // the buttons go once the row is back
+    const done = (): void => { if (swiped !== s && swipe?.row !== s.row) { s.box.remove(); s.row.classList.remove('tb-swipe-settle'); } };
+    s.row.addEventListener('transitionend', done, { once: true });
+    setTimeout(done, 300);
+  }
+}
+
+function closeSwipe(): void {
+  const s = swiped;
+  if (s === null) return;
+  swiped = null;
+  if (s.row.isConnected) settleSwipe(s, 0);
+  else s.box.remove();
+}
+
+function onSwipeMove(ev: PointerEvent): void {
+  const s = swipe;
+  if (s === null || ev.pointerId !== s.id) return;
+  const dx = ev.clientX - s.x;
+  const dy = ev.clientY - s.y;
+  if (!s.on) {
+    if (Math.abs(dy) > 10 && Math.abs(dy) >= Math.abs(dx)) { swipe = null; return; }
+    if (Math.abs(dx) <= 10) return;
+    // a row held long enough is being dragged, not swiped
+    if (dragging?.on) { swipe = null; return; }
+    s.on = true;
+    s.row.classList.remove('tb-swipe-settle');
+    s.box.classList.remove('tb-swipe-settle');
+    if (!s.box.isConnected) document.body.append(s.box);
+  }
+  ev.preventDefault();
+  // past the buttons it moves at a third of the finger, as if held back
+  const at = Math.min(0, s.from + dx);
+  s.at = at < -s.width ? -s.width + (at + s.width) / 3 : at;
+  placeSwipe(s);
+}
+
+function onSwipeEnd(ev: PointerEvent): void {
+  const s = swipe;
+  if (s === null || ev.pointerId !== s.id) return;
+  swipe = null;
+  if (!s.on) {
+    // a tap on the open row closes it, and does not select it
+    if (swiped?.row === s.row && ev.type === 'pointerup') { closeSwipe(); swallowNextClick(); }
+    return;
+  }
+  swallowNextClick();
+  const open = ev.type === 'pointerup' && s.at < -s.width / 2;
+  if (open) swiped = s;
+  else if (swiped?.row === s.row) swiped = null;
+  settleSwipe(s, open ? -s.width : 0);
+}
+
+/** The click that ends a move is not a click. */
+function swallowNextClick(): void {
+  addEventListener('click', swallowClick, true);
+  setTimeout(() => removeEventListener('click', swallowClick, true), 0);
+}
+
+/** A touch outside the open row and its buttons, or a scroll, closes it. */
+function outsideSwipe(ev: Event): void {
+  const s = swiped;
+  if (s === null) return;
+  const t = ev.target as Node | null;
+  if (ev.type === 'pointerdown' && t !== null && (s.box.contains(t) || s.row.contains(t))) return;
+  closeSwipe();
 }
 
 // --- drag and drop -----------------------------------------------------------------
@@ -788,8 +957,7 @@ function endDrag(drop: boolean): void {
   indicate(null);
   if (drop && d.target !== null) land(d.src, d.target);
   // the click that ends a drag is not a click
-  addEventListener('click', swallowClick, true);
-  setTimeout(() => removeEventListener('click', swallowClick, true), 0);
+  swallowNextClick();
 }
 
 function swallowClick(ev: Event): void {
@@ -873,6 +1041,7 @@ interface MenuEntry {
   text: string;
   icon?: string | null;
   divider?: boolean;
+  danger?: boolean;
   sub?: MenuEntry[];
   run?: () => void;
 }
@@ -886,6 +1055,7 @@ function trebolEntries(face: ObjectCell, items: BlockCell, row: Cell): MenuEntry
       icon: iconName(item),
       divider: flag(item, 'divider'),
       sub: sub.t === K.Block ? trebolEntries(face, sub as BlockCell, row) : undefined,
+      danger: flag(item, 'danger'),
       run: () => void fire('ui-menu', face, item, row),
     };
   });
@@ -911,7 +1081,7 @@ function openMenu(entries: MenuEntry[], x: number, y: number, opener: HTMLElemen
       mn.append(d);
       continue;
     }
-    const b = el('button', 'tb-menu-item');
+    const b = el('button', item.danger ? 'tb-menu-item tb-danger' : 'tb-menu-item');
     b.type = 'button';
     b.tabIndex = -1;
     b.setAttribute('role', 'menuitem');
@@ -5386,9 +5556,15 @@ async function boot(): Promise<void> {
   document.addEventListener('pointermove', onPointerMove, { passive: false });
   document.addEventListener('pointerup', () => endDrag(true));
   document.addEventListener('pointercancel', () => endDrag(false));
+  document.addEventListener('pointermove', onSwipeMove, { passive: false });
+  document.addEventListener('pointerup', onSwipeEnd);
+  document.addEventListener('pointercancel', onSwipeEnd);
+  document.addEventListener('pointerdown', outsideSwipe, true);
+  document.addEventListener('scroll', outsideSwipe, { capture: true, passive: true });
+  addEventListener('resize', outsideSwipe);
   document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && dragging?.on) { ev.preventDefault(); seenKeys.add(ev); endDrag(false); } }, true);
   // a touch drag must not scroll the page
-  document.addEventListener('touchmove', ev => { if (dragging?.on) ev.preventDefault(); }, { passive: false });
+  document.addEventListener('touchmove', ev => { if (dragging?.on || swipe?.on) ev.preventDefault(); }, { passive: false });
   document.addEventListener('keydown', onViewKey);
   const devMark = document.querySelector('meta[name="trebol-dev"]');
   if (devMark !== null) {

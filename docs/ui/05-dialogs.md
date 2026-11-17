@@ -197,6 +197,10 @@ while the pointer or the keyboard is on it, so the person has time to read it an
 Mac) clicks the *Undo* of the newest notice, unless the cursor is in a box of text, which undoes its own
 typing.
 
+On a phone, swiping a row to the left also shows the first two items of its menu behind it, as buttons, and
+*More* for the rest. An item that removes or cannot be undone says so with `danger` before it, and shows red
+there and in the menu: `menu ["Collected" collected danger #trash "Lost" lost]`.
+
 The block keeps the words of the handler it was written in: `row` is still the booking that was collected,
 even when the person collects another one before the first notice goes. A word the handler sets, `place: ...`,
 is one word for the whole app; to keep its value of the moment, write it into the block with `compose`.

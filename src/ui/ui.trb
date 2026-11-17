@@ -883,18 +883,19 @@ menu-item: make object! [
     id: none            ; the word on-menu gets in event/picked
     items: none         ; a submenu
     divider: false
+    danger: false       ; it removes or cannot be undone: red
 ]
 
-; As in Red: ["Edit" edit #trash "Delete" delete --- "Move to" ["Top" top]] -> menu items
-menu-of: function [spec [block!] /local i label w b p] [
+; As in Red: ["Edit" edit danger #trash "Delete" delete --- "Move to" ["Top" top]] -> menu items
+menu-of: function [spec [block!] /local i d label w b p] [
     out: copy []
     parse spec [any [
         '--- (append out make menu-item [divider: true])
-        | (i: none) opt [set i issue!] set label text-rule (label: text-of label) [
-            set b block! (append out make menu-item [text: label icon: i items: menu-of b])
-            | set w word! (append out make menu-item [text: label icon: i id: w])
+        | (i: none d: false) opt ['danger (d: true)] opt [set i issue!] set label text-rule (label: text-of label) [
+            set b block! (append out make menu-item [text: label icon: i items: menu-of b danger: d])
+            | set w word! (append out make menu-item [text: label icon: i id: w danger: d])
         ]
-        | p: skip (ui-problem p "a menu takes a label and a word per item, a block for a submenu, or ---") to end
+        | p: skip (ui-problem p "a menu takes a label and a word per item, danger before one that removes, a block for a submenu, or ---") to end
     ]]
     out
 ]
