@@ -30,6 +30,8 @@ test('the installed command runs a script and serves an app', async () => {
   const run = spawnSync(process.execPath, [cli], { input: 'print 1 + 2', encoding: 'utf8', cwd: project });
   assert.equal(run.stderr, '');
   assert.equal(run.stdout, '3\n');
+  const version = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version;
+  assert.equal(spawnSync(process.execPath, [cli, '--version'], { encoding: 'utf8' }).stdout, `trebol ${version}\n`);
   // the tutorial's supplier, with ws inside (port 8089 may be taken by the docs tests: only its loading is checked)
   const bad = spawnSync(process.execPath, [cli, 'supplier', 'extra'], { encoding: 'utf8', cwd: project });
   assert.match(bad.stderr, /trebol supplier/);
