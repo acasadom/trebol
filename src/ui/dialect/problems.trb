@@ -152,7 +152,7 @@ ui-takes: [
 ]
 
 ; Every word the dialect knows, for ui-suggest.
-ui-dialect-words: does [
+ui-dialect-words: func ["Every word of the dialect: styles, roles, sizes, flags, rules and the rules an app adds"] [
     unique compose [
         (words-of styles) (roles) (sizes) (aligns) (valigns) (flags) (chart-kinds) (simple-rules)
         (rule-words) (media-flags) required global (words-of custom-rules)

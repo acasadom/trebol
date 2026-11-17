@@ -270,6 +270,11 @@ describe('layout', () => {
     assert.equal(mold(await runSource(host, 'r: ui-sketch [text (crash) button "Go" [crash] buton "y"]  reduce [length? r/1/pane  r/1/pane/2/text  r/2/2]', 'x.trb')),
       '[2 "Go" "buton is not a style; did you mean button?"]');
   });
+
+  test('ui-dialect-words gives an app the words of the dialect, as a designer colours them', async () => {
+    assert.equal(mold(await runSource(host, 'w: ui-dialect-words  reduce [to logic! find w \'field  to logic! find w \'required  to logic! find w \'segmented  to logic! find w \'print]', 'x.trb')),
+      '[true true true false]');
+  });
 });
 
 describe('validation', () => {
