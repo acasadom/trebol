@@ -432,7 +432,23 @@ body {
 .tb-tile:hover { background: var(--tb-surface); border-color: var(--tb-border); }
 .tb-tile:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-focus-ring); }
 .tb-tile > svg { flex: none; width: 36px; height: 36px; color: var(--tb-primary); }
-.tb-tile-linked { position: relative; }
+.tb-tile { position: relative; }
+/* a tile's second icon (mark #list): small, at the bottom right of its icon, on a disc of the background */
+.tb-tile-mark {
+  position: absolute;
+  top: calc(var(--tb-space-3) + 19px);
+  left: calc(50% + 5px);
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--tb-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.tb-tile-mark > svg { width: 14px; height: 14px; color: var(--tb-text); }
+.tb-tile:hover > .tb-tile-mark { background: var(--tb-surface); }
 .tb-tile-linked::after {
   content: '';
   position: absolute;

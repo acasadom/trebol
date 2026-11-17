@@ -687,6 +687,15 @@ describe('components', () => {
     assert.equal(r, '[false true]');
   });
 
+  test('a tile takes a mark: an icon and its label, right after it', async () => {
+    const r = await ev(`
+      fs: layout/only [tile #folder "Records" [] mark #list "List" linked  tile #invoice "Bills" mark #stack 'many []]
+      out: reduce [fs/1/mark fs/1/mark-text fs/1/linked fs/1/text fs/2/mark fs/2/mark-text]
+      append out to logic! find form try [layout [tile #folder "X" mark #list]] "mark takes an icon and its label, #list"
+      out`);
+    assert.equal(r, '[#list "List" true "Records" #stack many true]');
+  });
+
   test('a toolbar is a container whose --- are separators', async () => {
     const r = await ev(`
       root: view [global bar: toolbar "Actions" [button #plus "New" --- button #trash "Delete"]]

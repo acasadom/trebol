@@ -191,6 +191,16 @@ A flag.
 
 Marks a tile with an arrow: it stands for something kept elsewhere, like a shortcut.
 
+(word-mark)=
+## mark
+
+A word followed by its value.
+
+`tile #folder "Records" [...] mark #list "List"`: a second icon, small, at the bottom right of the tile's icon,
+so two tiles with the same icon tell what each one is. Its label, a text, a text per language or a word of the
+dictionary, goes right after its icon, and a screen reader says it after the tile's: "Records, List". It goes
+with `linked`, whose arrow is at the other corner.
+
 (word-round)=
 ## round
 

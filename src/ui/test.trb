@@ -1,6 +1,6 @@
 Trebol [
     title: "Screen tests: what a user does, without a browser"
-    exports: [serve reply click type choose attach pick-menu drag press say see dismiss test-answer test-route]
+    exports: [serve reply click type choose attach pick-menu drag press say see see-mark dismiss test-answer test-route]
 ]
 
 ; `trebol test` runs every block of an app.test.trb on the app started anew,
@@ -157,7 +157,7 @@ test-cells: function [f row /local w label] [
 test-texts: function [/local f p t] [
     out: copy []
     foreach [f p] test-shown [
-        foreach t reduce [test-text f/text  test-text f/hint  f/error] [if string? t [append out t]]
+        foreach t reduce [test-text f/text  test-text f/hint  f/error  test-text f/mark-text] [if string? t [append out t]]
         v: f/value
         case [
             string? :v [append out v]
@@ -612,6 +612,23 @@ say: func [
     yes [logic!] "yes or no"
 ] [
     test-say yes
+]
+
+see-mark: function [
+    "True if the tile on the screen called title has that mark (none: no mark); an error otherwise."
+    title [string! word!] "Its text, or its name"
+    mark [issue! none!]
+    /local f p
+] [
+    found: copy []
+    foreach [f p] test-shown [if all [f/style = 'tile  test-called? f title] [append found f]]
+    if empty? found [do make error! rejoin ["see-mark: no tile on the screen is " mold title]]
+    if 1 < length? found [do make error! rejoin ["see-mark: " length? found " tiles on the screen are " mold title]]
+    has: found/1/mark
+    unless has = mark [
+        do make error! rejoin ["see-mark: " mold title " has " either has [mold has] ["no mark"] ", not " either mark [mold mark] ["none"]]
+    ]
+    true
 ]
 
 see: function [

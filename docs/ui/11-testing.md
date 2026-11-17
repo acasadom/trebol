@@ -125,6 +125,7 @@ translated.
 | `dismiss "Ana Ruiz removed"` | lets the notice that shows that text go, as if its time had passed: the block of `toast/then` runs |
 | `see "Booked in."` | checks that the text is on the screen: in a face, a field, a row, a message, a notice or a question asked |
 | `see/not "Booked in."` | checks that it is not |
+| `see-mark "Records" #list` | checks the mark of the tile that shows that text; `none`, that it has none |
 
 Each of them gives `true`, so a test whose last step is one of them passes when every step does. A test can
 end in any other check instead, as long as it gives `true`: after `click "Ana Ruiz"`,

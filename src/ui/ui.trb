@@ -36,6 +36,8 @@ face: make object! [
     readonly: false     ; shown and sent, but the user cannot change it, and no rule applies
     inert: false        ; shown as it is, but neither it nor its children can be used
     linked: false       ; a tile that stands for something kept elsewhere: marked with an arrow
+    mark: none          ; a tile: a second, small icon on its own (#list), and what it says (mark-text)
+    mark-text: none
     round: false        ; an image: cut to a circle, as for a person's photo
     tag: none           ; a widget: the name of the element it is, as the page's JavaScript defines it
     props: none         ; a widget: the element's properties, an object
@@ -145,7 +147,7 @@ flags: [fill fit hidden disabled readonly inert narrow-only wide-only linked rou
 chart-kinds: [bar line area pie]
 simple-rules: [required email url integer]
 letter: charset [#"a" - #"z" #"A" - #"Z"]
-rule-words: [min max length pattern match check check-async calc react is width pad gap menu accept known links sorted key morph poster captions]
+rule-words: [min max length pattern match check check-async calc react is width pad gap menu accept known links sorted key morph poster captions mark]
 media-styles: [video audio]
 media-flags: [loop muted autoplay]   ; of a video or a sound
 
@@ -321,7 +323,7 @@ ui-takes: [
     menu "a block"  sorted "a block"  known "a map"  links "a map"  match "the name of a field"
     poster "a file or a url"  captions "a file, a url or a block"  width "small, medium, large or fill"
     pad "a step from 0 to 7, none or wide"  gap "a step from 0 to 7, none or wide"  key "a text or a word"
-    morph "a name, 'logo, or a block, [client id]"
+    morph "a name, 'logo, or a block, [client id]"  mark "an icon and its label, #list ^"List^""
 ]
 
 ; Every word the dialect knows, for ui-suggest.
@@ -500,6 +502,8 @@ build-faces: function [
         | pos: set w ['pad | 'gap] [set n integer! | 'none (n: 0) | 'wide (n: 6)] (poke f w spacing n pos)
         | 'menu set b block! (f/menu: menu-of b)
         | 'morph set v [lit-word! | block!] (f/morph: either block? v [v] [to word! v])
+        ; tile #folder "Records" mark #list "List": the label goes right after the mark's icon
+        | 'mark set v issue! set s text-rule (f/mark: v  f/mark-text: text-of s)
         | 'key set s string! (f/shortcut: s)
         | 'key set w word! (f/key: w)
         | 'sorted set b block! (f/sorted: sort-order b)

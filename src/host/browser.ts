@@ -47,7 +47,7 @@ function str(face: ObjectCell, name: string): string | null {
   const v = get(face, name);
   if (v.t === K.None) return null;
   // a text per language, or a word of the dictionary: in the active language
-  if (v.t === K.Map || ((name === 'text' || name === 'hint') && v.t === K.Word)) return translate(v, host.rt);
+  if (v.t === K.Map || ((name === 'text' || name === 'hint' || name === 'mark-text') && v.t === K.Word)) return translate(v, host.rt);
   return form(v);
 }
 
@@ -1315,6 +1315,29 @@ function withIcon(node: HTMLElement, face: ObjectCell, m: Mounted): void {
   m.label = el('span');
   node.append(svg, m.label);
   node.classList.add('tb-has-icon');
+}
+
+/** The small second icon of a tile (mark #list "List"), in a corner of its icon, and the name it adds. */
+function syncMark(m: Mounted): void {
+  const f = m.face;
+  const v = get(f, 'mark');
+  const name = v.t === K.Issue ? spell((v as WordCell).sym).toLowerCase() : null;
+  let mark = m.el.querySelector<HTMLElement>(':scope > .tb-tile-mark');
+  if (mark?.dataset.icon !== (name ?? undefined)) {
+    mark?.remove();
+    mark = null;
+    const svg = name !== null ? icon(name) : null;
+    if (svg !== null) {
+      mark = el('span', 'tb-tile-mark');
+      mark.dataset.icon = name!;
+      mark.setAttribute('aria-hidden', 'true');
+      mark.append(svg);
+      m.el.append(mark);
+    }
+  }
+  const said = mark !== null ? str(f, 'mark-text') : null;
+  if (said !== null && said !== '') m.el.setAttribute('aria-label', `${str(f, 'text') ?? ''}, ${said}`);
+  else m.el.removeAttribute('aria-label');
 }
 
 /** A face with an icon and no text is named after its icon: #arrow-left -> "Arrow left". */
@@ -4589,7 +4612,11 @@ function sync(m: Mounted): void {
       m.el.textContent = tv.t === K.None ? '' : tv.t === K.Map || tv.t === K.Word ? translate(tv, host.rt) : display(tv);
       break;
     }
-    case 'tile': (m.label ?? m.el).textContent = t ?? ''; break;
+    case 'tile': {
+      (m.label ?? m.el).textContent = t ?? '';
+      syncMark(m);
+      break;
+    }
     case 'button': case 'link': {
       (m.label ?? m.el).textContent = t ?? '';
       const named = iconLabel(f);

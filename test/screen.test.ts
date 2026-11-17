@@ -81,6 +81,11 @@ test('a form in steps led by a machine: it chooses the next step, Back puts it b
   assert.ok(passed, lines.join('\n'));
 });
 
+test('see-mark sees the mark of a tile, and see its label', async () => {
+  const { passed, lines } = await ran(['test/fixtures/screens/tiles.test.trb']);
+  assert.ok(passed, lines.join('\n'));
+});
+
 test('going back goes one step, as the browser does', async () => {
   const { passed, lines } = await ran(['test/fixtures/screens/steps.test.trb']);
   assert.ok(passed, lines.join('\n'));

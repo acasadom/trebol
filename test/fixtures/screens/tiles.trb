@@ -1,0 +1,10 @@
+Trebol [title: "Tiles with a mark"]
+
+view [
+    desktop [
+        tile #folder "Records" [] mark #list "List"
+        tile #invoice "Invoices" [] mark #stack 'many linked
+        global plain: tile #folder "Plain" []
+        button "Mark it" [plain/mark: #star  plain/mark-text: "Starred"]
+    ]
+]

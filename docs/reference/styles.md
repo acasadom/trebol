@@ -280,7 +280,7 @@ that goes nowhere, so data from a server can never run code. The same holds for 
 ## tile
 
 A large icon with its name under it, for a desktop: `tile #folder "Reports" [...]`. `linked` marks with an arrow
-one that stands for something kept elsewhere.
+one that stands for something kept elsewhere, and `mark #list "List"` puts a second, small icon on its icon.
 
 (style-table)=
 ## table
