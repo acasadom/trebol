@@ -1,0 +1,8 @@
+Trebol [title: "Screen tests of an app with a widget"]
+
+"the module of a widget is left out with no browser, and the app runs"
+[
+    see "Stars"
+    click "Rate"
+    see "Rated"
+]

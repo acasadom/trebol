@@ -245,13 +245,24 @@ async function* runFile(file: string): AsyncGenerator<Outcome> {
   }
 }
 
+/** A JavaScript module of the app: one that needs a browser (it defines an element for a widget) is left out,
+ * since a widget is a face like any other here; one that does not is imported. */
+async function browserless(href: string): Promise<Record<string, unknown>> {
+  try {
+    return await import(href) as Record<string, unknown>;
+  } catch (e) {
+    if (e instanceof ReferenceError && /\b(HTMLElement|customElements|document|window|navigator)\b/.test(e.message)) return {};
+    throw e;
+  }
+}
+
 /** Runs the test at index `at` of the file on the app started anew; its problem, or null if it passed. */
 async function runOne(file: string, source: string, start: number, prelude: number, at: number, app: string | null): Promise<string | null> {
   // the files of loaded blocks are named from the current folder, as check names them
   const base = pathToFileURL(process.cwd() + sep).href;
   const host = startHost({
     onError: e => page.errors.push(report(e)),
-    loader: { base, read: href => readFile(fileURLToPath(href), 'utf8') },
+    loader: { base, read: href => readFile(fileURLToPath(href), 'utf8'), importJs: browserless },
   });
   page = fresh(host, dirname(file));
   try {

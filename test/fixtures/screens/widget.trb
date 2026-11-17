@@ -1,0 +1,8 @@
+Trebol [title: "A widget whose element only a browser defines"]
+
+import %stars.js
+
+view [
+    widget <star-pick> stars "Stars" [count: 5]
+    button "Rate" [toast "Rated"]
+]

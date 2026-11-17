@@ -273,3 +273,8 @@ test('a board deals its cards to lanes; a drop sets the field, or takes the way 
   const { passed, lines } = await ran(['test/fixtures/screens/board.test.trb']);
   assert.ok(passed, lines.join('\n'));
 });
+
+test('an app whose widget only a browser defines runs in screen tests, its module left out', async () => {
+  const { passed, lines } = await ran(['test/fixtures/screens/widget.test.trb']);
+  assert.ok(passed, lines.join('\n'));
+});

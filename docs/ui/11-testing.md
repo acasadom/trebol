@@ -3,7 +3,9 @@
 Every change to an app can break something a person does with it: a button that no longer books, a message
 that no longer shows. Trying each screen by hand after every change is slow, and soon skipped. A **screen
 test** does it for you: it types, clicks and chooses as a person would, and checks what the screen says.
-It runs without a browser, in a moment, every time.
+It runs without a browser, in a moment, every time. With no browser, a JavaScript module that defines the element
+of a `widget` is left out, and the widget is a face like any other: its value is set and read as the program
+does.
 
 ## The app
 
