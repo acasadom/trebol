@@ -221,7 +221,7 @@ ui-checking: none
 ui-check: function [
     "Every problem in the layouts of a program, without running it: [place message ...]"
     code [block!]
-    /local b p n m
+    /local b p n m rest
 ] [
     set 'ui-checking copy []
     blocks: copy []
@@ -246,6 +246,12 @@ ui-check: function [
     attempt-at: func [place body] [
         if error? r: try body [append ui-checking reduce [place form r/message]]
     ]
+    ; the imports at the top of the program run first: a module only defines things, as the rules of a package do
+    ; (a JavaScript module may need a browser)
+    parse code [any [
+        p: 'import [lit-word! | set n [file! | url!] if (not find [%.js %.mjs] suffix? n)] (attempt-at p [do/next p 'rest])
+        | skip
+    ]]
     foreach p blocks [if 'rule = first p [attempt-at second p [apply/only :rule third p]]]
     foreach p blocks [if 'stylize = first p [attempt-at next p [stylize copy/deep second p]]]
     ; a machine is made without running anything: its data stays unevaluated

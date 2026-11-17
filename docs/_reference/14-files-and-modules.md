@@ -14,6 +14,9 @@ part after `#` do not count.
 
 ## import
 
+`import 'trebol-es` imports a package: the file its `package.json` names as `"trebol"`, in the first
+`node_modules/trebol-es/` going up from the importing file. See [A package](../language/13-modules.md#a-package).
+
 A `.js` or `.mjs` file is a JavaScript module: the object has a function for each function it exports, with its
 name in Trebol's way (`inchesToCm` is `inches-to-cm`) and its parameters as the spec, or the Trebol spec in its
 `spec` property; its other exports are values. Arguments and results cross as JSON, a promise is waited for,

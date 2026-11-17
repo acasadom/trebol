@@ -130,8 +130,8 @@ language, as the [languages](08-languages.md) page tells; a string shows that st
 kept in `i18n/ui` under the rule's name, so an app can say it its own way:
 `poke i18n/ui 'frame-number #(en: "That is not one of our frames")`.
 
-A package of rules, the ones of a country for instance, is a file of `rule`s: a program that imports it
-can write those words after its fields.
+A package of rules, the ones of a country for instance, is a module of `rule`s: a program that imports it,
+`import 'trebol-es`, can write those words after its fields (see [packages](../language/13-modules.md#a-package)).
 
 ## Faces that follow others
 

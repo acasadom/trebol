@@ -69,6 +69,28 @@ test('the page has the app inside and its media next to it', async () => {
   assert.match(page, /<script type="text\/trebol" src="app.trb"><\/script>/);
 });
 
+test('the packages the app imports by name go inside the page, under node_modules/', async () => {
+  const top = folder({
+    'node_modules/trebol-x/package.json': '{"trebol": "x.trb"}',
+    'node_modules/trebol-x/x.trb': "Trebol []\nimport %more/y.trb\nimport 'trebol-y",
+    'node_modules/trebol-x/more/y.trb': 'Trebol []',
+    'node_modules/trebol-x/x.test.trb': 'Trebol []',
+    'node_modules/trebol-x/README.md': 'x',
+    'node_modules/trebol-y/package.json': '{"trebol": "y.trb"}',
+    'node_modules/trebol-y/y.trb': 'Trebol []',
+    'node_modules/unused/package.json': '{"trebol": "u.trb"}',
+    'shop/app.trb': "Trebol []\nif true [import 'trebol-x]\nview [text \"hi\"]",
+  });
+  const b = await buildApp(join(top, 'shop'));
+  assert.deepEqual(b.sources, ['app.trb', 'node_modules/trebol-x/more/y.trb', 'node_modules/trebol-x/x.trb', 'node_modules/trebol-y/y.trb']);
+  const files = JSON.parse(script(readFileSync(b.page, 'utf8'), '<script type="application/json" id="trebol-files">')) as Record<string, string>;
+  assert.deepEqual(Object.keys(files).sort(), [
+    'app.trb', 'node_modules/trebol-x/more/y.trb', 'node_modules/trebol-x/package.json', 'node_modules/trebol-x/x.trb',
+    'node_modules/trebol-y/package.json', 'node_modules/trebol-y/y.trb',
+  ]);
+  await assert.rejects(buildApp(folder({ 'app.trb': "import 'nope" })), /imports the package nope, which is not in node_modules/);
+});
+
 test('a page in Latin has only the Latin fonts', async () => {
   const root = folder({ 'app.trb': 'view [text "Año ¿qué? Łódź"]' });
   const out = join(mkdtempSync(join(tmpdir(), 'trebol-out-')), 'site');

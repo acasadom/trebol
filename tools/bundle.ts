@@ -4,7 +4,9 @@
 // .trb of the folder and its subfolders (not the *.test.trb, node_modules or the out folder), so
 // `import`, `do` and `read` of them ask no server and the page opens even from a file. The images,
 // sounds, videos, scripts and data files of the folder are copied next to it with the same paths;
-// anything else (the app's backend, package.json, dotfiles) stays out.
+// anything else (the app's backend, package.json, dotfiles) stays out. A package the app imports by
+// name (`import 'trebol-es`), found in node_modules as Node finds it, goes in too: its package.json
+// and its .trb, under node_modules/<name>/, where the page looks for them.
 //
 // The page has only the fonts its own text needs beyond Latin: Latin and Latin Extended always, the
 // Cyrillic, Greek and Vietnamese files only when some .trb has one of their letters. Other letters
@@ -19,7 +21,7 @@ import { existsSync } from 'node:fs';
 import { cp, mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { K, load, scriptStart, spell, text, type StringCell } from '../src/core/index.ts';
+import { K, load, scriptStart, spell, text, type Cell, type StringCell } from '../src/core/index.ts';
 import { INTER, interCss, inRange } from '../src/host/fonts.ts';
 
 /** The files copied next to the page, by extension. */
@@ -43,7 +45,7 @@ export interface Built {
   page: string;
   /** Size of index.html in bytes. */
   size: number;
-  /** The .trb files inside the page, by path from it. */
+  /** The .trb files inside the page, by path from it; those of packages under node_modules/. */
   sources: string[];
   /** The files copied next to it. */
   copied: string[];
@@ -69,6 +71,57 @@ async function filesOf(root: string, skip: string): Promise<string[]> {
   };
   await walk(root);
   return out.sort();
+}
+
+/** The packages a source imports by name: the lit-word after each `import`, at any depth. */
+function packagesIn(src: string): string[] {
+  let code;
+  try {
+    code = load(src);
+  } catch {
+    return [];
+  }
+  const out: string[] = [];
+  const walk = (cells: readonly Cell[]): void => {
+    for (let i = 0; i < cells.length; i++) {
+      const c = cells[i]!;
+      const next = cells[i + 1];
+      if (c.t === K.Word && spell(c.sym).toLowerCase() === 'import' && next?.t === K.LitWord) out.push(spell(next.sym));
+      else if (c.t === K.Block || c.t === K.Paren) walk(c.s.data.slice(c.i));
+    }
+  };
+  walk(code.s.data.slice(code.i));
+  return out;
+}
+
+/** The folder of a package: node_modules/<name> in `from` or the nearest folder above it that has one. */
+function packageDir(from: string, name: string): string {
+  for (let dir = from; ; dir = dirname(dir)) {
+    const at = join(dir, 'node_modules', name);
+    if (existsSync(join(at, 'package.json'))) return at;
+    if (dirname(dir) === dir) throw new Error(`the app imports the package ${name}, which is not in node_modules`);
+  }
+}
+
+/** The texts of every package the sources import, and of those these import, by path from the page. */
+async function packagesOf(root: string, texts: Record<string, string>): Promise<Record<string, string>> {
+  const out: Record<string, string> = {};
+  const done = new Set<string>();
+  const todo = Object.values(texts).flatMap(src => packagesIn(src).map(name => ({ name, from: root })));
+  while (todo.length > 0) {
+    const { name, from } = todo.shift()!;
+    if (done.has(name)) continue;
+    done.add(name);
+    const dir = packageDir(from, name);
+    out[`node_modules/${name}/package.json`] = await readFile(join(dir, 'package.json'), 'utf8');
+    for (const f of await filesOf(dir, '')) {
+      if (!f.endsWith('.trb') || f.endsWith('.test.trb')) continue;
+      const src = await readFile(join(dir, f), 'utf8');
+      out[`node_modules/${name}/${f}`] = src;
+      for (const n of packagesIn(src)) todo.push({ name: n, from: dir });
+    }
+  }
+  return out;
 }
 
 /** The title in the header of app.trb, or null. */
@@ -131,6 +184,8 @@ export async function buildApp(folder: string, out?: string, options: BuildOptio
   if (clash !== undefined) throw new Error(`${clash} would take the place of the runtime or its fonts; move it to build with --csp`);
   const texts: Record<string, string> = {};
   for (const f of sources) texts[f] = await readFile(join(root, f), 'utf8');
+  const packages = await packagesOf(root, texts);
+  Object.assign(texts, packages);
 
   // the letters of the app choose its fonts
   const used = new Set<number>();
@@ -185,5 +240,5 @@ ${tail}`;
     await mkdir(dirname(join(dest, f)), { recursive: true });
     await cp(join(root, f), join(dest, f));
   }
-  return { page: join(dest, 'index.html'), size: (await stat(join(dest, 'index.html'))).size, sources, copied, split };
+  return { page: join(dest, 'index.html'), size: (await stat(join(dest, 'index.html'))).size, sources: [...sources, ...Object.keys(packages).filter(f => f.endsWith('.trb'))], copied, split };
 }

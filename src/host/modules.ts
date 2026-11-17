@@ -11,6 +11,13 @@
 //
 // A `.js` file is a JavaScript module instead (js.ts).
 //
+// `import 'trebol-es` imports a package by its name: the first node_modules/trebol-es/
+// found going up from the importing file (from the page or the working directory when
+// no file imports it), as Node finds packages. Its package.json says which file is the
+// module, `"trebol": "es.trb"`. The same loader reads it, so this works on a disk and
+// over http alike; `trebol build` puts the package's files inside the page where the
+// page finds them, under node_modules/.
+//
 // `do %file` runs a script in the user context each time; `read` gives a
 // file's text and `load %file` its values.
 //
@@ -18,7 +25,7 @@
 
 import {
   K, NONE, UNSET, native, value, text, load, mold, string, context, collectSetWords, bindSeries, bindSelf,
-  copyDeep, setWord, getWord, splice, currentFile, throwError, makeError, scriptStart, LoadError, T, canon, intern,
+  copyDeep, setWord, getWord, splice, currentFile, throwError, makeError, scriptStart, LoadError, T, canon, intern, spell,
   type Cell, type BlockCell, type StringCell, type ObjectCell, type Runtime, type WordCell, type Series, type Task,
 } from '../core/index.ts';
 import { jsModule } from './js.ts';
@@ -172,13 +179,45 @@ native('do-file', '["Runs the script in a file, as do does; a module is imported
 
 interface ImportState { href: string; entry: ModuleEntry; ctx: ReturnType<typeof context> | null; exports: WordCell[] }
 
-native('import', '["Runs a module and gives its exports." source [file! url! string!]]', (t, f, v) => {
+/** Package names as npm takes them, without a scope (a scope does not fit in a word). */
+const PACKAGE_NAME = /^[a-z0-9][a-z0-9._-]*$/;
+
+/** The href of a package's module: the "trebol" file of the first node_modules/<name>/ going up from `from`. */
+async function packageModule(loader: Loader, from: string, name: string): Promise<Cell> {
+  let dir = new URL('./', from);
+  for (;;) {
+    const at = new URL(`node_modules/${name}/`, dir).href;
+    const json = builtIn.get(`${at}package.json`) ?? await loader.read(`${at}package.json`).catch(() => null);
+    if (json !== null) {
+      let main: unknown;
+      try {
+        main = (JSON.parse(json) as { trebol?: unknown }).trebol;
+      } catch {
+        throw makeError('access', 'cannot-open', `the package.json of ${name} is not JSON`);
+      }
+      if (typeof main !== 'string') throw makeError('access', 'cannot-open', `${name} is not a Trebol package: its package.json has no "trebol" file`);
+      return string(new URL(main, at).href);
+    }
+    if (dir.pathname === '/' || dir.protocol !== 'file:' && dir.protocol !== 'http:' && dir.protocol !== 'https:') break;
+    dir = new URL('../', dir);
+  }
+  throw makeError('access', 'cannot-open', `cannot find the package ${name}: no node_modules/${name}/package.json`);
+}
+
+native('import', '["Runs a module and gives its exports; a word is a package by its name, from node_modules." source [file! url! string! word!]]', (t, f, v) => {
   const rt = t.rt;
   const loader = loaders.get(rt);
   const mods = modules.get(rt);
   if (loader === undefined || mods === undefined) return throwError('access', 'no-loader', 'this host cannot load modules');
-  if (f.phase === 0) {
-    const href = hrefOf(t, loader, f.args[0]!);
+  // a package: where its module is comes first, then it is imported as a file is
+  if (f.phase === 0 && f.args[0]!.t === K.Word) {
+    const name = spell((f.args[0] as WordCell).sym);
+    if (!PACKAGE_NAME.test(name)) return throwError('script', 'bad-module', `${name} is not the name of a package`);
+    f.phase = 5;
+    return { k: 'await', p: packageModule(loader, resolve(loader.base, currentFile(t), './'), name) };
+  }
+  if (f.phase === 0 || f.phase === 5) {
+    const href = f.phase === 5 ? text(v as StringCell) : hrefOf(t, loader, f.args[0]!);
     const known = mods.get(href);
     if (known !== undefined) {
       if (known.obj !== null) return value(known.obj);

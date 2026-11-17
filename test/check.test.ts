@@ -2,7 +2,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, readdirSync, statSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync, readdirSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { check } from '../tools/check.ts';
@@ -83,6 +83,27 @@ view [field n "N" even iban  field m "M" evn]
   assert.deepEqual(lines.map(l => l.slice(dir.length + 1)), [
     'app.trb:3:1   rule: email is already a word of the dialect',
     'app.trb:4:42  evn is not a word of field; did you mean even?',
+  ]);
+});
+
+test('check runs the imports at the top of a file, so it knows the rules of a package', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'trebol-check-'));
+  mkdirSync(join(dir, 'node_modules', 'trebol-x'), { recursive: true });
+  writeFileSync(join(dir, 'node_modules', 'trebol-x', 'package.json'), '{"trebol": "x.trb"}');
+  writeFileSync(join(dir, 'node_modules', 'trebol-x', 'x.trb'), `Trebol []\nrule 'postcode "Enter a postcode" [true]\n`);
+  writeFileSync(join(dir, 'mine.trb'), `Trebol []\nrule 'even "Enter an even number" [true]\n`);
+  const file = join(dir, 'app.trb');
+  writeFileSync(file, `Trebol [title: "Rules"]
+import 'trebol-x
+import %mine.trb
+import 'trebol-nope
+view [field p "P" postcode even  field q "Q" postcod]
+`);
+  const { clean, lines } = await checked([file]);
+  assert.equal(clean, false);
+  assert.deepEqual(lines.map(l => l.slice(dir.length + 1)), [
+    'app.trb:4:1   cannot find the package trebol-nope: no node_modules/trebol-nope/package.json',
+    'app.trb:5:46  postcod is not a word of field; did you mean postcode?',
   ]);
 });
 

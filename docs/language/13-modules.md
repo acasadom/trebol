@@ -226,6 +226,34 @@ checks its arguments:
 inchesToCm.spec = '["A wheel size in centimetres." inches [number!]]';
 ```
 
+## A package
+
+Modules other people wrote come as packages, installed with npm as JavaScript ones are:
+
+```sh
+npm install trebol-es
+```
+
+`import` of a word, not a file, imports a package by its name. It is looked for in `node_modules/`, next to the
+file that imports it or in a folder above, as Node finds a package, and its `package.json` says which file is
+the module:
+
+```text
+>> import 'trebol-es
+```
+
+```json
+{
+  "name": "trebol-es",
+  "trebol": "es.trb"
+}
+```
+
+That file is a module as any other: it runs once, its exports become words of the program, and it imports its
+own files by their path from it. A package can be a whole library or only a few words, like the
+[rules](../ui/02-forms.md#rules-of-your-own) of a country's forms. `trebol build` puts the packages an app imports
+inside its page, and `trebol dev` serves them from the `node_modules/` of the app's folder or of one above it.
+
 ## When the file is not there
 
 A file that cannot be read is an `access` error, so `try` catches it as any other (page 7):
@@ -240,7 +268,7 @@ A file that cannot be read is an `access` error, so `try` catches it as any othe
 ```
 
 A module that lists in `exports:` a word it never sets is an error too: the header promised something the file
-does not give.
+does not give. So is a package that is not in `node_modules/`, or whose `package.json` names no `"trebol"` file.
 
 ## What's next
 

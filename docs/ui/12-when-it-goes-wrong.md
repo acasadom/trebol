@@ -51,7 +51,8 @@ npx trebol check
 ```
 
 Run it after a change that does not show up, before anything else: a mistyped word in a view keeps the whole
-view from showing.
+view from showing. It runs nothing of the app but the imports at the top of a file, since a module only defines
+things: that is how it knows the [rules](02-forms.md#rules-of-your-own) a package adds.
 
 ## The panel of errors
 

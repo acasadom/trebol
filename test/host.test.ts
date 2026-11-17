@@ -438,6 +438,49 @@ describe('modules and storage', () => {
     await assert.rejects(runSource(host, 'import %missing.trb', 'x.trb'), (e: ObjectCell) => form(errorField(e, 'id')) === 'cannot-open');
   });
 
+  test('import of a word is a package from node_modules, found going up from the importing file', async () => {
+    const files: Record<string, string> = {
+      'http://site/node_modules/trebol-x/package.json': '{"name": "trebol-x", "trebol": "lib/x.trb"}',
+      'http://site/node_modules/trebol-x/lib/x.trb': 'Trebol [exports: [hello]]\nparts: import %parts.trb\nhello: does [rejoin ["hi " parts/n]]',
+      'http://site/node_modules/trebol-x/lib/parts.trb': 'Trebol []\nn: 7',
+      'http://site/app/node_modules/plain/package.json': '{"name": "plain"}',
+      'http://site/app/node_modules/broken/package.json': '{',
+    };
+    const asked: string[] = [];
+    const host = startHost({
+      onError: () => {},
+      loader: {
+        base: 'http://site/app/page.html',
+        read: async href => {
+          asked.push(href);
+          const src = files[href];
+          if (src === undefined) throw new Error('HTTP 404');
+          return src;
+        },
+      },
+    });
+    const v = await runSource(host, `m: import 'trebol-x  reduce [hello  same? m import 'trebol-x]`, 'http://site/app/sub/main.trb');
+    assert.equal(mold(v), '["hi 7" true]');
+    // the folder of the file first, then each one above it
+    assert.deepEqual(asked.slice(0, 3), [
+      'http://site/app/sub/node_modules/trebol-x/package.json',
+      'http://site/app/node_modules/trebol-x/package.json',
+      'http://site/node_modules/trebol-x/package.json',
+    ]);
+    const message = async (src: string) => {
+      try {
+        await runSource(host, src, 'http://site/app/main.trb');
+        return 'no error';
+      } catch (e) {
+        return form(errorField(e as ObjectCell, 'message'));
+      }
+    };
+    assert.equal(await message(`import 'plain`), 'plain is not a Trebol package: its package.json has no "trebol" file');
+    assert.equal(await message(`import 'broken`), 'the package.json of broken is not JSON');
+    assert.equal(await message(`import 'nope`), 'cannot find the package nope: no node_modules/nope/package.json');
+    assert.equal(await message(`import 'Bad!`), 'Bad! is not the name of a package');
+  });
+
   test('export marks words in the module body, as R3', async () => {
     const host = fsHost();
     const v = await runSource(host, 'm: import %marked.trb reduce [double 2 triple 2 m/hidden value? \'hidden words-of m]', 'x.trb');
