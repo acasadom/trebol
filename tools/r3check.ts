@@ -47,9 +47,12 @@ function moldR3(c: Cell): string {
   return mold(c);
 }
 
+/** Suites of what Trebol has and R3 has not, so nothing in them can agree: machines. */
+const TREBOL_ONLY = new Set(['machine.trb']);
+
 function suites(): Test[] {
   const out: Test[] = [];
-  for (const file of readdirSync(SUITES).filter(f => f.endsWith('.trb')).sort()) {
+  for (const file of readdirSync(SUITES).filter(f => f.endsWith('.trb') && !TREBOL_ONLY.has(f)).sort()) {
     const code = load(readFileSync(join(SUITES, file), 'utf8'), { file });
     let group = '';
     for (const c of code.s.data.slice(scriptStart(code).start)) {
@@ -69,10 +72,13 @@ function runR3(r3: string, tests: Test[]): string[] {
     'tests: [',
     ...tests.map(t => braced(t.src)),
     ']',
-    'forall tests [',
-    '    r: try [do load first tests]',
+    // a word of its own counts the tests: a test may change the position of a series it is given
+    'r3check-n: 0',
+    'foreach r3check-test tests [',
+    '    r3check-n: r3check-n + 1',
+    '    r: try [do load r3check-test]',
     '    s: either r == true ["ok"] [replace/all mold/all :r newline " "]',
-    '    print ["#" index? tests s]',
+    '    print ["#" r3check-n s]',
     ']',
   ];
   const dir = mkdtempSync(join(tmpdir(), 'r3check-'));
