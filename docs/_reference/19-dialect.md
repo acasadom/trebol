@@ -208,11 +208,12 @@ The text must be a whole number.
 
 ## min
 
-`min 18`: the value must be at least that. On `rows`, the fewest rows. Numbers, amounts and dates.
+`min 18`: the value must be at least that. On `rows`, the fewest rows; on `date-range`, its start. Numbers,
+amounts and dates.
 
 ## max
 
-`max 99`: the value must be at most that. On `rows`, the most rows.
+`max 99`: the value must be at most that. On `rows`, the most rows; on `date-range`, its end.
 
 ## length
 

@@ -84,6 +84,13 @@ it is being edited, as a plain number in the language's way.
 A field for a date, with a calendar. Its value is a `date!`; it is typed in the order of the active language, or
 as `2026-12-02`.
 
+## date-range
+
+Two dates, a start and an end, picked on one calendar: `date-range stay "Stay"`. Its value is a block of two
+`date!` values, the start first, or `none`. The first day picked stays marked until the second; the field shows
+both in the active language, and they are typed apart by a dash, as `3/11/2026 – 10/11/2026`. `min` holds for
+the start and `max` for the end. A screen test sets it with `type "Stay" [3-Nov-2026 10-Nov-2026]`.
+
 ## area
 
 Several lines of text.

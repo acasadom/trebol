@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { K, NONE, UNSET, load, spell, TRUE, FALSE, native, value, mold, form, string, text, money, blockOf, errorField, type Cell, type ObjectCell, type StringCell } from '../src/core/index.ts';
-import { startHost, startUi, runSource, readLocal, editLocal, readDate, weekStart, fileSize, translate, uiText, amountOf, countStep, shown as shownLocal, type Host } from '../src/host/index.ts';
+import { startHost, startUi, runSource, readLocal, editLocal, readDate, readRange, weekStart, fileSize, translate, uiText, amountOf, countStep, shown as shownLocal, type Host } from '../src/host/index.ts';
 import { fileHandle } from '../src/host/net.ts';
 import { themeCss, DEFAULT_THEME, LOOKS, palette, contrast, contrastOverImage, scrimAlpha, CONTRAST_PAIRS } from '../src/host/theme.ts';
 
@@ -1221,6 +1221,15 @@ test('dates are read in the order of the language', () => {
   ];
   for (const [typed, lang, want] of cases) assert.equal(readDate(typed, lang), want, `${lang} ${typed}`);
   assert.deepEqual(['es', 'en', 'en-GB'].map(weekStart), [1, 7, 1]);
+});
+
+test('a range of dates is read as two dates, the start first', () => {
+  const cases: [string, string, string | null][] = [
+    ['3/11/2026 – 10/11/2026', 'es', '2026-11-03 2026-11-10'], ['11/10/2026 - 11/3/2026', 'en', '2026-11-03 2026-11-10'],
+    ['2026-11-03 2026-11-10', 'en', '2026-11-03 2026-11-10'], ['3/11/2026', 'es', null],
+    ['3/11/2026 – 31/2/2026', 'es', null], ['1/1/2026 2/1/2026 3/1/2026', 'es', null],
+  ];
+  for (const [typed, lang, want] of cases) assert.equal(readRange(typed, lang), want, `${lang} ${typed}`);
 });
 
 test('amounts are read and edited in the format of the language', () => {

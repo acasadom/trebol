@@ -97,6 +97,23 @@ one move takes it, 1 unless told. It starts at its least, and its value is a num
 makes it a decimal. Dragging it, or the arrow keys, Home and End, move it; its action and `on-change` run as
 it moves.
 
+## Two dates
+
+A booking, a holiday or a report covers days from one to another. A `date-range` picks both on one calendar:
+the first day you pick stays marked, and the second closes it.
+
+```trebol-ui
+view [
+    form [
+        date-range hire "Bike hire" required min 1-Jan-2026
+        submit "Book" [toast rejoin ["From " localize values/hire/1 " to " localize values/hire/2]]
+    ]
+]
+```
+
+Its value is a block of two dates, the start first: `[3-Nov-2026 10-Nov-2026]`. The field shows them in the
+active language, and they can be typed too, apart by a dash. `min` holds for the start and `max` for the end.
+
 ## Rules of your own
 
 The built-in rules cover the usual cases: `required`, `email`, `url`, `integer`, `iban`, `min` and `max`

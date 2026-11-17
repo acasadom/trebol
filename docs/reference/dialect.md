@@ -351,14 +351,15 @@ The text must be a whole number.
 
 A word followed by its value.
 
-`min 18`: the value must be at least that. On `rows`, the fewest rows. Numbers, amounts and dates.
+`min 18`: the value must be at least that. On `rows`, the fewest rows; on `date-range`, its start. Numbers,
+amounts and dates.
 
 (word-max)=
 ## max
 
 A word followed by its value.
 
-`max 99`: the value must be at most that. On `rows`, the most rows.
+`max 99`: the value must be at most that. On `rows`, the most rows; on `date-range`, its end.
 
 (word-length)=
 ## length

@@ -99,13 +99,13 @@ face: make object! [
 styles: make map! []
 
 container-styles: [view column row form panel grid dialog scroll split toolbar desktop]
-input-styles: [field password number money date area rich check toggle choice radio upload photo lookup rows widget slider]
+input-styles: [field password number money date date-range area rich check toggle choice radio upload photo lookup rows widget slider]
 data-styles: [table list tree chart board]
 
 foreach [name base] [
     view column  column column  row row  form form  panel panel  grid grid  scroll scroll  desktop desktop
     title title  heading heading  text text  divider divider
-    field field  password password  number number  money money  date date  area area  rich rich  check check  choice choice
+    field field  password password  number number  money money  date date  date-range date-range  area area  rich rich  check check  choice choice
     toggle toggle  radio radio  upload upload  photo photo  lookup lookup  progress progress  image image  backdrop backdrop  icon icon
     video video  audio audio  widget widget  slider slider
     button button  link link  tile tile  table table  list list  tabs tabs  tab tab  steps steps  step step
@@ -1895,7 +1895,7 @@ validate-face: function [
     if f/typed [
         if f/style = 'upload [return message 'accept reduce [list-of f/accept]]
         if f/style = 'photo [return either f/accept [message 'accept reduce [list-of f/accept]] [message 'images []]]
-        return message select [number number money amount date date] f/style []
+        return message select [number number money amount date date date-range date-range] f/style []
     ]
     if blank? :v [
         return either find/only rules [required] [message 'required []] [f/async-error]
@@ -1906,8 +1906,15 @@ validate-face: function [
             email [unless parse v email-rule [message 'email []]]
             url [unless parse v url-rule [message 'url []]]
             integer [unless parse form v [opt "-" some digit] [message 'integer []]]
-            min [if all [any [number? v  money? v  date? v]  v < r/2] [message 'min reduce [r/2]]]
-            max [if all [any [number? v  money? v  date? v]  v > r/2] [message 'max reduce [r/2]]]
+            ; a range of dates keeps both its ends within them
+            min [
+                low: either f/style = 'date-range [v/1] [v]
+                if all [any [number? low  money? low  date? low]  low < r/2] [message 'min reduce [r/2]]
+            ]
+            max [
+                high: either f/style = 'date-range [v/2] [v]
+                if all [any [number? high  money? high  date? high]  high > r/2] [message 'max reduce [r/2]]
+            ]
             length [
                 n: length? form v
                 if any [n < r/2  n > r/3] [
@@ -2019,6 +2026,8 @@ ui-input: function [
         money [all [new  attempt [to money! rejoin [any [f/currency ""] "$" new]]]]
         ; and a date as 2026-11-03
         date [all [new  attempt [to date! new]]]
+        ; and a range of dates as 2026-11-03 2026-11-10, the start first
+        date-range [all [new  attempt [range: load new  all [block? range  2 = length? range  date? range/1  date? range/2  range/1 <= range/2  range]]]]
         check [to logic! new]
         toggle [to logic! new]
     ] [new]
@@ -2026,7 +2035,7 @@ ui-input: function [
         if all [decimal? f/value  f/value = to integer! f/value] [f/value: to integer! f/value]
     ]
     ; text that is not a number, amount or date stays on screen, with its message
-    f/typed: all [find [number money date] f/style  new  none? f/value  new]
+    f/typed: all [find [number money date date-range] f/style  new  none? f/value  new]
     changed f
 ]
 

@@ -19,7 +19,7 @@ import { logic,
   K, NONE, TRUE, FALSE, native, value, string, form, money, decToNumber, decFromNumber, ctxFind, getWord, intern, spell, text, canon, blockOf, wordOf, char, compare, UNSET, throwError, toJson, parseJson,
   type Cell, type MapCell, type ObjectCell, type BlockCell, type WordCell, type StringCell, type Ctx, type Sym,
 } from '../core/index.ts';
-import { mapAt, startHost, startUi, runSource, report, shown, translate, uiText, activeLanguage, editLocal, readLocal, readDate, weekStart, fileSize, LOCAL_KINDS, amountOf, countStep, type Host } from './index.ts';
+import { mapAt, startHost, startUi, runSource, report, shown, translate, uiText, activeLanguage, editLocal, readLocal, readDate, readRange, weekStart, fileSize, LOCAL_KINDS, amountOf, countStep, type Host } from './index.ts';
 import { spawn, runNow, taskResult, handleOf, type HostTask } from './scheduler.ts';
 import { themeCss, DEFAULT_THEME, LOOKS, THEME_WORDS, type ThemeParams } from './theme.ts';
 import { iconNode } from './icons.ts';
@@ -306,7 +306,7 @@ function el<T extends keyof HTMLElementTagNameMap>(tag: T, cls?: string): HTMLEl
   return e;
 }
 
-const INPUTS = new Set(['field', 'password', 'number', 'money', 'date', 'area', 'choice']);
+const INPUTS = new Set(['field', 'password', 'number', 'money', 'date', 'date-range', 'area', 'choice']);
 
 function build(face: ObjectCell): HTMLElement {
   const style = word(face, 'style') ?? 'face';
@@ -983,7 +983,8 @@ function openMenu(entries: MenuEntry[], x: number, y: number, opener: HTMLElemen
 // pattern. Arrows move by days and weeks, Page Up/Down by months, Home/End to
 // the ends of the week, Enter or Space picks, Esc closes. Days are UTC dates.
 
-interface Calendar { face: ObjectCell; opener: HTMLButtonElement; box: HTMLElement; month: HTMLElement; at: Date }
+// A date-range picks two days: the first one stays marked (from) until the second closes it.
+interface Calendar { face: ObjectCell; opener: HTMLButtonElement; box: HTMLElement; month: HTMLElement; at: Date; range: HTMLElement | null; from: Date | null }
 let calendar: Calendar | null = null;
 
 const DAY_MS = 86400000;
@@ -995,6 +996,19 @@ function utcDate(v: Cell): Date | null {
 
 function isoDay(d: Date): string {
   return d.toISOString().slice(0, 10);
+}
+
+/** The two days of a date-range's value, or null. */
+function rangeOf(v: Cell): [Date, Date] | null {
+  if (v.t !== K.Block) return null;
+  const a = utcDate(v.s.data[v.i] ?? NONE), b = utcDate(v.s.data[v.i + 1] ?? NONE);
+  return a !== null && b !== null ? [a, b] : null;
+}
+
+/** A range of dates as it shows on screen: 3 Nov 2026 – 10 Nov 2026. */
+function rangeText(v: Cell): string {
+  if (v.t !== K.Block) return display(v);
+  return v.s.data.slice(v.i, v.i + 2).map(display).join(' – ');
 }
 
 /** The date argument of a min or max rule of a face, or null. */
@@ -1034,7 +1048,16 @@ function openCalendar(face: ObjectCell, opener: HTMLButtonElement): void {
   const head = el('div', 'tb-calendar-head');
   head.append(step('chevron-left', own('previous-month'), -1), month, step('chevron-right', own('next-month'), 1));
   box.append(head);
-  calendar = { face, opener, box, month, at: utcDate(get(face, 'value')) ?? today };
+  const isRange = word(face, 'style') === 'date-range';
+  const value = get(face, 'value');
+  let range: HTMLElement | null = null;
+  if (isRange) {
+    range = el('p', 'tb-calendar-hint');
+    range.setAttribute('aria-live', 'polite');
+    range.textContent = own('pick-start');
+    box.append(range);
+  }
+  calendar = { face, opener, box, month, at: (isRange ? rangeOf(value)?.[0] : utcDate(value)) ?? today, range, from: null };
   opener.setAttribute('aria-expanded', 'true');
   box.addEventListener('keydown', calendarKey);
   box.addEventListener('focusout', ev => {
@@ -1073,7 +1096,10 @@ function renderCalendar(): void {
   const at = cal.at;
   const min = dateRule(cal.face, 'min');
   const max = dateRule(cal.face, 'max');
-  const chosen = utcDate(get(cal.face, 'value'));
+  const value = get(cal.face, 'value');
+  // a range shows the days it holds; once its first day is picked, only that one until the last
+  const [low, high] = cal.range === null ? [utcDate(value), utcDate(value)]
+    : cal.from !== null ? [cal.from, cal.from] : rangeOf(value) ?? [null, null];
   const now = new Date();
   const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
   const fmt = (opts: Intl.DateTimeFormatOptions): Intl.DateTimeFormat => new Intl.DateTimeFormat(lang, { timeZone: 'UTC', ...opts });
@@ -1111,7 +1137,10 @@ function renderCalendar(): void {
       td.tabIndex = ms === at.getTime() ? 0 : -1;
       if (d.getUTCMonth() !== at.getUTCMonth()) td.classList.add('tb-calendar-other');
       if (ms === today) td.setAttribute('aria-current', 'date');
-      td.setAttribute('aria-selected', chosen !== null && ms === chosen.getTime() ? 'true' : 'false');
+      const ends = low !== null && high !== null && (ms === low.getTime() || ms === high.getTime());
+      td.setAttribute('aria-selected', ends ? 'true' : 'false');
+      if (cal.range !== null && low !== null && high !== null && ms > low.getTime() && ms < high.getTime()) td.classList.add('tb-calendar-in');
+      if (cal.range !== null) td.addEventListener('pointerenter', () => spanTo(d));
       if ((min !== null && d < min) || (max !== null && d > max)) td.setAttribute('aria-disabled', 'true');
       td.addEventListener('click', () => pickDay(d));
       row.append(td);
@@ -1120,7 +1149,19 @@ function renderCalendar(): void {
   } while (new Date(ms).getUTCMonth() === at.getUTCMonth());
   grid.append(thead, body);
   cal.box.querySelector('table')?.remove();
-  cal.box.append(grid);
+  if (cal.range !== null) cal.box.insertBefore(grid, cal.range);
+  else cal.box.append(grid);
+}
+
+/** With the first day of a range picked, marks the days between it and the one pointed or focused. */
+function spanTo(d: Date): void {
+  const from = calendar?.from;
+  if (from == null) return;
+  const [a, b] = from <= d ? [isoDay(from), isoDay(d)] : [isoDay(d), isoDay(from)];
+  calendar!.box.querySelectorAll<HTMLElement>('td[data-day]').forEach(td => {
+    const day = td.dataset.day!;
+    td.classList.toggle('tb-calendar-in', day > a && day < b);
+  });
 }
 
 function addMonths(d: Date, n: number): Date {
@@ -1139,8 +1180,16 @@ function pickDay(d: Date): void {
   if (cal === null) return;
   if (cal.box.querySelector(`td[data-day="${isoDay(d)}"]`)?.getAttribute('aria-disabled') === 'true') return;
   const face = cal.face;
+  if (cal.range !== null && cal.from === null) {
+    cal.from = d;
+    cal.range.textContent = own('pick-end');
+    renderCalendar();
+    focusDay();
+    return;
+  }
+  const picked = cal.from === null ? isoDay(d) : cal.from <= d ? `${isoDay(cal.from)} ${isoDay(d)}` : `${isoDay(d)} ${isoDay(cal.from)}`;
   closeCalendar();
-  void fire('ui-input', face, string(isoDay(d))).then(() => fire('ui-blur', face));
+  void fire('ui-input', face, string(picked)).then(() => fire('ui-blur', face));
 }
 
 function calendarKey(ev: KeyboardEvent): void {
@@ -1178,6 +1227,7 @@ function calendarKey(ev: KeyboardEvent): void {
     renderCalendar();
     focusDay();
   }
+  spanTo(to);
 }
 
 const MODIFIER_KEYS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'AltGraph', 'CapsLock', 'Dead', 'Unidentified']);
@@ -1462,7 +1512,8 @@ function buildInput(face: ObjectCell, style: string, m: Mounted): HTMLElement {
     // an amount goes to Trebol as 1234.5 and a date as 2026-11-03; what is not one goes as typed
     const lang = activeLanguage(host.rt);
     const typed = style === 'money' ? readLocal(input.value, lang) ?? input.value
-      : style === 'date' ? readDate(input.value, lang) ?? input.value : input.value;
+      : style === 'date' ? readDate(input.value, lang) ?? input.value
+      : style === 'date-range' ? readRange(input.value, lang) ?? input.value : input.value;
     m.typing++;
     const settled = (): void => {
       m.typing--;
@@ -1478,7 +1529,7 @@ function buildInput(face: ObjectCell, style: string, m: Mounted): HTMLElement {
   input.addEventListener('blur', ev => { if (!inDevtools((ev as FocusEvent).relatedTarget)) void fire('ui-blur', face); });
   const iconWord = style === 'area' || style === 'choice' ? null : iconName(face);
   const svg = iconWord !== null ? icon(iconWord) : null;
-  if (style === 'date') {
+  if (style === 'date' || style === 'date-range') {
     const box = el('div', 'tb-date');
     const pick = el('button', 'tb-date-button');
     pick.type = 'button';
@@ -4693,7 +4744,8 @@ function sync(m: Mounted): void {
       if (m.input instanceof HTMLSelectElement) {
         if (m.input.dataset.options !== optionsKey(f)) fillSelect(m.input, f);
       }
-      const want = v.t === K.None ? str(f, 'typed') ?? '' : style === 'money' || style === 'date' ? display(v) : form(v);
+      const want = v.t === K.None ? str(f, 'typed') ?? '' : style === 'date-range' ? rangeText(v)
+        : style === 'money' || style === 'date' ? display(v) : form(v);
       // never fight the user's typing: with the focus, only a value code set is drawn (set-values
       // after Enter sent the form); a read-only field has no typing to fight
       const theirs = document.activeElement === m.input && !flag(f, 'readonly') && (m.typing > 0 || v === m.typed);
@@ -4722,10 +4774,11 @@ function sync(m: Mounted): void {
     const typing = m.input instanceof HTMLTextAreaElement || (m.input instanceof HTMLInputElement && m.input.type !== 'checkbox');
     if (typing) (m.input as HTMLInputElement | HTMLTextAreaElement).readOnly = readonly;
     m.input.disabled = flag(f, 'disabled') || (readonly && !typing);
-    if (style === 'date') {
+    if (style === 'date' || style === 'date-range') {
       const pick = m.input.nextElementSibling as HTMLButtonElement;
       pick.disabled = m.input.disabled || readonly;
-      pick.setAttribute('aria-label', t !== null ? own('choose-date-of', t) : own('choose-date'));
+      const what = style === 'date' ? 'choose-date' : 'choose-dates';
+      pick.setAttribute('aria-label', t !== null ? own(`${what}-of`, t) : own(what));
     }
     m.input.setAttribute('aria-required', required(f) ? 'true' : 'false');
     m.input.setAttribute('aria-invalid', err !== null ? 'true' : 'false');

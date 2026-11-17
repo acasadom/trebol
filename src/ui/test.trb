@@ -164,6 +164,7 @@ test-texts: function [/local f p t] [
         case [
             string? :v [append out v]
             find [number money date slider] f/style [if v [append out localize v]]
+            all [f/style = 'date-range  v] [append out rejoin [localize v/1 " – " localize v/2]]
         ]
         if all [f/style = 'lookup  v] [
             foreach one either block? v [v] [reduce [v]] [
@@ -228,7 +229,7 @@ test-face: function [action [word!] styles [block!] what /local f p] [
 
 ; --- what the user does ---------------------------------------------------------
 
-text-styles: [field password number money date area rich slider]
+text-styles: [field password number money date date-range area rich slider]
 
 click: function [
     "Clicks a button, link, tile, check, toggle, tab or a step done, the row of a table or list that shows a text, or a node of an orbit."
@@ -303,10 +304,10 @@ test-activate: function [f parent] [
 type: function [
     "Types a text in a field, then leaves it; an empty text clears it. A slider moves to the number typed."
     what [string! word!] "Its label or hint, or its name"
-    text [any-type!] "What to type; a number or date is typed as written"
+    text [any-type!] "What to type; a number or date is typed as written, and a range as its two dates"
 ] [
     f: first test-face 'type text-styles what
-    text: either string? :text [text] [form :text]
+    text: case [string? :text [text]  block? :text [mold/only :text]  true [form :text]]
     ui-input f either empty? text [none] [text]
     ui-blur f
     true

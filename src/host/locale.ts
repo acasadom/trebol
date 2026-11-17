@@ -155,6 +155,20 @@ export function readDate(s: string, lang: string): string | null {
   return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 }
 
+/**
+ * Two dates typed for a range, as `2026-11-03 2026-11-10` with the start first, or null. They are
+ * written apart by a dash with spaces around it, as `3/11/2026 – 10/11/2026` or `3/11/2026 - 10/11/2026`,
+ * or by a space alone; a range typed end first is turned round.
+ */
+export function readRange(s: string, lang: string): string | null {
+  let parts = s.trim().split(/\s*[\u2013\u2014]\s*|\s+-\s+/);
+  if (parts.length === 1) parts = s.trim().split(/\s+/);
+  if (parts.length !== 2) return null;
+  const [a, b] = parts.map(p => readDate(p, lang));
+  if (a == null || b == null) return null;
+  return a <= b ? `${a} ${b}` : `${b} ${a}`;
+}
+
 /** The first day of the week in a language, 1 for Monday to 7 for Sunday. */
 export function weekStart(lang: string): number {
   try {

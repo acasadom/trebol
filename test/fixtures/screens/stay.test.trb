@@ -1,0 +1,28 @@
+Trebol [title: "Screen tests of ranges of dates"]
+
+"a range takes two dates, the start first, and shows both"
+[
+    type "Stay" [3-Nov-2026 10-Nov-2026]
+    see "11/3/2026 – 11/10/2026"
+    click "Book"
+    all [sent/stay = [3-Nov-2026 10-Nov-2026]  none? sent/trip]
+]
+"a range typed the wrong way round, or with one date, is not one"
+[
+    type "Trip" [10-Nov-2026 3-Nov-2026]
+    see "Enter a start date and an end date"
+    type "Trip" "3-Nov-2026"
+    see "Enter a start date and an end date"
+    type "Trip" ""
+    error? try [see "Enter a start date and an end date"]
+]
+"both ends keep within min and max"
+[
+    type "Stay" [20-Oct-2026 2-Nov-2026]
+    see "Must be at least"
+    type "Stay" [20-Dec-2026 2-Jan-2027]
+    see "Must be at most"
+    type "Stay" [1-Nov-2026 31-Dec-2026]
+    click "Book"
+    sent/stay = [1-Nov-2026 31-Dec-2026]
+]

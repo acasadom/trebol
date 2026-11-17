@@ -1149,6 +1149,8 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
 .tb-calendar-other { color: var(--tb-muted); }
 .tb-calendar-day[aria-current="date"] { font-weight: 700; color: var(--tb-primary); }
 .tb-calendar-day[aria-selected="true"] { background: var(--tb-primary); color: var(--tb-on-primary); }
+.tb-calendar-in { background: var(--tb-primary-soft); border-radius: 0; }
+.tb-calendar-hint { margin: var(--tb-space-2) 0 0; font-size: 0.85em; color: var(--tb-muted); text-align: center; }
 .tb-calendar-day[aria-disabled="true"] { color: var(--tb-border-strong); background: transparent; cursor: default; text-decoration: line-through; }
 
 /* menus: in the top layer, placed by the host */
