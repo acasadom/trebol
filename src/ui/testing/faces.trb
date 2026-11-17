@@ -1,0 +1,148 @@
+; A part of the words of screen tests: see test.trb, whose words it shares.
+
+; --- the faces on show ----------------------------------------------------------
+
+; [face parent ...] of the faces the user sees, in their order on the page; first
+; the reactions run, as the browser runs them at the end of each round
+test-shown: function [] [
+    out: copy []
+    if v: shown-view [
+        ; answers that cached asks for behind come before the user looks
+        forever [
+            foreach cycle ui-react v [print cycle]
+            tasks: copy []
+            foreach [key e] ui-cache-entries [if e/asking [append tasks e/task]]
+            if empty? tasks [break]
+            wait tasks
+        ]
+        test-walk v none out
+    ]
+    out
+]
+
+test-walk: function [f parent out] [
+    ; on a wide screen, as the tests see it
+    if any [f/hidden  f/narrow-only] [exit]
+    ; a browser deals a board's cards again when its data changes; here, when it is looked at
+    if f/style = 'board [ui-board f]
+    append out reduce [f parent]
+    unless block? f/pane [exit]
+    case [
+        f/style = 'tabs [
+            ; the label of every tab, the faces of the one chosen
+            repeat i length? f/pane [
+                t: pick f/pane i
+                append out reduce [t f]
+                if all [i = f/value  block? t/pane] [foreach c t/pane [test-walk c t out]]
+            ]
+        ]
+        f/style = 'steps [
+            ; the title of every step that applies, the faces of the one on show, then Back and Next
+            repeat i length? f/pane [
+                t: pick f/pane i
+                case [
+                    t/style <> 'step [test-walk t f out]
+                    t/hidden []
+                    true [
+                        append out reduce [t f]
+                        if all [i = f/value  block? t/pane] [foreach c t/pane [test-walk c t out]]
+                    ]
+                ]
+            ]
+        ]
+        true [foreach c f/pane [test-walk c f out]]
+    ]
+]
+
+test-route: function [
+    "Called by the host when the page goes back or forward: the screens on show follow the link."
+    parts [block!]
+    /local f p
+] [
+    foreach [f p] test-shown [if f/style = 'screens [return ui-route f parts]]
+]
+
+; What a text of the interface shows: a string, a text per language or a word of the dictionary.
+test-text: func [t] [either any [none? :t  logic? :t] [none] [tr t]]
+
+; The cells of a row of a table or list, as shown.
+test-cells: function [f row /local w label] [
+    collect [
+        foreach [w label] any [f/columns []] [
+            v: select row w
+            unless none? :v [keep either string? :v [v] [localize :v]]
+        ]
+    ]
+]
+
+; Every text on show: of faces, values, errors and rows, and the notices shown.
+test-texts: function [/local f p t] [
+    out: copy []
+    foreach [f p] test-shown [
+        foreach t reduce [test-text f/text  test-text f/hint  f/error  test-text f/mark-text] [if string? t [append out t]]
+        v: f/value
+        case [
+            string? :v [append out v]
+            find [number money date slider time] f/style [if v [append out localize v]]
+            all [f/style = 'date-range  v] [append out rejoin [localize v/1 " – " localize v/2]]
+        ]
+        if all [f/style = 'lookup  v] [
+            foreach one either block? v [v] [reduce [v]] [
+                append out either t: all [f/known  select f/known one] [test-text t] [form one]
+            ]
+        ]
+        ; the names of the files an upload or photo has
+        if all [find [upload photo] f/style  v] [
+            foreach one either block? v [v] [reduce [v]] [if object? one [append out one/name]]
+        ]
+        if all [find [choice radio] f/style  v] [
+            foreach o any [f/options []] [
+                if all [map? o  (form v) = form o/value] [append out test-text o/text]
+            ]
+        ]
+        if all [find [table list] f/style  block? f/data] [
+            foreach row f/data [append out test-cells f row]
+        ]
+        ; the title of every node of an orbit, its focus too
+        if all [f/style = 'orbit  block? f/data] [
+            parse any [select f/data 'nodes  []] [any [skip set t skip (append out test-text t) opt block!]]
+        ]
+    ]
+    append out shown-toasts
+    append out shown-questions
+    out
+]
+
+; The nodes of an orbit as [id title back ...]: its neighbours, and its trail with back true.
+test-orbit-nodes: function [f /local id t] [
+    out: copy []
+    unless block? f/data [return out]
+    focus: select f/data 'focus
+    trail: any [select f/data 'trail  []]
+    parse any [select f/data 'nodes  []] [any [
+        set id skip set t skip opt block! (
+            unless id = focus [append out reduce [id  test-text t  to logic! find trail id]]
+        )
+    ]]
+    out
+]
+
+; What a face is called: its label, hint or the text it shows.
+test-called?: function [f what] [
+    either word? what [f/name = what] [
+        any [what = test-text f/text  what = test-text f/hint]
+    ]
+]
+
+; The one face on show of some styles called what; an error naming the action if there is none or more than one.
+test-face: function [action [word!] styles [block!] what /local f p] [
+    found: copy []
+    foreach [f p] test-shown [
+        if all [find styles f/style  test-called? f what] [append found reduce [f p]]
+    ]
+    if empty? found [do make error! rejoin [action ": nothing on the screen is " mold what]]
+    if 2 < length? found [do make error! rejoin [action ": " (length? found) / 2 " faces on the screen are " mold what]]
+    f: first found
+    if any [f/disabled  f/inert  f/readonly] [do make error! rejoin [action ": " mold what " cannot be used now"]]
+    found
+]
