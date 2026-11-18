@@ -82,7 +82,7 @@ Open the first example on its own and make the window narrow. Below 640 pixels t
 column, so the workshop list moves under the form, and a row of fields stacks them. The form already had
 its labels above its controls in the grid's narrow column: a form decides by its own width, not the
 screen's. None of it is written in the view. A screen is laid out once and the theme fits it
-to the width it gets.
+to the width it gets: the width of the page, or of the device it is shown in.
 
 When a screen does want something different on a phone, `narrow-only` shows a face only on narrow screens
 and `wide-only` only on wide ones:
@@ -96,6 +96,32 @@ view [
     text narrow-only "Swipe down for today's bookings."
 ]
 ```
+
+A `device` shows a screen as it is on another one, at that size, made smaller when it does not fit its place.
+It takes the size of its screen, `phone` (390 by 844), `tablet` (834 by 1112), `desktop` (1280 by 800) or a
+pair such as `360x740`, and the faces of that screen. Narrow is the width of the device's screen, so the same
+faces side by side show both ways:
+
+```trebol-ui
+view [
+    width fill
+    grid [1 2] [
+        device phone [
+            heading "Bookings"
+            text narrow-only "On a phone"
+            grid 2 [field "Name" field "Bike"]
+        ]
+        device tablet [
+            heading "Bookings"
+            text wide-only "On a tablet"
+            grid 2 [field "Name" field "Bike"]
+        ]
+    ]
+]
+```
+
+What only the device itself can do stays the device's: a finger, the bigger controls a touch screen gets, and
+the menus and notices a page opens over everything, which open over the page.
 
 ## Space
 

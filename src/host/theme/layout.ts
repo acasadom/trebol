@@ -4,6 +4,8 @@
 export const LAYOUT = String.raw`
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; }
+/* a screen is narrow by the width it has, not the window's: the page's, or a device frame's */
+body { container: tb-screen / inline-size; }
 body {
   background: var(--tb-bg);
   color: var(--tb-text);
@@ -58,7 +60,23 @@ body {
 .tb-view:has(.tb-desktop) { min-height: 100dvh; box-sizing: border-box; }
 .tb-view:has(.tb-desktop) .tb-screens, .tb-screen:has(> .tb-desktop) { flex: 1 1 auto; }
 .tb-view:has(.tb-fit) .tb-screens, .tb-screen:has(> .tb-fit) { flex: 1 1 auto; min-height: 0; }
-.tb-view:has(.tb-fit) { height: 100dvh; box-sizing: border-box; }
+.tb-view:has(.tb-fit:not(.tb-device .tb-fit)) { height: 100dvh; box-sizing: border-box; }
+/* a device: its screen at its own size, made smaller to fit; the narrow rules go by its width */
+.tb-device { width: 100%; max-width: var(--tb-device-w, 390px); min-width: 0; margin-inline: auto; contain: inline-size; overflow: hidden; }
+.tb-device-screen {
+  container: tb-screen / inline-size;
+  width: var(--tb-device-w, 390px);
+  height: var(--tb-device-h, 844px);
+  transform: scale(var(--tb-device-k, 1));
+  transform-origin: 0 0;
+  overflow: auto;
+  background: var(--tb-bg);
+  color: var(--tb-text);
+  border: var(--tb-line) solid var(--tb-border-strong);
+  border-radius: var(--tb-radius-lg);
+  box-shadow: var(--tb-shadow-1);
+}
+.tb-device-screen > .tb-view:has(.tb-fit) { height: 100%; }
 .tb-fit { flex: 1 1 auto; min-height: 0; }
 .tb-fit > * { min-height: 0; overflow: auto; }
 .tb-fit > * > * { flex-shrink: 0; }

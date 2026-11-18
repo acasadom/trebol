@@ -32,6 +32,6 @@ button.tb-crumb:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-fo
 .tb-hidden { display: none !important; }
 /* read by screen readers, not shown */
 .tb-sr-only { position: absolute; top: 0; left: 0; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-@media (min-width: 641px) { .tb-narrow-only { display: none !important; } }
+@container tb-screen (min-width: 641px) { .tb-narrow-only { display: none !important; } }
 
 `;

@@ -2,14 +2,14 @@
 // Only token variables appear here, never raw values of color.
 
 export const RESPONSIVE = String.raw`
-@media (max-width: 640px) {
+@container tb-screen (max-width: 640px) {
   .tb-dev-faces { grid-template-columns: 1fr; grid-template-rows: 2fr 3fr; }
   .tb-dev-tree { border-right: 0; border-bottom: 1px solid var(--tb-border); }
   ol.tb-dev-entries li { grid-template-columns: max-content 1fr; }
   ol.tb-dev-entries time { display: none; }
 }
 
-@media (max-width: 640px) {
+@container tb-screen (max-width: 640px) {
   .tb-wide-only { display: none !important; }
   .tb-view:has(.tb-fit) { height: auto; }
   .tb-fit > * { overflow: visible; }

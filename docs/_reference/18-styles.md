@@ -68,6 +68,12 @@ screen readers, and the keyboard scrolls it.
 A mat that takes all the height left on the page, with the image it is given (`desktop %mat.png [...]`) or a
 color of the theme, on which tiles are laid from left to right. Its `menu` is the context menu.
 
+## device
+
+A screen of another size: its faces laid out at the size of its screen, `phone` (390x844, the first),
+`tablet` (834x1112), `desktop` (1280x800) or a pair from 200x200 to 3840x3840, and made smaller to fit its
+place. The narrow rules go by the width of its screen, as they go by the page's.
+
 ## title
 
 The title of the page or of a screen: the text the browser shows for it, too.

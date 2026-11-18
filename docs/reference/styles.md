@@ -168,6 +168,20 @@ It takes what [`container`](#style-container) takes, and:
 A mat that takes all the height left on the page, with the image it is given (`desktop %mat.png [...]`) or a
 color of the theme, on which tiles are laid from left to right. Its `menu` is the context menu.
 
+(style-device)=
+## device
+
+Made from [`container`](#style-container). Fields of its own: `screen: 390x844`.
+
+It takes what [`container`](#style-container) takes, and:
+
+- a pair (`screen`): the size of its screen in CSS pixels: 390x844
+- one of `phone`, `tablet`, `desktop` (`screen`): a phone (390x844), a tablet (834x1112) or a desktop (1280x800)
+
+A screen of another size: its faces laid out at the size of its screen, `phone` (390x844, the first),
+`tablet` (834x1112), `desktop` (1280x800) or a pair from 200x200 to 3840x3840, and made smaller to fit its
+place. The narrow rules go by the width of its screen, as they go by the page's.
+
 (style-title)=
 ## title
 

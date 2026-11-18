@@ -10,6 +10,7 @@ import { rowOf, el } from './mount.ts';
 import { contextEntries } from './events.ts';
 import { mountedAbove, dragging, swallowClick } from './drag.ts';
 import { type MenuEntry, openMenu } from './menus.ts';
+import { narrowAt } from './narrow.ts';
 
 export interface Swipe {
   face: ObjectCell; row: HTMLElement; x: number; y: number; id: number;
@@ -25,7 +26,7 @@ export const SWIPE_BUTTON = 76;
 export function swipeRows(node: HTMLElement, f: ObjectCell): void {
   node.classList.add('tb-swipe');
   node.addEventListener('pointerdown', ev => {
-    if (ev.pointerType !== 'touch' || swipe !== null || !matchMedia('(max-width: 640px)').matches) return;
+    if (ev.pointerType !== 'touch' || swipe !== null || !narrowAt(node)) return;
     const row = (ev.target as Element).closest<HTMLElement>('tr, li');
     // a row of this face, not of one inside it
     if (row === null || !rowOf.has(row) || mountedAbove(row)?.el !== node) return;

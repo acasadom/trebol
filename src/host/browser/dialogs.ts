@@ -9,6 +9,7 @@ import { type Mounted, host, byCtx, newId, fire, el, build } from './mount.ts';
 import { int } from './drag.ts';
 import { here, setHere } from './screens.ts';
 import { rootFace } from './page.ts';
+import { narrowAt } from './narrow.ts';
 
 export function buildDialog(face: ObjectCell, m: Mounted): HTMLElement {
   const d = el('dialog', 'tb-dialog');
@@ -283,7 +284,7 @@ export function syncSplit(m: Mounted): void {
   if (was === pane) return;
   m.el.dataset['pane'] = pane;
   // on narrow screens the other pane just appeared: take the focus there
-  if (was !== undefined && matchMedia('(max-width: 640px)').matches) {
+  if (was !== undefined && narrowAt(m.el)) {
     const shown = m.el.children[pane === '2' ? 2 : 0] as HTMLElement;
     (shown.querySelector<HTMLElement>('.tb-selected') ?? shown).focus();
   }

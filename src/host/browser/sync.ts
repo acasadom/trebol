@@ -1,5 +1,6 @@
 // --- syncing -----------------------------------------------------------------------
 
+import { syncDevice } from './device.ts';
 import { K, form, intern, text, blockOf, type Cell, type ObjectCell, type BlockCell, type StringCell } from '../../core/index.ts';
 import { translate } from '../index.ts';
 import { runNow, type HostTask } from '../scheduler.ts';
@@ -238,6 +239,7 @@ export function sync(m: Mounted): void {
     }
   }
   if (style === 'toolbar') syncToolbar(m.el);
+  if (style === 'device') syncDevice(m.el);
   if (m.el instanceof HTMLButtonElement) {
     // a submit stays focusable while the form has errors; clicking it shows them
     if (flag(f, 'submit')) m.el.setAttribute('aria-disabled', flag(f, 'disabled') ? 'true' : 'false');

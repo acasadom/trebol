@@ -76,8 +76,18 @@ stylize [
     dialog: container [style: 'dialog  hidden: true  takes: [on: [on-close]]]
     toolbar: container [style: 'toolbar  takes: [pane: block :toolbar-faces "the faces it holds; --- is a divider"]]
     desktop: container [style: 'desktop  takes: [value: [file! url!] "the picture behind it"]]
+    ; a screen of another size, shown as it is there and made smaller to fit: narrow rules go by its width
+    device: container [style: 'device  screen: 390x844  takes: [
+        screen: [pair!] :device-screen "the size of its screen in CSS pixels: 390x844"
+        screen: one-of [phone tablet desktop] :device-screen "a phone (390x844), a tablet (834x1112) or a desktop (1280x800)"
+    ]]
 ]
 
+device-screen: func [v] [
+    either pair? v [all [v/x >= 200  v/y >= 200  v/x <= 3840  v/y <= 3840  v]] [
+        select [phone 390x844 tablet 834x1112 desktop 1280x800] v
+    ]
+]
 grid-weights: func [b [block!]] [
     all [not empty? b  parse b [some [integer! | 'small | 'medium | 'large]]  b]
 ]

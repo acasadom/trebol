@@ -41,7 +41,7 @@ select.tb-input:focus { box-shadow: 0 0 0 2px var(--tb-focus-ring); }
 .tb-table-wrap, .tb-list { border-color: var(--tb-border-strong); border-radius: 2px; box-shadow: none; }
 .tb-table th { color: var(--tb-text); font-weight: 400; padding: 4px var(--tb-space-3); background: linear-gradient(var(--tb-face-hi), var(--tb-face-lo)); border-bottom: 1px solid var(--tb-border-strong); }
 .tb-sort { padding: 4px var(--tb-space-3); }
-@media (min-width: 641px) {
+@container tb-screen (min-width: 641px) {
   .tb-table th { border-right: 1px solid var(--tb-border-strong); }
   .tb-table td { height: 30px; padding: 4px var(--tb-space-3); border-right: 1px solid var(--tb-border); }
   .tb-table tr > :last-child { border-right: 0; }
