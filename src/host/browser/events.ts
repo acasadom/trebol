@@ -65,7 +65,10 @@ export function listen(m: Mounted, style: string): void {
     node.addEventListener('click', ev => {
       ev.preventDefault();
       const r = node.getBoundingClientRect();
-      openMenu(trebolEntries(f, menu as BlockCell, NONE), r.left, r.bottom + 4, node);
+      // read when it opens: code may have given the face another menu since
+      const now = get(f, 'menu');
+      if (now.t !== K.Block) return;
+      openMenu(trebolEntries(f, now as BlockCell, NONE), r.left, r.bottom + 4, node);
     });
   } else if (menu.t === K.Block || flag(f, 'drag')) {
     if (menu.t === K.Block && (style === 'table' || style === 'list')) swipeRows(node, f);
