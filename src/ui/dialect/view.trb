@@ -32,7 +32,7 @@ menu-of: function [spec [block!] /local i d label w b p] [
     out: copy []
     parse spec [any [
         '--- (append out make menu-item [divider: true])
-        | (i: none d: false) opt ['danger (d: true)] opt [set i issue!] set label text-rule (label: text-of label) [
+        | (i: none d: false) opt ['danger (d: true)] opt [p: set i issue! (icon-of i none p)] set label text-rule (label: text-of label) [
             set b block! (append out make menu-item [text: label icon: i items: menu-of b danger: d])
             | set w word! (append out make menu-item [text: label icon: i id: w danger: d])
         ]

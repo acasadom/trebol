@@ -22,7 +22,7 @@ Styles are made from it; a layout never writes it.
 
 Every face takes:
 
-- an issue (`icon`): an icon before the text
+- an issue (`icon`): an icon before the text, one of those Trebol brings
 - one of `primary`, `accent`, `danger`, `success`, `warning`, `muted` (`role`): how it stands out
 - one of `small`, `medium`, `large` (`size`): how wide or tall it is
 - [`width`](#word-width) and one of `small`, `medium`, `large`, `fill` (`size`): how wide it is: width small, or fill
@@ -633,6 +633,11 @@ then each neighbour as a link with the label of its edge. `small`, `medium` or `
 Made from [`face`](#style-face).
 
 An icon of the set Trebol brings, `icon #heart`, drawn in the color of its role.
+
+The icons, for `icon`, an icon before a face's text, a tile's `mark` and a menu's items; another name is a
+problem of the layout (`#hart is not an icon; did you mean #heart?`), and `ui-icons` is the list:
+
+`#search` `#plus` `#minus` `#close` `#check` `#chevron-left` `#chevron-right` `#chevron-up` `#chevron-down` `#chevrons-left` `#chevrons-right` `#arrow-left` `#arrow-right` `#arrow-up` `#arrow-down` `#edit` `#trash` `#user` `#mail` `#phone` `#info` `#warning` `#menu` `#home` `#folder` `#door` `#building` `#landmark` `#shield` `#fireworks` `#coins` `#book` `#scale` `#people` `#tree` `#truck` `#box` `#file` `#invoice` `#template` `#stack` `#image` `#settings` `#filter` `#refresh` `#download` `#upload` `#external` `#eye` `#lock` `#calendar` `#clock` `#star` `#heart` `#type` `#lines` `#rows` `#bold` `#italic` `#heading` `#list` `#list-ordered` `#link` `#hash` `#globe` `#banknote` `#check-square` `#toggle` `#radio` `#dropdown` `#panel` `#columns` `#grid` `#tabs` `#pointer`
 
 (style-button)=
 ## button

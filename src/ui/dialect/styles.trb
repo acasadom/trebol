@@ -7,7 +7,7 @@
 ; container, input and rows-face are only made from, never written in a layout.
 
 ui-define/abstract 'face none [takes: [
-    icon: [issue!] "an icon before the text"
+    icon: [issue!] :icon-of "an icon before the text, one of those Trebol brings"
     role: one-of roles "how it stands out"
     size: one-of sizes "how wide or tall it is"
     size: 'width one-of [small medium large fill] "how wide it is: width small, or fill"

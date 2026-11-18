@@ -3,7 +3,7 @@ Trebol [
     exports: [
         face styles stylize rule add-rule ui-problem layout view theme looks open close toast confirm print-page
         validate-face field-error form-values set-values insert-text ui-pane ui-input ui-files ui-remove-file ui-lookup-search ui-lookup-pick ui-lookup-remove ui-blur ui-click ui-select ui-sort ui-close ui-event ui-menu ui-drop ui-reorder ui-crumb ui-expand ui-orbit ui-palette ui-palette-pick ui-toast-undo ui-toast-gone ui-toasts-done ui-toasts-on ui-step ui-step-go
-        go go-back go-forward can-go-back? can-go-forward? unsaved unsaved? ui-route set-language ui-rows ui-board ui-check ui-sketch ui-dialect-words ui-react ui-style-defs
+        go go-back go-forward can-go-back? can-go-forward? unsaved unsaved? ui-route set-language ui-rows ui-board ui-check ui-sketch ui-dialect-words ui-react ui-style-defs ui-icons
     ]
     parts: [
         %dialect/faces.trb

@@ -65,7 +65,7 @@ stylize [
 ; a link to a screen: link "Clients" 'clients, link "Ada" 'client/42
 link-target: func [v] [case [lit-word? v [to word! v]  lit-path? v [to path! v]  true [v]]]
 ; tile #folder "Records" mark #list "List": the label goes right after the mark's icon
-mark-of: func [v [block!] f] [f/mark-text: second v  first v]
+mark-of: func [v [block!] f place] [f/mark-text: second v  icon-of first v f place]
 
 ; --- data
 
