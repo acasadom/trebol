@@ -175,6 +175,12 @@ test('a tab or a step keeps where it was written: its label and its block', asyn
   assert.equal(r, '[tab ["1:42" "1:46"] step ["1:65" "1:71"]]');
 });
 
+test('a divider of a toolbar keeps where its --- was written', async () => {
+  const r = await ev(`v: first ui-sketch [toolbar [button "a" --- button "b"]]
+    f: second v/pane/1/pane  reduce [f/style f/written]`);
+  assert.equal(r, '[divider ["1:41" "1:41"]]');
+});
+
 test('check reads stylize [view: view [...]] as a style, not as a layout', async () => {
   const r = await ev(`ui-check [
     stylize [view: view [caption: none  takes: [caption: 'caption text]]]

@@ -91,7 +91,17 @@ device-screen: func [v] [
 grid-weights: func [b [block!]] [
     all [not empty? b  parse b [some [integer! | 'small | 'medium | 'large]]  b]
 ]
-toolbar-faces: func [b [block!]] [build-faces replace/all copy b '--- 'divider ui-labels]
+toolbar-faces: function [b [block!]] [
+    out: build-faces replace/all copy b '--- 'divider ui-labels
+    ; a divider keeps where its --- was written
+    marks: copy []
+    forall b [if '--- = first b [append marks loaded-at b]]
+    foreach f out [if all [f/style = 'divider  none? f/place  not empty? marks] [
+        f/place: m: take marks
+        f/written: reduce [m m]
+    ]]
+    out
+]
 split-check: func [f place [block!]] [
     if 2 <> length? f/pane [ui-problem place "split takes two faces, one per pane"]
 ]
