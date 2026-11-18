@@ -522,7 +522,7 @@ its label, and puts in it, as a card, each row of its `data` whose `status` name
 shows the row's `title`, or the fields of `card [title "Job" who "Mechanic"]`, the first one large, as a list
 does. A card can be dragged to another lane, or moved there from its menu; then its field names that lane and
 `on-drop` runs, with `event/row`, `event/from` and `event/to`: when it gives `false`, the card goes back.
-`on-select` sees the card chosen as `row`. When the field holds a machine, a lane is a state: a card goes to the
+`on-select`, or the block after the lanes when there is none, runs when a card is chosen, with it as `row`. When the field holds a machine, a lane is a state: a card goes to the
 lane only by a way of its machine from where it is to that state, whose event the drop sends.
 
 (style-tabs)=

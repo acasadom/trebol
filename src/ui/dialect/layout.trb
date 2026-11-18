@@ -101,6 +101,7 @@ build-faces: function [
                 ]
                 ; board tasks by status [todo "To do" ...]: its lanes; a second block is the action
                 all [f/style = 'board  none? f/lanes] [f/lanes: lanes-of b]
+                f/style = 'board [f/action: b]
                 find data-styles f/style [f/columns: columns-of b]
                 ; the first block holds the items, the second is the action
                 all [f/style = 'breadcrumb  none? f/data] [f/data: crumbs-of b]

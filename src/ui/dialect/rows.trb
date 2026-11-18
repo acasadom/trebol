@@ -116,9 +116,13 @@ board-fill: function [f /local id label] [
     f/built: state
 ]
 
+; Choosing a card runs on-select, or else the board's action, the block after its lanes.
 board-pick: function [f row] [
     f/selected: row
-    if h: handler-for f 'on-select [run-handler f h]
+    case [
+        h: handler-for f 'on-select [run-handler f h]
+        f/action [run-handler f f/action]
+    ]
 ]
 
 ; The event that takes machine m to the state named lane: of the first way from a state it is in to that state

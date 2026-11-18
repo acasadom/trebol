@@ -87,3 +87,8 @@ test('a style of stylize takes what its base takes', async () => {
 test('a face with a problem already says nothing more of its options', async () => {
   assert.equal(await ev('length? second ui-sketch [text "a" morph 3]'), '2');
 });
+
+test('the second block of a board is its action', async () => {
+  assert.equal(await ev('r: ui-sketch [board jobs by status [todo "To do"] [print 1]]  reduce [second r  r/1/pane/1/action]'),
+    '[[] [print 1]]');
+});

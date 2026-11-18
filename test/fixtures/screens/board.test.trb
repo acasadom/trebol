@@ -45,3 +45,7 @@ Trebol [app: %board.trb]
     drag "Paint frame" "Ready"
     in? flow/data/1/step 'done
 ]
+[
+    click "Paint frame"
+    picked = "Paint frame"
+]
