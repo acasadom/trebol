@@ -278,3 +278,8 @@ test('an app whose widget only a browser defines runs in screen tests, its modul
   const { passed, lines } = await ran(['test/fixtures/screens/widget.test.trb']);
   assert.ok(passed, lines.join('\n'));
 });
+
+test('the faces code puts in a pane are linked to their view, so their checks show', async () => {
+  const { passed, lines } = await ran(['test/fixtures/screens/pane.test.trb']);
+  assert.ok(passed, lines.join('\n'));
+});
