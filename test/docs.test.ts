@@ -20,11 +20,11 @@
 
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
-import { basename, dirname, join, relative } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import type { Server } from 'node:http';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { native, value, blockOf, K, ctxFind, intern, NONE, UNSET, type Cell, type ObjectCell } from '../src/core/index.ts';
@@ -66,10 +66,15 @@ native('set-unsaved', '[on [logic!]]', (_t, f) => value(f.args[0]!));
 native('hide-toast', '[id [integer!]]', () => value(UNSET));
 native('repaint', '[]', () => value(blockOf(K.Block, [])));
 
+// The designer's pages are written in trebol-dev ($TREBOL_DEV or ../trebol-dev); docs/designer/ is only the
+// copy the docs build makes of them, so they are run from where they are written.
+const DEV = process.env['TREBOL_DEV'] ?? join(ROOT, '..', 'trebol-dev');
+const DESIGNER = join(isAbsolute(DEV) ? DEV : resolve(ROOT, DEV), 'docs', 'designer');
+
 function pages(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap(e => {
     const path = join(dir, e.name);
-    if (e.isDirectory()) return e.name.startsWith('_') ? [] : pages(path);
+    if (e.isDirectory()) return e.name.startsWith('_') || path === join(DOCS, 'designer') ? [] : pages(path);
     return e.name.endsWith('.md') && path !== join(DOCS, 'design.md') ? [path] : [];
   });
 }
@@ -161,8 +166,9 @@ before(async () => {
 });
 after(() => supplier?.close());
 
-for (const page of pages(DOCS)) {
-  const name = relative(DOCS, page);
+const designerPages = existsSync(DESIGNER) ? pages(DESIGNER) : [];
+for (const page of [...pages(DOCS), ...designerPages]) {
+  const name = designerPages.includes(page) ? join('designer', relative(DESIGNER, page)) : relative(DOCS, page);
   test(`docs: ${name}`, async () => {
     const md = readFileSync(page, 'utf8');
     const repl = new Repl(consoleHost(dirname(page)));

@@ -12,7 +12,8 @@ project = "Trebol"
 
 sys.path.insert(0, str(Path(__file__).parent / "_ext"))
 
-extensions = ["myst_parser", "sphinx.ext.githubpages", "trebol_live"]
+# designer_docs copies the designer's pages in from trebol-dev, where they are written
+extensions = ["myst_parser", "sphinx.ext.githubpages", "trebol_live", "designer_docs"]
 
 # Documentation is authored in Markdown.
 source_suffix = {".md": "markdown"}

@@ -98,6 +98,25 @@ ui/12-when-it-goes-wrong
 ui/13-styles-of-your-own
 ```
 
+## Design with the mouse
+
+The third tutorial builds the same screens again in the designer, `trebol-dev`: faces added from a menu,
+their properties and events set with the mouse, the screen in sight all the time, and the code written back
+as you would write it.
+
+```{toctree}
+:maxdepth: 1
+:caption: Design with the mouse
+
+designer/01-the-window
+designer/02-first-screen
+designer/03-properties
+designer/04-events
+designer/05-screens-tabs-rows
+designer/06-styles-of-your-own
+designer/07-the-code
+```
+
 ```{toctree}
 :maxdepth: 1
 :caption: Reference
