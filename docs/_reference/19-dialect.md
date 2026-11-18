@@ -327,6 +327,12 @@ screen can carry the client's id. On a table or a list, `morph 'client` names ea
 key, `client 7`, so the row chosen becomes the face of the next screen named `[client id]`. Only faces on
 show in both screens move; the rest go with their screen.
 
+## with
+
+`with [role: 'danger]`: a block run bound to the face once the rest of it is read, so its set-words set the
+face's fields. It is the last way out, for a field no word of the style sets; `trebol check` does not run it and a
+designer shows it as code, so a style that needs a field often is better given a word for it in its `takes:`.
+
 ## poster
 
 `poster %intro.jpg`: the image a video shows before it plays.

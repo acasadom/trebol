@@ -1,0 +1,343 @@
+; A part of the UI dialect: see ui.trb, whose words it shares.
+
+; --- what a style takes ------------------------------------------------------------
+;
+; Every style says in its definition what may be written after it: `takes: [...]`. A style
+; made from another with stylize takes what that one takes and what it adds, so a program
+; or a package extends the dialect without touching Trebol:
+;
+;   stylize [rating: field [stars: 5  takes: [stars: 'stars [integer!] "how many stars"]]]
+;
+; An entry names the field it fills, then how it is written:
+;
+;   value: [file! url!]                 a bare value of one of these types
+;   currency: [word!] :currency-of      ... turned by a function; none means "not this one"
+;   poster: 'poster [file! url!]        a keyword, then its value (or values)
+;   looping: 'loop                      a flag: the word alone sets the field to true
+;   kind: one-of chart-kinds            one of the words of a list (a word, or a block)
+;   columns: block :columns-of          a block, in its turn among the blocks after the face
+;   min: rule 'min [number!]            adds the rule [min value]; rule 'required takes none
+;   rules: rule custom                  any rule a program adds with rule
+;   name: first name                    right after the style: a word that names the field
+;   name: first label                   right after the style: a word that labels the face
+;   props/zoom: 'zoom [integer!]        a field of an object the face holds
+;
+; and, once each:
+;
+;   on: [on-change]                     the events it fires; on: any, whatever it is told
+;   done: :rows-fill                    runs once the face is read, to check and fill it
+;   written: false                      made by another face, not written in a layout
+;
+; An argument is a block of types, text (a string, a map or a 'word of the dictionary), or
+; one-of. `first` before an entry makes it one that is only read right after the style. A
+; function is called with the value (a block of them when an entry takes several), the face
+; and the place it was written, as many of these as it takes; a string ends an entry with
+; what it is, for the reference and the designer.
+;
+; What follows the face is tried against the entries that start with a word first, the
+; style's own before those of the style it is made from, then against those of a type.
+; What none takes is a problem of the layout: "poster is not a word of field".
+
+; style name -> its definition, a style-def; the styles only made from, as face, are here too
+ui-style-defs: make map! []
+
+style-def: make object! [
+    name: none          ; the style's word
+    parent: none        ; the definition of the style it is made from
+    proto: none         ; the face it starts from
+    abstract: false     ; only made from, never written: face container input rows-face
+    own: none           ; its own entries
+    entries: none       ; its entries and those of the style it is made from, its own first
+    events: none        ; the events it fires, a block, or any
+    done: none          ; the functions run once a face of it is read, the made-from style's first
+    written: true       ; written in a layout; false when another face makes it
+]
+
+take-entry: make object! [
+    field: none         ; the set-word or set-path it fills
+    how: none           ; value flag keyword rule custom block name label
+    kw: none            ; the word that starts it: flag, keyword or rule
+    args: none          ; what it takes: blocks of types, text, or [one-of words]
+    fn: none            ; the get-word of the function that turns its value
+    lead: false         ; read only right after the style
+    help: none          ; what it is
+]
+
+; Reads a takes block into [entries events done written]; an error says what it cannot read.
+takes-of: function [spec [block!] style [word!] /local field kw t c fn h v p] [
+    entries: copy []  events: copy []  done: copy []  written: true  e: none  args: none
+    arg: [
+        'text (append args 'text)
+        | 'one-of set c [word! | block!] (append/only args reduce ['one-of c])
+        | set t block! (append/only args t)
+    ]
+    entry: [
+        (e: make take-entry []  e/field: field  args: copy [])
+        opt ['first (e/lead: true)]
+        [   'rule ['custom (e/how: 'custom) | set kw lit-word! any arg (e/how: 'rule  e/kw: to word! kw)]
+        |   'block (e/how: 'block)
+        |   'name (e/how: 'name)
+        |   'label (e/how: 'label)
+        |   set kw lit-word! any arg (e/kw: to word! kw  e/how: either empty? args ['flag] ['keyword])
+        |   some arg (e/how: 'value)
+        ]
+        opt [set fn get-word! (e/fn: fn)]
+        opt [set h string! (e/help: h)]
+        (e/args: args  append entries e)
+    ]
+    unless parse spec [any [
+        p: set field [set-word! | set-path!] (w: either set-word? field [to word! field] [none]) [
+            if (w = 'on) [
+                'any (events: 'any)
+                | set v block! (
+                    foreach ev v [unless all [word? ev  event-word? ev] [
+                        do make error! rejoin ["stylize: " style " takes on: events, as on-change, not " mold ev]
+                    ]]
+                    events: copy v
+                )
+            ]
+        |   if (w = 'done) set fn get-word! (append done fn)
+        |   if (w = 'written) 'false (written: false)
+        |   entry
+        ]
+    ]] [
+        do make error! rejoin ["stylize: " style " takes: cannot read " ui-shown copy/part p 4]
+    ]
+    reduce [entries events done written]
+]
+
+; Defines a style: name made from base (none for face itself), with the fields of defaults,
+; and takes: [...] among them for what it takes besides what base takes.
+ui-define: function [name [word!] base defaults [block!] /abstract /local w own events done written] [
+    parent: none
+    either base [
+        unless parent: select ui-style-defs base [
+            do make error! rejoin ["stylize: unknown style " base ui-suggest base words-of ui-style-defs]
+        ]
+        proto: parent/proto
+    ] [proto: face]
+    defaults: copy defaults
+    takes: copy []
+    if p: find defaults first [takes:] [
+        unless block? takes: second p [do make error! rejoin ["stylize: " name " takes: a block"]]
+        remove/part p 2
+    ]
+    set [own events done written] takes-of takes name
+    proto: make proto defaults
+    foreach e own [
+        if all [set-word? e/field  not find [rule custom name label] e/how] [
+            w: to word! e/field
+            unless find words-of proto w [
+                do make error! rejoin ["stylize: " name " takes " w ", which is no field of it; give it one: " w ": none"]
+            ]
+        ]
+    ]
+    def: make style-def []
+    def/name: name  def/parent: parent  def/proto: proto  def/abstract: abstract  def/own: own
+    def/written: written
+    def/entries: append copy own either parent [parent/entries] [[]]
+    def/events: case [
+        any [events = 'any  all [parent  parent/events = 'any]] ['any]
+        parent [union parent/events events]
+        true [events]
+    ]
+    def/done: append either parent [copy parent/done] [copy []] done
+    poke ui-style-defs name def
+    unless abstract [poke styles name proto]
+    set 'ui-any-def none
+    name
+]
+
+stylize: function [
+    "Defines styles from existing ones: name: base [field: value ... takes: [...]]"
+    spec [block!]
+] [
+    parse spec [some [
+        set name set-word! set base word! set defaults block! (ui-define to word! name base defaults)
+    ]]
+]
+
+; The writable style named w, its face to start from; none if w is none.
+ui-style: func [w] [all [word? :w  select styles w]]
+
+; A definition that takes what any style takes: ui-check gives it to a face put in by compose.
+ui-any-def: none
+ui-any: function [] [
+    unless ui-any-def [
+        d: make style-def []
+        d/name: 'face  d/events: 'any  d/done: copy []  d/entries: copy []
+        foreach [n s] ui-style-defs [foreach e s/own [unless e/lead [append d/entries e]]]
+        set 'ui-any-def d
+    ]
+    ui-any-def
+]
+
+; The words that start an entry of def: its flags and keywords, and those of its one-of lists.
+ui-style-words: function [def] [
+    out: copy []
+    foreach e def/entries [
+        if e/kw [append out e/kw]
+        if e/how = 'custom [append out words-of custom-rules]
+        foreach a e/args [if all [block? a  'one-of = first a] [append out ui-choices a/2]]
+    ]
+    unique out
+]
+
+ui-choices: func [c] [either word? c [get c] [c]]
+
+; A word names a field or labels a face right after its style when it is no word of the style.
+; email, url and integer are rules but also common names.
+ui-name?: function [def w] [
+    not any [
+        event-word? w
+        find [global required react is calc] w
+        all [find ui-style-words def w  not find [email url integer] w]
+    ]
+]
+
+; The keyword (or rule) entry of def that starts with w, or none.
+ui-keyword: function [def w] [
+    foreach e def/entries [if all [e/kw = w  find [keyword rule] e/how] [return e]]
+    none
+]
+
+; Calls fn with as many of args as it takes.
+ui-call: function [fn [get-word!] args [block!]] [
+    g: get fn
+    n: 0
+    foreach p words-of :g [if refinement? p [break]  n: n + 1]
+    apply/only :g copy/part args n
+]
+
+; Whether the value at pos is one arg takes.
+ui-arg?: function [arg pos] [
+    if tail? pos [return false]
+    v: first pos
+    case [
+        arg = 'text [parse copy/part pos 1 [string! | map! | lit-word!]]
+        'one-of = first arg [all [word? :v  to logic! find ui-choices arg/2 v]]
+        true [parse copy/part pos 1 ui-types-rule arg]
+    ]
+]
+
+; [file! url!] -> [file! | url!]
+ui-types-rule: function [types [block!]] [
+    out: copy []
+    foreach t types [unless empty? out [append out '|]  append out t]
+    out
+]
+
+; Fills the field of entry e of face f with v.
+ui-set-take: function [f e v] [
+    field: e/field
+    either set-word? field [poke f to word! field :v] [
+        ; props/zoom: a field of an object the face holds
+        holder: first field  w: second field
+        o: select f holder
+        unless object? o [o: make object! []]
+        unless find words-of o w [o: make o reduce [to set-word! w none]]
+        poke o w :v
+        poke f holder o
+    ]
+]
+
+; Takes what entry e of f takes at pos: where it ends, or none when it is not this entry's.
+ui-take-at: function [f e pos labels] [
+    w: first pos
+    switch e/how [
+        flag [return all [word? :w  w = e/kw  (ui-set-take f e true  next pos)]]
+        custom [return all [word? :w  select custom-rules w  (add-rule f reduce [w]  next pos)]]
+        name label block [return none]
+    ]
+    at: pos
+    if find [keyword rule] e/how [
+        unless all [word? :w  w = e/kw] [return none]
+        at: next pos
+    ]
+    values: copy []
+    foreach a e/args [
+        unless ui-arg? a at [return none]
+        append/only values either a = 'text [text-of first at] [first at]
+        at: next at
+    ]
+    if e/how = 'rule [add-rule f head insert values e/kw  return at]
+    v: either 1 = length? values [first values] [values]
+    if e/fn [
+        set 'ui-labels labels
+        v: ui-call e/fn reduce [:v f pos]
+        if none? :v [return none]
+    ]
+    ui-set-take f e :v
+    at
+]
+
+; Takes the value or values at pos for some entry of def: where they end, or none.
+ui-take: function [f def pos labels] [
+    if tail? pos [return none]
+    ; words that start an entry first, then values by their type
+    foreach e def/entries [
+        if all [not e/lead  e/how <> 'value  q: ui-take-at f e pos labels] [return q]
+        if all [not e/lead  e/how = 'value  block? first e/args  'one-of = first first e/args  q: ui-take-at f e pos labels] [return q]
+    ]
+    foreach e def/entries [
+        if all [not e/lead  e/how = 'value  q: ui-take-at f e pos labels] [return q]
+    ]
+    none
+]
+
+; Takes what may come right after the style, in the order of the entries: where it ends.
+ui-take-leads: function [f def pos labels global? [logic!]] [
+    foreach e def/entries [
+        if all [e/lead  not tail? pos] [
+            w: first pos
+            case [
+                e/how = 'name [if all [word? :w  ui-name? def w] [f/name: w  pos: next pos]]
+                e/how = 'label [if all [word? :w  ui-name? def w] [label-face w labels global? f  pos: next pos]]
+                q: ui-take-at f e pos labels [pos: q]
+            ]
+        ]
+    ]
+    pos
+]
+
+; A block after a face: the first block entry not yet filled that takes it, else its action.
+ui-take-block: function [f def b [block!] used [block!] place [block!] labels] [
+    i: 0
+    foreach e def/entries [
+        i: i + 1
+        if all [e/how = 'block  not find used i] [
+            v: either e/fn [set 'ui-labels labels  ui-call e/fn reduce [b f place]] [b]
+            unless none? :v [
+                append used i
+                ui-set-take f e :v
+                exit
+            ]
+        ]
+    ]
+    f/action: b
+]
+
+; An on-xxx handler: the style fires it, or it is a problem.
+ui-take-event: function [f def place [block!] ev [word!] b [block!]] [
+    unless any [def/events = 'any  find def/events ev] [
+        either find ui-events ev [
+            ui-problem place rejoin [ev " is not an event of " def/name ui-suggest ev def/events]
+        ] [ui-known-event place ev]
+    ]
+    unless f/events [f/events: copy []]
+    append f/events reduce [ev b]
+]
+
+; Runs what def does once a face is read.
+ui-take-done: function [f def place [block!]] [
+    foreach fn def/done [ui-call fn reduce [f place]]
+]
+
+; The layout's labels, for the functions of entries that lay out blocks of faces.
+ui-labels: none
+
+; A face written with: [...]: the block runs bound to the face, once it is read, so it sets
+; any field. The last way out, for what no entry of the style takes.
+ui-run-with: function [f] [
+    if all [f/with  not ui-checking] [do bind copy/deep f/with f]
+]

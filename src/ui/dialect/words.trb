@@ -2,26 +2,13 @@
 
 ; --- layout --------------------------------------------------------------------
 
+; The words of these lists are what some styles take (see styles.trb): role primary, size small.
 roles: [primary accent danger success warning muted]
 sizes: [small medium large]
 aligns: [left center right spread]
 valigns: [top middle bottom]
-flags: [fill fit hidden disabled readonly inert narrow-only wide-only linked round drag drop reorder multiple sortable stacked count segmented]
 chart-kinds: [bar line area pie]
-simple-rules: [required email url integer]
 letter: charset [#"a" - #"z" #"A" - #"Z"]
-rule-words: [min max length pattern match check check-async calc react is width pad gap menu accept known links sorted key morph poster captions mark by card step]
-media-styles: [video audio]
-media-flags: [loop muted autoplay]   ; of a video or a sound
-
-; Words that never name a field. email, url and integer are rules too,
-; but also common field names, so the first word after an input style names it.
-field-name?: func [w [word!]] [
-    not any [
-        find roles w  find sizes w  find aligns w  find flags w
-        find rule-words w  w = 'required  event-word? w
-    ]
-]
 
 ; The rules a program or a package adds, by name: name -> the block that checks a value.
 ; Their messages are in i18n/ui, under the same name, so an app can change them.
@@ -45,7 +32,10 @@ rule: function [
     name
 ]
 
-add-rule: func [f rule [block!]] [
+add-rule: func [
+    "Adds a rule to a face, as required or min 5 written after it do: add-rule f [min 5]"
+    f [object!] rule [block!] "The rule's word and what it takes"
+] [
     unless f/rules [f/rules: copy []]
     append/only f/rules rule
 ]

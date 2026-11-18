@@ -87,51 +87,13 @@ face: make object! [
     root: none          ; the view this face belongs to
     place: none         ; where the face was written, file:line:col; none if made at run time
     written: none       ; [first last]: where its first value (a label, if any) and its last were written, as place
+    with: none          ; a block run bound to the face once it is read, for what no option sets
     submit: false
 ]
 
-; style name -> prototype face
+; style name -> the face a face of that style starts from; see styles.trb
 styles: make map! []
 
 container-styles: [view column row form panel grid dialog scroll split toolbar desktop]
 input-styles: [field password number money date date-range time area rich check toggle choice radio upload photo lookup rows widget slider]
 data-styles: [table list tree chart board]
-
-foreach [name base] [
-    view column  column column  row row  form form  panel panel  grid grid  scroll scroll  desktop desktop
-    title title  heading heading  text text  code code  divider divider
-    field field  password password  number number  money money  date date  date-range date-range  time time  area area  rich rich  check check  choice choice
-    toggle toggle  radio radio  upload upload  photo photo  lookup lookup  progress progress  image image  backdrop backdrop  icon icon
-    video video  audio audio  widget widget  slider slider
-    button button  link link  tile tile  table table  list list  tabs tabs  tab tab  steps steps  step step
-    toolbar toolbar  breadcrumb breadcrumb  tree tree  screens screens  screen screen  rows rows  entry entry
-    canvas canvas  chart chart  orbit orbit  board board
-] [
-    poke styles name make face [style: base]
-]
-poke styles 'view make face [style: 'view]
-poke styles 'submit make face [style: 'button role: 'primary submit: true]
-poke styles 'dialog make face [style: 'dialog hidden: true]
-poke styles 'tabs make face [style: 'tabs value: 1]
-; value: the step on show, counting every step; flow: the word of a machine that leads them; trail: the
-; snapshots of that machine before each Next, which Back puts back
-poke styles 'steps make face [style: 'steps value: 1  flow: none  trail: none]
-poke styles 'screens make face [style: 'screens entering: false]   ; entering: the screen on show is still the old one
-poke styles 'split make face [style: 'split value: 1]   ; value: the pane shown on narrow screens
-poke styles 'canvas make face [style: 'canvas extent: 300x150]
-poke styles 'chart make face [style: 'chart kind: 'bar]
-; field: the field of a row that names its lane; lanes: [word label ...]; card: the columns a card shows
-poke styles 'board make face [style: 'board  field: none  lanes: none  card: none]
-
-stylize: function [
-    "Defines styles from existing ones: name: base [field: value ...]"
-    spec [block!]
-] [
-    parse spec [some [
-        set name set-word! set base word! set defaults block! (
-            proto: select styles base
-            unless proto [do make error! rejoin ["stylize: unknown style " base ui-suggest base words-of styles]]
-            poke styles to word! name make proto defaults
-        )
-    ]]
-]

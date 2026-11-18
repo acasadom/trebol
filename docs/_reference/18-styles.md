@@ -1,11 +1,34 @@
 # Styles
 
 The styles of the UI dialect: the kinds of thing a layout is made of. A layout names a style and follows it with
-what that face needs, in any order: a label for the code (`total:` before the style), a field name (the first
-word after an input style), texts (a string, a text per language, or a quoted word of the dictionary), an icon
-(`#search`), words of the dialect (see [the words of the dialect](dialect.md)), and blocks: the children of a
-container, the items of a choice or a menu, and the action, the block at the end. `stylize` makes a style of
-your own from one of these. See [building screens](../ui/01-first-screen.md).
+what that face needs, in any order: a label for the code (`total:` before the style), texts (a string, a text per
+language, or a quoted word of the dictionary), handlers (`on-change [...]`), `react`, `is` and `calc`, and what
+the style takes, which each style below lists: a field name (the first word after an input style), an icon
+(`#search`), words of the dialect (see [the words of the dialect](dialect.md)), values, and blocks (the children
+of a container, the items of a choice or a menu). A block no entry takes is the action, the block at the end.
+What a style does not take is a problem of the layout: `field name poster %p.png` says "poster is not a word of
+field".
+
+Each style is made from another and takes what that one takes, and more: `face` is where every style starts,
+`container`, `input` and `rows-face` are made from it, and no layout writes these four. `stylize` makes a style
+of your own the same way, with a `takes:` block of its own; see [styles of your own](../ui/13-styles-of-your-own.md).
+
+## face
+
+What every face is and takes. Its last way out, `with [...]`, runs a block bound to the face once it is read,
+to set a field no word sets: use it when nothing else does, since check and a designer cannot see into it.
+
+## container
+
+What a face that holds others takes: its children, and the spacing around and between them.
+
+## input
+
+What a face that holds a value of a form takes: its name, its rules, `readonly`.
+
+## rows-face
+
+What a face that shows rows takes: its columns, and the field that tells rows apart.
 
 ## view
 

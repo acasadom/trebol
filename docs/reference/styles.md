@@ -3,14 +3,100 @@
 # Styles
 
 The styles of the UI dialect: the kinds of thing a layout is made of. A layout names a style and follows it with
-what that face needs, in any order: a label for the code (`total:` before the style), a field name (the first
-word after an input style), texts (a string, a text per language, or a quoted word of the dictionary), an icon
-(`#search`), words of the dialect (see [the words of the dialect](dialect.md)), and blocks: the children of a
-container, the items of a choice or a menu, and the action, the block at the end. `stylize` makes a style of
-your own from one of these. See [building screens](../ui/01-first-screen.md).
+what that face needs, in any order: a label for the code (`total:` before the style), texts (a string, a text per
+language, or a quoted word of the dictionary), handlers (`on-change [...]`), `react`, `is` and `calc`, and what
+the style takes, which each style below lists: a field name (the first word after an input style), an icon
+(`#search`), words of the dialect (see [the words of the dialect](dialect.md)), values, and blocks (the children
+of a container, the items of a choice or a menu). A block no entry takes is the action, the block at the end.
+What a style does not take is a problem of the layout: `field name poster %p.png` says "poster is not a word of
+field".
+
+Each style is made from another and takes what that one takes, and more: `face` is where every style starts,
+`container`, `input` and `rows-face` are made from it, and no layout writes these four. `stylize` makes a style
+of your own the same way, with a `takes:` block of its own; see [styles of your own](../ui/13-styles-of-your-own.md).
+
+(style-face)=
+## face
+
+Styles are made from it; a layout never writes it.
+
+Every face takes:
+
+- an issue (`icon`): an icon before the text
+- one of `primary`, `accent`, `danger`, `success`, `warning`, `muted` (`role`): how it stands out
+- one of `small`, `medium`, `large` (`size`): how wide or tall it is
+- [`width`](#word-width) and one of `small`, `medium`, `large`, `fill` (`size`): how wide it is: width small, or fill
+- one of `left`, `center`, `right`, `spread` (`align`): where its children go across
+- [`fill`](#word-fill): as wide as it can be
+- [`fit`](#word-fit): takes the height the window has left; what it holds scrolls inside
+- [`hidden`](#word-hidden): not shown
+- [`disabled`](#word-disabled): shown, but it cannot be used
+- [`inert`](#word-inert): shown as it is, but neither it nor what it holds can be used
+- [`narrow-only`](#word-narrow-only): shown only on a narrow screen
+- [`wide-only`](#word-wide-only): hidden on a narrow screen
+- [`drag`](#word-drag): can be dragged
+- [`drop`](#word-drop): takes what is dropped on it
+- [`reorder`](#word-reorder): its children or rows can be moved around
+- [`menu`](#word-menu) and a block: its context menu, or the menu a button opens
+- [`morph`](#word-morph) and a lit-word or a block: a name shared with a face of the next screen, which this one becomes
+- [`with`](#word-with) and a block: a block run bound to the face once it is read: the last way out, for a field nothing else sets
+
+It fires [`on-over`](#word-on-over), [`on-dbl-click`](#word-on-dbl-click), [`on-key`](#word-on-key), [`on-focus`](#word-on-focus), [`on-unfocus`](#word-on-unfocus), [`on-menu`](#word-on-menu), [`on-select`](#word-on-select), [`on-drop`](#word-on-drop), [`on-reorder`](#word-on-reorder).
+
+What every face is and takes. Its last way out, `with [...]`, runs a block bound to the face once it is read,
+to set a field no word sets: use it when nothing else does, since check and a designer cannot see into it.
+
+(style-container)=
+## container
+
+Made from [`face`](#style-face). Styles are made from it; a layout never writes it.
+
+It takes what [`face`](#style-face) takes, and:
+
+- [`pad`](#word-pad) and an integer or a word: the space inside it, a step from 0 to 7, none or wide
+- [`gap`](#word-gap) and an integer or a word: the space between its children, a step from 0 to 7, none or wide
+- a block (`pane`): the faces it holds
+
+What a face that holds others takes: its children, and the spacing around and between them.
+
+(style-input)=
+## input
+
+Made from [`face`](#style-face). Styles are made from it; a layout never writes it.
+
+It takes what [`face`](#style-face) takes, and:
+
+- a word, right after the style (`name`): the field's name: the key of its value in values
+- [`readonly`](#word-readonly): shown and sent, but not changed, and no rule applies
+- [`required`](#word-required): it must have a value
+- [`match`](#word-match) and a word: another field its value must be the same as
+- [`check`](#word-check) and a block: a block that says whether the value is good
+- [`check-async`](#word-check-async) and a block: a check that asks a server
+- a rule made with [`rule`](#fn-rule): a rule a program adds with rule
+
+It fires [`on-change`](#word-on-change).
+
+What a face that holds a value of a form takes: its name, its rules, `readonly`.
+
+(style-rows-face)=
+## rows-face
+
+Made from [`face`](#style-face). Styles are made from it; a layout never writes it.
+
+It takes what [`face`](#style-face) takes, and:
+
+- a word, right after the style: the word that labels it: table clients is clients: table
+- a block (`columns`): the field of each column and its header
+- [`key`](#word-key) and a word: the field that tells one row from another
+
+What a face that shows rows takes: its columns, and the field that tells rows apart.
 
 (style-view)=
 ## view
+
+Made from [`container`](#style-container).
+
+It fires [`on-find`](#word-on-find).
 
 The whole page: its children one under another. `view [...]` shows it; words before its first face (a width,
 `on-key`) are the view's own.
@@ -18,10 +104,18 @@ The whole page: its children one under another. `view [...]` shows it; words bef
 (style-column)=
 ## column
 
+Made from [`container`](#style-container).
+
 Children one under another.
 
 (style-row)=
 ## row
+
+Made from [`container`](#style-container).
+
+It takes what [`container`](#style-container) takes, and:
+
+- one of `top`, `middle`, `bottom` (`valign`): where its children go up and down
 
 Children side by side, wrapping onto the next line when they do not fit. With fields in it, they line up on
 their controls; `top`, `middle` and `bottom` line them up otherwise. On a phone, a row with fields stacks them.
@@ -29,16 +123,27 @@ their controls; `top`, `middle` and `bottom` line them up otherwise. On a phone,
 (style-form)=
 ## form
 
+Made from [`container`](#style-container).
+
 A form: its fields, with their labels beside them on a wide screen and above them on a narrow one. Its fields are
 checked together, and its `submit` runs only when all of them are valid, with their `values`.
 
 (style-panel)=
 ## panel
 
+Made from [`container`](#style-container).
+
 A group on a raised background, with a title when it is given a text.
 
 (style-grid)=
 ## grid
+
+Made from [`container`](#style-container).
+
+It takes what [`container`](#style-container) takes, and:
+
+- an integer (`cols`): how many columns
+- a block (`cols`): the weight of each column, \[1 4 1\], or small, medium or large for one as wide as the theme says
 
 Columns: `grid 3 [...]` gives three equal ones, `grid [1 4 1] [...]` the weight of each, and `small`, `medium` or `large` in that block a column of a fixed width the theme sets (`grid [small 1 small]`). On a narrow screen, as
 many as fit, down to one.
@@ -46,11 +151,19 @@ many as fit, down to one.
 (style-scroll)=
 ## scroll
 
+Made from [`container`](#style-container).
+
 An area with a scroll of its own, at most 400 pixels high (`small` 240, `large` 640). Its text names it for
 screen readers, and the keyboard scrolls it.
 
 (style-desktop)=
 ## desktop
+
+Made from [`container`](#style-container).
+
+It takes what [`container`](#style-container) takes, and:
+
+- a file or an url (`value`): the picture behind it
 
 A mat that takes all the height left on the page, with the image it is given (`desktop %mat.png [...]`) or a
 color of the theme, on which tiles are laid from left to right. Its `menu` is the context menu.
@@ -58,20 +171,40 @@ color of the theme, on which tiles are laid from left to right. Its `menu` is th
 (style-title)=
 ## title
 
+Made from [`face`](#style-face).
+
+It takes what [`face`](#style-face) takes, and:
+
+- [`count`](#word-count): a number that changes runs from the old one to the new
+
 The title of the page or of a screen: the text the browser shows for it, too.
 
 (style-heading)=
 ## heading
+
+Made from [`face`](#style-face).
+
+It takes what [`face`](#style-face) takes, and:
+
+- [`count`](#word-count): a number that changes runs from the old one to the new
 
 A heading inside a page.
 
 (style-text)=
 ## text
 
+Made from [`face`](#style-face).
+
+It takes what [`face`](#style-face) takes, and:
+
+- [`count`](#word-count): a number that changes runs from the old one to the new
+
 Text. A date, a time, a number or an amount is shown in the format of the active language.
 
 (style-code)=
 ## code
+
+Made from [`face`](#style-face).
 
 Code, or any text shown exactly as written: in a fixed-width font, with its lines and spaces kept, and never
 translated. A line too long for the screen scrolls on its own instead of wrapping.
@@ -79,20 +212,47 @@ translated. A line too long for the screen scrolls on its own instead of wrappin
 (style-divider)=
 ## divider
 
+Made from [`face`](#style-face).
+
 A line between what comes before and after.
 
 (style-field)=
 ## field
+
+Made from [`input`](#style-input).
+
+It takes what [`input`](#style-input) takes, and:
+
+- [`email`](#word-email): its text is an email address
+- [`url`](#word-url): its text is a web address
+- [`integer`](#word-integer): its value is a whole number
+- [`length`](#word-length) and two integers: the fewest and most letters it takes: length 2 40
+- [`pattern`](#word-pattern) and a block: a parse rule its text must match
 
 A line of text. Its value is a string, or `none` when empty.
 
 (style-password)=
 ## password
 
+Made from [`input`](#style-input).
+
+It takes what [`input`](#style-input) takes, and:
+
+- [`length`](#word-length) and two integers: the fewest and most letters it takes: length 8 64
+- [`pattern`](#word-pattern) and a block: a parse rule its text must match
+
 A field whose text is hidden.
 
 (style-number)=
 ## number
+
+Made from [`input`](#style-input).
+
+It takes what [`input`](#style-input) takes, and:
+
+- [`integer`](#word-integer): its value is a whole number
+- [`min`](#word-min) and a number: the least it takes
+- [`max`](#word-max) and a number: the most it takes
 
 A field for a number. Its value is an integer or a decimal number; text that is not one stays on screen with its
 message.
@@ -100,17 +260,39 @@ message.
 (style-money)=
 ## money
 
+Made from [`input`](#style-input).
+
+It takes what [`input`](#style-input) takes, and:
+
+- a word (`currency`): the currency of the amount, its three letters: EUR
+- [`min`](#word-min) and a money or a number: the least it takes
+- [`max`](#word-max) and a money or a number: the most it takes
+
 A field for an amount: `money price "Price" EUR`. Its value is an exact `money!`; it shows formatted, and while
 it is being edited, as a plain number in the language's way.
 
 (style-date)=
 ## date
 
+Made from [`input`](#style-input).
+
+It takes what [`input`](#style-input) takes, and:
+
+- [`min`](#word-min) and a date: the first day it takes
+- [`max`](#word-max) and a date: the last day it takes
+
 A field for a date, with a calendar. Its value is a `date!`; it is typed in the order of the active language, or
 as `2026-12-02`.
 
 (style-date-range)=
 ## date-range
+
+Made from [`input`](#style-input).
+
+It takes what [`input`](#style-input) takes, and:
+
+- [`min`](#word-min) and a date: the first day it takes
+- [`max`](#word-max) and a date: the last day it takes
 
 Two dates, a start and an end, picked on one calendar: `date-range stay "Stay"`. Its value is a block of two
 `date!` values, the start first, or `none`. The first day picked stays marked until the second; the field shows
@@ -120,6 +302,14 @@ the start and `max` for the end. A screen test sets it with `type "Stay" [3-Nov-
 (style-time)=
 ## time
 
+Made from [`input`](#style-input).
+
+It takes what [`input`](#style-input) takes, and:
+
+- [`min`](#word-min) and a time: the earliest time it takes
+- [`max`](#word-max) and a time: the latest time it takes
+- [`step`](#word-step) and a number: the minutes between the times it lists, 1 to 720
+
 A field for a time of day, with a list of times: `time start "Start" step 15`. Its value is a `time!`. It is
 shown in the active language and typed as `9:30`, `9.30`, `930` or `9:30 pm`. The list goes from its `min`
 to its `max`, the whole day unless given, `step` minutes apart, 30 unless given, and opens on the time it holds
@@ -128,10 +318,19 @@ or the next one from now.
 (style-area)=
 ## area
 
+Made from [`input`](#style-input).
+
+It takes what [`input`](#style-input) takes, and:
+
+- [`length`](#word-length) and two integers: the fewest and most letters it takes: length 0 500
+- [`pattern`](#word-pattern) and a block: a parse rule its text must match
+
 Several lines of text.
 
 (style-rich)=
 ## rich
+
+Made from [`input`](#style-input).
 
 Rich text: headings, bold, italic, lists and links. Its value is Markdown, a plain string; `readonly` shows it
 formatted. Code puts text where the user's cursor is with [`insert-text`](#fn-insert-text).
@@ -139,10 +338,18 @@ formatted. Code puts text where the user's cursor is with [`insert-text`](#fn-in
 (style-check)=
 ## check
 
+Made from [`input`](#style-input).
+
 A check box. Its value is `true` or `false`.
 
 (style-choice)=
 ## choice
+
+Made from [`input`](#style-input).
+
+It takes what [`input`](#style-input) takes, and:
+
+- a block (`options`): what to choose from: texts, value and text, groups with a title
 
 A list to choose one from: `choice bike "Bike" ["Road" "City"]`. An option is a string, both its value and its
 text, or a map with a `value` and a `text`. A title followed by a block is a group of options:
@@ -155,10 +362,19 @@ when it is not, picking it puts the value back to `none`.
 (style-toggle)=
 ## toggle
 
+Made from [`input`](#style-input).
+
 A switch. Its value is `true` or `false`.
 
 (style-slider)=
 ## slider
+
+Made from [`input`](#style-input).
+
+It takes what [`input`](#style-input) takes, and:
+
+- two numbers (`rules`): the least and the most it takes: 0 100
+- [`step`](#word-step) and a number: how far one move takes it
 
 A number picked by moving a handle along a line, with the number it stands at after it:
 `slider volume "Volume" 0 50 step 5`. The two numbers are the least and the most it takes, 0 and 100 unless
@@ -168,17 +384,43 @@ its least. The arrow keys, Home, End, Page Up and Page Down move it too. A scree
 (style-radio)=
 ## radio
 
+Made from [`choice`](#style-choice).
+
+It takes what [`choice`](#style-choice) takes, and:
+
+- [`segmented`](#word-segmented): its options as buttons joined in a bar
+
 Options to choose one from, all shown: the same options as a `choice`, groups included, each with its title
 over its options. `segmented` shows them as buttons joined in a bar, the chosen one pressed.
 
 (style-upload)=
 ## upload
 
+Made from [`input`](#style-input).
+
+It takes what [`input`](#style-input) takes, and:
+
+- [`multiple`](#word-multiple): takes more than one file
+- [`accept`](#word-accept) and a block: the files it takes: \["pdf" "image/\*"\]
+
 A button to choose files, which is also a place to drop them. Its value is a block of objects with the `name`,
 `size`, `type` and `file` of each; `multiple` takes more than one, `accept ["pdf" "image/*"]` says which.
 
 (style-video)=
 ## video
+
+Made from [`face`](#style-face).
+
+It takes what [`face`](#style-face) takes, and:
+
+- a file or an url (`value`): the video it plays
+- [`poster`](#word-poster) and a file or an url: the image shown before it plays
+- [`captions`](#word-captions) and a file, an url or a block: its captions: a .vtt file, or one per language \[en %a.vtt es %b.vtt\]
+- [`loop`](#word-loop) (`looping`): starts again when it ends
+- [`muted`](#word-muted) (`silent`): plays without its sound
+- [`autoplay`](#word-autoplay): plays on its own, silent
+
+It fires [`on-end`](#word-on-end).
 
 A video, with the browser's own controls: `video %intro.mp4 "Introduction"`. Its text is what a screen reader
 says for it. It takes `poster`, `captions`, `loop`, `muted`, `autoplay` and `on-end` (see
@@ -188,11 +430,31 @@ otherwise.
 (style-audio)=
 ## audio
 
+Made from [`face`](#style-face).
+
+It takes what [`face`](#style-face) takes, and:
+
+- a file or an url (`value`): the sound it plays
+- [`loop`](#word-loop) (`looping`): starts again when it ends
+- [`muted`](#word-muted) (`silent`): plays without its sound
+- [`autoplay`](#word-autoplay): plays on its own, silent
+
+It fires [`on-end`](#word-on-end).
+
 A sound, with the browser's own controls: `audio %bell.m4a "Bell"`. It takes `loop`, `muted`, `autoplay` and
 `on-end`.
 
 (style-widget)=
 ## widget
+
+Made from [`input`](#style-input).
+
+It takes what [`input`](#style-input) takes, and:
+
+- a tag, right after the style (`tag`): the element it is, as the page's JavaScript defines it: \<geo-map\>
+- a block (`props`): the element's properties
+
+It fires whatever events its element fires.
 
 An element that the page's JavaScript defines, as a face like any other: `widget <geo-map> place "Place"
 [zoom: 12]`. The tag names the element and comes first; the block sets its properties, and a second block is
@@ -204,6 +466,14 @@ The theme's custom properties (`--tb-*`) reach it. See [A face in JavaScript](..
 (style-photo)=
 ## photo
 
+Made from [`input`](#style-input).
+
+It takes what [`input`](#style-input) takes, and:
+
+- [`accept`](#word-accept) and a block: the images it takes
+- [`round`](#word-round): cut to a circle, as a person's photo
+- a file or an url (`value`): the photo it starts with
+
 An image and the buttons to choose another or remove it; clicking the image or dropping one on it chooses
 too. Its value is `none`, the address of an image kept elsewhere (as a record from the server has it), or the
 image chosen: an object with its `name`, `size`, `type` and `file`, as an upload's. It takes images unless
@@ -212,6 +482,16 @@ image chosen: an object with its `name`, `size`, `type` and `file`, as an upload
 (style-lookup)=
 ## lookup
 
+Made from [`input`](#style-input).
+
+It takes what [`input`](#style-input) takes, and:
+
+- [`multiple`](#word-multiple): takes more than one
+- [`known`](#word-known) and a map: what each value shows as
+- [`links`](#word-links) and a map: the screen each value links to when it is read only
+
+It fires [`on-search`](#word-on-search).
+
 A field that searches as the person types: its `on-search` gives what was found, and the person picks one, or
 several with `multiple`. `known` says what each value shows as; `links`, the screen each links to when it is
 read only.
@@ -219,10 +499,24 @@ read only.
 (style-progress)=
 ## progress
 
+Made from [`face`](#style-face).
+
+It takes what [`face`](#style-face) takes, and:
+
+- a percent (`value`): how far it is
+
 A bar: its value is a percent or a number from 0 to 1; with `none`, it moves without saying how far.
 
 (style-image)=
 ## image
+
+Made from [`face`](#style-face).
+
+It takes what [`face`](#style-face) takes, and:
+
+- a file or an url (`value`): the picture it shows
+- a pair (`extent`): its size
+- [`round`](#word-round): cut to a circle, as a person's photo
 
 An image, from a file or an address: `image %logo.png`. Its text is what a screen reader says for it; without
 one it is decoration. `small`, `medium`, `large` and `fill` set its width, and a pair its size, which it fills,
@@ -230,6 +524,12 @@ cut to fit: `image %ada.jpg "Ada" 48x48 round`. `round` cuts it to a circle, as 
 
 (style-backdrop)=
 ## backdrop
+
+Made from [`face`](#style-face).
+
+It takes what [`face`](#style-face) takes, and:
+
+- a file or an url (`value`): the picture it shows
 
 An image behind what holds it: `view [backdrop %entry.jpg ...]`. It is not laid out with the rest; it
 covers its container, and the whole window when that is the view or a screen. The theme lays a veil of the
@@ -239,7 +539,12 @@ dark; muted text takes the color of the text there.
 (style-canvas)=
 ## canvas
 
-It starts with `extent: 300x150`.
+Made from [`face`](#style-face). It starts with `extent: 300x150`.
+
+It takes what [`face`](#style-face) takes, and:
+
+- a pair (`extent`): the size of its drawing space
+- a block (`draw`): what it draws, in the draw dialect
 
 A drawing: `canvas 120x120 [fill-pen primary circle 60x60 50]`. The pair is the size of its drawing space, and
 the block is in the [draw dialect](draw.md). It is as wide as that size, or narrower when there is no room,
@@ -249,7 +554,15 @@ reader; without one, it is decoration. Setting `draw` redraws it.
 (style-chart)=
 ## chart
 
-It starts with `kind: bar`.
+Made from [`face`](#style-face). It starts with `kind: bar`.
+
+It takes what [`face`](#style-face) takes, and:
+
+- one of `bar`, `line`, `area`, `pie`, right after the style (`kind`): the kind of chart
+- a word, right after the style: the word that labels it: chart bar income is income: chart bar
+- one of `bar`, `line`, `area`, `pie` (`kind`): the kind of chart
+- a block (`columns`): the field of each series and its label
+- [`stacked`](#word-stacked): its series one on top of another
 
 A chart of rows: `chart bar income "Income" [month "Month" repairs "Repairs" parts "Parts"]`. The word after
 `chart` is its kind, `bar`, `line`, `area` or `pie`; the next one is its label, as in a table. The first
@@ -260,6 +573,15 @@ Setting `data` redraws it, and a screen reader reads the same numbers as a table
 
 (style-orbit)=
 ## orbit
+
+Made from [`face`](#style-face).
+
+It takes what [`face`](#style-face) takes, and:
+
+- a word, right after the style: the word that labels it
+- a block (`data`): what it shows: its focus, nodes, edges and trail
+
+It fires [`on-back`](#word-on-back).
 
 One node of a graph in the middle and its neighbours on rings around it, joined by their edges:
 
@@ -294,15 +616,30 @@ then each neighbour as a link with the label of its edge. `small`, `medium` or `
 (style-icon)=
 ## icon
 
+Made from [`face`](#style-face).
+
 An icon of the set Trebol brings, `icon #heart`, drawn in the color of its role.
 
 (style-button)=
 ## button
 
+Made from [`face`](#style-face).
+
+It takes what [`face`](#style-face) takes, and:
+
+- [`key`](#word-key) and a string (`shortcut`): a key that presses it: key "Ctrl+S"
+
 A button: the block after it runs when it is pressed. With a `menu`, it opens the menu instead.
 
 (style-link)=
 ## link
+
+Made from [`face`](#style-face).
+
+It takes what [`face`](#style-face) takes, and:
+
+- a lit-word, a lit-path, a file or an url (`value`): where it goes: a screen, 'clients or 'client/42, a file or a url
+- [`key`](#word-key) and a string (`shortcut`): a key that presses it: key "Ctrl+S"
 
 A link to a screen of the app: `link "Clients" 'clients`. It is a link for the browser too, so it opens in a
 new tab when the person asks. Given a url or text instead, `link "Web" client/website`, it opens a web, mail
@@ -312,11 +649,27 @@ that goes nowhere, so data from a server can never run code. The same holds for 
 (style-tile)=
 ## tile
 
+Made from [`face`](#style-face).
+
+It takes what [`face`](#style-face) takes, and:
+
+- [`linked`](#word-linked): stands for something kept elsewhere: marked with an arrow
+- [`mark`](#word-mark) and an issue and a text: a second, small icon on its icon, and its label: mark #list "List"
+
 A large icon with its name under it, for a desktop: `tile #folder "Reports" [...]`. `linked` marks with an arrow
 one that stands for something kept elsewhere, and `mark #list "List"` puts a second, small icon on its icon.
 
 (style-table)=
 ## table
+
+Made from [`rows-face`](#style-rows-face).
+
+It takes what [`rows-face`](#style-rows-face) takes, and:
+
+- [`sortable`](#word-sortable): its headers sort its rows
+- [`sorted`](#word-sorted) and a block: the order it starts in: \[due asc\]
+
+It fires [`on-sort`](#word-on-sort).
 
 Rows of data in columns: `table board [customer "Customer" due "Due back"]` names the field of each column and
 its header; its `data` is a block of maps or objects. On a narrow screen, each row is a card. `on-select` lets the
@@ -329,11 +682,23 @@ field, and `image round` cuts it to a circle: `table people [photo "" image roun
 (style-list)=
 ## list
 
+Made from [`rows-face`](#style-rows-face).
+
 The same rows as a table, as a list: the first field stands out and the rest go on a second line. The picture of
 a column of images goes first.
 
 (style-board)=
 ## board
+
+Made from [`face`](#style-face). Fields of its own: `field: none`, `lanes: none`, `card: none`.
+
+It takes what [`face`](#style-face) takes, and:
+
+- a word, right after the style: the word that labels it: board tasks is tasks: board
+- [`by`](#word-by) and a word (`field`): the field of a card that names its lane: by status
+- a block (`lanes`): a word and a label for each lane
+- [`card`](#word-card) and a block: the fields a card shows
+- [`key`](#word-key) and a word: the field that tells one card from another
 
 Cards in lanes: `board jobs by status [todo "To do" doing "Doing" done "Done"]` makes a lane for each word, with
 its label, and puts in it, as a card, each row of its `data` whose `status` names it, a word or a text. A card
@@ -346,7 +711,11 @@ lane only by a way of its machine from where it is to that state, whose event th
 (style-tabs)=
 ## tabs
 
-It starts with `value: 1`.
+Made from [`face`](#style-face). It starts with `value: 1`.
+
+It takes what [`face`](#style-face) takes, and:
+
+- a block (`pane`): a label and a block of faces per tab
 
 Tabs, each with its title and its block: `tabs ["General" [...] "Advanced" [...]]`. Its value is the number of
 the tab shown.
@@ -354,12 +723,19 @@ the tab shown.
 (style-tab)=
 ## tab
 
+Made from [`face`](#style-face). Another face makes it; a layout does not write it.
+
 One tab of `tabs`, which makes it: it is not written in a layout.
 
 (style-steps)=
 ## steps
 
-It starts with `value: 1`.
+Made from [`face`](#style-face). It starts with `value: 1`. Fields of its own: `flow: none`, `trail: none`.
+
+It takes what [`face`](#style-face) takes, and:
+
+- a word (`flow`): the machine that leads the steps
+- a block (`pane`): a label and a block of faces per step
 
 A form filled in one step at a time: `steps ["Who" [...] "Company" when [values/kind = "Company"] [...] "Check"
 [...]]`, each step a title and its block. A bar on top numbers the titles, and on a narrow screen a line says
@@ -374,10 +750,18 @@ before.
 (style-step)=
 ## step
 
+Made from [`face`](#style-face). Another face makes it; a layout does not write it.
+
 One step of `steps`, which makes it: it is not written in a layout.
 
 (style-toolbar)=
 ## toolbar
+
+Made from [`container`](#style-container).
+
+It takes what [`container`](#style-container) takes, and:
+
+- a block (`pane`): the faces it holds; --- is a divider
 
 A row of buttons that the keyboard reaches with one Tab and moves through with the arrows; `---` puts a separator.
 On a narrow screen, a button with an icon shows only the icon.
@@ -385,11 +769,21 @@ On a narrow screen, a button with an icon shows only the icon.
 (style-breadcrumb)=
 ## breadcrumb
 
+Made from [`face`](#style-face).
+
+It takes what [`face`](#style-face) takes, and:
+
+- a block (`data`): its items: a label and where each goes
+
 Where the person is: `breadcrumb ["Home" home "Clients" clients "Ada"] [go value]`. Each item is a text and the
 word its action receives; the last, without a word, is where they are.
 
 (style-tree)=
 ## tree
+
+Made from [`rows-face`](#style-rows-face).
+
+It fires [`on-expand`](#word-on-expand).
 
 Rows with rows inside, in their `children`, which open and close. Like a table, its rows can be chosen and
 dragged.
@@ -397,22 +791,44 @@ dragged.
 (style-screens)=
 ## screens
 
+Made from [`face`](#style-face). Fields of its own: `entering: false`.
+
+It takes what [`face`](#style-face) takes, and:
+
+- a block (`data`): its screens: a word, a title and a block of faces each
+
+It fires [`on-change`](#word-on-change).
+
 The screens of an app, one shown at a time, each with a link of its own: `screens [home "Home" [...] client [id]
 "Client" [...]]`. `go` goes to one; its value is the route shown.
 
 (style-screen)=
 ## screen
 
+Made from [`face`](#style-face). Another face makes it; a layout does not write it.
+
+It fires [`on-enter`](#word-on-enter), [`on-leave`](#word-on-leave).
+
 One screen of `screens`, which makes it: it is not written in a layout.
 
 (style-rows)=
 ## rows
+
+Made from [`input`](#style-input).
+
+It takes what [`input`](#style-input) takes, and:
+
+- a block (`template`): the fields of one row
+- [`min`](#word-min) and an integer: the fewest rows it takes
+- [`max`](#word-max) and an integer: the most rows it takes
 
 A field made of rows the person adds and removes, each with the fields of its block:
 `rows lines "Lines" min 1 [field part "Part" number qty "Qty"]`. Its value is a block with a map for each row.
 
 (style-entry)=
 ## entry
+
+Made from [`face`](#style-face). Another face makes it; a layout does not write it.
 
 One row of `rows`, which makes it: it is not written in a layout.
 
@@ -427,7 +843,9 @@ presses it. Its block sees the form's `values`.
 (style-dialog)=
 ## dialog
 
-It starts with `hidden: true`.
+Made from [`container`](#style-container). It starts with `hidden: true`.
+
+It fires [`on-close`](#word-on-close).
 
 A window over the page, hidden until `open` shows it and `close` hides it, with a title when it is given a text.
 On a phone, it takes the whole screen.
@@ -435,7 +853,7 @@ On a phone, it takes the whole screen.
 (style-split)=
 ## split
 
-It starts with `value: 1`.
+Made from [`container`](#style-container). It starts with `value: 1`.
 
 Two panes side by side, with a handle between them that the mouse or the arrows move. On a narrow screen one is
 shown at a time: the one its value says, 1 or 2; the second has a button back to the first.

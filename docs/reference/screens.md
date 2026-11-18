@@ -31,7 +31,7 @@ layout spec
 (fn-stylize)=
 ## stylize
 
-Defines styles from existing ones: name: base \[field: value ...\]
+Defines styles from existing ones: name: base \[field: value ... takes: \[...\]\]
 
 ```text
 stylize spec
@@ -58,6 +58,21 @@ iban`. Its block runs with `value`, `face` and `values` as a `check` does, only 
 rule's message, or a string to show instead. The message is kept in `i18n/ui` under the rule's name, so an
 app may change it, or add a language, as with Trebol's own messages. A name the dialect already has, or one of
 Trebol's texts, is an error. Packages add their rules this way: importing the package is enough.
+
+(fn-add-rule)=
+## add-rule
+
+Adds a rule to a face, as required or min 5 written after it do: add-rule f \[min 5\]
+
+```text
+add-rule f rule
+```
+
+- `f` (`object!`)
+- `rule` (`block!`): The rule's word and what it takes
+
+What a style of your own does with a rule it reads: in a `done:` function, `add-rule f reduce ['max f/most]`
+gives the face the rule `max`, as writing `max 5` after it would.
 
 (fn-theme)=
 ## theme

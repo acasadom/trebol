@@ -95,6 +95,7 @@ ui/09-server
 ui/10-charts
 ui/11-testing
 ui/12-when-it-goes-wrong
+ui/13-styles-of-your-own
 ```
 
 ```{toctree}
