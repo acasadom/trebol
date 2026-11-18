@@ -62,7 +62,8 @@ ui-check: function [
             opt ['compose | path! if ('compose = first first next p)]
             set b block! (
                 append/only blocks reduce [first p b]
-                walk b
+                ; stylize [view: view [...]] defines a style: its blocks are no layouts
+                unless 'stylize = first p [walk b]
             )
             | 'machine set b block! (append/only blocks reduce ['machine b])
             ; a rule of the program: its words may follow a style

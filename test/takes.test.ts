@@ -155,6 +155,14 @@ test('ui-style-defs gives a designer what each style takes: its entries, events,
   assert.equal(r, '[field [on-change on-rate] [stars half none] "how many stars it shows"]');
 });
 
+test('check reads stylize [view: view [...]] as a style, not as a layout', async () => {
+  const r = await ev(`ui-check [
+    stylize [view: view [caption: none  takes: [caption: 'caption text]]]
+    view [caption "C" text "a"]
+  ]`);
+  assert.equal(r, '[]');
+});
+
 test('check knows the styles a package defines, as it knows its rules', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'trebol-takes-'));
   mkdirSync(join(dir, 'node_modules', 'trebol-stars'), { recursive: true });
