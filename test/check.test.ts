@@ -34,7 +34,7 @@ view [
     widget <x-y> [zoom: no-such-word]
     tabs ["A" [text "a"] 1]
 ]
-view compose/deep [text (name) button "a" menu (items) hiden  panel [(face) inert]]
+view compose/deep [text (name) button "a" menu (items) hiden  panel [(face) inert]  screens [home "Home" (home-faces)]]
 `);
   const { clean, lines } = await checked([file]);
   assert.equal(clean, false);

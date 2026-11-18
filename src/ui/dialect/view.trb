@@ -7,7 +7,9 @@ screens-of: function [spec [block!] /local n t a b p] [
     out: copy []
     if empty? spec [ui-problem spec "screens take a name, a title, an optional block of arguments and a block per screen"]
     parse spec [any [
-        set n word! set t text-rule (a: copy []) opt [ahead [block! block!] set a block!] set b block! (
+        set n word! set t text-rule (a: copy []) opt [ahead [block! block!] set a block!]
+        ; check reads view compose [...] with its parens in it: the screen's block is put in by code
+        [set b block! | if (ui-checking) paren! (b: copy [])] (
             forall a [unless word? first a [ui-problem a "the arguments of a screen are words"]]
             append out reduce [n text-of t head a b]
         )
