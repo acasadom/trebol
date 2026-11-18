@@ -58,10 +58,6 @@ interface World {
   styles: Map<string, ObjectCell>;
   /** The face every style starts from. */
   face: ObjectCell;
-  /** The options of the dialect, [option kind choices help ...]; what every face takes; what each style takes besides. */
-  options: Cell[];
-  anyFace: string[];
-  takes: Map<string, string[]>;
 }
 
 export async function world(): Promise<World> {
@@ -80,12 +76,7 @@ export async function world(): Promise<World> {
   const map = user('styles') as MapCell;
   const styles = new Map<string, ObjectCell>();
   for (let i = 0; i + 1 < map.s.data.length; i += 2) styles.set(form(map.s.data[i]!), map.s.data[i + 1] as ObjectCell);
-  const words = (c: Cell) => { const b = c as BlockCell; return b.s.data.slice(b.i).map(w => form(w)); };
-  const opts = user('ui-options') as BlockCell;
-  const each = (user('ui-style-options') as BlockCell);
-  const takes = new Map<string, string[]>();
-  for (let i = each.i; i + 1 < each.s.data.length; i += 2) takes.set(form(each.s.data[i]!), words(each.s.data[i + 1]!));
-  return { fns, styles, face: user('face') as ObjectCell, options: opts.s.data.slice(opts.i), anyFace: words(user('any-face-options')), takes };
+  return { fns, styles, face: user('face') as ObjectCell };
 }
 
 function isFunction(c: Cell): boolean {
@@ -237,7 +228,7 @@ function fieldOf(obj: ObjectCell, name: string): Cell | undefined {
 }
 
 /** A page of the reference that is not about functions: what its sections are and what is said of each. */
-interface Kind { names: (w: World) => string[]; prefix: string; describe: (w: World, name: string) => string; head?: (w: World) => string }
+interface Kind { names: (w: World) => string[]; prefix: string; describe: (w: World, name: string) => string }
 
 const KINDS: Record<string, Kind> = {
   'styles.md': {
@@ -251,18 +242,7 @@ const KINDS: Record<string, Kind> = {
       const said: string[] = [];
       if (base !== name) said.push(`Made from [\`${base}\`](#${dialectLabel('style', base)}).`);
       if (own.length > 0) said.push(`It starts with ${own.map(k => `\`${k}: ${mold(fieldOf(proto, k)!)}\``).join(', ')}.`);
-      const takes = (w.takes.get(base) ?? []).filter(o => !w.anyFace.includes(o));
-      if (takes.length > 0) said.push(`Besides what every face takes, it takes ${takes.map(o => `\`${o}\``).join(', ')}.`);
       return said.join(' ');
-    },
-    head: w => {
-      const lines = ['The options a face is written with, by the names the styles below give them, and what each is.',
-        `Every face takes ${w.anyFace.map(o => `\`${o}\``).join(', ')}; each style says what else it takes, and`
-        + ' an option its style does not take is a problem of the layout.', ''];
-      for (let i = 0; i + 3 < w.options.length; i += 4) {
-        lines.push(`- \`${form(w.options[i]!)}\`: ${esc(form(w.options[i + 3]!))}`);
-      }
-      return lines.join('\n');
     },
   },
   'dialect.md': {
@@ -318,7 +298,6 @@ export async function pages(): Promise<Map<string, string>> {
   for (const t of topics) {
     const body = [`# ${t.title}`, t.intro];
     const kind = KINDS[t.file.replace(/^\d+-/, '')];
-    if (kind?.head !== undefined) body.push(kind.head(w));
     if (kind !== undefined) {
       const want = kind.names(w);
       const have = t.sections.map(s => s.name);

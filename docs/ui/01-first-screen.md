@@ -97,10 +97,6 @@ view [
 ** At: app.trb:3:5
 ```
 
-A word of the dialect that the style does not take is a problem too, since it would do nothing:
-`field name "Name" poster %photo.png` says *poster does nothing on a field*. Each style in
-[the reference](../reference/styles.md) lists what it takes.
-
 `trebol dev` shows it on the page, over the app, with every other error the app does not catch, such as one in
 the action of a button; *Close* puts it away. On any other server the page shows nothing of it, and the error is
 in the browser's console (in Chrome, *View › Developer › JavaScript Console*).

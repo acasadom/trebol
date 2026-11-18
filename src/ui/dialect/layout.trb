@@ -67,7 +67,7 @@ text-of: func [t] [either lit-word? :t [to word! t] [t]]
 ; The faces of a block of the dialect; labels collects [word face ...].
 build-faces: function [
     spec [block!] labels [block!]
-    /local label global? style-word f proto n s b w a i v ev p pos later before
+    /local label global? style-word f proto n s b w a i v ev p pos later
 ] [
     out: copy []
     ; what starts the next face
@@ -181,7 +181,6 @@ build-faces: function [
         |   pos: set style-word word! if (proto: select styles style-word) (
                 f: make proto []
                 f/place: loaded-at pos
-                before: if ui-problems [length? ui-problems]
                 append out f
                 if label [label-face label labels global? f]
             )
@@ -200,8 +199,6 @@ build-faces: function [
                 ]
             ]
             ended: (f/written: reduce [loaded-at began  loaded-at back ended])
-            ; an option that does nothing, unless the face has a problem already, which it may come from
-            (if any [none? before  before = length? ui-problems] [ui-stray-options f proto began])
             (if f/style = 'rows [rows-fill f])
             (if f/style = 'slider [slider-fill f pos])
             (if all [f/style = 'time  f/step  any [not integer? f/step  f/step < 1  f/step > 720]] [
