@@ -132,6 +132,18 @@ stylize [
 view [geo-map place "Where" zoom 12]
 ```
 
+## The view is a style too
+
+`view` is a style made from `container`, and the words before its first face are read by what it takes. A
+program or a package gives it words of its own as to any style, by making `view` from itself:
+
+```text
+stylize [view: view [caption: none  takes: [caption: 'caption text "what the window is called"]]]
+view [caption "Bookings" text "Today"]
+```
+
+A screen's block is read the same way by the style `screen`.
+
 ## The last way out: with
 
 When no word of a style sets a field, `with` runs a block bound to the face once the rest of it is read:

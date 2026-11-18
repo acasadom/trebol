@@ -11,7 +11,7 @@ layout: function [
     "Turns a block of the UI dialect into a view face; /only gives the block of faces."
     spec [block!]
     /only "Return the faces, not a view holding them"
-    /local ev b w
+    /local def
 ] [
     ; a copy, so laying out the same block twice never shares bindings
     spec: copy/deep spec
@@ -19,20 +19,28 @@ layout: function [
     either only [
         out: ui-build spec labels
     ] [
-        ; on-xxx handlers and its width before the first face belong to the view itself
-        events: copy []
-        width: none
-        parse spec [any [
-            p: set ev word! if (event-word? ev) set b block! (ui-known-event p ev  append events reduce [ev b])
-            | 'width set w ['small | 'medium | 'large | 'fill] (width: w)
-        ] body:]
-        out: make select styles 'view [pane: ui-build body labels]
-        unless empty? events [out/events: events]
-        out/size: width
+        ; what comes before the first face belongs to the view itself, read as any face's
+        out: make select styles 'view []
+        def: select ui-style-defs 'view
+        out/pane: ui-build/in spec labels out def
+        ui-take-done out def spec
     ]
     bind-labels spec labels copy []
     morphs either only [out] [reduce [out]]
     out
+]
+
+; What a block of faces says of the face that holds it, before its first face: its words,
+; events and values, read by what def takes, as those after a face. Where the faces start.
+ui-head: function [f def spec [block!] labels [block!] /local p q ev b w] [
+    parse spec [any [
+        p: set ev word! if (event-word? ev) set b block! (ui-take-event f def p ev b)
+        | p: if (all [not ui-style first p  q: ui-take f def p labels]) :q
+        ; a word of the face's own given the wrong value: width fil
+        | p: set w word! if (all [not ui-style w  ui-keyword def w]) (ui-problem p ui-stray def w)
+            opt [if (ui-stray-takes? def p) q: if (not any [ui-style first q  set-word? first q]) skip]
+    ] body:]
+    body
 ]
 
 ; Binds a laid-out block to an object of its labels and the given [word: value ...].

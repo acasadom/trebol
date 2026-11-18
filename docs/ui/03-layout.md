@@ -46,6 +46,11 @@ narrower than what it holds, except in a grid with `fit`, where what it holds sc
 and the numbers share what is left: `grid fit [small 1 medium]` is a desktop app, with a narrow list on the left,
 the work in the middle and a pane on the right.
 
+The words before a view's first face are the view's own, read as those after a style are a face's:
+`view [width fill ...]` makes the page as wide as the window, and `on-key [...]` there gets the keys no face
+handles. A word the view does not take is a problem `trebol check` names, as for any face. A screen's block
+starts the same way, with its `on-enter` and `on-leave`.
+
 ## Lining up
 
 A `row` keeps its faces together at the start. A word after `row` moves them: `center`, `right`, or

@@ -16,10 +16,11 @@ ui-problem: func [
 ]
 
 ; The faces of a block, as build-faces gives them, or an error with every problem in it.
-ui-build: function [spec [block!] labels [block!]] [
+; /in: the block is that of face f, of style def, whose own words come before its faces.
+ui-build: function [spec [block!] labels [block!] /in f def] [
     outer: ui-problems
     set 'ui-problems copy []
-    out: try [build-faces spec labels]
+    out: try [build-faces either in [ui-head f def spec labels] [spec] labels]
     found: ui-problems
     set 'ui-problems outer
     if error? out [do out]
@@ -97,13 +98,13 @@ ui-check: function [
                 ; screens and rows lay these out when shown
                 while [not empty? faces] [
                     f: take faces
-                    later: copy []
-                    if f/style = 'screens [foreach [n t a b] f/data [append/only later b]]
-                    if all [f/style = 'rows  f/template] [append/only later f/template]
-                    foreach b later [
-                        spec: copy/deep b
-                        parse spec [any [set w word! if (event-word? w) block!] body:]
-                        foreach g ui-build body copy [] [append faces all-faces g]
+                    ; a screen's own words come before its faces, as a view's
+                    if f/style = 'screens [foreach [n t a b] f/data [
+                        s: make select styles 'screen []
+                        foreach g ui-build/in copy/deep b copy [] s select ui-style-defs 'screen [append faces all-faces g]
+                    ]]
+                    if all [f/style = 'rows  f/template] [
+                        foreach g ui-build copy/deep f/template copy [] [append faces all-faces g]
                     ]
                 ]
             ]

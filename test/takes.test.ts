@@ -104,6 +104,17 @@ test('right after the style, a first entry is read in its order: a tag, then a n
   assert.equal(r, '[#k7 "Deal" "found"]');
 });
 
+test('the words before a view\'s first face are the view\'s, read by what view takes, and stylize extends it', async () => {
+  const r = await ev(`
+    v: layout [width fill  menu ["Copy" copy]  on-key [x]  text "a"]
+    a: reduce [v/size v/menu/1/text extract v/events 2  v/pane/1/style]
+    e: try [layout [on-change [x] text "a"]]
+    stylize [view: view [caption: none  takes: [caption: 'caption text "what the window is called"]]]
+    w: layout [caption "Clients" text "a"]
+    reduce [a  find/tail e/message "layout: "  w/caption  w/pane/1/style]`);
+  assert.equal(r, '[[fill "Copy" [on-key] text] "on-change is not an event of view" "Clients" text]');
+});
+
 test('with runs a block bound to the face once it is read, the last way out', async () => {
   const r = await ev(`
     f: first layout/only [text "Total" with [role: 'danger  hint: "after"] "Second"]

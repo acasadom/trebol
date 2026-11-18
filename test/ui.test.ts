@@ -220,7 +220,9 @@ describe('layout', () => {
       'layout: on-entr is not an event; did you mean on-enter?');
     assert.deepEqual(await problems('view ["Hello" text "a"]'),
       ['layout: a face starts with a style, not "Hello"', '["Hello" text "a"]', 'app.trb:1:7']);
-    assert.deepEqual((await problems('view [menu ["A" a]]'))[0], 'layout: menu is not a style; it goes after one');
+    assert.deepEqual((await problems('view [required text "a"]'))[0], 'layout: required is not a style; it goes after one');
+    assert.deepEqual(await problems('view [width fil text "a"]'),
+      ['layout: width takes small, medium, large or fill', '[width fil text]', 'app.trb:1:7']);
     assert.deepEqual((await problems('view [button "a" menu ["A"]]'))[0],
       'layout: a menu takes a label and a word per item, danger before one that removes, a block for a submenu, or ---');
     assert.deepEqual((await problems('view [tabs ["A" [text "a"] "B" 1]]')).slice(0, 2),
