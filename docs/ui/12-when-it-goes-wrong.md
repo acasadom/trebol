@@ -39,6 +39,7 @@ The other errors you will meet most read the same way:
 | `+ does not allow string! for its a argument`         | a value of another kind than the function takes: `"12" + 1` |
 | `layout: buton is not a style; did you mean button?`  | a word of the view that is not the dialect                  |
 | `layout: on-chnage is not an event; did you mean on-change?` | an event mistyped: it would never run                  |
+| `layout: poster does nothing on a field`              | an option of another style: the reference says what each takes |
 | `HTTP 404 Not Found for /api/client`                  | the server has nothing at that address                      |
 | `cannot reach http://...`                             | the server is not running, or the address is wrong          |
 

@@ -1,0 +1,243 @@
+; A part of the UI dialect: see ui.trb, whose words it shares.
+
+; --- what each style takes -------------------------------------------------------
+;
+; Every option a face is written with, the kind of editor a designer edits it with, and
+; the styles that take it. A face written with an option its style does not take is a
+; problem of the layout: `video %a.mp4 poster %p.png` is fine, `field name poster %p.png`
+; is not. Kinds:
+;   flag     a word that is there or not: fill
+;   word     one word of those listed: role primary
+;   text     a string, a text per language (a map), or a word of the dictionary: 'save
+;   icon     an issue of Trebol's icon set: #search
+;   file     a file or a url: %logo.png
+;   value    a value of the face's own type: a number, an amount, a date or a time
+;   number   an integer or a decimal; numbers: two of them; pair: a size, 300x150
+;   items    a block of rows: options, columns, lanes, tabs, steps, screens, menu items
+;   map      a map: what each value shows as
+;   code     a block of Trebol code: an action, an event, a check
+;   field    the name of another field of the layout; machine: the word of a machine
+;   name     a word: the label in the code, the field name
+
+; option  kind  [choices, for a word]  "what it is"; the rules a program adds with `rule` are flags of
+; every input besides these
+ui-options: compose/deep [
+    label       name    []  "the word that names the face in the code: total: text"
+    global      flag    []  "the label is a word of the program, not of the screen"
+    name        name    []  "the field's name: the key of its value in values"
+    text        text    []  "what it says: a label, a title, a caption"
+    hint        text    []  "the second text: what an empty field shows"
+    icon        icon    []  "an icon before the text"
+    value       file    []  "what it shows: an image, a sound, a video, a percent, the screen a link goes to"
+    role        word    [(roles)]  "how it stands out"
+    size        word    [(sizes)]  "how wide or tall it is; width small too"
+    align       word    [(aligns)]  "where its children go across"
+    valign      word    [(valigns)]  "where its children go up and down"
+    pad         number  []  "the space inside it, a step from 0 to 7, none or wide"
+    gap         number  []  "the space between its children, a step from 0 to 7, none or wide"
+    cols        items   []  "its columns: a number, or the weight of each, [1 4 1] or [small 1 small]"
+    pane        items   []  "the faces it holds"
+    fill        flag    []  "as wide as it can be"
+    fit         flag    []  "takes the height the window has left; what it holds scrolls inside"
+    hidden      flag    []  "not shown"
+    disabled    flag    []  "shown, but it cannot be used"
+    readonly    flag    []  "shown and sent, but not changed, and no rule applies"
+    inert       flag    []  "shown as it is, but neither it nor what it holds can be used"
+    narrow-only flag    []  "shown only on a narrow screen"
+    wide-only   flag    []  "hidden on a narrow screen"
+    drag        flag    []  "can be dragged"
+    drop        flag    []  "takes what is dropped on it"
+    reorder     flag    []  "its children or rows can be moved around"
+    menu        items   []  "its context menu, or the menu a button opens"
+    morph       name    []  "a name shared with a face of the next screen, which this one becomes"
+    action      code    []  "the block it runs when clicked or changed"
+    react       code    []  "a block run again whenever what it reads changes; react later waits for the first change"
+    is          code    []  "a block whose value it shows, kept up to date"
+    calc        code    []  "a block whose value it holds, kept up to date; readonly"
+    required    flag    []  "it must have a value"
+    email       flag    []  "its text is an email address"
+    url         flag    []  "its text is a web address"
+    integer     flag    []  "its value is a whole number"
+    min         value   []  "the least it takes: a number, an amount, a date, a time, or rows"
+    max         value   []  "the most it takes"
+    length      numbers []  "the fewest and most letters it takes: length 2 40"
+    pattern     code    []  "a parse rule its text must match"
+    match       field   []  "another field its value must be the same as"
+    check       code    []  "a block that says whether the value is good"
+    check-async code    []  "a check that asks a server"
+    step        number  []  "how far one move takes a slider; minutes between the times of a time"
+    currency    name    []  "the currency of an amount, its three letters: EUR"
+    options     items   []  "what to choose from: texts, value and text, groups with a title"
+    segmented   flag    []  "its options as buttons joined in a bar"
+    multiple    flag    []  "takes more than one"
+    accept      items   []  "the files it takes: [^"pdf^" ^"image/*^"]"
+    round       flag    []  "cut to a circle"
+    known       map     []  "what each value shows as"
+    links       map     []  "the screen each value links to when it is read only"
+    template    items   []  "the fields of one row"
+    tag         name    []  "the element it is, as the page's JavaScript defines it: <geo-map>"
+    props       code    []  "the element's properties"
+    extent      pair    []  "the size of its drawing space, or of an image"
+    draw        code    []  "what it draws, in the draw dialect"
+    kind        word    [(chart-kinds)]  "the kind of chart"
+    stacked     flag    []  "its series one on top of another"
+    columns     items   []  "the field of each column and its header"
+    data        items   []  "what it shows: the items of a breadcrumb, the nodes of an orbit, the screens"
+    key         field   []  "the field that tells one row from another"
+    sortable    flag    []  "its headers sort its rows"
+    sorted      items   []  "the order it starts in: [due asc]"
+    by          field   []  "the field that names the lane of a card"
+    lanes       items   []  "a word and a label for each lane"
+    card        items   []  "the fields a card shows"
+    flow        machine []  "the machine that leads the steps"
+    poster      file    []  "the image shown before it plays"
+    captions    file    []  "its captions: a .vtt file, or one per language"
+    loop        flag    []  "starts again when it ends"
+    muted       flag    []  "plays without its sound"
+    autoplay    flag    []  "plays on its own, silent"
+    linked      flag    []  "stands for something kept elsewhere: an arrow"
+    mark        icon    []  "a second, small icon on its icon, and its label: mark #list ^"List^""
+    count       flag    []  "a number that changes runs from the old one to the new"
+    shortcut    text    []  "a key that presses it: key ^"Ctrl+S^""
+    on-change   code    []  "runs when the value changes"
+    on-focus    code    []  "runs when it gets the keyboard"
+    on-unfocus  code    []  "runs when it loses the keyboard"
+    on-over     code    []  "runs when the pointer comes in or goes (event/away?)"
+    on-dbl-click code   []  "runs on a double click"
+    on-key      code    []  "runs on a key that nothing else took"
+    on-menu     code    []  "runs when an item of its menu is picked"
+    on-select   code    []  "runs when a row is chosen, or a face inside an inert one"
+    on-drop     code    []  "runs when something is dropped on it"
+    on-reorder  code    []  "runs when its children or rows are moved around"
+    on-search   code    []  "gives what was found for the text typed"
+    on-sort     code    []  "sorts the rows when a header is chosen"
+    on-expand   code    []  "runs when a row opens, and may load its children"
+    on-close    code    []  "runs when it is closed"
+    on-end      code    []  "runs when it ends"
+    on-back     code    []  "runs when a node of the trail is picked, or Escape"
+    on-find     code    []  "gives what Ctrl+K finds for the text typed"
+    on-enter    code    []  "runs as the screen is entered"
+    on-leave    code    []  "says whether the page may leave the screen"
+]
+
+; The words that write an option under another name: width small is size, react later is react.
+ui-option-words: [width size  later react  loop loop  muted muted]
+
+; The field of a face that holds an option, when it has another name.
+ui-option-fields: [loop looping  muted silent  by field  shortcut shortcut  icon icon  mark mark]
+
+; What every face takes.
+any-face-options: [
+    label global text hint icon role size align fill fit hidden disabled inert narrow-only wide-only
+    drag drop reorder menu morph action react is
+    on-over on-dbl-click on-key on-focus on-unfocus on-menu on-select on-drop on-reorder
+]
+container-options: [pad gap pane]
+input-options: [name readonly required match check check-async calc on-change]
+text-rule-options: [email url length pattern]
+rows-options: [columns key sortable sorted]
+
+; style -> the options it takes besides those of any face
+ui-style-options: reduce [
+    'view       compose [(container-options) on-find]
+    'column     container-options
+    'row        compose [(container-options) valign]
+    'form       container-options
+    'panel      container-options
+    'grid       compose [(container-options) cols]
+    'scroll     container-options
+    'split      container-options
+    'dialog     compose [(container-options) on-close]
+    'toolbar    container-options
+    'desktop    compose [(container-options) value]
+    'title      [count]
+    'heading    [count]
+    'text       [count]
+    'code       []
+    'divider    []
+    'field      compose [(input-options) (text-rule-options) integer]
+    'password   compose [(input-options) (text-rule-options)]
+    'number     compose [(input-options) integer min max]
+    'money      compose [(input-options) currency min max]
+    'date       compose [(input-options) min max]
+    'date-range compose [(input-options) min max]
+    'time       compose [(input-options) min max step]
+    'area       compose [(input-options) length pattern]
+    'rich       input-options
+    'check      input-options
+    'toggle     input-options
+    'choice     compose [(input-options) options]
+    'radio      compose [(input-options) options segmented]
+    'slider     compose [(input-options) min max step]
+    'upload     compose [(input-options) multiple accept]
+    'photo      compose [(input-options) accept round value]
+    'lookup     compose [(input-options) multiple known links on-search]
+    'rows       compose [(input-options) template min max]
+    'widget     compose [(input-options) tag props]
+    'image      [value extent round]
+    'backdrop   [value]
+    'icon       []
+    'progress   [value]
+    'video      [value poster captions loop muted autoplay on-end]
+    'audio      [value loop muted autoplay on-end]
+    'canvas     [extent draw]
+    'chart      [kind columns stacked]
+    'orbit      [data on-back]
+    'button     [shortcut]
+    'link       [value shortcut]
+    'tile       [linked mark]
+    'table      compose [(rows-options) on-sort]
+    'list       rows-options
+    'tree       [columns key on-expand]
+    'board      [by lanes card key]
+    'breadcrumb [data]
+    'tabs       [pane]
+    'steps      [pane flow]
+    'screens    [data on-change]
+    'tab        []
+    'step       []
+    'screen     [on-enter on-leave]
+    'entry      []
+]
+
+ui-options-of: function [
+    "The options a style takes, every face's first: ui-options-of 'video"
+    style [word!]
+] [
+    base: either s: select styles style [s/style] [style]
+    unless own: select ui-style-options base [return none]
+    ; the rules a program or a package adds hold for every input
+    unique compose [(any-face-options) (own) (either find input-styles base [words-of custom-rules] [[]])]
+]
+
+; Whether a face was written with an option: its field differs from the face it was made from.
+option-used?: function [f proto [object!] o [word!]] [
+    case [
+        find ui-events o [to logic! handler-for f o]
+        find [react is calc] o [
+            foreach r any [f/reactions []] [if r/kind = o [return true]]
+            false
+        ]
+        any [find [required email url integer min max length pattern match check check-async] o  select custom-rules o] [
+            foreach r any [f/rules []] [if r/1 = o [return true]]
+            false
+        ]
+        ; calc makes its face readonly
+        o = 'readonly [all [f/readonly  not proto/readonly  not option-used? f proto 'calc]]
+        find [label global action] o [false]
+        true [
+            field: any [select ui-option-fields o  o]
+            all [w: in f field  not equal? get w  get in proto field]
+        ]
+    ]
+]
+
+; The options of a face that its style does not take, each a problem at place.
+ui-stray-options: function [f proto [object!] place [block!]] [
+    unless takes: ui-options-of f/style [exit]
+    foreach o compose [(extract ui-options 4) (words-of custom-rules)] [
+        if all [not find takes o  option-used? f proto o] [
+            ui-problem place rejoin [o " does nothing on a " f/style]
+        ]
+    ]
+]
