@@ -275,3 +275,9 @@ Trebol [
 [n: 0  (array/initial 3 does [n: n + 1]) = [1 2 3]]
 [last? [1]]
 [not single? [1 2]]
+
+"select/same takes the very same value, as R3"
+[a: [1] b: [1] x: reduce [a "A" b "B"] "B" = select/same/only x b]
+[a: [1] b: [1] x: reduce [a "A"] none? select/same/only x b]
+[a: [1] b: [1] x: reduce [a "A"] "A" = select/only x b]
+[o: make object! [] p: make object! [] x: reduce [o 1 p 2] 2 = select/same x p]
