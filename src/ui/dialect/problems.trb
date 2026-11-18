@@ -94,21 +94,8 @@ ui-check: function [
     ]
     foreach p blocks [
         unless find [stylize machine rule] first p [
-            attempt-at next p [
-                faces: all-faces layout second p
-                ; screens and rows lay these out when shown
-                while [not empty? faces] [
-                    f: take faces
-                    ; a screen's own words come before its faces, as a view's
-                    if f/style = 'screens [foreach [n t a b] f/data [
-                        s: make select styles 'screen []
-                        foreach g ui-build/in copy/deep b copy [] s select ui-style-defs 'screen [append faces all-faces g]
-                    ]]
-                    if all [f/style = 'rows  f/template] [
-                        foreach g ui-build copy/deep f/template copy [] [append faces all-faces g]
-                    ]
-                ]
-            ]
+            ; the faces of screens and of a row of rows are read with the view, as the app shows them later
+            attempt-at next p [layout second p]
         ]
     ]
     ; a screen or rows laid out twice (rows with min) gives its problems twice

@@ -155,6 +155,20 @@ test('ui-style-defs gives a designer what each style takes: its entries, events,
   assert.equal(r, '[field [on-change on-rate] [stars half none] "how many stars it shows"]');
 });
 
+test('ui-sketch lays out every screen and a row of rows, written where they are, as check reads them', async () => {
+  const r = await ev(`v: first ui-sketch [
+    screens [home "Home" [on-enter [x] text "a"] about "About" [heading "b"]]
+    rows items [field name "Name"]
+  ]
+  s: v/pane/1  w: v/pane/2
+  reduce [
+    collect [foreach x s/pane [keep x/style keep x/text keep x/pane/1/style keep not none? x/written]]
+    extract s/pane/1/events 2
+    w/pane/1/pane/1/name
+  ]`);
+  assert.equal(r, '[[screen "Home" text true screen "About" heading true] [on-enter] name]');
+});
+
 test('check reads stylize [view: view [...]] as a style, not as a layout', async () => {
   const r = await ev(`ui-check [
     stylize [view: view [caption: none  takes: [caption: 'caption text]]]
