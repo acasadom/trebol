@@ -101,6 +101,19 @@ Trebol [
 [m: make map! [k 1] m/k: 2 m/k = 2]
 [m: make map! [] none? m/missing]
 [d: 30-Oct-2026 d/month = 10]
+"a set-path sets a part of a pair, tuple, date or time, and stores the new value where it was, as R3"
+[s: 1x2 s/y: 5 s = 1x5]
+[s: 1x2 s/1: 0 s = 0x2]
+[t: 1.2.3 t/2: 9 t = 1.9.3]
+[d: 1-Jan-2020 d/year: 2021 d = 1-Jan-2021]
+[d: 1-Jan-2020 d/day: 32 d = 1-Feb-2020]
+[d: 31-Jan-2020 d/month: 2 d = 2-Mar-2020]
+[e: 1-Jan-2020/10:00 e/hour: 3 e = 1-Jan-2020/3:00]
+[m: 10:20 m/second: 5 m = 10:20:05]
+[o: make object! [p: 1x2] o/p/x: 7 o/p = 7x2]
+[b: [3x4] b/1/x: 0 b = [0x4]]
+[s: 1x2 error? try [s/z: 1]]
+[s: 1x2 error? try [s/x: "a"]]
 
 "functions"
 [f: func [a b] [a + b] (f 1 2) = 3]

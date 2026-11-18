@@ -8,7 +8,7 @@ import { K, isAnyBlock, isAnyString, isAnyWord, aKindName } from './kinds.ts';
 import { canon, spell } from './symbols.ts';
 import * as I64 from './int64.ts';
 import {
-  NONE, integer, char, decimal, time, date, strictEqual, codePoints, fromCodePoints,
+  NONE, integer, char, decimal, time, date, pair, tuple, strictEqual, codePoints, fromCodePoints,
   type Cell, type Series, type BlockCell, type StringCell, type WordCell,
 } from './values.ts';
 import { ctxFind, ctxSet } from './ctx.ts';
@@ -193,6 +193,81 @@ export function poke(cur: Cell, key: Cell, v: Cell): string | null {
     if (n < 0 || s.i + n >= s.s.data.length) return `index ${n + 1} is out of range`;
     s.s.data[s.i + n] = v.v;
     return null;
+  }
+  return `cannot set ${mold(key)} in ${aKindName(cur.t)}`;
+}
+
+/** Whether a value is immediate with parts a path can set: x of a pair, 2 of a tuple, year of a date. */
+export function hasParts(c: Cell): boolean {
+  return c.t === K.Pair || c.t === K.Tuple || c.t === K.Date || c.t === K.Time;
+}
+
+function numberOf(v: Cell): number | null {
+  if (v.t === K.Integer) return I64.toNumber(v.v);
+  if (v.t === K.Decimal) return v.v;
+  return null;
+}
+
+/**
+ * The value `cur` (a pair, tuple, date or time) becomes with its part `key` set to `v`, as R3
+ * gives it: `s/y: 5` on 1x2 makes 1x5, and a date's day past its month goes on to the next.
+ * Cells are immutable, so the caller stores the new value where `cur` was.
+ */
+export function pokeValue(cur: Cell, key: Cell, v: Cell): Cell | string {
+  const n = numberOf(v);
+  switch (cur.t) {
+    case K.Pair: {
+      const p = partName(key) ?? (['x', 'y'] as const)[offset(key) ?? -1] ?? null;
+      if (p !== 'x' && p !== 'y') return `cannot set ${mold(key)} in a pair`;
+      if (n === null) return `a pair's ${p} is a number, not ${mold(v)}`;
+      return p === 'x' ? pair(n, cur.y) : pair(cur.x, n);
+    }
+    case K.Tuple: {
+      const i = offset(key);
+      if (i === null || i < 0 || i >= 10) return `cannot set ${mold(key)} in a tuple`;
+      if (n === null || !Number.isInteger(n) || n < 0 || n > 255) return `a tuple's part is a whole number from 0 to 255, not ${mold(v)}`;
+      const parts = [...cur.v];
+      while (parts.length <= i) parts.push(0);
+      parts[i] = n;
+      return tuple(parts);
+    }
+    case K.Time: {
+      const p = partName(key) ?? TIME_PARTS[offset(key) ?? -1] ?? null;
+      if (p !== 'hour' && p !== 'minute' && p !== 'second') return `cannot set ${mold(key)} in a time`;
+      if (n === null) return `a time's ${p} is a number, not ${mold(v)}`;
+      const sign = cur.v < 0 ? -1 : 1;
+      const ns = Math.abs(cur.v);
+      let h = Math.floor(ns / NS_HOUR), m = Math.floor((ns % NS_HOUR) / NS_MIN), sec = (ns % NS_MIN) / 1e9;
+      if (p === 'hour') h = n; else if (p === 'minute') m = n; else sec = n;
+      return time(sign * Math.round(h * NS_HOUR + m * NS_MIN + sec * 1e9));
+    }
+    case K.Date: {
+      const p = partName(key) ?? DATE_PARTS[offset(key) ?? -1] ?? null;
+      const d = { ...cur.v };
+      switch (p) {
+        case 'year': case 'month': case 'day': {
+          if (n === null || !Number.isInteger(n)) return `a date's ${p} is a whole number, not ${mold(v)}`;
+          const y = p === 'year' ? n : d.y, m = p === 'month' ? n : d.m, day = p === 'day' ? n : d.d;
+          // past the end of its month or year, a date goes on, as R3's does
+          const u = new Date(Date.UTC(2000, m - 1, day));
+          u.setUTCFullYear(y + u.getUTCFullYear() - 2000);
+          return date({ ...d, y: u.getUTCFullYear(), m: u.getUTCMonth() + 1, d: u.getUTCDate() });
+        }
+        case 'time':
+          if (v.t === K.None) return date({ ...d, time: null, zone: null });
+          if (v.t !== K.Time) return `a date's time is a time, not ${mold(v)}`;
+          return date({ ...d, time: v.v });
+        case 'zone':
+          if (v.t !== K.Time) return `a date's zone is a time, not ${mold(v)}`;
+          return date({ ...d, zone: Math.round(v.v / NS_MIN), time: d.time ?? 0 });
+        case 'hour': case 'minute': case 'second': {
+          const t = pokeValue(time(d.time ?? 0), key.t === K.Integer ? integer(TIME_PARTS.indexOf(p) + 1) : key, v);
+          if (typeof t === 'string') return t;
+          return date({ ...d, time: (t as { v: number }).v });
+        }
+      }
+      return `cannot set ${mold(key)} in a date`;
+    }
   }
   return `cannot set ${mold(key)} in ${aKindName(cur.t)}`;
 }
