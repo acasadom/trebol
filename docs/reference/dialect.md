@@ -477,6 +477,9 @@ it has one: `#trash "Delete" delete`. `danger` before an item says it removes or
 red: `danger #trash "Delete" delete`. `---` draws a line between items, and a block after a text in place of the
 word is a submenu.
 
+Code may give a face a menu, or another one, at any time, written the same way: `actions/menu: ["Copy" copy]`.
+The face opens the menu it has when it is clicked, even one it had none of when it was shown.
+
 On a phone, swiping a row of a table or list with a menu to the left shows its first two items behind it, as
 buttons, the `danger` ones red, and *More* for the whole menu when it has others. A swipe less than halfway
 goes back, as does a touch anywhere else or a scroll.

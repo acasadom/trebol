@@ -224,6 +224,14 @@ ui-menu: function [
     fire-event f 'on-menu reduce [quote picked: quoted item/id]
 ]
 
+ui-menu-of: function [
+    "The items of a face's menu; one code gave it as a layout writes it (^"Copy^" copy) is made into them first."
+    f
+] [
+    if all [block? f/menu  not parse f/menu [any object!]] [f/menu: menu-of f/menu]
+    f/menu
+]
+
 ui-drop: function [
     "Called by the host when something is dropped on a face; index is where it goes (1-based), parent the tree node."
     f dropped source index [integer!] parent

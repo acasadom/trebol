@@ -21,3 +21,8 @@ Trebol [title: "Screen tests of pick-menu"]
 [pick-menu "Actions" "Send to"]
 [pick-menu "Nothing yet" "Copy"]
 [pick-menu "Off" "Never"]
+[
+    clients/menu: ["Call" call]
+    pick-menu "Lugo" "Call"
+    see "call Luis Gil"
+]

@@ -22,6 +22,7 @@ import { syncOrbit } from './orbits.ts';
 import { syncRowsField, placeEntries } from './row-faces.ts';
 import { syncRich } from './richtext.ts';
 import { syncRows, morphName } from './tables.ts';
+import { menuButton } from './events.ts';
 import { syncTree } from './trees.ts';
 import { syncToolbar, syncBreadcrumb } from './toolbars.ts';
 import { syncDialog, syncTabs, syncSteps, syncSplit } from './dialogs.ts';
@@ -58,6 +59,9 @@ export function sync(m: Mounted): void {
   // the rows of a table or list carry its morph name, each with its key
   const morph = style === 'table' || style === 'list' ? null : morphName(get(f, 'morph'));
   if (morph !== null) m.el.dataset['tbMorph'] = morph;
+  // a menu code wrote as in a layout (["Copy" copy]) is made into its items, as the layout makes them
+  const menu = get(f, 'menu');
+  if (menu.t === K.Block && (menu as BlockCell).s.data.slice((menu as BlockCell).i).some(x => x.t !== K.Object)) void fire('ui-menu-of', f);
   else delete m.el.dataset['tbMorph'];
   if (turned && hidden && !isFolding(m.el)) fold(m.el, () => { if (flag(m.face, 'hidden')) setExtra(m.el, [...(m.el.dataset['tb'] ?? '').split(' ').filter(Boolean), 'tb-hidden']); });
   else if (!hidden && (turned || isFolding(m.el))) unfold(m.el);
@@ -150,6 +154,8 @@ export function sync(m: Mounted): void {
       break;
     }
     case 'button': case 'link': {
+      // a menu code gave it after it was shown
+      if (get(f, 'menu').t === K.Block && get(f, 'action').t !== K.Block) menuButton(m);
       (m.label ?? m.el).textContent = t ?? '';
       const named = iconLabel(f);
       if (named !== null) m.el.setAttribute('aria-label', named);

@@ -145,7 +145,7 @@ pick-menu: function [
         unless block? f/menu [do make error! rejoin ["pick-menu: " mold what " has no menu"]]
     ]
     if any [f/disabled  f/inert] [do make error! rejoin ["pick-menu: " mold what " cannot be used now"]]
-    items: f/menu
+    items: ui-menu-of f
     texts: either block? item [item] [reduce [item]]
     forall texts [
         found: none

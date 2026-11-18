@@ -211,7 +211,8 @@ test('pick-menu chooses an item of a button, a face or a row of a table, and of 
     'FAIL  menus.test.trb:23:1  pick-menu',
     '        ** User error: pick-menu: "Off" cannot be used now',
     '        ** At: menus.test.trb:23:2',
-    '8 tests, 4 failed.',
+    'ok    menus.test.trb:24:1  pick-menu',
+    '9 tests, 4 failed.',
   ]);
 });
 
