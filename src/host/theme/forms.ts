@@ -99,7 +99,8 @@ select.tb-input { appearance: none; background-image: linear-gradient(45deg, tra
 .tb-radios { display: flex; flex-wrap: wrap; column-gap: var(--tb-space-5); }
 .tb-radio-group { flex-basis: 100%; }
 /* radio segmented: the options as buttons joined in a bar, the chosen one raised; its label only for screen readers */
-.tb-segmented > .tb-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.tb-segmented { position: relative; }
+.tb-segmented > .tb-label { position: absolute; top: 0; left: 0; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .tb-segmented .tb-radios { display: inline-flex; flex-wrap: nowrap; gap: 2px; padding: 3px; background: var(--tb-bg); border: var(--tb-line) solid var(--tb-border); border-radius: var(--tb-radius); }
 .tb-segmented .tb-check { position: relative; gap: 0; min-height: calc(var(--tb-control) - 8px); padding: 0 var(--tb-space-4); border-radius: max(0px, calc(var(--tb-radius) - 3px)); color: var(--tb-muted); font-weight: 500; white-space: nowrap; }
 .tb-segmented .tb-check input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; }

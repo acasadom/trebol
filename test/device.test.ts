@@ -43,3 +43,9 @@ test('the narrow rules of every skin go by the width of the screen a face is on,
     assert.match(css, /\.tb-device-screen \{\s*container: tb-screen \/ inline-size;/, skin);
   }
 });
+
+test('the hidden label of joined buttons stays inside them, so a panel that scrolls holds it', () => {
+  const css = themeCss(DEFAULT_THEME);
+  assert.match(css, /\.tb-segmented \{ position: relative; \}/);
+  assert.match(css, /\.tb-segmented > \.tb-label \{ position: absolute; top: 0; left: 0;/);
+});
