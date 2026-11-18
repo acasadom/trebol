@@ -6,6 +6,8 @@ export const LAYOUT = String.raw`
 html, body { margin: 0; }
 /* a screen is narrow by the width it has, not the window's: the page's, or a device frame's */
 body { container: tb-screen / inline-size; }
+/* a container keeps its background to itself: the page takes it, as it takes the body's otherwise */
+html { background: var(--tb-bg); }
 body {
   background: var(--tb-bg);
   color: var(--tb-text);
