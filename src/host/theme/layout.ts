@@ -69,7 +69,7 @@ body {
   container: tb-screen / inline-size;
   width: var(--tb-device-w, 390px);
   height: var(--tb-device-h, 844px);
-  transform: scale(var(--tb-device-k, 1));
+  transform: translateX(var(--tb-device-x, 0px)) scale(var(--tb-device-k, 1));
   transform-origin: 0 0;
   overflow: auto;
   background: var(--tb-bg);
