@@ -370,6 +370,8 @@ press: function [
         quote key: either word? k [to lit-word! k] [k]
         quote ctrl?: to logic! find key "ctrl+"  quote shift?: to logic! find key "shift+"  quote alt?: to logic! find key "alt+"
         quote meta?: to logic! any [find key "cmd+"  find key "meta+"]
+        ; pressed in a box the user types in, which undoes its own typing
+        quote typing?: to logic! all [at  find [field password number money date date-range time area] at/style]
     ]
     ; the face with the cursor or the nearest around it that has an on-key, or the view
     f: any [at  shown-view]

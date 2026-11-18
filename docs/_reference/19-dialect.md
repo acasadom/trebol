@@ -401,7 +401,9 @@ When it gets the focus.
 
 ## on-key
 
-When a key is pressed: `event/key` says which.
+When a key is pressed: `event/key` says which, `event/ctrl?`, `event/shift?`, `event/alt?` and `event/meta?` the keys
+held with it, and `event/typing?` is `true` when it is pressed in a box the user types in, which undoes its own
+typing with Ctrl+Z.
 
 ## on-leave
 

@@ -1,7 +1,10 @@
 Trebol [title: "Keys, shortcuts and Enter in a form"]
 
 view [
-    on-key [if event/key = 'F2 [said/text: "F2 on the page"]]
+    on-key [
+        if event/key = 'F2 [said/text: "F2 on the page"]
+        if event/key = #"u" [said/text: either event/typing? ["u while typing"] ["u on the page"]]
+    ]
     title "Notes"
     said: text "Nothing yet"
     button "Save" key "Ctrl+S" [said/text: "Saved"]
