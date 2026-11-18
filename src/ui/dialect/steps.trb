@@ -5,11 +5,12 @@
 ; ["Who" [...] "Company" when [values/kind = "Company"] [...]] -> a step face per pair, then the row
 ; of its Back and Next buttons. A step with `when` applies only while its block is true: a reaction
 ; hides it, and a hidden step is skipped, its fields neither checked nor in values.
-steps-of: function [f spec [block!] labels [block!] /local p w label b] [
+steps-of: function [f spec [block!] labels [block!] /local p q bp w label b] [
     out: copy []
     parse spec [any [
-        set label text-rule (w: none) opt ['when set w block!] set b block! (
+        q: set label text-rule (w: none) opt ['when set w block!] bp: set b block! (
             s: make select styles 'step [text: text-of label  pane: build-faces b labels  state: none]
+            s/written: reduce [loaded-at q  loaded-at bp]
             if w [add-reaction s 'react compose/only [face/hidden: not do (w)] false]
             append out s
         )
@@ -47,9 +48,10 @@ steps-flow-of: function [f spec [block!] labels [block!] /local p n label b w] [
     parse spec [any [
         p: set n word! set label text-rule
         opt [w: 'when block! (ui-problem w "a machine leads these steps: it chooses where Next goes, with no when")]
-        set b block! (
+        bp: set b block! (
             if all [names  not find names n] [ui-problem p rejoin [f/flow " has no state " n ui-suggest n names]]
             s: make select styles 'step [text: text-of label  pane: build-faces b labels  state: n]
+            s/written: reduce [loaded-at p  loaded-at bp]
             append out s
         )
         | p: skip (ui-problem p "steps with a machine take the name of a state, a label and a block per step") to end

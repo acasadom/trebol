@@ -188,12 +188,15 @@ sort-order: function [b [block!]] [
 ]
 
 ; ["General" [...] "Advanced" [...]] -> a tab face per pair
-tabs-of: function [spec [block!] labels [block!] /local p] [
+tabs-of: function [spec [block!] labels [block!] /local p q bp] [
     out: copy []
     parse spec [any [
-        set label text-rule set b block! (
+        q: set label text-rule bp: set b block! (
             label: text-of label
-            append out make select styles 'tab [text: label pane: build-faces b labels]
+            t: make select styles 'tab [text: label pane: build-faces b labels]
+            ; where it was written: its label and its block
+            t/written: reduce [loaded-at q  loaded-at bp]
+            append out t
         )
         | p: skip (ui-problem p "tabs take a label and a block per tab") to end
     ]]

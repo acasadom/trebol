@@ -169,6 +169,12 @@ test('ui-sketch lays out every screen and a row of rows, written where they are,
   assert.equal(r, '[[screen "Home" text true screen "About" heading true] [on-enter] name]');
 });
 
+test('a tab or a step keeps where it was written: its label and its block', async () => {
+  const r = await ev(`v: first ui-sketch [tabs ["A" [text "a"] "B" [text "b"]] steps ["One" [text "c"]]]
+    collect [foreach f reduce [v/pane/1/pane/2 v/pane/2/pane/1] [keep f/style keep/only f/written]]`);
+  assert.equal(r, '[tab ["1:42" "1:46"] step ["1:65" "1:71"]]');
+});
+
 test('check reads stylize [view: view [...]] as a style, not as a layout', async () => {
   const r = await ev(`ui-check [
     stylize [view: view [caption: none  takes: [caption: 'caption text]]]
