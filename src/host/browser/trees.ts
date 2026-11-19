@@ -36,6 +36,13 @@ export function buildTree(face: ObjectCell, m: Mounted): HTMLElement {
     selectNode(m, item);
   });
   box.addEventListener('keydown', ev => treeKey(m, ev));
+  // a label cut short shows whole under the pointer
+  box.addEventListener('pointerover', ev => {
+    const name = (ev.target as Element).closest('.tb-tree-row')?.querySelector<HTMLElement>('.tb-tree-label');
+    if (name === null || name === undefined) return;
+    if (name.scrollWidth > name.clientWidth) name.title = name.textContent ?? '';
+    else name.removeAttribute('title');
+  });
   m.box = box;
   m.rows = new Map();
   m.empty = empty;

@@ -266,6 +266,17 @@ A flag, of [`face`](#style-face).
 
 Its children, or its rows, can be moved around: its `on-reorder` runs.
 
+(word-resize)=
+## resize
+
+A flag, of [`grid`](#style-grid).
+
+A grid shows a handle between two columns: dragged, or moved with the arrow keys, it makes one wider.
+It sizes the column of a set width (`small`, `medium`, `large`), or the left one of two weighted
+columns, which keeps the width from then on. A double click gives that column back its width. The
+browser keeps the widths, so the page opens as the user left it. On a narrow screen there are no
+handles: the grid shows one column.
+
 (word-multiple)=
 ## multiple
 

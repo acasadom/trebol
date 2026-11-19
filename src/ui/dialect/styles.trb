@@ -67,9 +67,10 @@ stylize [
     row: container [style: 'row  takes: [valign: one-of valigns "where its children go up and down"]]
     form: container [style: 'form  takes: [done: :steps-take-submits]]
     panel: container [style: 'panel]
-    grid: container [style: 'grid  takes: [
+    grid: container [style: 'grid  resize: none  takes: [
         cols: [integer!] "how many columns"
         cols: block :grid-weights "the weight of each column, [1 4 1], or small, medium or large for one as wide as the theme says"
+        resize: 'resize "a handle between two columns makes one wider; the browser keeps the widths"
     ]]
     scroll: container [style: 'scroll]
     split: container [style: 'split  value: 1  takes: [done: :split-check]]   ; value: the pane shown on narrow screens

@@ -233,7 +233,7 @@ a.tb-upload-name:hover { text-decoration: underline; }
   align-items: center;
   gap: var(--tb-space-1);
   min-height: calc(var(--tb-control) - 8px);
-  padding: 0 var(--tb-space-2) 0 calc(var(--tb-level, 0) * 20px + var(--tb-space-1));
+  padding: 0 var(--tb-space-2) 0 calc(var(--tb-level, 0) * 16px + var(--tb-space-1));
   border-radius: var(--tb-radius);
   cursor: pointer;
   user-select: none;

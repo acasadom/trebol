@@ -1,6 +1,7 @@
 // --- syncing -----------------------------------------------------------------------
 
 import { syncDevice } from './device.ts';
+import { syncResize, placeResize } from './resize.ts';
 import { K, form, intern, text, blockOf, type Cell, type ObjectCell, type BlockCell, type StringCell } from '../../core/index.ts';
 import { translate } from '../index.ts';
 import { runNow, type HostTask } from '../scheduler.ts';
@@ -238,9 +239,12 @@ export function sync(m: Mounted): void {
       // it, so it can be); [small 1 small]: small, medium and large are columns of a width the theme sets
       const weights = cols.t === K.Block ? cols.s.data.slice(cols.i).filter(c => c.t === K.Integer || c.t === K.Word) : [];
       const least = flag(f, 'fit') ? '0' : 'min-content';
-      if (weights.length > 0) m.el.style.setProperty('--tb-tracks', weights.map(w => w.t === K.Word
-        ? `var(--tb-track-${form(w)})` : `minmax(${least}, ${form(w)}fr)`).join(' '));
-      else m.el.style.removeProperty('--tb-tracks');
+      const resize = flag(f, 'resize');
+      // with resize, columns by count are written as weights, so a handle can size them
+      const written = weights.length > 0
+        ? weights.map(w => (w.t === K.Word ? `var(--tb-track-${form(w)})` : `minmax(${least}, ${form(w)}fr)`))
+        : resize ? Array<string>(cols.t === K.Integer ? Number(cols.v) : 2).fill(`minmax(${least}, 1fr)`) : [];
+      syncResize(m.el, f, written, resize);
       break;
     }
   }
@@ -267,6 +271,7 @@ export function sync(m: Mounted): void {
       box.replaceChildren(...(keep ? [keep] : []));
       appendChildren(box, f, style);
     }
+    if (style === 'grid') placeResize(box);
     // let the dialect link the new faces to their view and form
     void fire('ui-pane', f);
   }

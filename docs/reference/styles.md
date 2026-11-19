@@ -138,12 +138,13 @@ A group on a raised background, with a title when it is given a text.
 (style-grid)=
 ## grid
 
-Made from [`container`](#style-container).
+Made from [`container`](#style-container). Fields of its own: `resize: none`.
 
 It takes what [`container`](#style-container) takes, and:
 
 - an integer (`cols`): how many columns
 - a block (`cols`): the weight of each column, \[1 4 1\], or small, medium or large for one as wide as the theme says
+- [`resize`](#word-resize): a handle between two columns makes one wider; the browser keeps the widths
 
 Columns: `grid 3 [...]` gives three equal ones, `grid [1 4 1] [...]` the weight of each, and `small`, `medium` or `large` in that block a column of a fixed width the theme sets (`grid [small 1 small]`). On a narrow screen, as
 many as fit, down to one.

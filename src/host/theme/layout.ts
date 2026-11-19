@@ -162,6 +162,25 @@ body {
 /* the face chosen in an inert face with on-select, as on a designer's canvas */
 .tb-picked { outline: 2px solid var(--tb-primary); outline-offset: 2px; border-radius: var(--tb-radius); }
 .tb-grid { --tb-track-small: 240px; --tb-track-medium: 280px; --tb-track-large: 360px; --tb-tracks: initial; --tb-cols: 2; display: grid; gap: var(--tb-space-4); grid-template-columns: var(--tb-tracks, repeat(var(--tb-cols), minmax(0, 1fr))); }
+.tb-grid.tb-resize { position: relative; }
+.tb-grid-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--tb-space-4);
+  margin-left: calc(var(--tb-space-4) / -2);
+  min-height: 0;
+  overflow: visible;
+  cursor: col-resize;
+  touch-action: none;
+  display: flex;
+  justify-content: center;
+  z-index: 1;
+}
+.tb-grid-handle::before { content: ""; width: 0; background: transparent; border-radius: 2px; transition: background var(--tb-fast) var(--tb-ease), width var(--tb-fast) var(--tb-ease); }
+.tb-grid-handle:is(:hover, .tb-dragging)::before { width: 3px; background: var(--tb-border-strong); }
+.tb-grid-handle:focus-visible { outline: none; }
+.tb-grid-handle:focus-visible::before { width: 3px; background: var(--tb-focus); }
 .tb-panel {
   background: var(--tb-raised);
   border: var(--tb-line) solid var(--tb-border);

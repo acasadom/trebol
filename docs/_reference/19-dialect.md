@@ -162,6 +162,14 @@ Things can be dropped on it: its `on-drop` runs.
 
 Its children, or its rows, can be moved around: its `on-reorder` runs.
 
+## resize
+
+A grid shows a handle between two columns: dragged, or moved with the arrow keys, it makes one wider.
+It sizes the column of a set width (`small`, `medium`, `large`), or the left one of two weighted
+columns, which keeps the width from then on. A double click gives that column back its width. The
+browser keeps the widths, so the page opens as the user left it. On a narrow screen there are no
+handles: the grid shows one column.
+
 ## multiple
 
 An upload or a lookup takes more than one.

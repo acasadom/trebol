@@ -46,6 +46,25 @@ narrower than what it holds, except in a grid with `fit`, where what it holds sc
 and the numbers share what is left: `grid fit [small 1 medium]` is a desktop app, with a narrow list on the left,
 the work in the middle and a pane on the right.
 
+With `resize`, the user sets the widths: a handle in the gap between two columns, dragged or moved with
+the arrow keys, makes the column of a set width wider or narrower, and a double click gives it back the
+width the theme sets. The browser keeps what the user chose, so the workshop opens with its list as wide
+as they left it:
+
+```trebol-ui
+view [
+    grid [small 1] resize [
+        panel "Bikes in" [
+            text "Ada Lovelace, road bike"
+            text "Grace Hopper, city bike"
+        ]
+        panel "Road bike" [
+            text "The rear brake rubs and the chain slips in top gear."
+        ]
+    ]
+]
+```
+
 The words before a view's first face are the view's own, read as those after a style are a face's:
 `view [width fill ...]` makes the page as wide as the window, and `on-key [...]` there gets the keys no face
 handles. A word the view does not take is a problem `trebol check` names, as for any face. A screen's block
