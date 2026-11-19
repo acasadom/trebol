@@ -48,6 +48,8 @@ const PATHS: Record<string, string> = {
   settings: 'M4 7h10M18 7h2M4 17h4M12 17h8M16 5v4M10 15v4',
   filter: 'M4 5h16l-6 8v6l-4-2v-4L4 5z',
   refresh: 'M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5',
+  undo: 'M9 14L4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11',
+  redo: 'M15 14l5-5-5-5M20 9H9.5a5.5 5.5 0 0 0 0 11H13',
   download: 'M12 4v11M7 10l5 5 5-5M5 20h14',
   upload: 'M12 16V4M7 9l5-5 5 5M5 20h14',
   external: 'M14 4h6v6M20 4l-9 9M18 14v6H4V6h6',
