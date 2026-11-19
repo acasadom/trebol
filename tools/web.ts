@@ -3,8 +3,9 @@
 //   node tools/web.ts [out]          (default: _site)
 //
 // out/ is the app of site/ built by `trebol build` (the front page, the gallery and the games), out/docs/ is
-// the documentation Sphinx built into docs/_build/html (run `npm run docs` first), and out/404.html sends an
-// address of the documentation from before it moved under docs/ to its new place.
+// the documentation Sphinx built into docs/_build/html (run `npm run docs` first), out/designer/ is the
+// designer of trebol-dev (its app/, from a checkout in $TREBOL_DEV or ../trebol-dev) as a demo page, and
+// out/404.html sends an address of the documentation from before it moved under docs/ to its new place.
 
 import { cpSync, existsSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -12,6 +13,8 @@ import { buildApp } from './bundle.ts';
 
 const ROOT = join(import.meta.dirname, '..');
 const DOCS = join(ROOT, 'docs', '_build', 'html');
+/** A checkout of trebol-dev, whose app/ is the designer. */
+const DESIGNER = resolve(process.env.TREBOL_DEV ?? join(ROOT, '..', 'trebol-dev'), 'app');
 
 /** A page for addresses that are not there: one outside docs/ is tried again under it, once. */
 export const NOT_FOUND = `<!doctype html>
@@ -38,6 +41,8 @@ export async function buildWeb(out: string): Promise<void> {
   await buildApp(join(ROOT, 'site'), out);
   cpSync(DOCS, join(out, 'docs'), { recursive: true });
   rmSync(join(out, 'docs', '.buildinfo'), { force: true });
+  if (existsSync(join(DESIGNER, 'app.trb'))) await buildApp(DESIGNER, join(out, 'designer'));
+  else console.warn(`web: no designer at ${DESIGNER}: designer/ left out`);
   writeFileSync(join(out, '404.html'), NOT_FOUND);
 }
 

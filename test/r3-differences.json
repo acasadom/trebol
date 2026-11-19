@@ -390,5 +390,33 @@
   {
     "test": "[q: #[q: \"a&b=ñ\" n: \"1\"] (load-query to-query q) = q]",
     "why": "R3 has no query codec: to-query and load-query are Trebol's pair, as load-csv/to-csv."
+  },
+  {
+    "test": "[(load-spans \"a [b 10] ; note\") = [1x1 [3x6 4x1 6x2]]]",
+    "why": "load-spans is Trebol's own, for tools that change part of a file: R3 has none."
+  },
+  {
+    "test": "[(load-spans \"\") = []]",
+    "why": "load-spans is Trebol's own, for tools that change part of a file: R3 has none."
+  },
+  {
+    "test": "[(load-spans \"Trebol [] x\") = [1x6 [8x2] 11x1]]",
+    "why": "load-spans is Trebol's own, for tools that change part of a file: R3 has none."
+  },
+  {
+    "test": "[(load-spans \"é 😀 x\") = [1x1 3x1 5x1]]",
+    "why": "load-spans is Trebol's own, for tools that change part of a file: R3 has none."
+  },
+  {
+    "test": "[t: \"say {hi} (1 + 2)\" s: load-spans t (copy/part at t s/3/1/x s/3/1/y) = \"(1 + 2)\"]",
+    "why": "load-spans is Trebol's own, for tools that change part of a file: R3 has none."
+  },
+  {
+    "test": "[s: union complement charset \"ab\" charset \"bc\" all [not find/case s #\"a\" find s #\"b\" find s #\"z\"]]",
+    "why": "Sets of bitsets keep a complement's meaning: in R3 a union or intersection with a complement forgets it."
+  },
+  {
+    "test": "[s: intersect complement charset \"ab\" complement charset \"bc\" all [not find/case s #\"c\" find s #\"d\"]]",
+    "why": "Sets of bitsets keep a complement's meaning: in R3 a union or intersection with a complement forgets it."
   }
 ]

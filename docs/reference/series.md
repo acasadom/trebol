@@ -465,6 +465,7 @@ select series value
 - `/case`
 - `/skip size` (`integer!`)
 - `/last`
+- `/same`: In a block, the very same value (same?), not an equal one
 
 (fn-replace)=
 ## replace

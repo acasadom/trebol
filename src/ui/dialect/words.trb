@@ -2,26 +2,32 @@
 
 ; --- layout --------------------------------------------------------------------
 
+; The words of these lists are what some styles take (see styles.trb): role primary, size small.
 roles: [primary accent danger success warning muted]
 sizes: [small medium large]
 aligns: [left center right spread]
 valigns: [top middle bottom]
-flags: [fill fit hidden disabled readonly inert narrow-only wide-only linked round drag drop reorder multiple sortable stacked count]
 chart-kinds: [bar line area pie]
-simple-rules: [required email url integer]
-letter: charset [#"a" - #"z" #"A" - #"Z"]
-rule-words: [min max length pattern match check check-async calc react is width pad gap menu accept known links sorted key morph poster captions mark by card step]
-media-styles: [video audio]
-media-flags: [loop muted autoplay]   ; of a video or a sound
-
-; Words that never name a field. email, url and integer are rules too,
-; but also common field names, so the first word after an input style names it.
-field-name?: func [w [word!]] [
-    not any [
-        find roles w  find sizes w  find aligns w  find flags w
-        find rule-words w  w = 'required  event-word? w
-    ]
+; the icons Trebol brings, as a host draws them (src/host/icons.ts has their shapes): icon #heart
+ui-icons: [
+    search plus minus close check chevron-left chevron-right chevron-up chevron-down chevrons-left
+    chevrons-right arrow-left arrow-right arrow-up arrow-down edit trash user mail phone info warning
+    menu home folder door building landmark shield fireworks coins book scale people tree truck box file
+    invoice template stack image settings filter refresh undo redo download upload external eye lock calendar
+    clock star heart type lines rows bold italic heading list list-ordered link hash globe banknote
+    check-square toggle radio dropdown panel columns grid tabs pointer
 ]
+
+; #stra: "#stra is not an icon; did you mean #star?" as a problem of the layout at place; the icon, either way
+icon-of: function [i [issue!] f place [block!]] [
+    w: to word! form i
+    unless find ui-icons w [
+        n: ui-nearest w ui-icons
+        ui-problem place rejoin [mold i " is not an icon" either n [rejoin ["; did you mean #" n "?"]] [""]]
+    ]
+    i
+]
+letter: charset [#"a" - #"z" #"A" - #"Z"]
 
 ; The rules a program or a package adds, by name: name -> the block that checks a value.
 ; Their messages are in i18n/ui, under the same name, so an app can change them.
@@ -45,7 +51,10 @@ rule: function [
     name
 ]
 
-add-rule: func [f rule [block!]] [
+add-rule: func [
+    "Adds a rule to a face, as required or min 5 written after it do: add-rule f [min 5]"
+    f [object!] rule [block!] "The rule's word and what it takes"
+] [
     unless f/rules [f/rules: copy []]
     append/only f/rules rule
 ]

@@ -40,7 +40,7 @@ select.tb-input:focus { box-shadow: 0 0 0 1px var(--tb-border), 0 0 0 4px var(--
 .tb-table-wrap { border-radius: 8px; box-shadow: none; }
 .tb-table th { background: var(--tb-surface); color: var(--tb-text); font-size: 12px; font-weight: 400; padding: 6px var(--tb-space-3); }
 .tb-sort { padding: 6px var(--tb-space-3); }
-@media (min-width: 641px) {
+@container tb-screen (min-width: 641px) {
   .tb-table th:not(:last-child) { box-shadow: inset -1px 0 0 var(--tb-border); }
   .tb-table td { height: auto; padding: 6px var(--tb-space-3); border-bottom: 0; }
   .tb-table tbody tr:nth-child(even) { background: var(--tb-bg); }

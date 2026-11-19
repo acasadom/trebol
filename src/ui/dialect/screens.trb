@@ -20,16 +20,16 @@ find-screen: function [f route [block!] /local n t a b] [
 ]
 
 ; Builds the screen a route names as the only child of f; returns the screen face.
-enter-screen: function [f route [block!] /local ev b] [
+enter-screen: function [f route [block!]] [
     def: find-screen f route
     ; a screen's arguments and labels are local to it
     spec: copy/deep def/4
     labels: copy []
-    ; on-xxx handlers before the first face belong to the screen
-    events: copy []
-    parse spec [any [p: set ev word! if (event-word? ev) set b block! (ui-known-event p ev  append events reduce [ev b])] body:]
-    s: make select styles 'screen [text: def/2  pane: ui-build body labels]
-    unless empty? events [s/events: events]
+    ; what comes before the first face belongs to the screen, read as any face's
+    s: make select styles 'screen [text: def/2]
+    sd: select ui-style-defs 'screen
+    s/pane: ui-build/in spec labels s sd
+    ui-take-done s sd spec
     words: copy []
     repeat i length? def/3 [append words reduce [to set-word! pick def/3 i  pick route i + 1]]
     bind-labels spec labels words

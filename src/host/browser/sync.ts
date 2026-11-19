@@ -1,5 +1,7 @@
 // --- syncing -----------------------------------------------------------------------
 
+import { syncDevice } from './device.ts';
+import { syncResize, placeResize } from './resize.ts';
 import { K, form, intern, text, blockOf, type Cell, type ObjectCell, type BlockCell, type StringCell } from '../../core/index.ts';
 import { translate } from '../index.ts';
 import { runNow, type HostTask } from '../scheduler.ts';
@@ -11,6 +13,7 @@ import { isData } from './drag.ts';
 import { rangeText } from './calendar.ts';
 import { shortcutAria, shortcutLabel } from './keys.ts';
 import { countRun } from './count.ts';
+import { syncPick } from './pick.ts';
 import { syncSlider, syncProgress, syncIcon, required, syncRadio } from './fields.ts';
 import { syncMedia, syncPhoto, syncUpload } from './uploads.ts';
 import { syncWidget } from './widget.ts';
@@ -20,6 +23,7 @@ import { syncOrbit } from './orbits.ts';
 import { syncRowsField, placeEntries } from './row-faces.ts';
 import { syncRich } from './richtext.ts';
 import { syncRows, morphName } from './tables.ts';
+import { menuButton } from './events.ts';
 import { syncTree } from './trees.ts';
 import { syncToolbar, syncBreadcrumb } from './toolbars.ts';
 import { syncDialog, syncTabs, syncSteps, syncSplit } from './dialogs.ts';
@@ -41,6 +45,7 @@ export function sync(m: Mounted): void {
   if (flag(f, 'narrow-only')) cls.push('tb-narrow-only');
   if (flag(f, 'wide-only')) cls.push('tb-wide-only');
   if (flag(f, 'fit')) cls.push('tb-fit');
+  if (flag(f, 'segmented')) cls.push('tb-segmented');
   if (flag(f, 'drop')) cls.push('tb-drop-zone');
   if (role !== null && !INPUTS.has(style)) cls.push(`tb-${role}`);
   const size = word(f, 'size');
@@ -55,11 +60,16 @@ export function sync(m: Mounted): void {
   // the rows of a table or list carry its morph name, each with its key
   const morph = style === 'table' || style === 'list' ? null : morphName(get(f, 'morph'));
   if (morph !== null) m.el.dataset['tbMorph'] = morph;
+  // a menu code wrote as in a layout (["Copy" copy]) is made into its items, as the layout makes them
+  const menu = get(f, 'menu');
+  if (menu.t === K.Block && (menu as BlockCell).s.data.slice((menu as BlockCell).i).some(x => x.t !== K.Object)) void fire('ui-menu-of', f);
   else delete m.el.dataset['tbMorph'];
   if (turned && hidden && !isFolding(m.el)) fold(m.el, () => { if (flag(m.face, 'hidden')) setExtra(m.el, [...(m.el.dataset['tb'] ?? '').split(' ').filter(Boolean), 'tb-hidden']); });
   else if (!hidden && (turned || isFolding(m.el))) unfold(m.el);
   // shown as it is, but it and its children cannot be used
   m.el.inert = flag(f, 'inert');
+  // with on-select, a click on it chooses the face under the pointer
+  syncPick(m, m.el.inert);
   // a face you can drag takes the focus, so the keyboard reaches its menu and moves it
   if (flag(f, 'drag') && !isData(m) && m.el.tabIndex < 0) m.el.tabIndex = 0;
   space(m.el, 'padding', get(f, 'pad'));
@@ -145,6 +155,8 @@ export function sync(m: Mounted): void {
       break;
     }
     case 'button': case 'link': {
+      // a menu code gave it after it was shown
+      if (get(f, 'menu').t === K.Block && get(f, 'action').t !== K.Block) menuButton(m);
       (m.label ?? m.el).textContent = t ?? '';
       const named = iconLabel(f);
       if (named !== null) m.el.setAttribute('aria-label', named);
@@ -223,14 +235,21 @@ export function sync(m: Mounted): void {
     case 'grid': {
       const cols = get(f, 'cols');
       m.el.style.setProperty('--tb-cols', cols.t === K.Integer ? String(cols.v) : '2');
-      // [1 4 1]: a column per weight, never narrower than what it holds
-      const weights = cols.t === K.Block ? cols.s.data.slice(cols.i).filter(c => c.t === K.Integer) : [];
-      if (weights.length > 0) m.el.style.setProperty('--tb-tracks', weights.map(w => `minmax(min-content, ${form(w)}fr)`).join(' '));
-      else m.el.style.removeProperty('--tb-tracks');
+      // [1 4 1]: a column per weight, never narrower than what it holds (with fit, what it holds scrolls inside
+      // it, so it can be); [small 1 small]: small, medium and large are columns of a width the theme sets
+      const weights = cols.t === K.Block ? cols.s.data.slice(cols.i).filter(c => c.t === K.Integer || c.t === K.Word) : [];
+      const least = flag(f, 'fit') ? '0' : 'min-content';
+      const resize = flag(f, 'resize');
+      // with resize, columns by count are written as weights, so a handle can size them
+      const written = weights.length > 0
+        ? weights.map(w => (w.t === K.Word ? `var(--tb-track-${form(w)})` : `minmax(${least}, ${form(w)}fr)`))
+        : resize ? Array<string>(cols.t === K.Integer ? Number(cols.v) : 2).fill(`minmax(${least}, 1fr)`) : [];
+      syncResize(m.el, f, written, resize);
       break;
     }
   }
   if (style === 'toolbar') syncToolbar(m.el);
+  if (style === 'device') syncDevice(m.el);
   if (m.el instanceof HTMLButtonElement) {
     // a submit stays focusable while the form has errors; clicking it shows them
     if (flag(f, 'submit')) m.el.setAttribute('aria-disabled', flag(f, 'disabled') ? 'true' : 'false');
@@ -252,6 +271,7 @@ export function sync(m: Mounted): void {
       box.replaceChildren(...(keep ? [keep] : []));
       appendChildren(box, f, style);
     }
+    if (style === 'grid') placeResize(box);
     // let the dialect link the new faces to their view and form
     void fire('ui-pane', f);
   }

@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, normalize } from 'node:path';
-import { startDev } from '../tools/dev.ts';
+import { startDev, loopback } from '../tools/dev.ts';
 
 test('an app folder loads Trebol by name and brings its own API', async () => {
   const app = mkdtempSync(join(tmpdir(), 'trebol-app-'));
@@ -138,4 +138,9 @@ test('the API can take WebSockets, and its open streams do not keep the server f
   const refused = new WebSocket(`ws://${base}/elsewhere`);
   await new Promise(ok => { refused.onerror = ok; });
   await dev.close();
+});
+
+test('only this machine reaches the dev server unless it is opened', async () => {
+  for (const a of ['::1', '127.0.0.1', '::ffff:127.0.0.1']) assert.ok(loopback(a), a);
+  for (const a of ['192.168.1.20', '::ffff:10.0.0.2', 'fe80::1', undefined]) assert.ok(!loopback(a), String(a));
 });

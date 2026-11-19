@@ -1,11 +1,34 @@
 # Styles
 
 The styles of the UI dialect: the kinds of thing a layout is made of. A layout names a style and follows it with
-what that face needs, in any order: a label for the code (`total:` before the style), a field name (the first
-word after an input style), texts (a string, a text per language, or a quoted word of the dictionary), an icon
-(`#search`), words of the dialect (see [the words of the dialect](dialect.md)), and blocks: the children of a
-container, the items of a choice or a menu, and the action, the block at the end. `stylize` makes a style of
-your own from one of these. See [building screens](../ui/01-first-screen.md).
+what that face needs, in any order: a label for the code (`total:` before the style), texts (a string, a text per
+language, or a quoted word of the dictionary), handlers (`on-change [...]`), `react`, `is` and `calc`, and what
+the style takes, which each style below lists: a field name (the first word after an input style), an icon
+(`#search`), words of the dialect (see [the words of the dialect](dialect.md)), values, and blocks (the children
+of a container, the items of a choice or a menu). A block no entry takes is the action, the block at the end.
+What a style does not take is a problem of the layout: `field name poster %p.png` says "poster is not a word of
+field".
+
+Each style is made from another and takes what that one takes, and more: `face` is where every style starts,
+`container`, `input` and `rows-face` are made from it, and no layout writes these four. `stylize` makes a style
+of your own the same way, with a `takes:` block of its own; see [styles of your own](../ui/13-styles-of-your-own.md).
+
+## face
+
+What every face is and takes. Its last way out, `with [...]`, runs a block bound to the face once it is read,
+to set a field no word sets: use it when nothing else does, since check and a designer cannot see into it.
+
+## container
+
+What a face that holds others takes: its children, and the spacing around and between them.
+
+## input
+
+What a face that holds a value of a form takes: its name, its rules, `readonly`.
+
+## rows-face
+
+What a face that shows rows takes: its columns, and the field that tells rows apart.
 
 ## view
 
@@ -32,7 +55,7 @@ A group on a raised background, with a title when it is given a text.
 
 ## grid
 
-Columns: `grid 3 [...]` gives three equal ones, `grid [1 4 1] [...]` the weight of each. On a narrow screen, as
+Columns: `grid 3 [...]` gives three equal ones, `grid [1 4 1] [...]` the weight of each, and `small`, `medium` or `large` in that block a column of a fixed width the theme sets (`grid [small 1 small]`). On a narrow screen, as
 many as fit, down to one.
 
 ## scroll
@@ -44,6 +67,13 @@ screen readers, and the keyboard scrolls it.
 
 A mat that takes all the height left on the page, with the image it is given (`desktop %mat.png [...]`) or a
 color of the theme, on which tiles are laid from left to right. Its `menu` is the context menu.
+
+## device
+
+A screen of another size: its faces laid out at the size of its screen, `phone` (390x844, the first),
+`tablet` (834x1112), `desktop` (1280x800) or a pair from 200x200 to 3840x3840, and made smaller to fit its
+place. The narrow rules go by the width of its screen, as they go by the page's. With `fit` it takes the height
+left as well and the whole screen fits in it, in the middle of its place.
 
 ## title
 
@@ -140,7 +170,7 @@ its least. The arrow keys, Home, End, Page Up and Page Down move it too. A scree
 ## radio
 
 Options to choose one from, all shown: the same options as a `choice`, groups included, each with its title
-over its options.
+over its options. `segmented` shows them as buttons joined in a bar, the chosen one pressed.
 
 ## upload
 
@@ -250,6 +280,11 @@ then each neighbour as a link with the label of its edge. `small`, `medium` or `
 
 An icon of the set Trebol brings, `icon #heart`, drawn in the color of its role.
 
+The icons, for `icon`, an icon before a face's text, a tile's `mark` and a menu's items; another name is a
+problem of the layout (`#hart is not an icon; did you mean #heart?`), and `ui-icons` is the list:
+
+`#search` `#plus` `#minus` `#close` `#check` `#chevron-left` `#chevron-right` `#chevron-up` `#chevron-down` `#chevrons-left` `#chevrons-right` `#arrow-left` `#arrow-right` `#arrow-up` `#arrow-down` `#edit` `#trash` `#user` `#mail` `#phone` `#info` `#warning` `#menu` `#home` `#folder` `#door` `#building` `#landmark` `#shield` `#fireworks` `#coins` `#book` `#scale` `#people` `#tree` `#truck` `#box` `#file` `#invoice` `#template` `#stack` `#image` `#settings` `#filter` `#refresh` `#undo` `#redo` `#download` `#upload` `#external` `#eye` `#lock` `#calendar` `#clock` `#star` `#heart` `#type` `#lines` `#rows` `#bold` `#italic` `#heading` `#list` `#list-ordered` `#link` `#hash` `#globe` `#banknote` `#check-square` `#toggle` `#radio` `#dropdown` `#panel` `#columns` `#grid` `#tabs` `#pointer`
+
 ## button
 
 A button: the block after it runs when it is pressed. With a `menu`, it opens the menu instead.
@@ -288,7 +323,7 @@ its label, and puts in it, as a card, each row of its `data` whose `status` name
 shows the row's `title`, or the fields of `card [title "Job" who "Mechanic"]`, the first one large, as a list
 does. A card can be dragged to another lane, or moved there from its menu; then its field names that lane and
 `on-drop` runs, with `event/row`, `event/from` and `event/to`: when it gives `false`, the card goes back.
-`on-select` sees the card chosen as `row`. When the field holds a machine, a lane is a state: a card goes to the
+`on-select`, or the block after the lanes when there is none, runs when a card is chosen, with it as `row`. When the field holds a machine, a lane is a state: a card goes to the
 lane only by a way of its machine from where it is to that state, whose event the drop sends.
 
 ## tabs

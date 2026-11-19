@@ -126,7 +126,8 @@ console runs what it is given instead, so a script can come through a pipe: `ech
 `dev` serves the folder (the current one by default) at <http://localhost:5173/>; `--port 8080` picks another
 port, and `--api api.ts` lets a module of yours answer requests before the files are served: its
 `handleApi(req, res, url)` answers the ones it knows and gives `false` for the rest, so an app can bring a
-small server of its own while it is being written.
+small server of its own while it is being written. Only this machine reaches it; `--host` opens it to the network,
+to try the app on a phone, and then anyone on the network can read the folder.
 
 ## Colors in the editor
 

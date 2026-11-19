@@ -143,6 +143,21 @@ test('the tests of the examples pass', async () => {
   assert.ok(passed, lines.join('\n'));
 });
 
+test('click, pick-menu and drag act on the open rows of a tree, and see sees them', async () => {
+  const { passed, lines } = await ran(['test/fixtures/screens/tree.test.trb']);
+  assert.ok(passed, lines.join('\n'));
+});
+
+test('an app with a choose or see of its own does not hide the words of the tests', async () => {
+  const { passed, lines } = await ran(['test/fixtures/screens/shadow.test.trb']);
+  assert.ok(passed, lines.join('\n'));
+});
+
+test('a test in a folder imports the files next to it', async () => {
+  const { passed, lines } = await ran(['test/fixtures/imports/lib/twice.test.trb']);
+  assert.ok(passed, lines.join('\n'));
+});
+
 test('say answers the next confirm, and an answer no question took fails the test', async () => {
   const { lines } = await ran(['test/fixtures/screens/confirm.test.trb']);
   const at = (l: string): string => l.replace(/\S*test\/fixtures\/screens\//g, '');
@@ -163,16 +178,17 @@ test('press runs the shortcut of a button, else on-key; Enter sends a form and E
     'ok    keys.test.trb:4:1  press',
     'ok    keys.test.trb:8:1  press',
     'ok    keys.test.trb:12:1  press',
-    'ok    keys.test.trb:17:1  press',
-    'ok    keys.test.trb:21:1  press',
-    'ok    keys.test.trb:28:1  press',
-    'FAIL  keys.test.trb:35:1  press',
+    'ok    keys.test.trb:18:1  press',
+    'ok    keys.test.trb:23:1  press',
+    'ok    keys.test.trb:27:1  press',
+    'ok    keys.test.trb:34:1  press',
+    'FAIL  keys.test.trb:41:1  press',
     '        ** User error: press: "Ctrl+O" cannot be used now',
-    '        ** At: keys.test.trb:35:2',
-    'FAIL  keys.test.trb:36:1  press',
+    '        ** At: keys.test.trb:41:2',
+    'FAIL  keys.test.trb:42:1  press',
     '        ** User error: press: "Ctrl+Nothing" is not a key',
-    '        ** At: keys.test.trb:36:2',
-    '8 tests, 2 failed.',
+    '        ** At: keys.test.trb:42:2',
+    '9 tests, 2 failed.',
   ]);
 });
 
@@ -196,7 +212,8 @@ test('pick-menu chooses an item of a button, a face or a row of a table, and of 
     'FAIL  menus.test.trb:23:1  pick-menu',
     '        ** User error: pick-menu: "Off" cannot be used now',
     '        ** At: menus.test.trb:23:2',
-    '8 tests, 4 failed.',
+    'ok    menus.test.trb:24:1  pick-menu',
+    '9 tests, 4 failed.',
   ]);
 });
 
@@ -256,5 +273,15 @@ test('a time takes what is one, in the active language, within min and max', asy
 
 test('a board deals its cards to lanes; a drop sets the field, or takes the way of a machine to that state', async () => {
   const { passed, lines } = await ran(['test/fixtures/screens/board.test.trb']);
+  assert.ok(passed, lines.join('\n'));
+});
+
+test('an app whose widget only a browser defines runs in screen tests, its module left out', async () => {
+  const { passed, lines } = await ran(['test/fixtures/screens/widget.test.trb']);
+  assert.ok(passed, lines.join('\n'));
+});
+
+test('the faces code puts in a pane are linked to their view, so their checks show', async () => {
+  const { passed, lines } = await ran(['test/fixtures/screens/pane.test.trb']);
   assert.ok(passed, lines.join('\n'));
 });

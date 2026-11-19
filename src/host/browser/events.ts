@@ -49,45 +49,59 @@ export function listen(m: Mounted, style: string): void {
   if (flag(f, 'drop')) dropZones.add(m);
   const menu = get(f, 'menu');
   // a button or link without an action opens its menu; anything else has it as its context menu
-  if (menu.t === K.Block && (style === 'button' || style === 'link') && get(f, 'action').t !== K.Block) {
-    node.setAttribute('aria-haspopup', 'menu');
-    node.setAttribute('aria-expanded', 'false');
-    // a chevron after the text (or alone after the icon) says it opens a menu; it turns up while open
-    if (m.label === null) {
-      m.label = el('span');
-      node.prepend(m.label);
+  if ((style === 'button' || style === 'link') && get(f, 'action').t !== K.Block) {
+    if (menu.t === K.Block) menuButton(m);
+  } else if (menu.t === K.Block && (style === 'table' || style === 'list')) swipeRows(node, f);
+  // read when it opens: code may give a face a menu, or another, after it is shown
+  node.addEventListener('contextmenu', ev => {
+    if (node.getAttribute('aria-haspopup') === 'menu') return;
+    const target = ev.target as Element;
+    const data = style === 'table' || style === 'list' || style === 'tree';
+    const item = data ? target.closest(style === 'tree' ? '[role="treeitem"]' : 'tr, li') : null;
+    if (item === null && data && get(f, 'menu').t !== K.Block) return;
+    const entries = contextEntries(f, item);
+    if (entries.length === 0) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    // from the keyboard (Menu key, Shift+F10) there is no pointer: open by the focused element
+    let { clientX: x, clientY: y } = ev;
+    if (x === 0 && y === 0) {
+      const r = (item ?? (document.activeElement && node.contains(document.activeElement) ? document.activeElement : node)).getBoundingClientRect();
+      x = r.left + 8;
+      y = r.top + Math.min(r.height, 40);
     }
-    const chevron = icon('chevron-down');
-    if (chevron !== null) {
-      chevron.classList.add('tb-menu-chevron');
-      node.append(chevron);
-    }
-    node.addEventListener('click', ev => {
-      ev.preventDefault();
-      const r = node.getBoundingClientRect();
-      openMenu(trebolEntries(f, menu as BlockCell, NONE), r.left, r.bottom + 4, node);
-    });
-  } else if (menu.t === K.Block || flag(f, 'drag')) {
-    if (menu.t === K.Block && (style === 'table' || style === 'list')) swipeRows(node, f);
-    node.addEventListener('contextmenu', ev => {
-      const target = ev.target as Element;
-      const data = style === 'table' || style === 'list' || style === 'tree';
-      const item = data ? target.closest(style === 'tree' ? '[role="treeitem"]' : 'tr, li') : null;
-      if (item === null && data && get(f, 'menu').t !== K.Block) return;
-      const entries = contextEntries(f, item);
-      if (entries.length === 0) return;
-      ev.preventDefault();
-      ev.stopPropagation();
-      // from the keyboard (Menu key, Shift+F10) there is no pointer: open by the focused element
-      let { clientX: x, clientY: y } = ev;
-      if (x === 0 && y === 0) {
-        const r = (item ?? (document.activeElement && node.contains(document.activeElement) ? document.activeElement : node)).getBoundingClientRect();
-        x = r.left + 8;
-        y = r.top + Math.min(r.height, 40);
-      }
-      openMenu(entries, x, y, (item as HTMLElement | null) ?? (target as HTMLElement));
-    });
+    openMenu(entries, x, y, (item as HTMLElement | null) ?? (target as HTMLElement));
+  });
+}
+
+/** A button or link with no action that has a menu: a chevron says so, and a click opens it. Once per face:
+ *  sync calls it too, for a menu code gives the face after it is shown. */
+export function menuButton(m: Mounted): void {
+  const node = m.el;
+  const f = m.face;
+  if (node.hasAttribute('aria-haspopup')) return;
+  node.setAttribute('aria-haspopup', 'menu');
+  node.setAttribute('aria-expanded', 'false');
+  // a chevron after the text (or alone after the icon) says it opens a menu; it turns up while open
+  if (m.label === null) {
+    // with no label of its own the face holds only its text, which the label holds from now on
+    m.label = el('span');
+    node.textContent = '';
+    node.prepend(m.label);
   }
+  const chevron = icon('chevron-down');
+  if (chevron !== null) {
+    chevron.classList.add('tb-menu-chevron');
+    node.append(chevron);
+  }
+  node.addEventListener('click', ev => {
+    ev.preventDefault();
+    const r = node.getBoundingClientRect();
+    // read when it opens: code may have given the face another menu since
+    const now = get(f, 'menu');
+    if (now.t !== K.Block) return;
+    openMenu(trebolEntries(f, now as BlockCell, NONE), r.left, r.bottom + 4, node);
+  });
 }
 
 /** The context menu of a face, or of one of its rows: its own items, then "Move to" if it can be dragged. */

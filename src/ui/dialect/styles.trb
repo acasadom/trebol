@@ -1,0 +1,216 @@
+; A part of the UI dialect: see ui.trb, whose words it shares.
+
+; --- the styles, and what each takes ---------------------------------------------------
+;
+; Each style is defined as a program would define one with stylize: the style it is made
+; from, its fields, and takes: what may be written after it (see takes.trb). face,
+; container, input and rows-face are only made from, never written in a layout.
+
+ui-define/abstract 'face none [takes: [
+    icon: [issue!] :icon-of "an icon before the text, one of those Trebol brings"
+    role: one-of roles "how it stands out"
+    size: one-of sizes "how wide or tall it is"
+    size: 'width one-of [small medium large fill] "how wide it is: width small, or fill"
+    align: one-of aligns "where its children go across"
+    fill: 'fill "as wide as it can be"
+    fit: 'fit "takes the height the window has left; what it holds scrolls inside"
+    hidden: 'hidden "not shown"
+    disabled: 'disabled "shown, but it cannot be used"
+    inert: 'inert "shown as it is, but neither it nor what it holds can be used"
+    narrow-only: 'narrow-only "shown only on a narrow screen"
+    wide-only: 'wide-only "hidden on a narrow screen"
+    drag: 'drag "can be dragged"
+    drop: 'drop "takes what is dropped on it"
+    reorder: 'reorder "its children or rows can be moved around"
+    menu: 'menu [block!] :menu-of "its context menu, or the menu a button opens"
+    morph: 'morph [lit-word! block!] :morph-of "a name shared with a face of the next screen, which this one becomes"
+    with: 'with [block!] "a block run bound to the face once it is read: the last way out, for a field nothing else sets"
+    on: [on-over on-dbl-click on-key on-focus on-unfocus on-menu on-select on-drop on-reorder]
+    done: :ui-run-with
+]]
+
+ui-define/abstract 'container 'face [takes: [
+    pad: 'pad [integer! word!] :spacing-of "the space inside it, a step from 0 to 7, none or wide"
+    gap: 'gap [integer! word!] :spacing-of "the space between its children, a step from 0 to 7, none or wide"
+    pane: block :ui-faces "the faces it holds"
+]]
+
+ui-define/abstract 'input 'face [takes: [
+    name: first name "the field's name: the key of its value in values"
+    readonly: 'readonly "shown and sent, but not changed, and no rule applies"
+    required: rule 'required "it must have a value"
+    match: rule 'match [word!] "another field its value must be the same as"
+    check: rule 'check [block!] "a block that says whether the value is good"
+    check-async: rule 'check-async [block!] "a check that asks a server"
+    rules: rule custom "a rule a program adds with rule"
+    on: [on-change]
+]]
+
+ui-define/abstract 'rows-face 'face [takes: [
+    name: first label "the word that labels it: table clients is clients: table"
+    columns: block :columns-of "the field of each column and its header"
+    key: 'key [word!] "the field that tells one row from another"
+]]
+
+; the space of pad and gap: a step, none or wide
+spacing-of: function [v f place [block!]] [
+    case [integer? v [spacing v place]  v = 'none [0]  v = 'wide [6]]
+]
+ui-faces: func [b [block!]] [build-faces b ui-labels]
+morph-of: func [v] [either block? v [v] [to word! v]]
+
+; --- containers
+
+stylize [
+    view: container [style: 'view  takes: [on: [on-key on-find]]]
+    column: container [style: 'column]
+    row: container [style: 'row  takes: [valign: one-of valigns "where its children go up and down"]]
+    form: container [style: 'form  takes: [done: :steps-take-submits]]
+    panel: container [style: 'panel]
+    grid: container [style: 'grid  resize: none  takes: [
+        cols: [integer!] "how many columns"
+        cols: block :grid-weights "the weight of each column, [1 4 1], or small, medium or large for one as wide as the theme says"
+        resize: 'resize "a handle between two columns makes one wider; the browser keeps the widths"
+    ]]
+    scroll: container [style: 'scroll]
+    split: container [style: 'split  value: 1  takes: [done: :split-check]]   ; value: the pane shown on narrow screens
+    dialog: container [style: 'dialog  hidden: true  takes: [on: [on-close]]]
+    toolbar: container [style: 'toolbar  takes: [pane: block :toolbar-faces "the faces it holds; --- is a divider"]]
+    desktop: container [style: 'desktop  takes: [value: [file! url!] "the picture behind it"]]
+    ; a screen of another size, shown as it is there and made smaller to fit: narrow rules go by its width
+    device: container [style: 'device  screen: 390x844  takes: [
+        screen: [pair!] :device-screen "the size of its screen in CSS pixels: 390x844"
+        screen: one-of [phone tablet desktop] :device-screen "a phone (390x844), a tablet (834x1112) or a desktop (1280x800)"
+    ]]
+]
+
+device-screen: func [v] [
+    either pair? v [all [v/x >= 200  v/y >= 200  v/x <= 3840  v/y <= 3840  v]] [
+        select [phone 390x844 tablet 834x1112 desktop 1280x800] v
+    ]
+]
+grid-weights: func [b [block!]] [
+    all [not empty? b  parse b [some [integer! | 'small | 'medium | 'large]]  b]
+]
+toolbar-faces: function [b [block!]] [
+    out: build-faces replace/all copy b '--- 'divider ui-labels
+    ; a divider keeps where its --- was written
+    marks: copy []
+    forall b [if '--- = first b [append marks loaded-at b]]
+    foreach f out [if all [f/style = 'divider  none? f/place  not empty? marks] [
+        f/place: m: take marks
+        f/written: reduce [m m]
+    ]]
+    out
+]
+split-check: func [f place [block!]] [
+    if 2 <> length? f/pane [ui-problem place "split takes two faces, one per pane"]
+]
+
+; --- texts
+
+stylize [
+    title: face [style: 'title  takes: [count: 'count "a number that changes runs from the old one to the new"]]
+    heading: face [style: 'heading  takes: [count: 'count "a number that changes runs from the old one to the new"]]
+    text: face [style: 'text  takes: [count: 'count "a number that changes runs from the old one to the new"]]
+    code: face [style: 'code]
+    divider: face [style: 'divider]
+]
+
+; --- fields
+
+stylize [
+    field: input [style: 'field  takes: [
+        email: rule 'email "its text is an email address"
+        url: rule 'url "its text is a web address"
+        integer: rule 'integer "its value is a whole number"
+        length: rule 'length [integer!] [integer!] "the fewest and most letters it takes: length 2 40"
+        pattern: rule 'pattern [block!] "a parse rule its text must match"
+    ]]
+    password: input [style: 'password  takes: [
+        length: rule 'length [integer!] [integer!] "the fewest and most letters it takes: length 8 64"
+        pattern: rule 'pattern [block!] "a parse rule its text must match"
+    ]]
+    number: input [style: 'number  takes: [
+        integer: rule 'integer "its value is a whole number"
+        min: rule 'min [number!] "the least it takes"
+        max: rule 'max [number!] "the most it takes"
+    ]]
+    money: input [style: 'money  takes: [
+        currency: [word!] :currency-of "the currency of the amount, its three letters: EUR"
+        min: rule 'min [money! number!] "the least it takes"
+        max: rule 'max [money! number!] "the most it takes"
+    ]]
+    date: input [style: 'date  takes: [
+        min: rule 'min [date!] "the first day it takes"
+        max: rule 'max [date!] "the last day it takes"
+    ]]
+    date-range: input [style: 'date-range  takes: [
+        min: rule 'min [date!] "the first day it takes"
+        max: rule 'max [date!] "the last day it takes"
+    ]]
+    time: input [style: 'time  takes: [
+        min: rule 'min [time!] "the earliest time it takes"
+        max: rule 'max [time!] "the latest time it takes"
+        step: 'step [number!] "the minutes between the times it lists, 1 to 720"
+        done: :time-check
+    ]]
+    area: input [style: 'area  takes: [
+        length: rule 'length [integer!] [integer!] "the fewest and most letters it takes: length 0 500"
+        pattern: rule 'pattern [block!] "a parse rule its text must match"
+    ]]
+    rich: input [style: 'rich]
+    check: input [style: 'check]
+    toggle: input [style: 'toggle]
+    choice: input [style: 'choice  takes: [
+        options: block :options-of "what to choose from: texts, value and text, groups with a title"
+    ]]
+    radio: choice [style: 'radio  takes: [segmented: 'segmented "its options as buttons joined in a bar"]]
+    slider: input [style: 'slider  takes: [
+        rules: [number!] [number!] :slider-ends "the least and the most it takes: 0 100"
+        step: 'step [number!] "how far one move takes it"
+        done: :slider-fill
+    ]]
+    upload: input [style: 'upload  takes: [
+        multiple: 'multiple "takes more than one file"
+        accept: 'accept [block!] "the files it takes: [^"pdf^" ^"image/*^"]"
+    ]]
+    photo: input [style: 'photo  takes: [
+        accept: 'accept [block!] "the images it takes"
+        round: 'round "cut to a circle, as a person's photo"
+        value: [file! url!] "the photo it starts with"
+    ]]
+    lookup: input [style: 'lookup  takes: [
+        multiple: 'multiple "takes more than one"
+        known: 'known [map!] "what each value shows as"
+        links: 'links [map!] "the screen each value links to when it is read only"
+        on: [on-search]
+    ]]
+    rows: input [style: 'rows  takes: [
+        template: block "the fields of one row"
+        min: rule 'min [integer!] "the fewest rows it takes"
+        max: rule 'max [integer!] "the most rows it takes"
+        done: :rows-fill
+    ]]
+    widget: input [style: 'widget  takes: [
+        tag: first [tag!] :widget-tag "the element it is, as the page's JavaScript defines it: <geo-map>"
+        props: block :widget-props "the element's properties"
+        on: any
+    ]]
+]
+
+; money price "Price" EUR
+currency-of: func [w [word!]] [all [parse form w [3 letter]  to word! uppercase form w]]
+time-check: func [f place [block!]] [
+    if all [f/step  any [not integer? f/step  f/step < 1  f/step > 720]] [
+        ui-problem place "a time's step is a whole number of minutes from 1 to 720"
+    ]
+]
+; slider volume "Volume" 0 100
+slider-ends: func [v [block!] f] [
+    add-rule f reduce ['min first v]
+    add-rule f reduce ['max second v]
+    f/rules
+]
+widget-tag: func [t [tag!]] [to string! t]
+widget-props: func [b [block!]] [either ui-checking [make object! []] [make object! b]]

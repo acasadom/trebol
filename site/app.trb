@@ -58,6 +58,7 @@ view compose/deep/only [
         row [
             link "Gallery" 'gallery
             link "Games" 'games
+            link "Designer" %designer/
             link "Docs" %docs/
             link #external "GitHub" https://github.com/acasadom/trebol
             button #settings "Look" menu (looks) on-menu [look: event/picked retheme]

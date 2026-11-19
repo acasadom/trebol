@@ -8,15 +8,19 @@
 ; [place message ...] while a block is laid out; none otherwise, and then a problem is an error at once.
 ui-problems: none
 
-ui-problem: func [place [block!] message [string!]] [
+ui-problem: func [
+    "A problem of the layout being read, at place: check lists it, layout fails with it"
+    place [block!] "Where in the layout's block" message [string!]
+] [
     either ui-problems [append ui-problems reduce [place message]] [ui-fail reduce [place message]]
 ]
 
 ; The faces of a block, as build-faces gives them, or an error with every problem in it.
-ui-build: function [spec [block!] labels [block!]] [
+; /in: the block is that of face f, of style def, whose own words come before its faces.
+ui-build: function [spec [block!] labels [block!] /in f def] [
     outer: ui-problems
     set 'ui-problems copy []
-    out: try [build-faces spec labels]
+    out: try [build-faces either in [ui-head f def spec labels] [spec] labels]
     found: ui-problems
     set 'ui-problems outer
     if error? out [do out]
@@ -26,6 +30,20 @@ ui-build: function [spec [block!] labels [block!]] [
 
 ; While ui-check runs: the problems of every block, and no code of the program is run.
 ui-checking: none
+
+; For tools such as a designer: a block laid out as check does, running none of its code. The faces keep
+; where they were written (place, written); problems do not stop it.
+ui-sketch: function [
+    "A layout of the block that runs none of its code, and its problems: [view problems]"
+    spec [block!]
+] [
+    set 'ui-checking copy []
+    r: try [layout spec]
+    found: ui-checking
+    set 'ui-checking none
+    if error? r [append found reduce [spec form r/message]]
+    reduce [either error? r [none] [r] found]
+]
 
 ; It lays out each block after view or layout (styles of stylize first), and the
 ; faces of each screen and row of rows, which a running app lays out only when shown.
@@ -44,7 +62,8 @@ ui-check: function [
             opt ['compose | path! if ('compose = first first next p)]
             set b block! (
                 append/only blocks reduce [first p b]
-                walk b
+                ; stylize [view: view [...]] defines a style: its blocks are no layouts
+                unless 'stylize = first p [walk b]
             )
             | 'machine set b block! (append/only blocks reduce ['machine b])
             ; a rule of the program: its words may follow a style
@@ -75,21 +94,8 @@ ui-check: function [
     ]
     foreach p blocks [
         unless find [stylize machine rule] first p [
-            attempt-at next p [
-                faces: all-faces layout second p
-                ; screens and rows lay these out when shown
-                while [not empty? faces] [
-                    f: take faces
-                    later: copy []
-                    if f/style = 'screens [foreach [n t a b] f/data [append/only later b]]
-                    if all [f/style = 'rows  f/template] [append/only later f/template]
-                    foreach b later [
-                        spec: copy/deep b
-                        parse spec [any [set w word! if (event-word? w) block!] body:]
-                        foreach g ui-build body copy [] [append faces all-faces g]
-                    ]
-                ]
-            ]
+            ; the faces of screens and of a row of rows are read with the view, as the app shows them later
+            attempt-at next p [layout second p]
         ]
     ]
     ; a screen or rows laid out twice (rows with min) gives its problems twice
@@ -138,11 +144,10 @@ ui-takes: [
 ]
 
 ; Every word the dialect knows, for ui-suggest.
-ui-dialect-words: does [
-    unique compose [
-        (words-of styles) (roles) (sizes) (aligns) (valigns) (flags) (chart-kinds) (simple-rules)
-        (rule-words) (media-flags) required global (words-of custom-rules)
-    ]
+ui-dialect-words: function ["Every word of the dialect: styles, the words they take, and the rules an app adds"] [
+    out: copy words-of styles
+    foreach [n def] ui-style-defs [append out ui-style-words def]
+    unique append out compose [global required react is calc later (words-of custom-rules)]
 ]
 
 ; The word near enough to w to be what it meant (buton: button), or none; the
@@ -158,17 +163,59 @@ ui-shown: function [v] [
     either 30 < length? t [append copy/part t 27 "..."] [t]
 ]
 
-; The style a word after a face means when it is a mistyped one (feild: field), or none.
-ui-meant-style: function [v] [
-    all [word? :v  s: ui-nearest v ui-dialect-words  select styles s  s]
+; The style a word after a face of def means when it is a mistyped one (feild: field), or none;
+; none too when a word of def's own is as near (tine after a badge that takes tone).
+ui-meant-style: function [def v] [
+    unless all [word? :v  not find ui-dialect-words v  s: ui-nearest v ui-dialect-words  select styles s] [return none]
+    if o: ui-nearest v ui-style-words def [
+        if (machine-engine/distance form v form o) <= machine-engine/distance form v form s [return none]
+    ]
+    s
 ]
 
-; The problem with a value that follows a face and means nothing to it.
-ui-stray: function [f v] [
+; Whether the word at pos, which means nothing to a face of def, takes the value after it: a
+; keyword of def given the wrong value (stars "many"), or one that takes what follows, of
+; another style (poster %a.png after a field) or mistyped (starz 3).
+ui-stray-takes?: function [def pos [block!]] [
+    v: first pos
+    unless word? :v [return false]
+    if e: ui-keyword def v [return not empty? e/args]
+    e: any [ui-keyword ui-any v  all [n: ui-nearest v ui-style-words def  ui-keyword def n]]
+    to logic! all [e  not empty? e/args  ui-arg? first e/args next pos]
+]
+
+; The problem with a value that follows a face of def and means nothing to it.
+ui-stray: function [def v] [
     case [
-        all [word? :v  t: select ui-takes v] [rejoin [v " takes " t]]
-        s: ui-meant-style :v [rejoin [v " is not a style; did you mean " s "?"]]
-        word? :v [rejoin [v " is not a word of " f/style ui-suggest v ui-dialect-words]]
-        true [rejoin [f/style " does not take " ui-shown :v]]
+        all [word? :v  e: ui-keyword def v] [rejoin [v " takes " any [select ui-takes v  ui-args-said e]]]
+        s: ui-meant-style def :v [rejoin [v " is not a style; did you mean " s "?"]]
+        word? :v [rejoin [v " is not a word of " def/name ui-suggest v ui-style-words def]]
+        true [rejoin [def/name " does not take " ui-shown :v]]
     ]
+]
+
+; What the entry e takes after its word, said: "a file or a url".
+ui-args-said: function [e] [
+    said: copy []
+    foreach a e/args [
+        append said case [
+            a = 'text ["a text"]
+            'one-of = first a [rejoin ["one of " ui-or ui-choices a/2]]
+            true [ui-or collect [foreach t a [
+                n: form t  if #"!" = last n [take/last n]
+                keep rejoin [either find "aeiou" first n ["an "] ["a "] n]
+            ]]]
+        ]
+    ]
+    either 2 = length? said [rejoin [said/1 " and " said/2]] [ui-or said]
+]
+
+; [a b c] -> "a, b or c"
+ui-or: function [items [block!]] [
+    out: copy ""
+    repeat i length? items [
+        append out form pick items i
+        case [i + 1 = length? items [append out " or "]  i < length? items [append out ", "]]
+    ]
+    out
 ]

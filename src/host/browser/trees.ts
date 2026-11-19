@@ -36,6 +36,13 @@ export function buildTree(face: ObjectCell, m: Mounted): HTMLElement {
     selectNode(m, item);
   });
   box.addEventListener('keydown', ev => treeKey(m, ev));
+  // a label cut short shows whole under the pointer
+  box.addEventListener('pointerover', ev => {
+    const name = (ev.target as Element).closest('.tb-tree-row')?.querySelector<HTMLElement>('.tb-tree-label');
+    if (name === null || name === undefined) return;
+    if (name.scrollWidth > name.clientWidth) name.title = name.textContent ?? '';
+    else name.removeAttribute('title');
+  });
   m.box = box;
   m.rows = new Map();
   m.empty = empty;
@@ -68,8 +75,11 @@ export function syncTree(m: Mounted): void {
   const old = m.rows!;
   const open = m.open!;
   const next = new Map<string, HTMLElement>();
+  // where each level being laid out is: an item taken from an outer level moves that level's place past it
+  const places: { cursor: ChildNode | null }[] = [];
   const level = (group: HTMLElement, nodes: Cell[], depth: number, parentKey: string): void => {
-    let cursor = group.firstChild;
+    const at: { cursor: ChildNode | null } = { cursor: group.firstChild };
+    places.push(at);
     nodes.forEach((node, i) => {
       const id = rowField(node, key);
       let k = id.t === K.None ? `${parentKey}/${i}` : `${id.t}:${form(id)}`;
@@ -86,8 +96,9 @@ export function syncTree(m: Mounted): void {
       if (name.textContent !== text) name.textContent = text;
       const kids = rowField(node, CHILDREN);
       const folder = kids.t === K.Block;
-      // `expanded: true` opens a node the first time it shows
-      if (folder && known === undefined && rowField(node, EXPANDED).t === K.Logic && (rowField(node, EXPANDED) as { v: boolean }).v) open.add(k);
+      // `expanded: true` opens a node the first time it shows as one that holds others: a row that was a leaf
+      // under the same key and now has children opens too
+      if (folder && (known === undefined || !known.hasAttribute('aria-expanded')) && rowField(node, EXPANDED).t === K.Logic && (rowField(node, EXPANDED) as { v: boolean }).v) open.add(k);
       const isOpen = folder && open.has(k);
       if (folder) item.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
       else item.removeAttribute('aria-expanded');
@@ -98,13 +109,16 @@ export function syncTree(m: Mounted): void {
       const on = selected.t !== K.None && sameRow(selected, node);
       item.classList.toggle('tb-selected', on);
       item.setAttribute('aria-selected', on ? 'true' : 'false');
-      if (item !== cursor) group.insertBefore(item, cursor);
-      else cursor = cursor.nextSibling;
+      if (item !== at.cursor) {
+        for (const p of places) if (p !== at && p.cursor === item) p.cursor = item.nextSibling;
+        group.insertBefore(item, at.cursor);
+      } else at.cursor = at.cursor.nextSibling;
     });
+    places.pop();
     // whatever is left after the last placed item is gone from the data
-    while (cursor !== null) {
-      const gone = cursor;
-      cursor = cursor.nextSibling;
+    while (at.cursor !== null) {
+      const gone = at.cursor;
+      at.cursor = gone.nextSibling;
       gone.remove();
     }
   };

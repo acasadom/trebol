@@ -21,6 +21,9 @@ export const FORMS = String.raw`
 .tb-form > .tb-steps > .tb-steps-nav { grid-column: 2; }
 :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel, .tb-form > .tb-steps > .tb-step-panel) > * { grid-column: 1 / -1; }
 :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel, .tb-form > .tb-steps > .tb-step-panel) > .tb-field { display: contents; }
+/* a field of a form chosen on a designer's canvas (inert, on-select) has no box of its own: its control is marked */
+:is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel, .tb-form > .tb-steps > .tb-step-panel) > .tb-field.tb-picked > .tb-control { outline: 2px solid var(--tb-primary); outline-offset: 4px; border-radius: var(--tb-radius); }
+:is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel, .tb-form > .tb-steps > .tb-step-panel) > .tb-field.tb-picked > .tb-label { color: var(--tb-primary); }
 :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel, .tb-form > .tb-steps > .tb-step-panel) > .tb-field > .tb-label { grid-column: 1; padding-top: calc((var(--tb-control) - 1.5em) / 2); }
 :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel, .tb-form > .tb-steps > .tb-step-panel) > .tb-field > .tb-control { grid-column: 2; }
 :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel, .tb-form > .tb-steps > .tb-step-panel) > .tb-actions, :is(.tb-form, .tb-form > .tb-panel, .tb-form > .tb-panel > .tb-panel, .tb-form > .tb-steps > .tb-step-panel) > .tb-check-row { grid-column: 2; }
@@ -95,6 +98,15 @@ select.tb-input { appearance: none; background-image: linear-gradient(45deg, tra
 .tb-check input[type="radio"]:focus-visible { border-radius: 50%; }
 .tb-radios { display: flex; flex-wrap: wrap; column-gap: var(--tb-space-5); }
 .tb-radio-group { flex-basis: 100%; }
+/* radio segmented: the options as buttons joined in a bar, the chosen one raised; its label only for screen readers */
+.tb-segmented { position: relative; }
+.tb-segmented > .tb-label { position: absolute; top: 0; left: 0; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.tb-segmented .tb-radios { display: inline-flex; flex-wrap: nowrap; gap: 2px; padding: 3px; background: var(--tb-bg); border: var(--tb-line) solid var(--tb-border); border-radius: var(--tb-radius); }
+.tb-segmented .tb-check { position: relative; gap: 0; min-height: calc(var(--tb-control) - 8px); padding: 0 var(--tb-space-4); border-radius: max(0px, calc(var(--tb-radius) - 3px)); color: var(--tb-muted); font-weight: 500; white-space: nowrap; }
+.tb-segmented .tb-check input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; }
+.tb-segmented .tb-check:hover { color: var(--tb-text); }
+.tb-segmented .tb-check:has(input:checked) { background: var(--tb-surface); color: var(--tb-text); box-shadow: var(--tb-shadow-1); }
+.tb-segmented .tb-check:has(input:focus-visible) { box-shadow: 0 0 0 3px var(--tb-focus-ring); }
 .tb-radio-title { display: block; margin-top: var(--tb-space-2); font-size: 13px; font-weight: 600; color: var(--tb-muted); }
 .tb-switch input {
   appearance: none;
@@ -221,7 +233,7 @@ a.tb-upload-name:hover { text-decoration: underline; }
   align-items: center;
   gap: var(--tb-space-1);
   min-height: calc(var(--tb-control) - 8px);
-  padding: 0 var(--tb-space-2) 0 calc(var(--tb-level, 0) * 20px + var(--tb-space-1));
+  padding: 0 var(--tb-space-2) 0 calc(var(--tb-level, 0) * 16px + var(--tb-space-1));
   border-radius: var(--tb-radius);
   cursor: pointer;
   user-select: none;

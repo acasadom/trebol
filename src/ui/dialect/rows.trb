@@ -45,6 +45,8 @@ rows-fill: function [f] [
     entries: map-each d any [f/value []] [rows-entry f d]
     ; `min 2` starts with two empty rows
     while [(length? entries) < any [rule-of f 'min 0]] [append entries rows-entry f none]
+    ; check and a designer see the faces of a row, which an app lays out only when it has one
+    if all [ui-checking  empty? entries  f/template] [append entries rows-entry f none]
     add-button: either f/pane [last f/pane] [
         make select styles 'button [icon: #plus]
     ]
@@ -116,9 +118,13 @@ board-fill: function [f /local id label] [
     f/built: state
 ]
 
+; Choosing a card runs on-select, or else the board's action, the block after its lanes.
 board-pick: function [f row] [
     f/selected: row
-    if h: handler-for f 'on-select [run-handler f h]
+    case [
+        h: handler-for f 'on-select [run-handler f h]
+        f/action [run-handler f f/action]
+    ]
 ]
 
 ; The event that takes machine m to the state named lane: of the first way from a state it is in to that state

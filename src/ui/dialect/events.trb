@@ -165,11 +165,14 @@ ui-click: function [
 ]
 
 ui-select: function [
-    "Called by the host when the user chooses a row of a table or list."
+    "Called by the host when the user chooses a row of a table or list, or a face inside an inert face."
     f row
 ] [
     f/selected: row
-    if h: handler-for f 'on-select [run-handler f h]
+    if h: handler-for f 'on-select [
+        ; inert: the face chosen is event/face
+        either find data-styles f/style [run-handler f h] [run-handler/with f h make object! [face: row]]
+    ]
 ]
 
 ui-sort: function [
@@ -219,6 +222,14 @@ ui-menu: function [
 ] [
     if row [f/selected: row]
     fire-event f 'on-menu reduce [quote picked: quoted item/id]
+]
+
+ui-menu-of: function [
+    "The items of a face's menu; one code gave it as a layout writes it (^"Copy^" copy) is made into them first."
+    f
+] [
+    if all [block? f/menu  not parse f/menu [any object!]] [f/menu: menu-of f/menu]
+    f/menu
 ]
 
 ui-drop: function [

@@ -50,7 +50,7 @@ draw
 
 ### A
 
-[`abs`](#fn-abs) · [`add`](#fn-add) · [`ajoin`](#fn-ajoin) · [`all`](#fn-all) · [`also`](#fn-also) · [`alter`](#fn-alter) · [`and`](#fn-and) · [`and~`](#fn-and-7e) · [`any`](#fn-any) · [`any-block?`](#fn-any-block-3f) · [`any-function?`](#fn-any-function-3f) · [`any-object?`](#fn-any-object-3f) · [`any-path?`](#fn-any-path-3f) · [`any-string?`](#fn-any-string-3f) · [`any-type?`](#fn-any-type-3f) · [`any-value?`](#fn-any-value-3f) · [`any-word?`](#fn-any-word-3f) · [`append`](#fn-append) · [`apply`](#fn-apply) · [`arccosine`](#fn-arccosine) · [`arcsine`](#fn-arcsine) · [`arctangent`](#fn-arctangent) · [`arctangent2`](#fn-arctangent2) · [`array`](#fn-array) · [`as-pair`](#fn-as-pair) · [`at`](#fn-at) · [`attempt`](#fn-attempt)
+[`abs`](#fn-abs) · [`add`](#fn-add) · [`add-rule`](#fn-add-rule) · [`ajoin`](#fn-ajoin) · [`all`](#fn-all) · [`also`](#fn-also) · [`alter`](#fn-alter) · [`and`](#fn-and) · [`and~`](#fn-and-7e) · [`any`](#fn-any) · [`any-block?`](#fn-any-block-3f) · [`any-function?`](#fn-any-function-3f) · [`any-object?`](#fn-any-object-3f) · [`any-path?`](#fn-any-path-3f) · [`any-string?`](#fn-any-string-3f) · [`any-type?`](#fn-any-type-3f) · [`any-value?`](#fn-any-value-3f) · [`any-word?`](#fn-any-word-3f) · [`append`](#fn-append) · [`apply`](#fn-apply) · [`arccosine`](#fn-arccosine) · [`arcsine`](#fn-arcsine) · [`arctangent`](#fn-arctangent) · [`arctangent2`](#fn-arctangent2) · [`array`](#fn-array) · [`as-pair`](#fn-as-pair) · [`at`](#fn-at) · [`attempt`](#fn-attempt)
 
 ### B
 
@@ -88,9 +88,13 @@ draw
 
 [`join`](#fn-join)
 
+### K
+
+[`keys-of`](#fn-keys-of)
+
 ### L
 
-[`last`](#fn-last) · [`last?`](#fn-last-3f) · [`layout`](#fn-layout) · [`length?`](#fn-length-3f) · [`lesser-or-equal?`](#fn-lesser-or-equal-3f) · [`lesser?`](#fn-lesser-3f) · [`lit-path?`](#fn-lit-path-3f) · [`lit-word?`](#fn-lit-word-3f) · [`load`](#fn-load) · [`load-csv`](#fn-load-csv) · [`load-json`](#fn-load-json) · [`load-local`](#fn-load-local) · [`load-query`](#fn-load-query) · [`load-xml`](#fn-load-xml) · [`loaded-at`](#fn-loaded-at) · [`localize`](#fn-localize) · [`log-10`](#fn-log-10) · [`log-2`](#fn-log-2) · [`log-e`](#fn-log-e) · [`logic?`](#fn-logic-3f) · [`loop`](#fn-loop) · [`lowercase`](#fn-lowercase)
+[`last`](#fn-last) · [`last?`](#fn-last-3f) · [`layout`](#fn-layout) · [`length?`](#fn-length-3f) · [`lesser-or-equal?`](#fn-lesser-or-equal-3f) · [`lesser?`](#fn-lesser-3f) · [`lit-path?`](#fn-lit-path-3f) · [`lit-word?`](#fn-lit-word-3f) · [`load`](#fn-load) · [`load-csv`](#fn-load-csv) · [`load-json`](#fn-load-json) · [`load-local`](#fn-load-local) · [`load-query`](#fn-load-query) · [`load-spans`](#fn-load-spans) · [`load-xml`](#fn-load-xml) · [`loaded-at`](#fn-loaded-at) · [`localize`](#fn-localize) · [`log-10`](#fn-log-10) · [`log-2`](#fn-log-2) · [`log-e`](#fn-log-e) · [`logic?`](#fn-logic-3f) · [`loop`](#fn-loop) · [`lowercase`](#fn-lowercase)
 
 ### M
 

@@ -293,7 +293,7 @@ native('find', '["Finds a value in a series; gives the series where it is, or no
   return value(at(s, used(a[9]!) || o.match ? r.at + r.len : r.at));
 });
 
-native('select', '["The value after the one found, or none." series [series! map! object! none!] value [any-type!] /only /case /skip size [integer!] /last]', (_t, f) => {
+native('select', '["The value after the one found, or none." series [series! map! object! none!] value [any-type!] /only /case /skip size [integer!] /last /same "In a block, the very same value (same?), not an equal one"]', (_t, f) => {
   const x = f.args[0]!;
   const a = f.args;
   if (x.t === K.None) return value(NONE);
@@ -303,7 +303,7 @@ native('select', '["The value after the one found, or none." series [series! map
   }
   const s = x as SeriesCell;
   const skip = used(a[4]!) ? Math.max(1, num(a[5]!)) : 1;
-  const r = findIn(s, a[1]!, { only: used(a[2]!), cased: used(a[3]!), skip, last: used(a[6]!), match: false, end: s.s.data.length });
+  const r = findIn(s, a[1]!, { only: used(a[2]!), cased: used(a[3]!), skip, last: used(a[6]!), match: false, end: s.s.data.length, same: used(a[7]!) });
   if (r.at < 0) return value(NONE);
   return value(cellAt(s, r.at + r.len));
 });

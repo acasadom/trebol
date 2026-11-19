@@ -1,0 +1,16 @@
+Trebol [title: "Choosing the rows of a tree"]
+
+"rows of a tree"
+[see "Shop"  see "Parts"  see/not "Road"]
+[click "Parts"  see "Chosen: Parts"]
+[click "Shop"  see "Chosen: Shop"]
+[pick-menu "Bikes" "Rename"  see "rename Bikes"]
+[error? try [click "Road"]]
+
+"moving the rows of a tree"
+[drag "Parts" "Bikes"  see "Moved 2 to 1 in Shop"]
+[error? try [drag "Parts" "Shop"]]
+
+"a tree that takes drops: rows go to other levels"
+[drag "Tools" "Wheels"  see "Dropped Tools at 1 in Store"]
+[drag "Wheels" "Tools"  see "Dropped Wheels at 2 in the top"]

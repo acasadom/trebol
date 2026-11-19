@@ -42,7 +42,33 @@ view [
 
 `grid 3` would make three columns. A block of numbers gives each column a weight instead: `grid [3 2]`
 makes the first column three fifths of the width and the second two fifths. A column is never squeezed
-narrower than what it holds.
+narrower than what it holds, except in a grid with `fit`, where what it holds scrolls inside it. The words `small`, `medium` and `large` give a column a fixed width the theme sets,
+and the numbers share what is left: `grid fit [small 1 medium]` is a desktop app, with a narrow list on the left,
+the work in the middle and a pane on the right.
+
+With `resize`, the user sets the widths: a handle in the gap between two columns, dragged or moved with
+the arrow keys, makes the column of a set width wider or narrower, and a double click gives it back the
+width the theme sets. The browser keeps what the user chose, so the workshop opens with its list as wide
+as they left it:
+
+```trebol-ui
+view [
+    grid [small 1] resize [
+        panel "Bikes in" [
+            text "Ada Lovelace, road bike"
+            text "Grace Hopper, city bike"
+        ]
+        panel "Road bike" [
+            text "The rear brake rubs and the chain slips in top gear."
+        ]
+    ]
+]
+```
+
+The words before a view's first face are the view's own, read as those after a style are a face's:
+`view [width fill ...]` makes the page as wide as the window, and `on-key [...]` there gets the keys no face
+handles. A word the view does not take is a problem `trebol check` names, as for any face. A screen's block
+starts the same way, with its `on-enter` and `on-leave`.
 
 ## Lining up
 
@@ -80,7 +106,7 @@ Open the first example on its own and make the window narrow. Below 640 pixels t
 column, so the workshop list moves under the form, and a row of fields stacks them. The form already had
 its labels above its controls in the grid's narrow column: a form decides by its own width, not the
 screen's. None of it is written in the view. A screen is laid out once and the theme fits it
-to the width it gets.
+to the width it gets: the width of the page, or of the device it is shown in.
 
 When a screen does want something different on a phone, `narrow-only` shows a face only on narrow screens
 and `wide-only` only on wide ones:
@@ -94,6 +120,32 @@ view [
     text narrow-only "Swipe down for today's bookings."
 ]
 ```
+
+A `device` shows a screen as it is on another one, at that size, made smaller when it does not fit its place.
+It takes the size of its screen, `phone` (390 by 844), `tablet` (834 by 1112), `desktop` (1280 by 800) or a
+pair such as `360x740`, and the faces of that screen. Narrow is the width of the device's screen, so the same
+faces side by side show both ways:
+
+```trebol-ui
+view [
+    width fill
+    grid [1 2] [
+        device phone [
+            heading "Bookings"
+            text narrow-only "On a phone"
+            grid 2 [field "Name" field "Bike"]
+        ]
+        device tablet [
+            heading "Bookings"
+            text wide-only "On a tablet"
+            grid 2 [field "Name" field "Bike"]
+        ]
+    ]
+]
+```
+
+What only the device itself can do stays the device's: a finger, the bigger controls a touch screen gets, and
+the menus and notices a page opens over everything, which open over the page.
 
 ## Space
 

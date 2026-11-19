@@ -56,7 +56,7 @@ What needs care: amber.
 (word-muted)=
 ## muted
 
-A role; a flag of a video or a sound.
+A role; a flag, of [`video`](#style-video) and [`audio`](#style-audio).
 
 Less to the eye: grey. On a video or a sound, it plays without its sound until the person turns it on.
 
@@ -133,70 +133,74 @@ The children of a row line up at the bottom.
 (word-fill)=
 ## fill
 
-A flag.
+A flag, of [`face`](#style-face).
 
 Takes all the width it can.
 
 (word-fit)=
 ## fit
 
-A flag.
+A flag, of [`face`](#style-face).
 
-Takes the height the window has left, and its children scroll inside it.
+Takes the height the window has left, and its children scroll inside it. A `widget` with `fit` gives that
+height to its element, which scrolls itself, as a code editor or a map does. Inside a pane of a `grid fit`,
+a face with `fit` takes the height the pane has left: `scroll fit [...]` above a row with a field is a chat.
 
 (word-hidden)=
 ## hidden
 
-A flag.
+A flag, of [`face`](#style-face).
 
 Not shown; `face/hidden: false` shows it.
 
 (word-disabled)=
 ## disabled
 
-A flag.
+A flag, of [`face`](#style-face).
 
 Shown, but it cannot be used.
 
 (word-readonly)=
 ## readonly
 
-A flag.
+A flag, of [`input`](#style-input).
 
 Shown and sent with the form, but the person cannot change it, and no rule applies to it.
 
 (word-inert)=
 ## inert
 
-A flag.
+A flag, of [`face`](#style-face).
 
-Shown as it is, but neither it nor its children can be used.
+Shown as it is, but neither it nor its children can be used. With `on-select`, a click on it chooses the face
+under the pointer, as on a designer's canvas: `preview: column inert on-select [pick-face event/face] [...]`.
+The face chosen is its `selected`, and is marked; setting `selected` marks another.
 
 (word-narrow-only)=
 ## narrow-only
 
-A flag.
+A flag, of [`face`](#style-face).
 
 Shown only on a narrow screen.
 
 (word-wide-only)=
 ## wide-only
 
-A flag.
+A flag, of [`face`](#style-face).
 
 Hidden on a narrow screen.
 
 (word-linked)=
 ## linked
 
-A flag.
+A flag, of [`tile`](#style-tile).
 
 Marks a tile with an arrow: it stands for something kept elsewhere, like a shortcut.
 
 (word-mark)=
 ## mark
 
-A word followed by its value.
+A word followed by its value, of [`tile`](#style-tile).
 
 `tile #folder "Records" [...] mark #list "List"`: a second icon, small, at the bottom right of the tile's icon,
 so two tiles with the same icon tell what each one is. Its label, a text, a text per language or a word of the
@@ -206,21 +210,21 @@ with `linked`, whose arrow is at the other corner.
 (word-by)=
 ## by
 
-A word followed by its value.
+A word followed by its value, of [`board`](#style-board).
 
 The field that names the lane of each card of a board: `board jobs by status [...]`.
 
 (word-card)=
 ## card
 
-A word followed by its value.
+A word followed by its value, of [`board`](#style-board).
 
 The fields a card of a board shows, as the columns of a list: `card [title "Job" who "Mechanic"]`.
 
 (word-step)=
 ## step
 
-A word followed by its value.
+A word followed by its value, of [`time`](#style-time) and [`slider`](#style-slider).
 
 How far one move takes a slider: `slider volume "Volume" 0 50 step 5`. A number above 0; a decimal step gives
 decimal values. On a `time`, the minutes between the times its list offers, from 1 to 720: `time start "Start"
@@ -229,14 +233,14 @@ step 15`.
 (word-round)=
 ## round
 
-A flag.
+A flag, of [`photo`](#style-photo) and [`image`](#style-image).
 
 Cuts an image to a circle, as for a person's photo: `image %ada.jpg "Ada" 48x48 round`.
 
 (word-count)=
 ## count
 
-A flag.
+A flag, of [`title`](#style-title), [`heading`](#style-heading) and [`text`](#style-text).
 
 A text, heading or title whose number, percent or amount changes runs from the old one to the new, in about
 half a second: `title count is [total]`. Not the first it shows, nor with less motion asked for.
@@ -244,44 +248,63 @@ half a second: `title count is [total]`. Not the first it shows, nor with less m
 (word-drag)=
 ## drag
 
-A flag.
+A flag, of [`face`](#style-face).
 
 It can be dragged: it carries its value, or the row in a table, list or tree.
 
 (word-drop)=
 ## drop
 
-A flag.
+A flag, of [`face`](#style-face).
 
 Things can be dropped on it: its `on-drop` runs.
 
 (word-reorder)=
 ## reorder
 
-A flag.
+A flag, of [`face`](#style-face).
 
 Its children, or its rows, can be moved around: its `on-reorder` runs.
+
+(word-resize)=
+## resize
+
+A flag, of [`grid`](#style-grid).
+
+A grid shows a handle between two columns: dragged, or moved with the arrow keys, it makes one wider.
+It sizes the column of a set width (`small`, `medium`, `large`), or the left one of two weighted
+columns, which keeps the width from then on. A double click gives that column back its width. The
+browser keeps the widths, so the page opens as the user left it. On a narrow screen there are no
+handles: the grid shows one column.
 
 (word-multiple)=
 ## multiple
 
-A flag.
+A flag, of [`upload`](#style-upload) and [`lookup`](#style-lookup).
 
 An upload or a lookup takes more than one.
 
 (word-sortable)=
 ## sortable
 
-A flag.
+A flag, of [`table`](#style-table).
 
 A table whose headers sort the rows it has, without the program. See `on-sort` for the program to sort them.
 
 (word-stacked)=
 ## stacked
 
-A flag.
+A flag, of [`chart`](#style-chart).
 
 A chart whose series sit on top of each other, so each bar or area shows the total too.
+
+(word-segmented)=
+## segmented
+
+A flag, of [`radio`](#style-radio).
+
+A radio whose options are buttons joined in a bar, the chosen one pressed, as the switch between the views of a
+page: `radio view "View" ["Design" "Split" "Code"] segmented`. Its text is read out, not shown.
 
 (word-bar)=
 ## bar
@@ -314,14 +337,14 @@ A chart of slices, one for each label, of the first series.
 (word-required)=
 ## required
 
-A rule.
+A rule, of [`input`](#style-input).
 
 The field must have a value.
 
 (word-email)=
 ## email
 
-A rule.
+A rule, of [`field`](#style-field).
 
 The text must be an email address.
 
@@ -336,21 +359,21 @@ The text must be an IBAN: of a country that has them, of its length, with the ri
 (word-url)=
 ## url
 
-A rule.
+A rule, of [`field`](#style-field).
 
 The text must be a web address.
 
 (word-integer)=
 ## integer
 
-A rule.
+A rule, of [`field`](#style-field) and [`number`](#style-number).
 
 The text must be a whole number.
 
 (word-min)=
 ## min
 
-A word followed by its value.
+A rule, of [`number`](#style-number), [`money`](#style-money), [`date`](#style-date), [`date-range`](#style-date-range), [`time`](#style-time) and [`rows`](#style-rows).
 
 `min 18`: the value must be at least that. On `rows`, the fewest rows; on `date-range`, its start. Numbers,
 amounts, dates and times.
@@ -358,42 +381,42 @@ amounts, dates and times.
 (word-max)=
 ## max
 
-A word followed by its value.
+A rule, of [`number`](#style-number), [`money`](#style-money), [`date`](#style-date), [`date-range`](#style-date-range), [`time`](#style-time) and [`rows`](#style-rows).
 
 `max 99`: the value must be at most that. On `rows`, the most rows; on `date-range`, its end.
 
 (word-length)=
 ## length
 
-A word followed by its value.
+A rule, of [`field`](#style-field), [`password`](#style-password) and [`area`](#style-area).
 
 `length 8 64`: the text must have from 8 to 64 characters; `length 5`, exactly 5.
 
 (word-pattern)=
 ## pattern
 
-A word followed by its value.
+A rule, of [`field`](#style-field), [`password`](#style-password) and [`area`](#style-area).
 
 `pattern [some digit]`: the text must match the rule, as `parse` reads it.
 
 (word-match)=
 ## match
 
-A word followed by its value.
+A rule, of [`input`](#style-input).
 
 `match password`: the value must be the same as the field named.
 
 (word-check)=
 ## check
 
-A word followed by its value.
+A rule, of [`input`](#style-input).
 
 `check [value <> "admin"]`: the block gives true when the value is good, or the message to show.
 
 (word-check-async)=
 ## check-async
 
-A word followed by its value.
+A rule, of [`input`](#style-input).
 
 `check-async [not taken? value]`: like `check`, but it may wait, for a server with `fetch`; the field shows that
 it is checking.
@@ -401,7 +424,7 @@ it is checking.
 (word-calc)=
 ## calc
 
-A word followed by its value.
+A word followed by a block, after any face.
 
 `calc [values/qty * values/price]`: the value is the formula's, worked out again whenever what it reads
 changes, as with [`is`](#word-is); the person cannot change it. A formula that fails, or lacks a value,
@@ -410,7 +433,7 @@ leaves the field empty, with no message.
 (word-is)=
 ## is
 
-A word followed by its value.
+A word followed by a block, after any face.
 
 `text is [rejoin ["Hello, " name/value]]`: the face shows what the block gives, worked out when the face is
 shown and again whenever something the block reads changes. It sets the face's main facet: `data` for a
@@ -421,7 +444,7 @@ in; what it reads changing gives it the block's value again.
 (word-react)=
 ## react
 
-A word followed by its value.
+A word followed by a block, after any face.
 
 `react [face/disabled: not values/email]`: the block runs when the face is shown and again whenever something
 it reads changes; `face` is the face it follows. `react later [...]` runs only on a change, not when shown.
@@ -436,34 +459,37 @@ end: the second time round one of them is left out, and the console says where i
 (word-width)=
 ## width
 
-A word followed by its value.
+A word followed by its value, of [`face`](#style-face).
 
 `width small`, `medium` or `large`: how wide a field, or a view, is.
 
 (word-pad)=
 ## pad
 
-A word followed by its value.
+A word followed by its value, of [`container`](#style-container).
 
 `pad 4`: the room inside it, a step of the spacing scale from 0 to 7, or `none` and `wide`.
 
 (word-gap)=
 ## gap
 
-A word followed by its value.
+A word followed by its value, of [`container`](#style-container).
 
 `gap 2`: the room between its children, on the same scale as `pad`.
 
 (word-menu)=
 ## menu
 
-A word followed by its value.
+A word followed by its value, of [`face`](#style-face).
 
 `menu ["Edit" edit "Delete" delete]`: on a button or a link, the menu it opens; on anything else, its context
 menu. Each item is a text and the word that `on-menu` receives in `event/picked`, with an icon before the text if
 it has one: `#trash "Delete" delete`. `danger` before an item says it removes or cannot be undone, and shows it
 red: `danger #trash "Delete" delete`. `---` draws a line between items, and a block after a text in place of the
 word is a submenu.
+
+Code may give a face a menu, or another one, at any time, written the same way: `actions/menu: ["Copy" copy]`.
+The face opens the menu it has when it is clicked, even one it had none of when it was shown.
 
 On a phone, swiping a row of a table or list with a menu to the left shows its first two items behind it, as
 buttons, the `danger` ones red, and *More* for the whole menu when it has others. A swipe less than halfway
@@ -472,35 +498,35 @@ goes back, as does a touch anywhere else or a scroll.
 (word-accept)=
 ## accept
 
-A word followed by its value.
+A word followed by its value, of [`upload`](#style-upload) and [`photo`](#style-photo).
 
 `accept ["pdf" "image/*"]`: the files an upload takes.
 
 (word-known)=
 ## known
 
-A word followed by its value.
+A word followed by its value, of [`lookup`](#style-lookup).
 
 `known #("ada" "Ada Lovelace")`: what each value of a lookup shows as, for the values already chosen.
 
 (word-links)=
 ## links
 
-A word followed by its value.
+A word followed by its value, of [`lookup`](#style-lookup).
 
 `links #("ada" client/ada)`: the screen each value of a read-only lookup links to, written as for `link`.
 
 (word-sorted)=
 ## sorted
 
-A word followed by its value.
+A word followed by its value, of [`table`](#style-table).
 
 `sorted [due desc]`: the order a table shows, by a column, `asc` or `desc`.
 
 (word-key)=
 ## key
 
-A word followed by its value.
+A word followed by its value, of [`rows-face`](#style-rows-face), [`button`](#style-button), [`link`](#style-link) and [`board`](#style-board).
 
 `key code`: the field that tells the rows of a table, list or tree apart, `id` unless told; a row keeps its
 place in the selection and moves as itself when the rows change. `key "Ctrl+S"`: the shortcut of a button or
@@ -509,7 +535,7 @@ link.
 (word-morph)=
 ## morph
 
-A word followed by its value.
+A word followed by its value, of [`face`](#style-face).
 
 `morph 'logo`: a name the face shares with a face of the next screen; as the screen changes, one becomes the
 other, moving and growing from where it was to where the other is. `morph [client id]` is a name made of a
@@ -518,17 +544,26 @@ screen can carry the client's id. On a table or a list, `morph 'client` names ea
 key, `client 7`, so the row chosen becomes the face of the next screen named `[client id]`. Only faces on
 show in both screens move; the rest go with their screen.
 
+(word-with)=
+## with
+
+A word followed by its value, of [`face`](#style-face).
+
+`with [role: 'danger]`: a block run bound to the face once the rest of it is read, so its set-words set the
+face's fields. It is the last way out, for a field no word of the style sets; `trebol check` does not run it and a
+designer shows it as code, so a style that needs a field often is better given a word for it in its `takes:`.
+
 (word-poster)=
 ## poster
 
-A word followed by its value.
+A word followed by its value, of [`video`](#style-video).
 
 `poster %intro.jpg`: the image a video shows before it plays.
 
 (word-captions)=
 ## captions
 
-A word followed by its value.
+A word followed by its value, of [`video`](#style-video).
 
 `captions %intro.vtt`: a video's captions, in WebVTT, in the active language; `captions [en %en.vtt es %es.vtt]`
 gives one per language, and the one shown follows the active language.
@@ -536,14 +571,14 @@ gives one per language, and the one shown follows the active language.
 (word-loop)=
 ## loop
 
-A flag of a video or a sound.
+A flag, of [`video`](#style-video) and [`audio`](#style-audio).
 
 A video or a sound starts again when it ends.
 
 (word-autoplay)=
 ## autoplay
 
-A flag of a video or a sound.
+A flag, of [`video`](#style-video) and [`audio`](#style-audio).
 
 A video or a sound plays as soon as it can, and always without its sound: browsers let nothing else play on
 its own.
@@ -628,7 +663,9 @@ When it gets the focus.
 
 An event: the block after it runs when it happens.
 
-When a key is pressed: `event/key` says which.
+When a key is pressed: `event/key` says which, `event/ctrl?`, `event/shift?`, `event/alt?` and `event/meta?` the keys
+held with it, and `event/typing?` is `true` when it is pressed in a box the user types in, which undoes its own
+typing with Ctrl+Z.
 
 (word-on-leave)=
 ## on-leave
@@ -673,7 +710,8 @@ When the person types in a lookup: the block gives what was found for `query`.
 
 An event: the block after it runs when it happens.
 
-When a row of a table, list or tree is chosen: it is in `row`.
+When a row of a table, list or tree is chosen: it is in `row`. On an `inert` face, when a face inside it is
+clicked: it is in `event/face`.
 
 (word-on-sort)=
 ## on-sort

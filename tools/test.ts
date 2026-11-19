@@ -11,10 +11,10 @@
 
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { STATUS_CODES } from 'node:http';
-import { basename, dirname, extname, join, relative, resolve } from 'node:path';
+import { basename, dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
-  K, NONE, TRUE, UNSET, makeError, load, LoadError, intern, ctxFind, bindSeries, scriptStart, native, value, string, text, blockOf, form, mold, spell,
+  K, NONE, TRUE, UNSET, makeError, load, LoadError, intern, ctxFind, ctxAdd, context, bindSeries, scriptStart, native, value, string, text, blockOf, form, mold, spell,
   sourceOf, type Cell, type BlockCell, type ObjectCell, type StringCell, type WordCell,
 } from '../src/core/index.ts';
 import { startHost, startUi, runSource, report, fileHandle, TEST_SOURCE, type Host } from '../src/host/index.ts';
@@ -245,17 +245,34 @@ async function* runFile(file: string): AsyncGenerator<Outcome> {
   }
 }
 
+/** A JavaScript module of the app: one that needs a browser (it defines an element for a widget) is left out,
+ * since a widget is a face like any other here; one that does not is imported. */
+async function browserless(href: string): Promise<Record<string, unknown>> {
+  try {
+    return await import(href) as Record<string, unknown>;
+  } catch (e) {
+    if (e instanceof ReferenceError && /\b(HTMLElement|customElements|document|window|navigator)\b/.test(e.message)) return {};
+    throw e;
+  }
+}
+
 /** Runs the test at index `at` of the file on the app started anew; its problem, or null if it passed. */
 async function runOne(file: string, source: string, start: number, prelude: number, at: number, app: string | null): Promise<string | null> {
-  const base = pathToFileURL(app ?? file).href;
+  // the files of loaded blocks are named from the current folder, as check names them
+  const base = pathToFileURL(process.cwd() + sep).href;
   const host = startHost({
     onError: e => page.errors.push(report(e)),
-    loader: { base, read: href => readFile(fileURLToPath(href), 'utf8') },
+    loader: { base, read: href => readFile(fileURLToPath(href), 'utf8'), importJs: browserless },
   });
   page = fresh(host, dirname(file));
   try {
     await startUi(host);
+    // the words of the tests are the ones their module's import sets: an app may have words of the same name
+    const user = host.rt.user;
+    const before = user.vals.slice();
     await runSource(host, `import ${TEST_SOURCE}`);
+    const own = context();
+    user.keys.forEach((sym, i) => { if (user.vals[i] !== before[i]) ctxAdd(own, sym, user.vals[i]!); });
     // the file anew, so nothing a test changed in it reaches the next one
     const code = load(source, { file });
     bindSeries(code.s, host.rt.user, true);
@@ -263,6 +280,7 @@ async function runOne(file: string, source: string, start: number, prelude: numb
     await taskResult(spawn(host.sch, { data: s.data.slice(start, prelude), pos: s.pos?.slice(start, prelude), file }, 0));
     if (app !== null) await runSource(host, await readFile(app, 'utf8'), relative(process.cwd(), app) || app);
     const test = s.data[at] as BlockCell;
+    bindSeries(test.s, own);
     const got = await taskResult(spawn(host.sch, test.s, test.i));
     // a notice still waiting goes when the test ends: what waits for it runs, and its requests need answers too
     await taskResult(spawn(host.sch, { data: [{ t: K.Word, sym: intern('ui-toasts-done'), bind: host.rt.lib }] }, 0));

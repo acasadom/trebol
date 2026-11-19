@@ -23,7 +23,7 @@ import {
 import { getWord, setWord, instantiate } from './ctx.ts';
 import { makeError, fillErrorField } from './errors.ts';
 import { P, type Spec, type FuncDef, type NativeDef, type OpDef } from './func.ts';
-import { pick, poke } from './access.ts';
+import { pick, poke, pokeValue, hasParts } from './access.ts';
 import { sourceOf } from './mold.ts';
 
 // --- steps and throws ------------------------------------------------------------
@@ -173,6 +173,8 @@ interface PathFrame {
   j: number;
   cur: Cell;
   setv: Cell;
+  /** In a set-path: each value walked through and the key taken from it, to store back a part set in a pair, tuple, date or time. */
+  trail: Cell[];
 }
 
 type Frame = DoFrame | ExprFrame | SetFrame | ArgsFrame | NativeFrame | CallFrame | PathFrame;
@@ -435,12 +437,12 @@ function exprStart(t: Task, f: ExprFrame | DoFrame | SetFrame): void {
     case K.Path: case K.GetPath:
       t.stack.push({
         k: F.Path, feed, path: c, mode: c.t === K.Path ? PM.Call : PM.Get,
-        state: PS.Start, j: 0, cur: NONE, setv: NONE,
+        state: PS.Start, j: 0, cur: NONE, setv: NONE, trail: [],
       });
       return;
     case K.SetPath:
       if (feed.i >= data.length) return fail(t, 'script', 'need-value', 'set-path needs a value');
-      t.stack.push({ k: F.Path, feed, path: c, mode: PM.Set, state: PS.WaitValue, j: 0, cur: NONE, setv: NONE });
+      t.stack.push({ k: F.Path, feed, path: c, mode: PM.Set, state: PS.WaitValue, j: 0, cur: NONE, setv: NONE, trail: [] });
       pushExpr(t, feed, true);
       return;
     case K.LitPath:
@@ -773,14 +775,31 @@ function walk(t: Task, f: PathFrame, key: Cell): void {
   const seg = segs[f.j]!;
   f.j++;
   if (f.mode === PM.Set && f.j >= segs.length) {
-    const msg = poke(f.cur, key, f.setv);
-    if (msg !== null) return fail(t, 'script', 'bad-path-set', msg);
+    // a part of a pair, tuple, date or time: the new value goes back where the old one was
+    let cur = f.cur, k = key, v = f.setv;
+    for (;;) {
+      if (!hasParts(cur)) {
+        const msg = poke(cur, k, v);
+        if (msg !== null) return fail(t, 'script', 'bad-path-set', msg);
+        break;
+      }
+      const nv = pokeValue(cur, k, v);
+      if (typeof nv === 'string') return fail(t, 'script', 'bad-path-set', nv);
+      v = nv;
+      if (f.trail.length === 0) {
+        if (!setWord(segs[f.path.i] as WordCell, v)) return unbound(t, segs[f.path.i] as WordCell);
+        break;
+      }
+      k = f.trail.pop()!;
+      cur = f.trail.pop()!;
+    }
     t.stack.pop();
     t.v = f.setv;
     return;
   }
   const v = pick(f.cur, key);
   if (typeof v === 'string') return fail(t, 'script', 'bad-path', v);
+  if (f.mode === PM.Set) f.trail.push(f.cur, key);
   f.cur = v;
   if (f.mode === PM.Call && (v.t === K.Function || v.t === K.Native)) {
     t.stack.pop();

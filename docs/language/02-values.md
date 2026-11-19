@@ -115,8 +115,22 @@ a slash, and the part's name:
 == 10
 ```
 
-Weekdays count from Monday, so 6 is a Saturday. `due:` gave the date a name; the next page is about
-names.
+Weekdays count from Monday, so 6 is a Saturday. A path with a colon sets a part, and the name then holds
+the new value; a day past the end of its month goes on into the next:
+
+```trebol-console
+>> due/hour: 16
+== 16
+>> due
+== 14-Nov-2026/16:30
+>> due/day: 31
+== 31
+>> due
+== 1-Dec-2026/16:30
+```
+
+Pairs (`390x844`) and tuples (`1.2.3`) set their parts the same way: `size/x: 400`. `due:` gave the date a
+name; the next page is about names.
 
 ## Text
 

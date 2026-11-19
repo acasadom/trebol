@@ -18,6 +18,11 @@ rule's message, or a string to show instead. The message is kept in `i18n/ui` un
 app may change it, or add a language, as with Trebol's own messages. A name the dialect already has, or one of
 Trebol's texts, is an error. Packages add their rules this way: importing the package is enough.
 
+## add-rule
+
+What a style of your own does with a rule it reads: in a `done:` function, `add-rule f reduce ['max f/most]`
+gives the face the rule `max`, as writing `max 5` after it would.
+
 ## theme
 
 ## open

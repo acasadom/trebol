@@ -3,17 +3,32 @@
 ; --- the blocks faces take, and view ---------------------------------------------
 
 ; [home "Home" [...] client "Client" [id] [...]] -> [name title args body ...]
-screens-of: function [spec [block!] /local n t a b p] [
+screens-of: function [spec [block!] f /local n t a b p q] [
     out: copy []
     if empty? spec [ui-problem spec "screens take a name, a title, an optional block of arguments and a block per screen"]
     parse spec [any [
-        set n word! set t text-rule (a: copy []) opt [ahead [block! block!] set a block!] set b block! (
+        q: set n word! set t text-rule (a: copy []) opt [ahead [block! block!] set a block!]
+        ; check reads view compose [...] with its parens in it: the screen's block is put in by code
+        p: [set b block! | if (ui-checking) paren! (b: copy [])] (
             forall a [unless word? first a [ui-problem a "the arguments of a screen are words"]]
             append out reduce [n text-of t head a b]
+            ; check and a designer see the faces of every screen, which an app lays out only when shown
+            if ui-checking [
+                unless block? f/pane [f/pane: copy []]
+                append f/pane ui-sketch-screen q p text-of t b
+            ]
         )
         | p: skip (ui-problem p "screens take a name, a title, an optional block of arguments and a block per screen") to end
     ]]
     out
+]
+
+; A screen as check reads it: written from its name to its block, its own words and faces read from that block.
+ui-sketch-screen: function [from [block!] at [block!] title b [block!]] [
+    s: make select styles 'screen [text: title]
+    s/written: reduce [loaded-at from  loaded-at at]
+    s/pane: ui-build/in copy/deep b copy [] s select ui-style-defs 'screen
+    s
 ]
 
 menu-item: make object! [
@@ -30,7 +45,7 @@ menu-of: function [spec [block!] /local i d label w b p] [
     out: copy []
     parse spec [any [
         '--- (append out make menu-item [divider: true])
-        | (i: none d: false) opt ['danger (d: true)] opt [set i issue!] set label text-rule (label: text-of label) [
+        | (i: none d: false) opt ['danger (d: true)] opt [p: set i issue! (icon-of i none p)] set label text-rule (label: text-of label) [
             set b block! (append out make menu-item [text: label icon: i items: menu-of b danger: d])
             | set w word! (append out make menu-item [text: label icon: i id: w danger: d])
         ]

@@ -21,6 +21,9 @@ has: func ["A function with only local words." locals [block!] body [block!]] [
 ; Each call already gets its own frame, so closures and functions are the same.
 closure: :func
 
+; R3's other name for words-of, for the keys of a map.
+keys-of: :words-of
+
 ; Rebol 3 calls context? bound?.
 bound?: :context?
 

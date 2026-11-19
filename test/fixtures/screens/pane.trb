@@ -1,0 +1,7 @@
+Trebol [title: "Faces code puts in a pane"]
+
+good?: func [v] [either v = "good" [true] ["it is not good"]]
+view [
+    global box: column []
+]
+box/pane: layout/only [field "Word" check [good? value]]

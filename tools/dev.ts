@@ -37,6 +37,8 @@ export interface DevOptions {
   port?: number;
   /** Path of a module exporting `handleApi` and maybe `handleUpgrade` (see ApiHandler, UpgradeHandler). */
   api?: string;
+  /** True lets other machines on the network in; by default only this machine reaches the server. */
+  open?: boolean;
 }
 
 export interface Dev {
@@ -106,6 +108,11 @@ async function above(root: string, urlPath: string): Promise<string | null> {
     if (path !== null && await stat(path).catch(() => null)) return path;
     if (dirname(dir) === dir) return null;
   }
+}
+
+/** Whether a peer address is this machine. */
+export function loopback(address: string | undefined): boolean {
+  return address !== undefined && (address === '::1' || address.startsWith('127.') || address.startsWith('::ffff:127.'));
 }
 
 /** Starts the dev server; resolves once it listens. */
@@ -193,6 +200,8 @@ export async function startDev(options: DevOptions = {}): Promise<Dev> {
     watchers.push(watch(join(TREBOL, 'src'), { recursive: true }, () => reload(null)));
   }
 
+  // Only this machine, unless asked: an --api module may change files, and the folder may hold secrets.
+  if (options.open !== true) server.on('connection', (socket: Socket) => { if (!loopback(socket.remoteAddress)) socket.destroy(); });
   await new Promise<void>(r => server.listen(options.port ?? 5173, r));
   return {
     server,

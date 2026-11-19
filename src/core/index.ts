@@ -6,7 +6,7 @@ export * from './symbols.ts';
 export * as I64 from './int64.ts';
 export * from './dec.ts';
 export * from './values.ts';
-export { load, LoadError, type LoadOptions } from './lexer.ts';
+export { load, loadSpans, LoadError, type LoadOptions } from './lexer.ts';
 export { mold, form, formatDecimal, formatDate, formatTime, sourceOf, type MoldOptions } from './mold.ts';
 export * from './ctx.ts';
 export * from './errors.ts';

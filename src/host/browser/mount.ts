@@ -10,6 +10,7 @@ import { get, str, flag, word, children, iconName, icon } from './faces.ts';
 import { listen } from './events.ts';
 import { buildInput, buildCheck, buildSlider, buildRadio, buildProgress } from './fields.ts';
 import { buildUpload, buildPhoto } from './uploads.ts';
+import { buildDevice } from './device.ts';
 import { buildWidget } from './widget.ts';
 import { buildLookup } from './lookup.ts';
 import { buildCanvas, buildChart } from './drawings.ts';
@@ -191,6 +192,8 @@ export function build(face: ObjectCell): HTMLElement {
     node = buildPhoto(face, m);
   } else if (style === 'widget') {
     node = buildWidget(face, m);
+  } else if (style === 'device') {
+    node = buildDevice(face, m);
   } else if (style === 'lookup') {
     node = buildLookup(face, m);
   } else if (style === 'rich') {

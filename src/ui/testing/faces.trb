@@ -27,6 +27,8 @@ test-walk: function [f parent out] [
     if f/style = 'board [ui-board f]
     append out reduce [f parent]
     unless block? f/pane [exit]
+    ; a browser links the faces code puts in a pane to their view and form; here, when they are looked at
+    if all [f/root  not empty? f/pane  object? first f/pane  none? get in first f/pane 'root] [ui-pane f]
     case [
         f/style = 'tabs [
             ; the label of every tab, the faces of the one chosen
@@ -75,6 +77,21 @@ test-cells: function [f row /local w label] [
     ]
 ]
 
+; The rows a table, list or tree shows, in order: in a tree, the rows of an open row follow it.
+test-row-list: function [f] [
+    unless all [find [table list tree] f/style  block? f/data] [return copy []]
+    unless f/style = 'tree [return f/data]
+    out: copy []
+    walk: function [rows] [
+        foreach r rows [
+            append out r
+            if all [block? select r 'children  select r 'expanded] [walk r/children]
+        ]
+    ]
+    walk f/data
+    out
+]
+
 ; Every text on show: of faces, values, errors and rows, and the notices shown.
 test-texts: function [/local f p t] [
     out: copy []
@@ -100,8 +117,8 @@ test-texts: function [/local f p t] [
                 if all [map? o  (form v) = form o/value] [append out test-text o/text]
             ]
         ]
-        if all [find [table list] f/style  block? f/data] [
-            foreach row f/data [append out test-cells f row]
+        if all [find [table list tree] f/style  block? f/data] [
+            foreach row test-row-list f [append out test-cells f row]
         ]
         ; the title of every node of an orbit, its focus too
         if all [f/style = 'orbit  block? f/data] [

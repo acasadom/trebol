@@ -3,7 +3,9 @@
 Every change to an app can break something a person does with it: a button that no longer books, a message
 that no longer shows. Trying each screen by hand after every change is slow, and soon skipped. A **screen
 test** does it for you: it types, clicks and chooses as a person would, and checks what the screen says.
-It runs without a browser, in a moment, every time.
+It runs without a browser, in a moment, every time. With no browser, a JavaScript module that defines the element
+of a `widget` is left out, and the widget is a face like any other: its value is set and read as the program
+does.
 
 ## The app
 
@@ -109,15 +111,17 @@ ok    app.test.trb:33:1  booking a repair
 A test names the faces by what the person sees: the label of a field, the text of a button, a hint. A word
 names a field by its name instead, `type 'due "2026-11-20"`, which still holds when the labels are
 translated.
+In a test these words are always the test's, even when the app has a `choose` or a `see` of its own, which
+its code goes on using.
 
 | Word | What the person does |
 | --- | --- |
-| `click "Book in"` | clicks a button, link, tile, check, toggle or tab; or the row of a table or list that shows that text |
+| `click "Book in"` | clicks a button, link, tile, check, toggle or tab; or the row of a table, list or tree that shows that text |
 | `type "Customer" "Luis Gil"` | types in a field and leaves it; `""` empties it |
 | `choose "Bike" "City"` | chooses an option of a choice, radio or lookup, by the text it shows |
 | `attach "Photos" [%front.jpg %side.jpg]` | chooses files next to the test for an upload or photo, as the person picks or drops them; its `accept` refuses the others |
-| `pick-menu "Ana Ruiz" "Remove"` | chooses an item of the menu a button opens, of a face's context menu, or of the menu of the row of a table or list that shows that text; `["Move to" "Top"]` names one in a submenu |
-| `drag "Rest" "Write"` | drags a face, or the row that shows that text, onto another: where things can be reordered it takes the place of the other, else it is dropped on a face with `drop`, or before a row of one |
+| `pick-menu "Ana Ruiz" "Remove"` | chooses an item of the menu a button opens, of a face's context menu, or of the menu of the row of a table, list or tree that shows that text; `["Move to" "Top"]` names one in a submenu |
+| `drag "Rest" "Write"` | drags a face, or the row that shows that text, onto another: where things can be reordered it takes the place of the other (in a tree, one beside it; a tree with `drop` takes it before a row of another level too), else it is dropped on a face with `drop`, or before a row of one |
 | `press "Ctrl+S"` | presses a key: the button or link with that `key` as its shortcut, or else the view's `on-key` |
 | `press/on "Enter" "Customer"` | presses it with the cursor in a face: its `on-key`, or the nearest one around it; Enter in a field of a form clicks its submit (in a form in steps, Next until the last step), Escape closes a dialog |
 | `say no` | answers no to the next question of `confirm`; with nothing said, the answer is yes |

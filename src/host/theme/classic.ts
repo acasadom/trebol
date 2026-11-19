@@ -86,7 +86,7 @@ select.tb-input:focus { box-shadow: var(--tb-raise), var(--tb-ring); }
 .tb-table th { color: var(--tb-text); font-weight: 700; padding: var(--tb-space-2) var(--tb-space-3); background: var(--tb-face); border-bottom: 1px solid var(--tb-border-strong); box-shadow: var(--tb-raise); }
 .tb-sort { padding: var(--tb-space-2) var(--tb-space-3); }
 .tb-table tfoot td { background: var(--tb-bg); border-top-color: var(--tb-border-strong); }
-@media (min-width: 641px) {
+@container tb-screen (min-width: 641px) {
   .tb-table td { padding: var(--tb-space-2) var(--tb-space-3); border-right: 1px solid var(--tb-border); }
   .tb-table th { border-right: 1px solid var(--tb-border-strong); }
   .tb-table tr > :last-child { border-right: 0; }

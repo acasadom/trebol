@@ -75,7 +75,9 @@ view [
 ```
 
 What the program receives is still the option chosen, here `"Brakes"`, not its group. A `radio` takes groups
-the same way, and shows each title over its options.
+the same way, and shows each title over its options. With `segmented`, a `radio` is a bar of joined buttons, the
+chosen one pressed: `radio view "View" ["Design" "Split" "Code"] segmented` switches between the views of a
+page. Its text is read out to a screen reader but not shown.
 
 ## A number on a line
 

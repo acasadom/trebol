@@ -1,0 +1,124 @@
+; A part of the UI dialect: see ui.trb, whose words it shares.
+
+; --- the styles, and what each takes (after styles.trb) ---------------------------------
+
+; --- images, sound, video and drawing
+
+stylize [
+    image: face [style: 'image  takes: [
+        value: [file! url!] "the picture it shows"
+        extent: [pair!] "its size"
+        round: 'round "cut to a circle, as a person's photo"
+    ]]
+    backdrop: face [style: 'backdrop  takes: [value: [file! url!] "the picture it shows"]]
+    icon: face [style: 'icon]
+    progress: face [style: 'progress  takes: [value: [percent!] "how far it is"]]
+    video: face [style: 'video  takes: [
+        value: [file! url!] "the video it plays"
+        poster: 'poster [file! url!] "the image shown before it plays"
+        captions: 'captions [file! url! block!] "its captions: a .vtt file, or one per language [en %a.vtt es %b.vtt]"
+        looping: 'loop "starts again when it ends"
+        silent: 'muted "plays without its sound"
+        autoplay: 'autoplay "plays on its own, silent"
+        on: [on-end]
+    ]]
+    audio: face [style: 'audio  takes: [
+        value: [file! url!] "the sound it plays"
+        looping: 'loop "starts again when it ends"
+        silent: 'muted "plays without its sound"
+        autoplay: 'autoplay "plays on its own, silent"
+        on: [on-end]
+    ]]
+    canvas: face [style: 'canvas  extent: 300x150  takes: [
+        extent: [pair!] "the size of its drawing space"
+        draw: block "what it draws, in the draw dialect"
+    ]]
+    chart: face [style: 'chart  kind: 'bar  takes: [
+        kind: first one-of chart-kinds "the kind of chart"
+        name: first label "the word that labels it: chart bar income is income: chart bar"
+        kind: one-of chart-kinds "the kind of chart"
+        columns: block :columns-of "the field of each series and its label"
+        stacked: 'stacked "its series one on top of another"
+    ]]
+    orbit: face [style: 'orbit  takes: [
+        name: first label "the word that labels it"
+        data: block :orbit-of "what it shows: its focus, nodes, edges and trail"
+        on: [on-back]
+    ]]
+]
+
+; --- actions
+
+stylize [
+    button: face [style: 'button  takes: [shortcut: 'key [string!] "a key that presses it: key ^"Ctrl+S^""]]
+    submit: button [role: 'primary  submit: true]
+    link: face [style: 'link  takes: [
+        value: [lit-word! lit-path! file! url!] :link-target "where it goes: a screen, 'clients or 'client/42, a file or a url"
+        shortcut: 'key [string!] "a key that presses it: key ^"Ctrl+S^""
+    ]]
+    tile: face [style: 'tile  takes: [
+        linked: 'linked "stands for something kept elsewhere: marked with an arrow"
+        mark: 'mark [issue!] text :mark-of "a second, small icon on its icon, and its label: mark #list ^"List^""
+    ]]
+]
+
+; a link to a screen: link "Clients" 'clients, link "Ada" 'client/42
+link-target: func [v] [case [lit-word? v [to word! v]  lit-path? v [to path! v]  true [v]]]
+; tile #folder "Records" mark #list "List": the label goes right after the mark's icon
+mark-of: func [v [block!] f place] [f/mark-text: second v  icon-of first v f place]
+
+; --- data
+
+stylize [
+    table: rows-face [style: 'table  takes: [
+        sortable: 'sortable "its headers sort its rows"
+        sorted: 'sorted [block!] :sort-order "the order it starts in: [due asc]"
+        on: [on-sort]
+    ]]
+    list: rows-face [style: 'list]
+    tree: rows-face [style: 'tree  takes: [on: [on-expand]]]
+    ; field: the field of a row that names its lane; lanes: [word label ...]; card: the columns a card shows
+    board: face [style: 'board  field: none  lanes: none  card: none  takes: [
+        name: first label "the word that labels it: board tasks is tasks: board"
+        field: 'by [word!] "the field of a card that names its lane: by status"
+        lanes: block :lanes-of "a word and a label for each lane"
+        card: 'card [block!] :columns-of "the fields a card shows"
+        key: 'key [word!] "the field that tells one card from another"
+        done: :board-check
+    ]]
+    breadcrumb: face [style: 'breadcrumb  takes: [data: block :crumbs-of "its items: a label and where each goes"]]
+]
+
+board-check: func [f place [block!]] [
+    unless f/lanes [ui-problem place "a board takes a block with a word and a label for each lane"]
+    unless f/field [ui-problem place "a board takes by and the field that names the lane of a card: by status"]
+    board-fill f
+]
+
+; --- navigation
+
+stylize [
+    tabs: face [style: 'tabs  value: 1  takes: [pane: block :tabs-pane "a label and a block of faces per tab"]]
+    ; value: the step on show, counting every step; flow: the word of a machine that leads them; trail: the
+    ; snapshots of that machine before each Next, which Back puts back
+    steps: face [style: 'steps  value: 1  flow: none  trail: none  takes: [
+        flow: [word!] :steps-machine "the machine that leads the steps"
+        pane: block :steps-pane "a label and a block of faces per step"
+    ]]
+    ; entering: the screen on show is still the old one
+    screens: face [style: 'screens  entering: false  takes: [
+        data: block :screens-of "its screens: a word, a title and a block of faces each"
+        on: [on-change]
+    ]]
+    tab: face [style: 'tab  takes: [written: false]]
+    step: face [style: 'step  takes: [written: false]]
+    screen: face [style: 'screen  takes: [written: false  on: [on-enter on-leave]]]
+    entry: face [style: 'entry  takes: [written: false]]
+]
+
+tabs-pane: func [b [block!]] [tabs-of b ui-labels]
+steps-pane: func [b [block!] f] [either f/flow [steps-flow-of f b ui-labels] [steps-of f b ui-labels]]
+; steps flow [...]: a machine leads the steps (check, which runs nothing, takes the word as one)
+steps-machine: func [w [word!] f place [block!]] [
+    all [not f/flow  block? pick place 2  any [ui-checking  machine? attempt [get w]]  w]
+]

@@ -86,7 +86,9 @@ Takes all the width it can.
 
 ## fit
 
-Takes the height the window has left, and its children scroll inside it.
+Takes the height the window has left, and its children scroll inside it. A `widget` with `fit` gives that
+height to its element, which scrolls itself, as a code editor or a map does. Inside a pane of a `grid fit`,
+a face with `fit` takes the height the pane has left: `scroll fit [...]` above a row with a field is a chat.
 
 ## hidden
 
@@ -102,7 +104,9 @@ Shown and sent with the form, but the person cannot change it, and no rule appli
 
 ## inert
 
-Shown as it is, but neither it nor its children can be used.
+Shown as it is, but neither it nor its children can be used. With `on-select`, a click on it chooses the face
+under the pointer, as on a designer's canvas: `preview: column inert on-select [pick-face event/face] [...]`.
+The face chosen is its `selected`, and is marked; setting `selected` marks another.
 
 ## narrow-only
 
@@ -158,6 +162,14 @@ Things can be dropped on it: its `on-drop` runs.
 
 Its children, or its rows, can be moved around: its `on-reorder` runs.
 
+## resize
+
+A grid shows a handle between two columns: dragged, or moved with the arrow keys, it makes one wider.
+It sizes the column of a set width (`small`, `medium`, `large`), or the left one of two weighted
+columns, which keeps the width from then on. A double click gives that column back its width. The
+browser keeps the widths, so the page opens as the user left it. On a narrow screen there are no
+handles: the grid shows one column.
+
 ## multiple
 
 An upload or a lookup takes more than one.
@@ -169,6 +181,11 @@ A table whose headers sort the rows it has, without the program. See `on-sort` f
 ## stacked
 
 A chart whose series sit on top of each other, so each bar or area shows the total too.
+
+## segmented
+
+A radio whose options are buttons joined in a bar, the chosen one pressed, as the switch between the views of a
+page: `radio view "View" ["Design" "Split" "Code"] segmented`. Its text is read out, not shown.
 
 ## bar
 
@@ -283,6 +300,9 @@ it has one: `#trash "Delete" delete`. `danger` before an item says it removes or
 red: `danger #trash "Delete" delete`. `---` draws a line between items, and a block after a text in place of the
 word is a submenu.
 
+Code may give a face a menu, or another one, at any time, written the same way: `actions/menu: ["Copy" copy]`.
+The face opens the menu it has when it is clicked, even one it had none of when it was shown.
+
 On a phone, swiping a row of a table or list with a menu to the left shows its first two items behind it, as
 buttons, the `danger` ones red, and *More* for the whole menu when it has others. A swipe less than halfway
 goes back, as does a touch anywhere else or a scroll.
@@ -317,6 +337,12 @@ word, as written, and the values after it, evaluated when the screen is entered,
 screen can carry the client's id. On a table or a list, `morph 'client` names each row by the word and its
 key, `client 7`, so the row chosen becomes the face of the next screen named `[client id]`. Only faces on
 show in both screens move; the rest go with their screen.
+
+## with
+
+`with [role: 'danger]`: a block run bound to the face once the rest of it is read, so its set-words set the
+face's fields. It is the last way out, for a field no word of the style sets; `trebol check` does not run it and a
+designer shows it as code, so a style that needs a field often is better given a word for it in its `takes:`.
 
 ## poster
 
@@ -383,7 +409,9 @@ When it gets the focus.
 
 ## on-key
 
-When a key is pressed: `event/key` says which.
+When a key is pressed: `event/key` says which, `event/ctrl?`, `event/shift?`, `event/alt?` and `event/meta?` the keys
+held with it, and `event/typing?` is `true` when it is pressed in a box the user types in, which undoes its own
+typing with Ctrl+Z.
 
 ## on-leave
 
@@ -410,7 +438,8 @@ When the person types in a lookup: the block gives what was found for `query`.
 
 ## on-select
 
-When a row of a table, list or tree is chosen: it is in `row`.
+When a row of a table, list or tree is chosen: it is in `row`. On an `inert` face, when a face inside it is
+clicked: it is in `event/face`.
 
 ## on-sort
 

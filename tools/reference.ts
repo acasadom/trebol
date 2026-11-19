@@ -58,6 +58,8 @@ interface World {
   styles: Map<string, ObjectCell>;
   /** The face every style starts from. */
   face: ObjectCell;
+  /** What each style takes: name -> its style-def, those only made from (face, input...) too. */
+  defs: Map<string, ObjectCell>;
 }
 
 export async function world(): Promise<World> {
@@ -76,7 +78,10 @@ export async function world(): Promise<World> {
   const map = user('styles') as MapCell;
   const styles = new Map<string, ObjectCell>();
   for (let i = 0; i + 1 < map.s.data.length; i += 2) styles.set(form(map.s.data[i]!), map.s.data[i + 1] as ObjectCell);
-  return { fns, styles, face: user('face') as ObjectCell };
+  const defMap = user('ui-style-defs') as MapCell;
+  const defs = new Map<string, ObjectCell>();
+  for (let i = 0; i + 1 < defMap.s.data.length; i += 2) defs.set(form(defMap.s.data[i]!), defMap.s.data[i + 1] as ObjectCell);
+  return { fns, styles, face: user('face') as ObjectCell, defs };
 }
 
 function isFunction(c: Cell): boolean {
@@ -200,8 +205,75 @@ function wordLists(): Map<string, string[]> {
 /** The lists of ui.trb the dialect reads words from, and what a word of each is. */
 const WORD_LISTS: Record<string, string> = {
   roles: 'A role', sizes: 'A size', aligns: 'An alignment of the children', valigns: 'A vertical alignment of a row\'s children',
-  flags: 'A flag', 'media-flags': 'A flag of a video or a sound', 'simple-rules': 'A rule', 'rule-words': 'A word followed by its value', 'chart-kinds': 'A kind of chart',
+  'chart-kinds': 'A kind of chart',
 };
+
+/** The words build-faces reads after any face, whatever its style takes. */
+const ENGINE_WORDS = ['calc', 'is', 'react'];
+
+/** What a word that starts an entry of a style is, by the entry's how. */
+const HOW: Record<string, string> = { flag: 'a flag', keyword: 'a word followed by its value', rule: 'a rule' };
+
+const blockItems = (c: Cell): Cell[] => (c.t === K.Block ? (c as BlockCell).s.data.slice((c as BlockCell).i) : []);
+const word = (c: Cell | undefined): string | null => (c !== undefined && c.t === K.Word ? spell((c as { sym: number }).sym) : null);
+const written = (def: ObjectCell): boolean => (fieldOf(def, 'written') as { v: boolean }).v;
+const eventsOf = (def: ObjectCell): string[] => blockItems(fieldOf(def, 'events')!).map(e => form(e));
+
+/** Every word that starts an entry of a style's own: word -> [how, style] for each. */
+function takenWords(w: World): Map<string, Array<[string, string]>> {
+  const out = new Map<string, Array<[string, string]>>();
+  for (const [style, def] of w.defs) {
+    for (const e of blockItems(fieldOf(def, 'own')!) as ObjectCell[]) {
+      const kw = word(fieldOf(e, 'kw'));
+      const how = word(fieldOf(e, 'how'))!;
+      if (kw !== null && HOW[how] !== undefined) out.set(kw, [...(out.get(kw) ?? []), [how, style]]);
+    }
+  }
+  return out;
+}
+
+/** What an argument of an entry takes, said: "a file or a url", "one of `bar`, `line`". */
+function argSaid(a: Cell): string {
+  if (word(a) === 'text') return 'a text';
+  const items = blockItems(a);
+  if (word(items[0]) === 'one-of') {
+    const c = items[1]!;
+    const words = c.t === K.Word ? wordLists().get(form(c)) ?? [] : blockItems(c).map(x => form(x));
+    return `one of ${words.map(x => `\`${x}\``).join(', ')}`;
+  }
+  const names = items.map(t => form(t).replace(/!$/, '')).map(n => `${/^[aeiou]/.test(n) ? 'an' : 'a'} ${n}`);
+  return names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} or ${names[names.length - 1]}`;
+}
+
+/** [a b c] -> "a, b and c" */
+function andList(items: string[]): string {
+  return items.length <= 1 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+}
+
+/** An entry of what a style takes, as the reference lists it: how it is written, and what it is. */
+function takeSaid(e: ObjectCell): string {
+  const how = word(fieldOf(e, 'how'))!;
+  const kw = word(fieldOf(e, 'kw'));
+  const field = mold(fieldOf(e, 'field')!).replace(/:$/, '');
+  const said = blockItems(fieldOf(e, 'args')!).map(argSaid);
+  // two of the same: "two numbers"
+  const args = said.length === 2 && said[0] === said[1] && /^an? /.test(said[0]!)
+    ? `two ${said[0]!.replace(/^an? /, '')}s` : said.join(' and ');
+  const help = fieldOf(e, 'help')!;
+  const lead = (fieldOf(e, 'lead') as { v: boolean }).v ? ', right after the style' : '';
+  const writtenAs = {
+    flag: `[\`${kw}\`](#${dialectLabel('word', kw ?? '')})`,
+    keyword: `[\`${kw}\`](#${dialectLabel('word', kw ?? '')}) and ${args}`,
+    rule: `[\`${kw}\`](#${dialectLabel('word', kw ?? '')})${args === '' ? '' : ` and ${args}`}`,
+    custom: `a rule made with [\`rule\`](#${label('rule')})`,
+    block: 'a block',
+    name: 'a word',
+    label: 'a word',
+    value: args,
+  }[how]!;
+  const sets = ['rule', 'custom', 'label'].includes(how) || field === kw ? '' : ` (\`${field}\`)`;
+  return `${writtenAs}${lead}${sets}${help.t === K.String ? `: ${esc(form(help))}` : ''}`;
+}
 
 /** The rules Trebol adds with `rule`, as a program would: `rule 'iban ...` at the top of ui.trb. */
 function ownRules(): string[] {
@@ -232,27 +304,50 @@ interface Kind { names: (w: World) => string[]; prefix: string; describe: (w: Wo
 
 const KINDS: Record<string, Kind> = {
   'styles.md': {
-    names: w => [...w.styles.keys()],
+    names: w => [...w.defs.keys()],
     prefix: 'style',
     describe: (w, name) => {
-      const proto = w.styles.get(name)!;
-      const base = form(fieldOf(proto, 'style')!);
-      // what it starts with that a plain face does not
-      const own = w.face.ctx.keys.map(spell).filter(k => k !== 'style' && mold(fieldOf(proto, k)!) !== mold(fieldOf(w.face, k)!));
-      const said: string[] = [];
-      if (base !== name) said.push(`Made from [\`${base}\`](#${dialectLabel('style', base)}).`);
-      if (own.length > 0) said.push(`It starts with ${own.map(k => `\`${k}: ${mold(fieldOf(proto, k)!)}\``).join(', ')}.`);
-      return said.join(' ');
+      const def = w.defs.get(name)!;
+      const proto = fieldOf(def, 'proto') as ObjectCell;
+      const parent = fieldOf(def, 'parent')!.t === K.Object ? fieldOf(def, 'parent') as ObjectCell : null;
+      const base = parent === null ? null : form(fieldOf(parent, 'name')!);
+      const link = (style: string) => `[\`${style}\`](#${dialectLabel('style', style)})`;
+      // the fields it starts with that differ from the style it is made from, and those it adds
+      const from = parent === null ? w.face : fieldOf(parent, 'proto') as ObjectCell;
+      const keys = proto.ctx.keys.map(spell).filter(k => k !== 'style');
+      const changed = keys.filter(k => fieldOf(from, k) !== undefined && mold(fieldOf(proto, k)!) !== mold(fieldOf(from, k)!));
+      const added = keys.filter(k => fieldOf(from, k) === undefined);
+      const intro: string[] = [];
+      const abstract = (fieldOf(def, 'abstract') as { v: boolean }).v;
+      if (base !== null) intro.push(`Made from ${link(base)}.`);
+      if (abstract) intro.push('Styles are made from it; a layout never writes it.');
+      if (!written(def)) intro.push('Another face makes it; a layout does not write it.');
+      if (changed.length > 0) intro.push(`It starts with ${changed.map(k => `\`${k}: ${mold(fieldOf(proto, k)!)}\``).join(', ')}.`);
+      if (added.length > 0) intro.push(`Fields of its own: ${added.map(k => `\`${k}: ${mold(fieldOf(proto, k)!)}\``).join(', ')}.`);
+      const paras = [intro.join(' ')];
+      const takes = blockItems(fieldOf(def, 'own')!).map(e => `- ${takeSaid(e as ObjectCell)}`);
+      if (takes.length > 0) paras.push(`${base === null ? 'Every face takes' : `It takes what ${link(base)} takes, and`}:\n\n${takes.join('\n')}`);
+      if (fieldOf(def, 'events')!.t === K.Word) paras.push('It fires whatever events its element fires.');
+      else {
+        const events = eventsOf(def).filter(e => parent === null || !eventsOf(parent).includes(e));
+        if (events.length > 0) paras.push(`It fires ${events.map(e => `[\`${e}\`](#${dialectLabel('word', e)})`).join(', ')}.`);
+      }
+      return paras.filter(p => p !== '').join('\n\n');
     },
   },
   'dialect.md': {
-    names: () => [...new Set([...[...wordLists().values()].flat(), ...ownRules(), ...events()])],
+    names: w => [...new Set([...[...wordLists().values()].flat(), ...takenWords(w).keys(), ...ENGINE_WORDS, ...ownRules(), ...events()])],
     prefix: 'word',
-    describe: (_w, name) => {
+    describe: (w, name) => {
       if (name.startsWith('on-')) return 'An event: the block after it runs when it happens.';
       if (ownRules().includes(name)) return `A rule, made with [\`rule\`](#${label('rule')}) as a program would make one.`;
+      if (ENGINE_WORDS.includes(name)) return 'A word followed by a block, after any face.';
       const lists = [...wordLists()].filter(([, ws]) => ws.includes(name)).map(([l]) => WORD_LISTS[l]!.toLowerCase());
-      return lists.length === 0 ? '' : `${lists.join('; ').replace(/^./, c => c.toUpperCase())}.`;
+      const byHow = new Map<string, string[]>();
+      for (const [how, style] of takenWords(w).get(name) ?? []) byHow.set(how, [...(byHow.get(how) ?? []), `[\`${style}\`](#${dialectLabel('style', style)})`]);
+      const taken = [...byHow].map(([how, styles]) => `${HOW[how]!}, of ${andList(styles)}`);
+      const said = [...lists, ...taken];
+      return said.length === 0 ? '' : `${said.join('; ').replace(/^./, c => c.toUpperCase())}.`;
     },
   },
   'draw.md': {

@@ -220,7 +220,9 @@ describe('layout', () => {
       'layout: on-entr is not an event; did you mean on-enter?');
     assert.deepEqual(await problems('view ["Hello" text "a"]'),
       ['layout: a face starts with a style, not "Hello"', '["Hello" text "a"]', 'app.trb:1:7']);
-    assert.deepEqual((await problems('view [menu ["A" a]]'))[0], 'layout: menu is not a style; it goes after one');
+    assert.deepEqual((await problems('view [required text "a"]'))[0], 'layout: required is not a style; it goes after one');
+    assert.deepEqual(await problems('view [width fil text "a"]'),
+      ['layout: width takes small, medium, large or fill', '[width fil text]', 'app.trb:1:7']);
     assert.deepEqual((await problems('view [button "a" menu ["A"]]'))[0],
       'layout: a menu takes a label and a word per item, danger before one that removes, a block for a submenu, or ---');
     assert.deepEqual((await problems('view [tabs ["A" [text "a"] "B" 1]]')).slice(0, 2),
@@ -259,6 +261,21 @@ describe('layout', () => {
     assert.equal(mold(await runSource(host, 'v: layout [\n  text "a"\n  row [button "b"]]  reduce [v/pane/1/place  v/pane/2/pane/1/place]', 'x.trb')),
       '["x.trb:2:3" "x.trb:3:8"]');
     assert.equal(await ev('first reduce [get in first layout/only compose [(to word! "text") "a"] \'place]'), 'none');
+  });
+
+  test('a face keeps where its first and last values were written, label included', async () => {
+    assert.equal(mold(await runSource(host, 'v: layout [\n  who: field name "Name" required\n  row [button "b"]]  reduce [v/pane/1/written  v/pane/2/written  v/pane/2/pane/1/written]', 'x.trb')),
+      '[["x.trb:2:3" "x.trb:2:26"] ["x.trb:3:3" "x.trb:3:7"] ["x.trb:3:8" "x.trb:3:15"]]');
+  });
+
+  test('ui-sketch lays a block out running none of its code, with its problems', async () => {
+    assert.equal(mold(await runSource(host, 'r: ui-sketch [text (crash) button "Go" [crash] buton "y"]  reduce [length? r/1/pane  r/1/pane/2/text  r/2/2]', 'x.trb')),
+      '[2 "Go" "buton is not a style; did you mean button?"]');
+  });
+
+  test('ui-dialect-words gives an app the words of the dialect, as a designer colours them', async () => {
+    assert.equal(mold(await runSource(host, 'w: ui-dialect-words  reduce [to logic! find w \'field  to logic! find w \'required  to logic! find w \'segmented  to logic! find w \'print]', 'x.trb')),
+      '[true true true false]');
   });
 });
 
@@ -1306,6 +1323,9 @@ test('a view takes its width at the head; inert faces; screen titles per languag
   // only a row takes top, middle or bottom: after an input style the word still names the field
   assert.equal(await ev('f: first layout/only [field bottom "Bottom"]  reduce [f/name f/valign]'), '[bottom none]');
   assert.equal(await ev('f: first layout/only [grid 3 []]  reduce [f/cols f/pane]'), '[3 []]');
+  assert.equal(await ev('p: first layout/only [column inert on-select [set \'got event/face] [text "a" field b "B"]]  ui-select p p/pane/2  reduce [same? got p/pane/2  same? p/selected p/pane/2]'), '[true true]');
+  assert.equal(await ev('f: first layout/only [radio mode "View" ["Design" "Code"] segmented]  reduce [f/name f/segmented]'), '[mode true]');
+  assert.equal(await ev('f: first layout/only [grid [small 1 large] [text "a" text "b" text "c"]]  reduce [f/cols length? f/pane]'), '[[small 1 large] 3]');
   link = [];
   const r = await ev(`v: view [screens [home #(en: "Home" es: "Inicio") [text "x"] about 'about [text "y"]]]
     sc: v/pane/1  reduce [tr sc/pane/1/text  pick sc/data 6]`);

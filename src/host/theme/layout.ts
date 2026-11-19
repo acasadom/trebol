@@ -4,6 +4,10 @@
 export const LAYOUT = String.raw`
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; }
+/* a screen is narrow by the width it has, not the window's: the page's, or a device frame's */
+body { container: tb-screen / inline-size; }
+/* a container keeps its background to itself: the page takes it, as it takes the body's otherwise */
+html { background: var(--tb-bg); }
 body {
   background: var(--tb-bg);
   color: var(--tb-text);
@@ -58,10 +62,32 @@ body {
 .tb-view:has(.tb-desktop) { min-height: 100dvh; box-sizing: border-box; }
 .tb-view:has(.tb-desktop) .tb-screens, .tb-screen:has(> .tb-desktop) { flex: 1 1 auto; }
 .tb-view:has(.tb-fit) .tb-screens, .tb-screen:has(> .tb-fit) { flex: 1 1 auto; min-height: 0; }
-.tb-view:has(.tb-fit) { height: 100dvh; box-sizing: border-box; }
+.tb-view:has(.tb-fit:not(.tb-device .tb-fit)) { height: 100dvh; box-sizing: border-box; }
+/* a device: its screen at its own size, made smaller to fit; the narrow rules go by its width */
+.tb-device { width: 100%; max-width: var(--tb-device-w, 390px); min-width: 0; margin-inline: auto; contain: inline-size; overflow: hidden; }
+.tb-device-screen {
+  container: tb-screen / inline-size;
+  width: var(--tb-device-w, 390px);
+  height: var(--tb-device-h, 844px);
+  transform: translateX(var(--tb-device-x, 0px)) scale(var(--tb-device-k, 1));
+  transform-origin: 0 0;
+  overflow: auto;
+  background: var(--tb-bg);
+  color: var(--tb-text);
+  border: var(--tb-line) solid var(--tb-border-strong);
+  border-radius: var(--tb-radius-lg);
+  box-shadow: var(--tb-shadow-1);
+}
+.tb-device-screen > .tb-view:has(.tb-fit) { height: 100%; }
 .tb-fit { flex: 1 1 auto; min-height: 0; }
 .tb-fit > * { min-height: 0; overflow: auto; }
 .tb-fit > * > * { flex-shrink: 0; }
+/* a face with fit inside a pane of a fit grid takes the height the pane has left (a chat's messages above its box) */
+.tb-fit > * > .tb-fit { flex: 1 1 0; }
+.tb-scroll.tb-fit { max-height: none; }
+/* a widget with fit: its element takes the height left, and scrolls itself (a code editor, a map) */
+.tb-field.tb-fit > .tb-control { flex: 1 1 auto; overflow: hidden; }
+.tb-field.tb-fit > .tb-control > .tb-widget { flex: 1 1 auto; min-height: 0; }
 .tb-desktop {
   flex: 1 1 auto;
   min-height: 240px;
@@ -133,7 +159,28 @@ body {
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M0 0h16v16H0z M6 4v2h2.6L4 10.6 5.4 12 10 7.4V10h2V4z' fill-rule='evenodd'/%3E%3C/svg%3E");
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M0 0h16v16H0z M6 4v2h2.6L4 10.6 5.4 12 10 7.4V10h2V4z' fill-rule='evenodd'/%3E%3C/svg%3E");
 }
-.tb-grid { --tb-tracks: initial; --tb-cols: 2; display: grid; gap: var(--tb-space-4); grid-template-columns: var(--tb-tracks, repeat(var(--tb-cols), minmax(0, 1fr))); }
+/* the face chosen in an inert face with on-select, as on a designer's canvas */
+.tb-picked { outline: 2px solid var(--tb-primary); outline-offset: 2px; border-radius: var(--tb-radius); }
+.tb-grid { --tb-track-small: 240px; --tb-track-medium: 280px; --tb-track-large: 360px; --tb-tracks: initial; --tb-cols: 2; display: grid; gap: var(--tb-space-4); grid-template-columns: var(--tb-tracks, repeat(var(--tb-cols), minmax(0, 1fr))); }
+.tb-grid.tb-resize { position: relative; }
+.tb-grid-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--tb-space-4);
+  margin-left: calc(var(--tb-space-4) / -2);
+  min-height: 0;
+  overflow: visible;
+  cursor: col-resize;
+  touch-action: none;
+  display: flex;
+  justify-content: center;
+  z-index: 1;
+}
+.tb-grid-handle::before { content: ""; width: 0; background: transparent; border-radius: 2px; transition: background var(--tb-fast) var(--tb-ease), width var(--tb-fast) var(--tb-ease); }
+.tb-grid-handle:is(:hover, .tb-dragging)::before { width: 3px; background: var(--tb-border-strong); }
+.tb-grid-handle:focus-visible { outline: none; }
+.tb-grid-handle:focus-visible::before { width: 3px; background: var(--tb-focus); }
 .tb-panel {
   background: var(--tb-raised);
   border: var(--tb-line) solid var(--tb-border);

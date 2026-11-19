@@ -1,6 +1,7 @@
 Trebol [title: "Jobs on a board: a lane for each status, and one led by a machine"]
 
 moves: copy []
+picked: none
 
 ; a job goes from waiting to doing to done, and back from doing; never straight to done
 job: [
@@ -22,7 +23,8 @@ view [
             not all [event/to = 'done  none? event/row/who]
         ]
         on-select [append moves row/title]
-    global board flow by step [waiting "Waiting" doing "In the shop" done "Ready"]
+    ; with no on-select, choosing a card runs the block after the lanes
+    global board flow by step [waiting "Waiting" doing "In the shop" done "Ready"] [picked: row/title]
 ]
 
 jobs/data: [

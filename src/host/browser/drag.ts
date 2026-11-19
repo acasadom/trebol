@@ -54,7 +54,7 @@ export function mountedAbove(e: Element | null): Mounted | undefined {
 
 /** The drag source at an element: a draggable face, a row, or a child of a reorderable container. */
 export function sourceAt(start: Element): Source | null {
-  if (start.closest('input, textarea, select, [contenteditable], .tb-split-handle, .tb-menu') !== null) return null;
+  if (start.closest('input, textarea, select, [contenteditable], .tb-split-handle, .tb-grid-handle, .tb-menu') !== null) return null;
   for (let e: Element | null = start; e !== null; e = e.parentElement) {
     const row = rowOf.get(e);
     if (row !== undefined) {

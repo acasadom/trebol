@@ -10,6 +10,12 @@ Trebol [title: "Screen tests of press"]
     see "F2 on the page"
 ]
 [
+    press "u"
+    see "u on the page"
+    press/on "u" "Email"
+    see "u while typing"
+]
+[
     type "Search" "bikes"
     press/on "Escape" "Search"
     see/not "bikes"
