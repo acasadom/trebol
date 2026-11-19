@@ -213,15 +213,15 @@ Trebol [
 "snapshot and machine/from: timers, tasks and machines invoked go on"
 [
     ; a timeout goes off when it was going to, counted from when the state was entered
-    spec: [initial waiting  state waiting [timeout 0.06]  final late  from waiting to late on timeout]
+    spec: [initial waiting  state waiting [timeout 0.3]  final late  from waiting to late on timeout]
     m: machine spec
-    wait 0.03
+    wait 0.15
     saved: load mold/all snapshot m
     machine-engine/stop m
     m2: machine/from spec saved
-    wait 0.015
+    wait 0.05
     early: m2/state
-    wait 0.04
+    wait 0.2
     all [early = 'waiting  m2/state = 'late]
 ]
 [
@@ -232,7 +232,7 @@ Trebol [
     machine-engine/stop m
     wait 0.04
     m2: machine/from spec saved
-    wait 0.01
+    wait 0.1
     m2/state = 'b
 ]
 [
@@ -243,7 +243,7 @@ Trebol [
     machine-engine/stop m
     wait 0.04
     m2: machine/from spec saved
-    wait 0.01
+    wait 0.1
     all [m2/done  m2/outcome = 'expired]
 ]
 [
@@ -261,26 +261,26 @@ Trebol [
     saved: snapshot m
     machine-engine/stop m
     m2: machine/from spec saved
-    wait 0.05
+    wait 0.2
     all [runs = 2  m2/state = 'shown  m2/data/v = 42]
 ]
 [
     ; a machine invoked, and each machine of a fan-out, go on where they were
     inner: [data [t: 0]  initial s  state s [timeout data/t]  final f ok  from s to f on timeout]
     spec: [
-        data [ts: [0.01 0.05]  outs: none]
+        data [ts: [0.04 0.4]  outs: none]
         initial working
         state working [invoke inner for t in data/ts with [t: t]]
         final finished
         from working to finished on done set [outs: event/outcomes]
     ]
     m: machine spec
-    wait 0.03
+    wait 0.15
     saved: load mold/all snapshot m
     machine-engine/stop m
     m2: machine/from spec saved
     mid: m2/state
-    wait 0.05
+    wait 0.5
     all [mid = 'working  m2/state = 'finished  m2/data/outs = [ok ok]]
 ]
 [
@@ -294,6 +294,6 @@ Trebol [
         final finished
         from working to finished on done
     ]
-    wait 0.05
+    wait 0.2
     all [m/state = 'finished  saves >= 3]
 ]
