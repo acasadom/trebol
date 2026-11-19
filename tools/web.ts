@@ -5,9 +5,10 @@
 // out/ is the app of site/ built by `trebol build` (the front page, the gallery and the games), out/docs/ is
 // the documentation Sphinx built into docs/_build/html (run `npm run docs` first), out/designer/ is the
 // designer of trebol-dev (its app/, from a checkout in $TREBOL_DEV or ../trebol-dev) as a demo page, and
-// out/404.html sends an address of the documentation from before it moved under docs/ to its new place.
+// out/404.html sends an address of the documentation from before it moved under docs/ to its new place, and a
+// folder of the documentation with no index.html (a tutorial: docs/language/) gets one that opens its first page.
 
-import { cpSync, existsSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { buildApp } from './bundle.ts';
 
@@ -35,12 +36,46 @@ export const NOT_FOUND = `<!doctype html>
 </html>
 `;
 
+/** A page that opens `to`, a page next to it, at once. */
+export function redirectPage(to: string): string {
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Trebol</title>
+<link rel="canonical" href="${to}">
+<meta http-equiv="refresh" content="0; url=${to}">
+<script>location.replace(${JSON.stringify(to)} + location.search + location.hash);</script>
+</head>
+<body><a href="${to}">${to}</a></body>
+</html>
+`;
+}
+
+/** Gives each folder under dir that has pages but no index.html one that opens its first page, by name;
+ * folders whose name starts with _ (Sphinx's _static, _images) are left alone. Returns the folders given one. */
+export function folderIndexes(dir: string): string[] {
+  const made: string[] = [];
+  const walk = (d: string): void => {
+    const entries = readdirSync(d, { withFileTypes: true });
+    const pages = entries.filter((e) => e.isFile() && e.name.endsWith('.html')).map((e) => e.name).sort();
+    if (d !== dir && pages.length > 0 && !pages.includes('index.html')) {
+      writeFileSync(join(d, 'index.html'), redirectPage(pages[0]!));
+      made.push(d);
+    }
+    for (const e of entries) if (e.isDirectory() && !e.name.startsWith('_')) walk(join(d, e.name));
+  };
+  walk(dir);
+  return made;
+}
+
 export async function buildWeb(out: string): Promise<void> {
   if (!existsSync(join(DOCS, 'index.html'))) throw new Error('no documentation in docs/_build/html: run npm run docs first');
   rmSync(out, { recursive: true, force: true });
   await buildApp(join(ROOT, 'site'), out);
   cpSync(DOCS, join(out, 'docs'), { recursive: true });
   rmSync(join(out, 'docs', '.buildinfo'), { force: true });
+  folderIndexes(join(out, 'docs'));
   if (existsSync(join(DESIGNER, 'app.trb'))) await buildApp(DESIGNER, join(out, 'designer'));
   else console.warn(`web: no designer at ${DESIGNER}: designer/ left out`);
   writeFileSync(join(out, '404.html'), NOT_FOUND);

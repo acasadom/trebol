@@ -4,10 +4,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildApp } from '../tools/bundle.ts';
+import { folderIndexes } from '../tools/web.ts';
 
 const ROOT = join(import.meta.dirname, '..');
 
@@ -73,4 +74,21 @@ loop 16 [h/search 49 - h/left pick hunt-field/pane 49 - h/left]
 print [h/state h/left hunt-field/pane/1/role]
 `);
   assert.equal(out, '2\n15 2\nplaying 3 of 4 1\nwon success\nlost 0 danger\n');
+});
+
+test('a folder of the documentation with no index opens its first page', () => {
+  const docs = mkdtempSync(join(tmpdir(), 'trebol-docs-'));
+  for (const d of ['language', 'reference', '_static']) mkdirSync(join(docs, d));
+  writeFileSync(join(docs, 'index.html'), 'home');
+  writeFileSync(join(docs, 'language', '02-values.html'), '');
+  writeFileSync(join(docs, 'language', '01-getting-started.html'), '');
+  writeFileSync(join(docs, 'reference', 'index.html'), 'own');
+  writeFileSync(join(docs, '_static', 'a.html'), '');
+  assert.deepEqual(folderIndexes(docs), [join(docs, 'language')]);
+  const page = readFileSync(join(docs, 'language', 'index.html'), 'utf8');
+  assert.match(page, /url=01-getting-started\.html/);
+  assert.match(page, /location\.replace\("01-getting-started\.html"/);
+  assert.equal(readFileSync(join(docs, 'reference', 'index.html'), 'utf8'), 'own');
+  assert.equal(readFileSync(join(docs, 'index.html'), 'utf8'), 'home');
+  assert.ok(!existsSync(join(docs, '_static', 'index.html')));
 });
