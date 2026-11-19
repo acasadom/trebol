@@ -14,7 +14,8 @@ do %games/clover-hunt.trb
 
 look: 'minimal
 mode: 'auto
-retheme: does [theme compose [look: (look) mode: (mode) base: 150]]
+; black and white, so the red clover is the only color; the other looks keep their own
+retheme: does [theme compose [look: (look) mode: (mode) (either look = 'minimal [[color: 0]] [[]])]]
 retheme
 
 ; the screen on show, so the keys reach the game being played and nothing else

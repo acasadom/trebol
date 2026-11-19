@@ -59,6 +59,20 @@ test('a folder with only an app.trb is served as that app', async () => {
   }
 });
 
+test('the page of an app takes its title, description and icon from the header, as a built page does', async () => {
+  const app = mkdtempSync(join(tmpdir(), 'trebol-app-'));
+  writeFileSync(join(app, 'app.trb'), 'Trebol [title: "Shop" description: "Bikes & parts" icon: %icon.svg]\nview [title "Hi"]');
+  const dev = await startDev({ root: app, port: 0 });
+  try {
+    const page = await (await fetch(`http://localhost:${dev.port}/`)).text();
+    assert.match(page, /<title>Shop<\/title>/);
+    assert.match(page, /<meta name="description" content="Bikes &amp; parts">/);
+    assert.match(page, /<link rel="icon" href="icon.svg" type="image\/svg\+xml">/);
+  } finally {
+    await dev.close();
+  }
+});
+
 test('node_modules missing from the folder is looked for in the folders above it', async () => {
   const top = mkdtempSync(join(tmpdir(), 'trebol-work-'));
   const app = join(top, 'apps', 'shop');

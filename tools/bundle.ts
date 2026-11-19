@@ -149,6 +149,18 @@ function headOf(src: string): Head {
 
 const escapeHtml = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
+/** The title, description and icon of an app's page, from the header of its app.trb (trebol build and trebol dev). */
+export function headTags(src: string): string {
+  const meta = headOf(src);
+  let tags = `<title>${escapeHtml(meta.title ?? 'Trebol')}</title>\n`;
+  if (meta.description !== undefined) tags += `<meta name="description" content="${escapeHtml(meta.description)}">\n`;
+  if (meta.icon !== undefined) {
+    const type = ICON_TYPES[extname(meta.icon).toLowerCase()];
+    tags += `<link rel="icon" href="${escapeHtml(meta.icon)}"${type ? ` type="${type}"` : ''}>\n`;
+  }
+  return tags;
+}
+
 /** The type of an icon, by its extension; none when the browser can tell. */
 const ICON_TYPES: Record<string, string> = { '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon' };
 
@@ -204,14 +216,6 @@ export async function buildApp(folder: string, out?: string, options: BuildOptio
   for (const f of faces) data.set(f.file, (await readFile(join(fonts, f.file))).toString('base64'));
   const license = (await readFile(join(fonts, 'OFL.txt'), 'utf8')).trim();
 
-  const meta = headOf(texts['app.trb']!);
-  const title = escapeHtml(meta.title ?? 'Trebol');
-  let extra = '';
-  if (meta.description !== undefined) extra += `<meta name="description" content="${escapeHtml(meta.description)}">\n`;
-  if (meta.icon !== undefined) {
-    const type = ICON_TYPES[extname(meta.icon).toLowerCase()];
-    extra += `<link rel="icon" href="${escapeHtml(meta.icon)}"${type ? ` type="${type}"` : ''}>\n`;
-  }
   // < as < keeps the JSON from closing its script
   const json = JSON.stringify(texts).replace(/</g, '\\u003c');
   const head = `<!doctype html>
@@ -220,8 +224,7 @@ export async function buildApp(folder: string, out?: string, options: BuildOptio
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 ${MARK}
-<title>${title}</title>
-${extra}`;
+${headTags(texts['app.trb']!)}`;
   const tail = `<script type="text/trebol" src="app.trb"></script>
 </head>
 <body></body>

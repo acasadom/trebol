@@ -145,7 +145,8 @@ is left alone, with an error. For a server with a strict Content-Security-Policy
 Trebol and the fonts next to the page as files ([A strict Content-Security-Policy](../strict-csp.md)).
 
 The header of `app.trb` gives the page its head: `title:` names the browser tab before the view does,
-`description:` is what a search engine shows under the link, and `icon:` is the file shown in the tab:
+`description:` is what a search engine shows under the link, and `icon:` is the file shown in the tab. The
+page `trebol dev` serves takes the same head:
 
 ```text
 Trebol [title: "Cog & Chain" description: "Bicycle repairs, done right." icon: %cog.svg]
