@@ -23,6 +23,7 @@ import { readFileSync, watch, type FSWatcher } from 'node:fs';
 import { dirname, join, extname, normalize, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { stripTypeScriptTypes } from 'node:module';
+import { headTags } from './bundle.ts';
 
 /** Answers a request; returns false to let the dev server serve files. */
 export type ApiHandler = (req: IncomingMessage, res: ServerResponse, url: URL) => Promise<boolean>;
@@ -63,14 +64,13 @@ const TYPES: Record<string, string> = {
   '.woff2': 'font/woff2',
 };
 
-/** The page of a folder that has an app.trb and no index.html. */
-const APP_PAGE = `<!doctype html>
+/** The page of a folder that has an app.trb and no index.html: its title, description and icon come from the header. */
+const appPage = (src: string): string => `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Trebol</title>
-<script type="module">import 'trebol/browser';</script>
+${headTags(src)}<script type="module">import 'trebol/browser';</script>
 <script type="text/trebol" src="app.trb"></script>
 </head>
 <body></body>
@@ -159,7 +159,7 @@ export async function startDev(options: DevOptions = {}): Promise<Dev> {
         const app = join(path, 'app.trb');
         path = join(path, 'index.html');
         asked.add(path);
-        if (!(await stat(path).catch(() => null)) && await stat(app).catch(() => null)) page = APP_PAGE;
+        if (!(await stat(path).catch(() => null)) && await stat(app).catch(() => null)) page = appPage(await readFile(app, 'utf8'));
       }
       let body: string | Buffer = page ?? await readFile(path);
       const ext = extname(path);
