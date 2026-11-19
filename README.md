@@ -85,8 +85,8 @@ the tagged commit and stages it on npm, where a maintainer approves it with `npm
 ## Documentation
 
 The website, <https://trebol-lang.com/>, is itself an app in Trebol (`site/`): a gallery of components, each
-beside its code, and two small games. The documentation is at <https://trebol-lang.com/docs/>. It has two tutorials,
-one for the language and one for the screens, where every example is run by the test suite and every UI
+beside its code, and two small games. The documentation is at <https://trebol-lang.com/docs/>. It has three tutorials,
+one for the language, one for the screens and one for the designer (`trebol-dev`), where every example is run by the test suite and every UI
 example is the real app running under its code; a reference of every function; a guide for people who know
 Rebol; and guides to how Trebol is built.
 

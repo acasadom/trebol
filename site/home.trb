@@ -34,6 +34,7 @@ no build step: what you write is what runs, and it looks right on any screen, in
             button primary "See the gallery" [go 'gallery]
             button "Play a game" [go 'games]
             link #external "Start the tutorial" %docs/language/01-getting-started.html
+            link #edit "Try the designer" %designer/
         ]
     ]
 
@@ -71,6 +72,7 @@ npx trebol dev}
         row [
             link "The language tutorial" %docs/language/01-getting-started.html
             link "The UI tutorial" %docs/ui/01-first-screen.html
+            link "The designer tutorial" %docs/designer/01-the-window.html
             link "The reference" %docs/reference/index.html
         ]
     ]
