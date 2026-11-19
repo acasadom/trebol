@@ -5,8 +5,14 @@ view [
         on-select [picked/text: rejoin ["Chosen: " row/name]]
         menu ["Rename" rename] on-menu [picked/text: rejoin [form event/picked " " row/name]]
     picked: text "Chosen: nothing"
+    global depot: tree [name] reorder drop
+        on-drop [picked/text: rejoin ["Dropped " event/dropped/name " at " event/index " in " either event/parent [event/parent/name] ["the top"]]]
 ]
 
 shop/data: reduce [
     make map! [name: "Shop" expanded: true children: [#(name: "Bikes" children: [#(name: "Road")]) #(name: "Parts")]]
+]
+depot/data: reduce [
+    make map! [name: "Store" expanded: true children: [#(name: "Wheels")]]
+    make map! [name: "Tools"]
 ]

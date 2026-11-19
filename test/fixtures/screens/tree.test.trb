@@ -10,3 +10,7 @@ Trebol [title: "Choosing the rows of a tree"]
 "moving the rows of a tree"
 [drag "Parts" "Bikes"  see "Moved 2 to 1 in Shop"]
 [error? try [drag "Parts" "Shop"]]
+
+"a tree that takes drops: rows go to other levels"
+[drag "Tools" "Wheels"  see "Dropped Tools at 1 in Store"]
+[drag "Wheels" "Tools"  see "Dropped Wheels at 2 in the top"]

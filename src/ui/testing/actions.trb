@@ -212,6 +212,15 @@ drag: function [
                 return true
             ]
         ]
+        ; a tree that takes drops: before a row of another level
+        if from/drop [
+            foreach [f row i up] test-tree-rows onto [
+                if same? f from [
+                    ui-drop from payload from i up
+                    return true
+                ]
+            ]
+        ]
         do make error! rejoin ["drag: " mold what " moves only among the rows beside it, and " mold onto " is not one"]
     ]
     ; what is dragged: its face, what it carries, where it is, and the face it moves in

@@ -121,7 +121,7 @@ its code goes on using.
 | `choose "Bike" "City"` | chooses an option of a choice, radio or lookup, by the text it shows |
 | `attach "Photos" [%front.jpg %side.jpg]` | chooses files next to the test for an upload or photo, as the person picks or drops them; its `accept` refuses the others |
 | `pick-menu "Ana Ruiz" "Remove"` | chooses an item of the menu a button opens, of a face's context menu, or of the menu of the row of a table, list or tree that shows that text; `["Move to" "Top"]` names one in a submenu |
-| `drag "Rest" "Write"` | drags a face, or the row that shows that text, onto another: where things can be reordered it takes the place of the other (in a tree, one beside it), else it is dropped on a face with `drop`, or before a row of one |
+| `drag "Rest" "Write"` | drags a face, or the row that shows that text, onto another: where things can be reordered it takes the place of the other (in a tree, one beside it; a tree with `drop` takes it before a row of another level too), else it is dropped on a face with `drop`, or before a row of one |
 | `press "Ctrl+S"` | presses a key: the button or link with that `key` as its shortcut, or else the view's `on-key` |
 | `press/on "Enter" "Customer"` | presses it with the cursor in a face: its `on-key`, or the nearest one around it; Enter in a field of a form clicks its submit (in a form in steps, Next until the last step), Escape closes a dialog |
 | `say no` | answers no to the next question of `confirm`; with nothing said, the answer is yes |
