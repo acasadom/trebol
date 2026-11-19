@@ -31,7 +31,9 @@ export function syncPick(m: Mounted, inert: boolean, retry = false): void {
   } else marked.delete(m);
 }
 
-const inside = (r: DOMRect, x: number, y: number): boolean => x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+/** Whether a point is on a box; a face not shown has an empty box at the corner, and is under no point. */
+export const inside = (r: Pick<DOMRect, 'left' | 'right' | 'top' | 'bottom' | 'width' | 'height'>, x: number, y: number): boolean =>
+  (r.width > 0 || r.height > 0) && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
 
 /** A click: an inert element lets it through to the page, so the point says which picking face it was on. */
 export function onPick(ev: MouseEvent): void {
