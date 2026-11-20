@@ -248,6 +248,10 @@ describe('layout', () => {
     assert.deepEqual(await problems('view [choice "A" [1 + "x"]]'), ['+ does not allow string! for its b argument', '[1 + "x"]', 'app.trb:1:19']);
     assert.equal((await problems('view [text "a" oops]'))[0], 'layout: oops is not a word of text');
     assert.equal(await ev('length? layout/only [text "a" text "b"]'), '2');
+    // two tasks laying out at once (the handlers of two events) each keep their own problems
+    assert.equal(await ev(`lay: does [loop 40 [layout/only [panel [text "a" field "b" check "c" row [button "d"]]]]  true]
+      a: spawn [lay]  b: spawn [lay]
+      reduce [wait a  wait b]`), '[true true]');
   });
 
   test('loaded-at gives where a value of a block was loaded from', async () => {
