@@ -64,6 +64,10 @@ type? value
 ```
 
 - `value` (`any-type!`)
+- `/word`: Its name as a word, integer! for 3
+
+For example `type? 3` gives the datatype `integer!`; `type?/word 3` gives the word `integer!`, to keep in a
+block or to compare with one.
 
 (fn-value-3f)=
 ## value?

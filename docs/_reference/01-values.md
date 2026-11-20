@@ -15,6 +15,9 @@ have a conversion that starts with `to-`, a shorter way of writing `to`. See
 
 ## type?
 
+For example `type? 3` gives the datatype `integer!`; `type?/word 3` gives the word `integer!`, to keep in a
+block or to compare with one.
+
 ## value?
 
 ## quote

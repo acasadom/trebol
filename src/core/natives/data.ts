@@ -231,7 +231,10 @@ native('value?', '["True if the word has a value." word [any-word!]]', (_t, f) =
   return value(v !== null && v.t !== K.Unset ? TRUE : FALSE);
 });
 
-native('type?', '["The datatype of a value." value [any-type!]]', (_t, f) => value(datatype(f.args[0]!.t)));
+native('type?', '["The datatype of a value." value [any-type!] /word "Its name as a word, integer! for 3"]', (_t, f) => {
+  const t = f.args[0]!.t;
+  return value(f.args[1] !== TRUE ? datatype(t) : { t: K.Word, sym: intern(kindName(t)), bind: null });
+});
 
 // --- reflection: what help and source are written with ---------------------
 
