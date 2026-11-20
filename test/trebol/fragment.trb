@@ -1,0 +1,240 @@
+Trebol [
+    title: "Fragment tests"
+    ; Fragments of machine: written once with blanks, used in states with the blanks filled.
+    ; The cases follow the fragments of harel, which machine follows.
+]
+
+"a fragment used in a state makes it a state with the fragment's states inside"
+[
+    retry: fragment [work [block!] check [block!]] [
+        initial attempt
+        state attempt [on-enter work]
+        state waiting []
+        state done []
+        from attempt select check on result [
+            ok to done
+            fail to waiting
+        ]
+        from waiting to attempt on again
+    ]
+    tries: 0
+    m: machine [
+        data [verdict: 'fail]
+        initial charging
+        state charging [use retry with [work: [tries: tries + 1]  check: [data/verdict]]]
+        final paid
+        from charging to paid
+    ]
+    a: m/state
+    send m 'result
+    b: m/state
+    send m 'again
+    m/data/verdict: 'ok
+    send m 'result
+    all [a = 'charging/attempt  b = 'charging/waiting  m/state = 'paid  tries = 2]
+]
+
+"each use is its own copy, with its own blanks"
+[
+    say: fragment [word [string!]] [
+        initial saying
+        state saying [on-enter [append trace word]]
+    ]
+    trace: copy []
+    m: machine [
+        initial one
+        state one [use say with [word: "one"]]
+        state two [use say with [word: "two"]]
+        from one to two on next
+    ]
+    ; saying has no way out, so each stage ends at once and the machine is in the outer state
+    send m 'next
+    all [trace = ["one" "two"]  m/state = 'two]
+]
+
+"a blank of a state leads out of the fragment, to a state of the machine"
+[
+    ask: fragment [yes [word!] no [word!]] [
+        initial asking
+        state asking []
+        from asking to yes on accept
+        from asking to no on refuse
+    ]
+    m: machine [
+        initial deciding
+        state deciding [use ask with [yes: sold  no: lost]]
+        final sold
+        final lost
+    ]
+    send m 'refuse
+    m/state = 'lost
+]
+
+"a blank of an event names the event a way takes"
+[
+    wait-for: fragment [signal [word!]] [
+        initial waiting
+        state waiting []
+        state seen []
+        from waiting to seen on signal
+        from seen to waiting on reset
+    ]
+    m: machine [
+        initial a
+        state a [use wait-for with [signal: bell]]
+    ]
+    send m 'bell
+    m/state = 'a/seen
+]
+
+"a value blank goes where its word stands, a timeout or a guard"
+[
+    limit: fragment [most [integer!]] [
+        initial counting
+        state counting []
+        state over []
+        from counting to over on add where [data/n >= most]
+        from over to counting on reset
+    ]
+    m: machine [
+        data [n: 0]
+        initial a
+        state a [use limit with [most: 2]]
+    ]
+    m/data/n: 1
+    send m 'add
+    first-try: m/state
+    m/data/n: 2
+    send m 'add
+    all [first-try = 'a/counting  m/state = 'a/over]
+]
+
+"a fragment may use another and pass its own blanks on"
+[
+    retry: fragment [work [block!] check [block!]] [
+        initial attempt
+        state attempt [on-enter work]
+        state done []
+        state waiting []
+        from attempt select check on result [ok to done  fail to waiting]
+        from waiting to attempt on again
+    ]
+    step: fragment [task [block!] budget [integer!]] [
+        initial begin
+        state begin []
+        state trying [use retry with [work: task  check: [either tries >= budget ['ok] ['fail]]]]
+        from begin to trying on go
+    ]
+    tries: 0
+    m: machine [
+        initial charging
+        state charging [use step with [task: [tries: tries + 1]  budget: 1]]
+        final paid
+        from charging to paid
+    ]
+    send m 'go
+    inside: m/state
+    send m 'result
+    all [inside = 'charging/trying/attempt  m/state = 'paid]
+]
+
+"a state may have its own words besides the fragment it uses"
+[
+    trace: copy []
+    two: fragment [] [
+        initial x
+        state x []
+        state y []
+        from x to y on go
+    ]
+    m: machine [
+        initial a
+        state a [
+            on-enter [append trace 'a]
+            use two
+            state z []
+            from y to z on more
+            from z to x on back
+        ]
+    ]
+    send m 'go
+    send m 'more
+    all [trace = [a]  m/state = 'a/z]
+]
+
+"a fragment's spec may have strings and blanks with no types"
+[
+    f: fragment ["Any value goes" anything "what it is"] [
+        initial x
+        state x [on-enter [probe-value: anything]]
+    ]
+    probe-value: none
+    m: machine [initial a  state a [use f with [anything: 42]]]
+    all [fragment? f  not fragment? 42  probe-value = 42]
+]
+
+"use with a blank the fragment has not is an error, with what it may have meant"
+[
+    f: fragment [work [block!]] [initial x  state x [on-enter work]]
+    e: try [machine [initial a  state a [use f with [wrok: [1]]]]]
+    all [error? e  e/message = "machine: fragment f has no blank wrok; did you mean work?"]
+]
+
+"use without a blank the fragment needs is an error"
+[
+    f: fragment [work [block!]] [initial x  state x [on-enter work]]
+    e: try [machine [initial a  state a [use f]]]
+    all [error? e  e/message = "machine: use f needs work"]
+]
+
+"a blank given a value of a type it does not take is an error"
+[
+    f: fragment [work [block!]] [initial x  state x [on-enter work]]
+    e: try [machine [initial a  state a [use f with [work: 3]]]]
+    all [error? e  e/message = "machine: work of fragment f takes [block!], not integer!"]
+]
+
+"a blank given twice is an error"
+[
+    f: fragment [n] [initial x  state x []]
+    e: try [machine [initial a  state a [use f with [n: 1  n: 2]]]]
+    all [error? e  e/message = "machine: use ... with gives n twice"]
+]
+
+"use of a word that is not a fragment is an error"
+[
+    f: 10
+    e: try [machine [initial a  state a [use f]]]
+    all [error? e  e/message = "machine: f is not a fragment"]
+]
+
+"a fragment that uses itself is an error, not a loop"
+[
+    loop-f: fragment [] [initial x  state x [use loop-f]]
+    e: try [machine [initial a  state a [use loop-f]]]
+    all [error? e  e/message = "machine: fragment loop-f uses itself"]
+]
+
+"a mistake inside a fragment is found where the fragment is used"
+[
+    bad: fragment [] [initial x  state x []  from x to nowhere on go]
+    error? try [machine [initial a  state a [use bad]]]
+]
+
+"the spec of a fragment takes words and types"
+[
+    all [
+        error? try [fragment [1] [initial x  state x []]]
+        error? try [fragment [a [nope!]] [initial x  state x []]]
+        error? try [fragment [a a] [initial x  state x []]]
+    ]
+]
+
+"a fragment used in two machines is the same for both"
+[
+    f: fragment [] [initial x  state x []  state y []  from x to y on go  from y to x on back]
+    m1: machine [initial a  state a [use f]]
+    m2: machine [initial a  state a [use f]]
+    send m1 'go
+    all [m1/state = 'a/y  m2/state = 'a/x]
+]

@@ -1,7 +1,45 @@
-// Machines in Trebol (see machine.ts). The words a program uses: machine, snapshot, send, in?, graph-of, can?
-// and restart.
+// Machines in Trebol (see machine.ts). The words a program uses: fragment, fragment?, machine, snapshot, send,
+// in?, graph-of, can? and restart.
 
 export const WORDS = String.raw`
+fragment: function [
+    "Makes a piece of machine with blanks, which use puts in a state of a machine with the blanks filled."
+    spec [block!] "Its blanks: words, each with an optional block of the types it takes and a string"
+    body [block!] "The words of a machine for one level: states, ways, hooks, initial"
+] [
+    blanks: copy []
+    p: spec
+    while [not tail? p] [
+        w: first p
+        case [
+            string? :w [p: next p]
+            word? :w [
+                if find blanks w [do make error! rejoin ["fragment: two blanks called " w]]
+                p: next p
+                types: none
+                if block? first p [
+                    types: first p
+                    foreach t types [
+                        unless all [word? :t  any [datatype? get/any t  typeset? get/any t]] [
+                            do make error! rejoin ["fragment: " mold :t " is not a type, in the types of " w]
+                        ]
+                    ]
+                    p: next p
+                ]
+                append blanks w
+                append/only blanks types
+            ]
+            true [do make error! rejoin ["fragment: the spec takes words for its blanks, not " mold :w]]
+        ]
+    ]
+    b: copy/deep body
+    make object! [kind: 'fragment  params: blanks  body: b]
+]
+
+fragment?: function ["Whether a value is a fragment of machine." value [any-value!]] [
+    all [object? :value  'fragment = select value 'kind]
+]
+
 machine: function [
     "Makes a state machine from a block and starts it in its initial state."
     spec [block!]

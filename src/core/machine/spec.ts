@@ -6,7 +6,7 @@ export const SPEC = String.raw`
 ; in it (the root is 1), so a machine holds no loops of references and molds.
 machine-engine: make object! [
 
-    words: [data initial state final parallel from no on-enter on-exit on-activity on-save timeout ttl defer run invoke shared]
+    words: [data initial state final parallel from no on-enter on-exit on-activity on-save timeout ttl defer run invoke shared use]
 
     ; the events a machine sends itself
     own: [error timeout expired done]
@@ -111,7 +111,22 @@ machine-engine: make object! [
 
     ; Reads the words of one level (the machine or a state) into node n.
     level: function [m n spec] [
-        froms: copy []
+        spec: items m n spec
+        if all [n/parallel  n/initial] [fail rejoin ["parallel " n/name " has no initial: all its states start at once"] n/initial]
+        if all [not empty? n/children  none? n/initial  not n/parallel] [
+            fail either n/id = 1 ["the machine has no initial state"] [rejoin ["state " n/name " has no initial"]]
+                any [n/place spec]
+        ]
+        if n/initial [
+            place: n/initial
+            unless n/initial: child m n/id second place [
+                fail rejoin ["no state " second place " here" suggest second place state-names m] place
+            ]
+        ]
+    ]
+
+    ; Reads the words of a block into node n, and gives its tail; a fragment used there is read the same way.
+    items: function [m n spec] [
         while [not tail? spec] [
             here: spec
             w: first spec
@@ -255,21 +270,16 @@ machine-engine: make object! [
                     spec: next spec
                 ]
                 from [spec: transition m n here]
+                use [
+                    items m n use-fragment m here
+                    remove back tail m/using
+                    spec: skip here either 'with = third here [4] [2]
+                ]
             ] [
                 fail rejoin [w " is not a word of machine" suggest w words] here
             ]
         ]
-        if all [n/parallel  n/initial] [fail rejoin ["parallel " n/name " has no initial: all its states start at once"] n/initial]
-        if all [not empty? n/children  none? n/initial  not n/parallel] [
-            fail either n/id = 1 ["the machine has no initial state"] [rejoin ["state " n/name " has no initial"]]
-                any [n/place spec]
-        ]
-        if n/initial [
-            place: n/initial
-            unless n/initial: child m n/id second place [
-                fail rejoin ["no state " second place " here" suggest second place state-names m] place
-            ]
-        ]
+        spec
     ]
 
 `;

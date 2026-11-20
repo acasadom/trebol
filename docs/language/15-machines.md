@@ -538,6 +538,71 @@ the machine was already leaving, and the error reaches the sender.
 Events sent while the machine is still busy with one, from its own code for instance, wait their turn: each event
 is finished, states left and entered, before the next one starts.
 
+## Pieces used again
+
+Some shapes come back in machine after machine: try something, look at how it went, try again if it failed. A
+**fragment** is such a piece written once, with blanks. `use` puts its states and ways in a state, the blanks
+filled with what that place needs: the code to try, how to judge it, where to go next:
+
+```trebol
+retry: fragment [work [block!] check [block!]] [
+    initial attempt
+    state attempt [on-enter work]
+    state waiting []
+    state done []
+    from attempt select check on result [
+        ok to done
+        fail to waiting
+    ]
+    from waiting to attempt on again
+]
+calls: 0
+order: machine [
+    data [answer: 'fail]
+    initial charging
+    state charging [use retry with [work: [calls: calls + 1]  check: [data/answer]]]
+    final paid
+    from charging to paid
+]
+```
+
+`charging` is now a state with `attempt`, `waiting` and `done` inside it. When the card is declined the machine
+waits; `again` tries once more. `done` has no way out, so when it is reached the stage ends and the way out of
+`charging` with no event is taken:
+
+```trebol-console
+>> order/state
+== charging/attempt
+>> send order 'result
+== charging/waiting
+>> order/data/answer: 'ok
+== ok
+>> send order 'again
+== charging/attempt
+>> send order 'result
+== paid
+>> calls
+== 2
+```
+
+The spec of a fragment names its blanks, each with the types it takes, as a function's does. A blank is a word
+of the body, and wherever it stands its value takes its place: code, as here, but also the name of a state of the
+machine to go to, the name of an event, or a number for a timeout or a guard. Each `use` is a copy of its own, so
+the same fragment serves charging a card, calling the supplier and booking a slot, side by side. A fragment may
+`use` another one and pass its own blanks on.
+
+Unlike `invoke`, a fragment is not a machine of its own: its states are the machine's, share its data and take its
+events. A blank that is not given, or given a value of a type it does not take, is a mistake when the machine is
+made:
+
+```trebol-console
+>> machine [initial a  state a [use retry with [work: [1]]]]
+** User error: machine: use retry needs check
+** Where: machine
+** Near: [use retry with [work: [1]]]
+** At: 1:30
+```
+
 ## Keeping a machine
 
 A user who fills half a form and closes the page expects to find it where it was. `snapshot` gives the state of a

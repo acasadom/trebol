@@ -94,7 +94,7 @@ export const SHARED = String.raw`
             timers: make map! []  serial: 0  deferred: copy []
             on: copy []  results: make map! []  last: caller: none
             busy: false  exiting: false  on-save: saver: none
-            shared: channel: seen: none  owner: true  asks: copy []
+            shared: channel: seen: none  owner: true  asks: copy []  using: copy []
             scope: make object! [data: event: none]
         ]
         add-node m none none

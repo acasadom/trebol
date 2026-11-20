@@ -43,6 +43,7 @@ The block says the states and the ways between them:
 | `invoke spec for item in data/field with [...]` | one machine of `spec` for each value of the block `data/field`, `item` being that value inside `with`; `done` comes when all of them are, with `event/outcomes` and `event/data` as blocks in the order of the values |
 | `on-save [...]` | at the top: code run after each event, `snapshot` inside it being the machine's snapshot then; also when a machine it invoked moves on its own |
 | `shared name` | at the top: every tab of the site that makes a machine with this name has the same one; see below |
+| `use name with [blank: value ...]` | in a state: the words of the [fragment](#fn-fragment) `name` are put there, each blank's word replaced by its value; `with` may be left out when it has no blanks |
 | `defer event` | an event with no way out waits for a state that has one; `defer [e f]` for several |
 
 A state with `timeout` needs a way out `on timeout` from it or from a state around it, and `on timeout` needs
@@ -78,6 +79,59 @@ share it with, it runs on its own, as any machine.
 instead of starting it: no `on-enter` runs again, each timeout and the ttl go off when they were going to (at once
 if that time has passed), a `run` starts over and a machine invoked goes on from its own snapshot. A state or a
 field of the data the snapshot has and `spec` does not is an error.
+
+(fn-fragment)=
+## fragment
+
+Makes a piece of machine with blanks, which use puts in a state of a machine with the blanks filled.
+
+```text
+fragment spec body
+```
+
+- `spec` (`block!`): Its blanks: words, each with an optional block of the types it takes and a string
+- `body` (`block!`): The words of a machine for one level: states, ways, hooks, initial
+
+A piece of machine written once and put in states of machines by `use`, each time with its blanks filled:
+
+```trebol
+retry: fragment [work [block!] check [block!]] [
+    initial attempt
+    state attempt [on-enter work]
+    state waiting []
+    state done []
+    from attempt select check on result [ok to done  fail to waiting]
+    from waiting to attempt on again
+]
+order: machine [
+    data [verdict: 'fail]
+    initial charging
+    state charging [use retry with [work: [print "charging"]  check: [data/verdict]]]
+    final paid
+    from charging to paid
+]
+```
+
+The spec names the blanks, each with a block of the types it takes, any value when it has none, and a string if
+wanted. A blank is a word of the body: wherever that word stands, in a block or deeper, its value takes its place,
+as a block of code, a state, an event, a number. Set-words, lit-words and paths are left as they are. Each `use`
+is a copy of its own. A blank not given, one the fragment has not, or a value of a type it does not take is a
+mistake when the machine is made. A fragment may `use` another and pass on its own blanks; one that uses itself is
+a mistake. Unlike `invoke`, the states of a fragment are the machine's own: they share its data and take its
+events.
+
+(fn-fragment-3f)=
+## fragment?
+
+Whether a value is a fragment of machine.
+
+```text
+fragment? value
+```
+
+- `value` (`any-value!`)
+
+For example `fragment? retry`.
 
 (fn-send)=
 ## send
