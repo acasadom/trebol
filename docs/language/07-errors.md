@@ -39,7 +39,9 @@ type, a word with no value. A **math** error is arithmetic that has no answer:
 
 A **syntax** error comes from text that is not valid Trebol, when `load` reads it; an **access** error comes
 from the world outside, a server that does not answer; and **user** errors are the ones your programs make, as
-you will see below.
+you will see below. An **internal** error means Trebol itself could not go on: a block nested many thousands of
+levels deep, too deep to mold or compare, gives one with the id `stack-overflow`. It is an error like any other,
+so `attempt` catches it and the rest of the program keeps running.
 
 Sometimes the error shows up one step after the real mistake. The price list has no saddle, so `select` gives
 `none`, and it is the addition that complains:
