@@ -89,7 +89,8 @@ react-scan: function [f b [block! paren!] sources [block!] targets [block!] /loc
 ; watched by the host, so that a change to it (a timer of a machine, another
 ; tab) runs the reactions at the end of that round. A series or map is kept
 ; with its version, as it is the same series that is kept: a change made in
-; it, or in a series inside it (append values/items 4), shows only there.
+; it, or in a series inside it (append values/items 4), shows only there. It
+; is watched too, deeply, so that a change in place alone runs the reactions.
 react-now: function [r /local g facet] [
     out: copy []
     foreach [g facet] r/sources [
@@ -99,7 +100,7 @@ react-now: function [r /local g facet] [
             ]
         ]
         append/only out :g
-        if any [series? :g  map? :g] [append out version-of :g]
+        if any [series? :g  map? :g] [ui-watch :g  append out version-of :g]
     ]
     out
 ]

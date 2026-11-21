@@ -170,15 +170,6 @@ show-open: does [status/text: "Open"]
 its key in `values`. A text, a heading or a button take no such word; give them a name with a set-word before
 them: `total: text "0"`.
 
-**Changing a block in place does not repaint.** Setting a face's field shows the change: `clients/data:
-rows`. Changing the block it holds, with `append clients/data row`, changes the data but the face does not
-know; set the field again to show it:
-
-```text
-append clients/data row
-clients/data: clients/data
-```
-
 ## Where to go from here
 
 When the trouble is in the language rather than the screen, the console of `npx trebol` is the quickest

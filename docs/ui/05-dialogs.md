@@ -49,7 +49,6 @@ view [
             date due "Due back" required
             submit "Save" [
                 foreach [key value] values [put workshop/selected key value]
-                workshop/data: bookings
                 close edit
             ]
         ]
@@ -62,8 +61,8 @@ workshop/data: bookings
 `set-values` fills each named field of the form from the key of the same name, and leaves the fields as
 untouched, so no error shows until the reader changes something. The table keeps the chosen row as its
 `selected`: the very map in `bookings`, not a copy. `foreach` walks the form's `values` key by key and `put`
-writes each one into that map, so a key the form does not show, like `fault`, stays as it was. Giving the
-table its data again shows the change.
+writes each one into that map, so a key the form does not show, like `fault`, stays as it was. The table
+shows the map it holds, so it draws the change by itself.
 
 ## Toasts
 

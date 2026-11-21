@@ -39,6 +39,7 @@ import { onKeyDown, onViewKey } from './browser/keys.ts';
 import { onRowsMoved, onPrint } from './browser/tables.ts';
 import { stepsLanded, undoToasts } from './browser/dialogs.ts';
 import { sync, react, syncDirty } from './browser/sync.ts';
+import { watchShown } from './browser/inplace.ts';
 import { screensFace, routeBlock, here, startHistory, undoing, landHistory, unsaved, setScreensFace, setHere, setUndoing } from './browser/screens.ts';
 import { root, titleFace, setSheet, setTheme, setRoot, setRootFace, setTitleFace } from './browser/page.ts';
 // every part, for what it does as it loads (natives, listeners)
@@ -70,10 +71,11 @@ import './browser/page.ts';
 
 // --- natives -----------------------------------------------------------------------
 
-native('ui-watch', '["Marks an object a reaction reads, so that a change to it runs the reactions at the end of the round." object [object!]]', (_t, f) => {
-  const o = f.args[0] as ObjectCell;
-  o.ctx.watch = dirty;
-  return value(o);
+native('ui-watch', '["Marks an object, series or map a reaction reads, so that a change to it, or in place in it, runs the reactions at the end of the round." value [object! series! map!]]', (_t, f) => {
+  const v = f.args[0]!;
+  if (v.t === K.Object) (v as ObjectCell).ctx.watch = dirty;
+  else watchShown(v, dirty);
+  return value(v);
 });
 
 native('repaint', '["Redraws the faces that changed." ]', () => {

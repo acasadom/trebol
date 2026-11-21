@@ -235,8 +235,8 @@ shop/data: customers
 
 ## Adding rows
 
-The rows belong to the program; the table only shows them. To add one, add it to the block and give the
-table its data again, so it shows the new state:
+The rows belong to the program; the table only shows them. To add one, add it to the block the table shows:
+the table sees the change and draws the new row.
 
 ```trebol-ui
 bookings: copy []
@@ -249,17 +249,18 @@ view [
         date due "Due back" required
         submit "Book in" [
             append bookings values
-            workshop/data: bookings
             set-values face/form none
         ]
     ]
-    table workshop "Nothing booked yet" [customer "Customer" bike "Bike" due "Due back"]
+    global table workshop "Nothing booked yet" [customer "Customer" bike "Bike" due "Due back"]
 ]
+
+workshop/data: bookings
 ```
 
 `values` is a new map every time, ready to keep. `face` is the button that was pressed and `face/form` its
-form; `set-values` with `none` empties the form for the next customer. The table needs no `global` here: the
-handler that uses its name is inside the same view.
+form; `set-values` with `none` empties the form for the next customer. A row changed in its block, with `put`
+or by setting a field of an object row, shows at once too, and so does a row taken away with `remove`.
 
 ## To and from a spreadsheet
 

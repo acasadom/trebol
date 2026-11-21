@@ -9,7 +9,7 @@ import { startHost, startUi, runSource, type Host } from '../src/host/index.ts';
 
 // the browser host draws a view; here a view only gives its root
 native('show', '[root [object!]]', (_t, f) => value(f.args[0]!));
-native('ui-watch', '[object [object!]]', (_t, f) => value(f.args[0]!));
+native('ui-watch', '[value [object! series! map!]]', (_t, f) => value(f.args[0]!));
 
 let host: Host;
 beforeEach(async () => {

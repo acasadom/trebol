@@ -29,8 +29,20 @@ import { syncToolbar, syncBreadcrumb } from './toolbars.ts';
 import { syncDialog, syncTabs, syncSteps, syncSplit } from './dialogs.ts';
 import { comingScreen, enteredScreen, setComingScreen } from './screens.ts';
 import { sweepSizes } from './sizes.ts';
+import { dirtySeries, watchShown, watchChanged, ownersOf } from './inplace.ts';
 
+/** Whether a mounted face is on the page, or on the screen coming. */
+function shown(m: Mounted): boolean {
+  return m.el.isConnected || comingScreen?.contains(m.el) === true;
+}
+
+/** Draws the face from its fields, and watches what they hold for changes in place. */
 export function sync(m: Mounted): void {
+  draw(m);
+  watchShown(m.face.ctx, dirty, m, o => shown(o as Mounted));
+}
+
+function draw(m: Mounted): void {
   const f = m.face;
   const style = word(f, 'style') ?? '';
   const role = word(f, 'role');
@@ -349,7 +361,7 @@ export function setExtra(e: HTMLElement, cls: string[]): void {
 export function react(): void {
   for (const m of reactors) if (!m.el.isConnected && comingScreen?.contains(m.el) !== true) reactors.delete(m);
   sweepSizes(n => comingScreen?.contains(n) === true);
-  if (reacting !== null || reactors.size === 0 || (dirty.length === 0 && !newReactor)) return;
+  if (reacting !== null || reactors.size === 0 || (dirty.length === 0 && dirtySeries.length === 0 && !newReactor)) return;
   setNewReactor(false);
   const faces = blockOf(K.Block, [...reactors].map(m => m.face));
   const ht = runNow(host.sch, { data: [{ t: K.Word, sym: intern('ui-react'), bind: host.rt.lib }, faces] }, 0);
@@ -372,12 +384,19 @@ export function react(): void {
   }
 }
 
+/** Draws again the faces whose fields were set, and those showing a series or row changed in place. */
 export function syncDirty(): void {
-  for (const ctx of dirty) {
-    ctx.dirty = false;
+  const ctxs = dirty.splice(0);
+  const series = dirtySeries.splice(0);
+  for (const ctx of ctxs) ctx.dirty = false;
+  for (const s of series) s.dirty = false;
+  const owners = new Set<object>();
+  for (const ctx of ctxs) {
     const m = byCtx.get(ctx);
-    if (m !== undefined && (m.el.isConnected || comingScreen?.contains(m.el))) sync(m);
+    if (m !== undefined) owners.add(m);
   }
-  dirty.length = 0;
+  ownersOf(series, ctxs, owners);
+  watchChanged(series, ctxs, dirty, o => shown(o as Mounted));
+  for (const m of owners as Set<Mounted>) if (shown(m)) sync(m);
 }
 

@@ -16,7 +16,7 @@ native('show', '[root [object!]]', (_t, f) => {
   shown = f.args[0]!;
   return value(shown);
 });
-native('ui-watch', '[object [object!]]', (_t, f) => value(f.args[0]!));
+native('ui-watch', '[value [object! series! map!]]', (_t, f) => value(f.args[0]!));
 let toasts: string[] = [];
 native('show-toast', '[message [string!] kind [word! none!] undo [integer! none!]]', (_t, f) => {
   toasts.push(mold(f.args[0]!) + ' ' + mold(f.args[1]!));
