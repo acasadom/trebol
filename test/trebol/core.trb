@@ -304,3 +304,7 @@ Trebol [
         datatype? type? 3
     ]
 ]
+
+"only $ makes money; other currency symbols are letters of a word, as in R3"
+[all [money? load "-$5"  word? load "JPY¥5"  word? load "€5"]]
+[error? try [load "x$y"]]
