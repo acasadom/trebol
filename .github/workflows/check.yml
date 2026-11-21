@@ -20,3 +20,24 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm run build
+
+  # Every difference from Rebol 3 is a decision (test/r3-differences.json), never an accident.
+  r3check:
+    runs-on: ubuntu-latest
+    env:
+      R3_VERSION: 3.22.1
+      R3: ${{ github.workspace }}/.r3/rebol3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Install Rebol 3 (Oldes)
+        run: |
+          mkdir -p .r3
+          curl -fsSL "https://github.com/Oldes/Rebol3/releases/download/$R3_VERSION/rebol3-bulk-linux-x64.gz" | gunzip > "$R3"
+          chmod +x "$R3"
+          "$R3" -v
+      - run: npm run r3check

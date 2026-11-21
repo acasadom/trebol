@@ -11,7 +11,7 @@
 // are in test/r3-differences.json; a test listed there that now agrees is
 // reported too, so the list never goes stale. R3 is found at $R3 or
 // ~/bin/rebol3 (Oldes Rebol 3, https://github.com/Oldes/Rebol3); without it
-// the command says so and does nothing.
+// the command says so and does nothing, unless $R3 is set (CI), when it fails.
 
 import { readdirSync, readFileSync, existsSync, writeFileSync, mkdtempSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -47,8 +47,8 @@ function moldR3(c: Cell): string {
   return mold(c);
 }
 
-/** Suites of what Trebol has and R3 has not, so nothing in them can agree: machines. */
-const TREBOL_ONLY = new Set(['machine.trb']);
+/** Suites of what Trebol has and R3 has not, so nothing in them can agree: machines and fragments. */
+const TREBOL_ONLY = new Set(['machine.trb', 'fragment.trb']);
 
 function suites(): Test[] {
   const out: Test[] = [];
@@ -96,7 +96,8 @@ function runR3(r3: string, tests: Test[]): string[] {
 const r3 = process.env.R3 ?? join(homedir(), 'bin', 'rebol3');
 if (!existsSync(r3)) {
   console.log(`No Rebol 3 at ${r3}: set R3 to its path to compare.`);
-  process.exit(0);
+  // R3 named on purpose (as in CI) and missing is a failure, not a quiet skip.
+  process.exit(process.env.R3 === undefined ? 0 : 1);
 }
 const showAll = process.argv.includes('--all');
 const accepted: Accepted[] = existsSync(ACCEPTED) ? JSON.parse(readFileSync(ACCEPTED, 'utf8')) as Accepted[] : [];
