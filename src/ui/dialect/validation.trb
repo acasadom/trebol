@@ -107,15 +107,31 @@ find-named: function [f name] [
     none
 ]
 
-; Runs asynchronous checks of a face (they may fetch).
+; Runs asynchronous checks of a face (they may fetch). A check gives its answer only if
+; no newer one started meanwhile, so a slow answer about an old value never lands on the
+; new one; the first check that finds a problem says it; pending ends even when a check fails.
 check-async: function [f] [
-    foreach r any [f/rules []] [
-        if all [r/1 = 'check-async  not blank? f/value] [
-            f/pending: true
-            f/async-error: check-result run-handler f r/2
-            f/pending: false
-        ]
+    checks: copy []
+    foreach r any [f/rules []] [if r/1 = 'check-async [append/only checks r/2]]
+    if empty? checks [exit]
+    f/async-run: run: f/async-run + 1
+    if blank? f/value [
+        f/async-error: none
+        f/pending: false
+        exit
     ]
+    f/pending: true
+    problem: none
+    foreach body checks [
+        if error? e: try [check-result run-handler f body] [
+            if f/async-run = run [f/pending: false]
+            do e
+        ]
+        if f/async-run <> run [exit]
+        if problem: e [break]
+    ]
+    f/async-error: problem
+    f/pending: false
 ]
 
 ; Updates the errors of touched faces and enables submit buttons only when

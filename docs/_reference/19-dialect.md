@@ -252,7 +252,11 @@ amounts, dates and times.
 ## check-async
 
 `check-async [not taken? value]`: like `check`, but it may wait, for a server with `fetch`; the field shows that
-it is checking.
+it is checking. It runs when the person leaves the field and when a form is sent. If the value changes while a
+check waits, only the newest check gives its answer: a slow answer about the old value never shows on the new
+one. Of several `check-async` on a field, the first that finds a problem is the one shown. A check that fails
+with an error stops showing that it is checking, and the error goes on as any other. An empty field is not
+checked and keeps no old answer.
 
 ## calc
 
