@@ -1,10 +1,10 @@
-// Series natives: navigation, editing, searching, ordering and set operations.
+// Series natives: navigation, editing, searching and ordering (set operations are in sets.ts).
 //
 // Blocks hold cells, strings code points and binaries bytes; the helpers in
 // series.ts hide the difference. Searching is case-insensitive unless /case,
 // as `=` is.
 
-import { K, isAnyBlock, isAnyString, kindBit, type Kind } from '../kinds.ts';
+import { K, isAnyBlock, isAnyString, kindBit } from '../kinds.ts';
 import { bitHas } from '../bitset.ts';
 import * as I64 from '../int64.ts';
 import {
@@ -15,8 +15,7 @@ import {
 import { bindSeries, copyDeep } from '../ctx.ts';
 import { isEqual, compare, foldCase } from '../compare.ts';
 import { pick } from '../access.ts';
-import { context, time, sameValue, string, bitset, type BitsetCell } from '../values.ts';
-import { dateDiff } from './math.ts';
+import { context, sameValue, string, type BitsetCell } from '../values.ts';
 import { sourceOf } from '../mold.ts';
 import {
   splice, itemsFor, lengthOf, at, clampIndex,
@@ -510,66 +509,3 @@ function bitsetHolds(b: BitsetCell, v: Cell, cased: boolean): boolean {
       return false;
   }
 }
-
-// --- set operations ----------------------------------------------------------------
-
-function itemEq(t: Kind, cased: boolean): (a: Item, b: Item) => boolean {
-  if (isAnyBlock(t)) return (a, b) => (cased ? strictEqual(a as Cell, b as Cell) : isEqual(a as Cell, b as Cell));
-  if (cased || t === K.Binary) return (a, b) => a === b;
-  return (a, b) => foldCase(a as number) === foldCase(b as number);
-}
-
-function distinct(list: Item[], eq: (a: Item, b: Item) => boolean): Item[] {
-  const out: Item[] = [];
-  for (const x of list) if (!out.some(y => eq(x, y))) out.push(x);
-  return out;
-}
-
-function setResult(like: SeriesCell, list: Item[]): Cell {
-  return { t: like.t, s: { data: list }, i: 0 } as Cell;
-}
-
-// Of two bitsets, the one holding what op says of being in each. A complemented bitset
-// (neg) holds what its bits do not, so each side is flipped before op and the result after.
-function bitsetOp(a: BitsetCell, b: BitsetCell, op: (x: number, y: number) => number): Cell {
-  const neg = op(a.neg ? 1 : 0, b.neg ? 1 : 0) !== 0;
-  const n = Math.max(a.s.data.length, b.s.data.length);
-  const bytes: number[] = [];
-  for (let i = 0; i < n; i++) {
-    const x = (a.s.data[i] ?? 0) ^ (a.neg ? 0xff : 0);
-    const y = (b.s.data[i] ?? 0) ^ (b.neg ? 0xff : 0);
-    bytes.push((op(x, y) ^ (neg ? 0xff : 0)) & 0xff);
-  }
-  return bitset(bytes, neg);
-}
-
-function setOp(f: NativeFrame, two: boolean, pick: (a: Item[], b: Item[], eq: (x: Item, y: Item) => boolean) => Item[], bits?: (x: number, y: number) => number): Step {
-  if (two && (f.args[0]!.t === K.Bitset || f.args[1]!.t === K.Bitset)) {
-    const [x, y] = f.args as [Cell, Cell];
-    if (x.t !== K.Bitset || y.t !== K.Bitset || bits === undefined) return fail('script', 'bad-set', 'a bitset goes only with another bitset');
-    return value(bitsetOp(x, y, bits));
-  }
-  const a = f.args[0] as SeriesCell;
-  const b = two ? f.args[1] as SeriesCell : null;
-  if (b !== null && isAnyBlock(a.t) !== isAnyBlock(b.t)) return fail('script', 'bad-set', 'both series must be of the same kind');
-  const eq = itemEq(a.t, used(f.args[two ? 2 : 1]!));
-  const xs = (a.s.data as Item[]).slice(a.i);
-  const ys = b === null ? [] : (b.s.data as Item[]).slice(b.i);
-  return value(setResult(a, pick(xs, ys, eq)));
-}
-
-native('unique', '["The values of the series, each once." set [series!] /case]', (_t, f) => setOp(f, false, (a, _b, eq) => distinct(a, eq)));
-native('union', '["The values that are in either series, each once." a [series! bitset!] b [series! bitset!] /case]', (_t, f) => setOp(f, true, (a, b, eq) => distinct([...a, ...b], eq), (x, y) => x | y));
-native('intersect', '["The values that are in both series." a [series! bitset!] b [series! bitset!] /case]', (_t, f) =>
-  setOp(f, true, (a, b, eq) => distinct(a.filter(x => b.some(y => eq(x, y))), eq), (x, y) => x & y));
-// Of two dates, the time between them (R3).
-native('difference', '["The values that are in one series but not the other; of two dates, the time between them." a [series! date! bitset!] b [series! date! bitset!] /case]', (_t, f) => {
-  const [a, b] = f.args as [Cell, Cell];
-  if (a.t === K.Date || b.t === K.Date) {
-    if (a.t !== K.Date || b.t !== K.Date) return fail('script', 'bad-set', 'difference takes two dates or two series');
-    return value(time(dateDiff(a.v, b.v)));
-  }
-  return setOp(f, true, (xs, ys, eq) => distinct([...xs.filter(x => !ys.some(y => eq(x, y))), ...ys.filter(y => !xs.some(x => eq(x, y)))], eq), (x, y) => x ^ y);
-});
-native('exclude', '["The values of the first series that are not in the second." a [series! bitset!] b [series! bitset!] /case]', (_t, f) =>
-  setOp(f, true, (a, b, eq) => distinct(a.filter(x => !b.some(y => eq(x, y))), eq), (x, y) => x & ~y));

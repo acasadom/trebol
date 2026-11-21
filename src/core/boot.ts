@@ -18,6 +18,7 @@ import { scriptStart } from './natives/data.ts';
 export { scriptStart };
 import './natives/math.ts';
 import './natives/series.ts';
+import './natives/sets.ts';
 import './natives/text.ts';
 import './natives/encode.ts';
 import './natives/json.ts';
