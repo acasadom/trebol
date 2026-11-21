@@ -320,6 +320,7 @@ export function showComing(box: HTMLElement, f: ObjectCell, loading: boolean): v
     setComingScreen(null);
     box.toggleAttribute('data-tb-loading', entering);
     enteredScreen(box);
+    sweepSizes();   // the screen that left took its faces with it
   });
 }
 
