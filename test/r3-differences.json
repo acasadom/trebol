@@ -438,5 +438,9 @@
   {
     "test": "[n: append/dup copy \"\" \"t\" 600 n = to string! first load-xml rejoin [\"<\" n \"></\" n \">\"]]",
     "why": "R3 has no load-xml."
+  },
+  {
+    "test": "[(unique [[$1.00] [1] [10%] [0.1]]) == [[$1.00] [10%]]]",
+    "why": "[$1] = [1] in R3 too, and R3 gives one of unique [[$1] [1]], but in a longer series its hash keeps them apart."
   }
 ]

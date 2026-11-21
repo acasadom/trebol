@@ -576,6 +576,12 @@ unique set
 - `set` (`series!`)
 - `/case`
 
+Two values of a series are the same for `unique`, `union`, `intersect`, `difference` and `exclude` only when they
+are of one datatype, words of any kind counting as one: `unique [1 1.0 a a:]` is `[1 1.0 a]`. Values of one
+datatype are then compared with `=`, so inside blocks `[1]` and `[1.0]` are the same. `/case` tells apart the case
+of text and words, and in blocks the datatype too: `unique/case [[1] [1.0] [a] [A]]` keeps all four. This is
+what R3 does.
+
 (fn-union)=
 ## union
 

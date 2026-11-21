@@ -5,11 +5,17 @@
 // values that are equal always get the same key, and values with the same key
 // are then told apart by the real equality. A value with no key (a decimal,
 // percent or money, which equal each other within a tolerance or across
-// currencies) is compared one by one, as before.
+// currencies) is compared one by one.
+//
+// As in R3, two values of a series are the same only when they are of one
+// datatype (words of any kind count as one): 1 and 1.0 are both kept. Inside
+// blocks `=` decides, so [1] and [1.0] are one. /case tells apart the case of
+// text and words, and with it the values in blocks must be of one datatype
+// too, though decimals there still compare within a tolerance, as in R3.
 
 import { K, isAnyBlock, isAnyString, isAnyWord, type Kind } from '../kinds.ts';
 import * as I64 from '../int64.ts';
-import { canon } from '../symbols.ts';
+import { canon, spell } from '../symbols.ts';
 import { TRUE, strictEqual, time, bitset, type Cell, type BlockCell, type StringCell, type WordCell, type BitsetCell } from '../values.ts';
 import { isEqual, foldCase } from '../compare.ts';
 import { dateDiff } from './math.ts';
@@ -22,8 +28,33 @@ const used = (c: Cell): boolean => c === TRUE;
 type Eq = (a: Item, b: Item) => boolean;
 type Key = (x: Item) => string | number | null;
 
+function sameKind(a: Cell, b: Cell): boolean {
+  return a.t === b.t || (isAnyWord(a.t) && isAnyWord(b.t));
+}
+
+// Of two values of one kind, whether they are the same with /case.
+function casedEqual(a: Cell, b: Cell): boolean {
+  if (isAnyWord(a.t)) return spell((a as WordCell).sym) === spell((b as WordCell).sym);
+  if (isAnyString(a.t) || a.t === K.Char) return strictEqual(a, b);
+  if (isAnyBlock(a.t)) {
+    const x = a as BlockCell;
+    const y = b as BlockCell;
+    const n = x.s.data.length - x.i;
+    if (n !== y.s.data.length - y.i) return false;
+    for (let k = 0; k < n; k++) {
+      const p = x.s.data[x.i + k]!;
+      const q = y.s.data[y.i + k]!;
+      if (p !== q && (p.t !== q.t || !casedEqual(p, q))) return false;
+    }
+    return true;
+  }
+  return isEqual(a, b);
+}
+
 function itemEq(t: Kind, cased: boolean): Eq {
-  if (isAnyBlock(t)) return (a, b) => (cased ? strictEqual(a as Cell, b as Cell) : isEqual(a as Cell, b as Cell));
+  if (isAnyBlock(t)) {
+    return (a, b) => sameKind(a as Cell, b as Cell) && (cased ? casedEqual(a as Cell, b as Cell) : isEqual(a as Cell, b as Cell));
+  }
   if (cased || t === K.Binary) return (a, b) => a === b;
   return (a, b) => foldCase(a as number) === foldCase(b as number);
 }
@@ -43,8 +74,8 @@ function scalarKey(c: Cell): string | null {
     case K.Logic: return 'l' + c.v;
     case K.Time: return 't' + c.v;
     case K.Pair: return 'p' + c.x + ',' + c.y;
-    case K.Tuple: return 'u' + c.v.join('.');
-    case K.Date: { const d = c.v; return 'd' + d.y + '-' + d.m + '-' + d.d + ' ' + d.time + ' ' + d.zone; }
+    case K.Tuple: { const v = [...c.v]; while (v.at(-1) === 0) v.pop(); return 'u' + v.join('.'); }
+    case K.Date: { const d = c.v; return 'd' + (Date.UTC(d.y, d.m - 1, d.d) + (d.time ?? 0) / 1e6 - (d.zone ?? 0) * 60000); }
   }
   return 'x' + c.t;
 }
@@ -67,8 +98,7 @@ function blockKey(b: BlockCell, cased: boolean): string | null {
 function cellKey(c: Cell, cased: boolean): string | null {
   switch (c.t) {
     case K.Integer: return 'n' + I64.toString(c.v);
-    case K.Decimal: case K.Percent: return cased ? 'f' + c.t + ':' + (c.v === 0 ? 0 : c.v) : null;
-    case K.Money: return null;
+    case K.Decimal: case K.Percent: case K.Money: return null;
   }
   if (isAnyBlock(c.t)) return blockKey(c as BlockCell, cased);
   return scalarKey(c);
