@@ -24,6 +24,7 @@ import {
 } from '../series.ts';
 import { T, type Step, type NativeFrame } from '../eval.ts';
 import { native, value, fail, truthy, doBlock } from './define.ts';
+import { pushAll } from '../arrays.ts';
 
 const num = (c: Cell): number => I64.toNumber((c as { v: I64.I64 }).v);
 const used = (c: Cell): boolean => c === TRUE;
@@ -67,8 +68,8 @@ function toPut(s: SeriesCell, v: Cell, only: boolean, part: Cell | null, dup: Ce
     add = [];
     nl = oneNl === undefined ? undefined : [];
     for (let k = 0; k < times; k++) {
-      add.push(...one);
-      if (nl !== undefined) nl.push(...oneNl!);
+      pushAll(add, one);
+      if (nl !== undefined) pushAll(nl, oneNl!);
     }
   }
   return nl === undefined ? { add } : { add, nl };
@@ -468,11 +469,11 @@ native('remove-each', "[\"Removes the values of a series for which the block giv
   if (v !== null || th !== null) {
     const from = st.pos - n;
     const chunk = (data.s.data as Item[]).slice(from, Math.min(from + n, data.s.data.length));
-    if (broke || v === null || !truthy(v)) st.keep.push(...chunk);
+    if (broke || v === null || !truthy(v)) pushAll(st.keep, chunk);
   }
   const step = broke ? null : eachNext(f, st, data);
   if (step !== null) return step;
-  if (broke) st.keep.push(...(data.s.data as Item[]).slice(st.pos));
+  if (broke) pushAll(st.keep, (data.s.data as Item[]).slice(st.pos));
   splice(data.s as Series<Item>, 0, data.s.data.length, st.keep);
   return value(data);
 });
@@ -488,7 +489,7 @@ native('map-each', "[\"A block of what the block gives for each value of a serie
   f.thrown = null;
   if (th !== null && th.kind === T.Break) return value({ t: K.Block, s: { data: st.out }, i: 0 });
   if (v !== null && v.t !== K.Unset) {
-    if (v.t === K.Block) st.out.push(...v.s.data.slice(v.i));
+    if (v.t === K.Block) pushAll(st.out, v.s.data.slice(v.i));
     else st.out.push(v);
   }
   return eachNext(f, st, data) ?? value({ t: K.Block, s: { data: st.out }, i: 0 });

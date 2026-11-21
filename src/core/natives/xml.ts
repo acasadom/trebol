@@ -20,6 +20,7 @@ import {
 } from '../values.ts';
 import { fieldText } from './csv.ts';
 import { native, value, fail } from './define.ts';
+import { pushAll } from '../arrays.ts';
 
 const used = (c: Cell): boolean => c === TRUE;
 const NAME = /^[A-Za-z_][A-Za-z0-9_-]*$/;
@@ -165,8 +166,8 @@ const isNone = (c: Cell): boolean => c.t === K.None || (c.t === K.Word && spell(
 function attsText(c: Cell): string | null {
   const pairs: Cell[] = [];
   if (isNone(c)) return '';
-  if (c.t === K.Map) pairs.push(...c.s.data);
-  else if (c.t === K.Block) pairs.push(...c.s.data.slice(c.i));
+  if (c.t === K.Map) pushAll(pairs, c.s.data);
+  else if (c.t === K.Block) pushAll(pairs, c.s.data.slice(c.i));
   else if (c.t === K.Object) c.ctx.keys.forEach((k, j) => pairs.push({ t: K.Word, sym: k, bind: null }, c.ctx.vals[j]!));
   else return null;
   let s = '';

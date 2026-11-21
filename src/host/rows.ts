@@ -6,6 +6,7 @@ import {
   K, NONE, ctxFind, canon, intern, spell, text, compare,
   type Cell, type Sym, type WordCell, type StringCell,
 } from '../core/index.ts';
+import { pushAll } from '../core/arrays.ts';
 
 /** A field of a map! or object! row; map keys may be words or strings. */
 export function rowField(row: Cell, sym: Sym): Cell {
@@ -51,7 +52,8 @@ export function sortGroups(rows: Cell[], col: Sym, desc: boolean, language: stri
       run.push(r);
       continue;
     }
-    out.push(...sortRows(run, col, desc, language, shows), r);
+    pushAll(out, sortRows(run, col, desc, language, shows));
+    out.push(r);
     run = [];
   }
   return out.concat(sortRows(run, col, desc, language, shows));
