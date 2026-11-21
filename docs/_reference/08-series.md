@@ -121,7 +121,7 @@ Every change of what a series holds, by `append`, `insert`, `poke`, `sort` or an
 new version, greater than any version given before. `version-of` gives the greatest version of the series and
 of every series or map inside it, at any depth, so it changes whenever any of them changes: a reader that keeps
 the series and its version sees a change made in place, which comparing the series with itself never shows.
-Reactions use it ([react](19-dialect.md#react)). A series never changed since it was made has version 0, and
+Reactions use it ([react](dialect.md#react)). A series never changed since it was made has version 0, and
 binding its words is not a change.
 
 ```trebol
