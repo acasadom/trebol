@@ -378,6 +378,8 @@ native('sort', '["Sorts the series in place." series [series!] /case /skip size 
   const rev = used(a[6]!);
   if (f.phase === 0) {
     const d = s.s.data as Item[];
+    // as in R3, a last record cut short is an error, not a record of its own
+    if ((d.length - s.i) % size !== 0) return fail('script', 'out-of-range', `sort/skip ${size}: the series has ${d.length - s.i} values, not whole records of ${size}`);
     const recs: Item[][] = [];
     for (let i = s.i; i < d.length; i += size) recs.push(d.slice(i, i + size));
     f.data = { src: recs, dst: recs.slice(), width: 1, lo: 0, mid: 0, hi: 0, i: 0, j: 0, k: 0, merging: false } satisfies SortState;
@@ -386,8 +388,9 @@ native('sort', '["Sorts the series in place." series [series!] /case /skip size 
   const st = f.data as SortState;
   let answer: boolean | null = null;
   if (v !== null) {
-    answer = v.t === K.Integer ? num(v) < 0 : truthy(v);
-    if (rev) answer = !answer;
+    // an integer says how the two compare, so 0 keeps them as they are either way
+    if (v.t === K.Integer) answer = rev ? num(v) > 0 : num(v) < 0;
+    else answer = rev ? !truthy(v) : truthy(v);
   }
   const cellOf = (r: Item[], at = 0): Cell => cellAt({ ...s, s: { data: r }, i: 0 } as SeriesCell, at);
   let bad = false;

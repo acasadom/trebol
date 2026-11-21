@@ -83,6 +83,12 @@ it. See [series](../language/08-series.md).
 
 ## sort
 
+The sort is stable: values that compare equal keep their order, with `/reverse` too. The comparator of `/compare`
+gives true when its first value goes first, or an integer, negative when the first goes first, positive when the
+second does and 0 when they are equal. A true or false cannot say two are equal, so with `/reverse` it turns ties
+round; an integer keeps them. With `/skip`, the series must hold whole records: a last one cut short is an
+error.
+
 ## extract
 
 ## remove-each

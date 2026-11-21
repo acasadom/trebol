@@ -422,5 +422,9 @@
   {
     "test": "[not (9007199254740993 = 9007199254740990.0)]",
     "why": "an integer beyond 2^53 is compared exactly with a decimal, as < and > compare it (owner's decision, 2026-11-21); R3 turns it into a decimal first, so = says true while > says false."
+  },
+  {
+    "test": "[(sort/reverse/compare [[a 3] [b 1] [c 2] [d 1]] func [x y] [either x/2 < y/2 [-1] [either x/2 > y/2 [1] [0]]]) = [[a 3] [c 2] [b 1] [d 1]]]",
+    "why": "a comparator that gives an integer gives it as x compared with y (negative: x goes first), as Red does; R3 reads it the other way round, so its plain sort comes out descending."
   }
 ]
