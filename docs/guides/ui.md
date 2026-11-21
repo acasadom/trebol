@@ -55,7 +55,9 @@ that changed. On a narrow screen the same table is drawn as a list of cards.
 Because the host draws every control, it can give each one what assistive technology needs, every time:
 labels tied to fields, `aria-invalid` and the error message in `aria-describedby`, a disabled `submit` that
 stays in the keyboard order and shows the errors when pressed, toasts in an `aria-live` region, icon buttons
-named by their icon. An app gets all of it without asking.
+named by their icon, and a box that scrolls with nothing focusable inside (a long line of `code`, a wide
+table of plain cells) taking keyboard focus while it scrolls, so the arrow keys can scroll it. An app gets
+all of it without asking.
 
 ## Why this way — and the alternatives
 

@@ -29,6 +29,7 @@ import { syncToolbar, syncBreadcrumb } from './toolbars.ts';
 import { syncDialog, syncTabs, syncSteps, syncSplit } from './dialogs.ts';
 import { comingScreen, enteredScreen, setComingScreen } from './screens.ts';
 import { sweepSizes } from './sizes.ts';
+import { laterMarkScrollers } from './scrollers.ts';
 import { dirtySeries, watchShown, watchChanged, ownersOf } from './inplace.ts';
 
 /** Whether a mounted face is on the page, or on the screen coming. */
@@ -333,6 +334,7 @@ export function showComing(box: HTMLElement, f: ObjectCell, loading: boolean): v
     box.toggleAttribute('data-tb-loading', entering);
     enteredScreen(box);
     sweepSizes();   // the screen that left took its faces with it
+    laterMarkScrollers();
   });
 }
 
@@ -361,6 +363,7 @@ export function setExtra(e: HTMLElement, cls: string[]): void {
 export function react(): void {
   for (const m of reactors) if (!m.el.isConnected && comingScreen?.contains(m.el) !== true) reactors.delete(m);
   sweepSizes(n => comingScreen?.contains(n) === true);
+  laterMarkScrollers();
   if (reacting !== null || reactors.size === 0 || (dirty.length === 0 && dirtySeries.length === 0 && !newReactor)) return;
   setNewReactor(false);
   const faces = blockOf(K.Block, [...reactors].map(m => m.face));
