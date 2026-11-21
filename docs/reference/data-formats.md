@@ -63,6 +63,9 @@ load-json source
 
 - `source` (`string!` `binary!`)
 
+The text must be JSON as its standard says: a line break or other control character inside a string is written
+escaped (`\n`), never as it is. A number may have any number of digits.
+
 (fn-load-csv)=
 ## load-csv
 

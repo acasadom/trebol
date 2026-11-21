@@ -426,5 +426,17 @@
   {
     "test": "[(sort/reverse/compare [[a 3] [b 1] [c 2] [d 1]] func [x y] [either x/2 < y/2 [-1] [either x/2 > y/2 [1] [0]]]) = [[a 3] [c 2] [b 1] [d 1]]]",
     "why": "a comparator that gives an integer gives it as x compared with y (negative: x goes first), as Red does; R3 reads it the other way round, so its plain sort comes out descending."
+  },
+  {
+    "test": "[decimal? load-json rejoin [\"0.\" append/dup copy \"\" \"1\" 401]]",
+    "why": "a JSON number is read as a decimal however many digits it has; this R3 cannot load a decimal written with so many digits."
+  },
+  {
+    "test": "[v: append/dup copy \"\" \"x\" 4096 a: third load-xml rejoin [{<a b=\"} v {\"/>}] 4096 = length? a/b]",
+    "why": "R3 has no load-xml."
+  },
+  {
+    "test": "[n: append/dup copy \"\" \"t\" 600 n = to string! first load-xml rejoin [\"<\" n \"></\" n \">\"]]",
+    "why": "R3 has no load-xml."
   }
 ]

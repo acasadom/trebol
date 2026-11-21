@@ -27,6 +27,9 @@ function keyCell(k: string): Cell {
 
 interface Open { kind: 'array' | 'object'; out: Cell[]; key: Cell | null }
 
+// sticky: matches at lastIndex, over the whole text however long the number
+const NUMBER = /-?(?:0|[1-9]\d*)(\.\d+)?([eE][+-]?\d+)?/y;
+
 /** Parses JSON text; returns the value or an error message. */
 export function parseJson(src: string): Cell | string {
   let i = 0;
@@ -44,6 +47,8 @@ export function parseJson(src: string): Cell | string {
     while (i < src.length) {
       const c = src[i++]!;
       if (c === '"') return out;
+      // JSON writes control characters only escaped
+      if (c < ' ') return null;
       if (c !== '\\') {
         out += c;
         continue;
@@ -137,7 +142,8 @@ export function parseJson(src: string): Cell | string {
           i += 4;
           v = NONE;
         } else {
-          const m = /^-?(?:0|[1-9]\d*)(\.\d+)?([eE][+-]?\d+)?/.exec(src.slice(i, i + 400));
+          NUMBER.lastIndex = i;
+          const m = NUMBER.exec(src);
           if (m === null) return err('unexpected character');
           i += m[0].length;
           const n = m[1] === undefined && m[2] === undefined ? I64.parse(m[0]) : null;
