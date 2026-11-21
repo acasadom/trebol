@@ -53,6 +53,29 @@ their lowercase symbol, so `Price` and `price` are the same word, but each keeps
 **Dates and times** are plain numbers inside: a `time!` is nanoseconds, and a `date!` is a year, month and
 day, an optional time of day and an optional zone in minutes.
 
+## What values cost in memory
+
+Cells are small JavaScript objects and a series is a JavaScript array, so memory goes the way it goes in
+JavaScript, not the way it would in a packed C or Zig core. Measured in Chrome (and, between brackets, in
+Node, which does not compress pointers), keeping what was built and after collecting the garbage:
+
+| What is kept                               | Per unit                          |
+|--------------------------------------------|-----------------------------------|
+| A string of a million characters           | about 6 bytes a character (8)     |
+| A block of a million integers              | about 25 bytes an integer (50)    |
+| What `load-json` makes of a JSON text      | about 9 times the text (16)       |
+
+A character is one slot of an array of small integers. An integer in a block is its cell plus the slot
+that points at it, and every string in a block adds its cell, its series and its array. While a value is
+being built the peak is higher than what is kept: a JSON text is in memory three times over while it is
+read (the text as it came, its code points and the values made from it), so 10 MB of JSON from the network
+take well over 100 MB for a moment and settle near 90 MB once the text is let go. Nothing in Trebol limits the size of a series:
+like Rebol 3, it is bounded only by the memory of the browser or of Node.
+
+`test/memory.test.ts` keeps these numbers from growing, and checks that series of a million items go into
+and out of every edit whole. Where a smaller cost matters more than code points with direct indexes, the
+way out is the one the Zig core keeps open (below): the rule is only that indexes count code points.
+
 ## Loading and molding
 
 `load` is a hand-written lexer in one pass, with no dependencies (`lexer.ts`). Its token classes are an
