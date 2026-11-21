@@ -280,8 +280,8 @@ What a block reads is found by reading it, not by running it: every path in it, 
 that starts with a face's label (`total/text`), with `face` (`face/value`) or with `values` (`values/qty`, the
 value of the field of that name). It runs at the end of the round in which that changed, before the screen is
 drawn again, once per change however many of the things it reads changed. A reaction that sets what another
-reads runs first, whatever the order of the faces. Changing a series in place (`append name/value "x"`) is not
-a change: give the facet a new value, as elsewhere. Two reactions that set what the other reads would never
+reads runs first, whatever the order of the faces. Changing a series in place is a change too: `append
+name/text "x"`, or `append first values/items 4` to a block inside the block read (see `version-of`). Two reactions that set what the other reads would never
 end: the second time round one of them is left out, and the console says where it is.
 
 ## width

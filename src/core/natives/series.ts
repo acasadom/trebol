@@ -24,6 +24,7 @@ import {
 import { T, type Step, type NativeFrame } from '../eval.ts';
 import { native, value, fail, truthy, doBlock } from './define.ts';
 import { pushAll } from '../arrays.ts';
+import { touch } from '../values.ts';
 
 const num = (c: Cell): number => I64.toNumber((c as { v: I64.I64 }).v);
 const used = (c: Cell): boolean => c === TRUE;
@@ -137,6 +138,7 @@ native('clear', '["Removes everything from the series\' position to its tail." s
   const x = f.args[0]!;
   if (x.t === K.Map) {
     x.s.data.length = 0;
+    touch(x.s);
     return value(x);
   }
   const s = x as SeriesCell;
@@ -172,6 +174,7 @@ native('reverse', '["Reverses the order of the values from the series\' position
   const end = used(f.args[1]!) ? partEnd(s, f.args[2]!) : s.s.data.length;
   const d = s.s.data as Item[];
   ownMeta(s.s);
+  touch(s.s);
   const nl = s.s.nl;
   for (let a = s.i, b = end - 1; a < b; a++, b--) {
     [d[a], d[b]] = [d[b]!, d[a]!];
@@ -407,6 +410,7 @@ native('sort', '["Sorts the series in place." series [series!] /case /skip size 
   const d = s.s.data as Item[];
   for (let k = 0; k < flat.length; k++) d[s.i + k] = flat[k]!;
   ownMeta(s.s);
+  touch(s.s);
   if (s.s.nl) s.s.nl.fill(false, s.i);
   return value(s);
 });

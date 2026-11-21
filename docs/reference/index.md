@@ -134,7 +134,7 @@ draw
 
 ### V
 
-[`validate-face`](#fn-validate-face) · [`value?`](#fn-value-3f) · [`values-of`](#fn-values-of) · [`view`](#fn-view)
+[`validate-face`](#fn-validate-face) · [`value?`](#fn-value-3f) · [`values-of`](#fn-values-of) · [`version-of`](#fn-version-of) · [`view`](#fn-view)
 
 ### W
 

@@ -48,7 +48,7 @@ function moldR3(c: Cell): string {
 }
 
 /** Suites of what Trebol has and R3 has not, so nothing in them can agree: machines and fragments. */
-const TREBOL_ONLY = new Set(['machine.trb', 'fragment.trb']);
+const TREBOL_ONLY = new Set(['machine.trb', 'fragment.trb', 'version.trb']);
 
 function suites(): Test[] {
   const out: Test[] = [];

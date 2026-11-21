@@ -35,6 +35,20 @@ export interface Series<T> {
    * anything changes them.
    */
   sharedMeta?: boolean;
+  /**
+   * Version: set by `touch` on every change of what the series holds, from one
+   * clock shared by all series, so a later change always gives a greater
+   * number. Undefined (0) for a series never changed since it was made.
+   * Binding its words is not a change.
+   */
+  ver?: number;
+}
+
+let clock = 0;
+
+/** Marks a series changed: gives it the next version. Call it on every edit of what a series holds. */
+export function touch(s: Series<unknown>): void {
+  s.ver = ++clock;
 }
 
 /** Gives a series its own `nl` and `pos` before they are changed. Call it before every edit of them. */

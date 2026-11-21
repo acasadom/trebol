@@ -5,7 +5,7 @@
 // `data` so mold and error positions stay right after changes.
 
 import { K, isAnyBlock, isAnyString, type Kind } from './kinds.ts';
-import { codePoints, ownMeta, type Cell, type Series, type BlockCell, type StringCell } from './values.ts';
+import { codePoints, ownMeta, touch, type Cell, type Series, type BlockCell, type StringCell } from './values.ts';
 import { form } from './mold.ts';
 import { spliceAll } from './arrays.ts';
 
@@ -39,6 +39,7 @@ export function at(c: SeriesCell, i: number): SeriesCell {
 /** Removes `del` elements at `at` and inserts `add` there, keeping block metadata aligned. */
 export function splice(s: Series<Item>, at: number, del: number, add: readonly Item[], nl?: readonly boolean[]): void {
   ownMeta(s);
+  touch(s);
   spliceAll(s.data, at, del, add);
   if (s.nl !== undefined) spliceAll(s.nl, at, del, add.map((_, k) => nl?.[k] ?? false));
   if (s.pos !== undefined) spliceAll(s.pos, at, del, add.map(() => -1));
