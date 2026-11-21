@@ -19,7 +19,10 @@ export const FRAGMENTS = String.raw`
     use-fragment: function [m here] [
         r: second here
         f: case [
-            word? :r [get/any r]
+            word? :r [
+                unless value? r [fail rejoin [mold r " has no value: use takes the name of a fragment"] here]
+                get r
+            ]
             path? :r [do r]
             true [fail "use takes the name of a fragment" here]
         ]

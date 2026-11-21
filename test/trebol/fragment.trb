@@ -208,6 +208,12 @@ Trebol [
     all [error? e  e/message = "machine: f is not a fragment"]
 ]
 
+"use of a word with no value is an error at the use"
+[
+    e: try [machine [initial a  state a [use no-fragment-here]]]
+    all [error? e  e/message = "machine: no-fragment-here has no value: use takes the name of a fragment"  not none? e/at]
+]
+
 "a fragment that uses itself is an error, not a loop"
 [
     loop-f: fragment [] [initial x  state x [use loop-f]]

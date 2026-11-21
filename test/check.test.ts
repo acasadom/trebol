@@ -70,6 +70,39 @@ worse: machine [initial a  state a []  from a to b on go]
   ]);
 });
 
+test('check makes the fragments a machine uses, from the fragments written before it', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'trebol-check-'));
+  const file = join(dir, 'app.trb');
+  writeFileSync(file, `Trebol [title: "Check"]
+approval: fragment [signal [word!]] [
+    initial waiting
+    state waiting []
+    state accepted []
+    from waiting to accepted on signal
+]
+twice: fragment [] [initial one  state one [use approval with [signal: go]]]
+process: machine [initial quote  state quote [use approval with [signal: yes]]  state other [use twice]  from quote to other on next]
+print state-of process
+`);
+  const good = await checked([file]);
+  assert.deepEqual(good.lines, ['No problems.']);
+  assert.equal(good.clean, true);
+  writeFileSync(file, `Trebol [title: "Check"]
+early: machine [initial a  state a [use approval]]
+approval: fragment [signal [word!]] [initial waiting  state waiting []]
+bad: fragment [blank [no-such-type]] [initial a  state a []]
+late: machine [initial a  state a [use aproval]  state b [use approval with [sign: go]]  from a to b on go]
+`);
+  const { clean, lines } = await checked([file]);
+  assert.equal(clean, false);
+  assert.deepEqual(lines.map(l => l.slice(dir.length + 1)), [
+    // a machine sees only the fragments written before it, as when the file runs
+    'app.trb:2:37  machine: approval has no value: use takes the name of a fragment',
+    'app.trb:4:1   fragment: no-such-type is not a type, in the types of blank',
+    'app.trb:5:36  machine: aproval has no value: use takes the name of a fragment',
+  ]);
+});
+
 test('a state no way leads to is a warning: check says it, and the file is still fine', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'trebol-check-'));
   const file = join(dir, 'app.trb');

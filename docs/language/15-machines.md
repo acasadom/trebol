@@ -665,6 +665,10 @@ made:
 ** At: 1:30
 ```
 
+`use` takes the fragment that its word holds when the machine is made, so a fragment is written before the
+machines that use it. `trebol check` makes the fragments of a file in the same order, without running anything
+else, and a machine that uses a name with no fragment in it yet is a mistake at the `use`.
+
 ## Keeping a machine
 
 A user who fills half a form and closes the page expects to find it where it was. `snapshot` gives the state of a
