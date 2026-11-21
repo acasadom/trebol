@@ -86,6 +86,9 @@ export function isEqual(a: Cell, b: Cell): boolean {
   if (a === b) return true;
   if (isNumeric(a) && isNumeric(b)) {
     if ((isFloat(a) || isFloat(b)) && a.t !== K.Money && b.t !== K.Money) {
+      // an integer past 2^53 has no decimal of its own: compared exactly, as `<` and `>` do
+      const big = (c: Cell): boolean => c.t === K.Integer && !Number.isSafeInteger(I64.toNumber(c.v));
+      if (big(a) || big(b)) return numCmp(a, b) === 0;
       const n = (c: Cell): number => (c.t === K.Integer ? I64.toNumber(c.v) : (c as { v: number }).v);
       return almostEqual(n(a), n(b));
     }

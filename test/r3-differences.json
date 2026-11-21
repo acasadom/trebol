@@ -418,5 +418,9 @@
   {
     "test": "[s: intersect complement charset \"ab\" complement charset \"bc\" all [not find/case s #\"c\" find s #\"d\"]]",
     "why": "Sets of bitsets keep a complement's meaning: in R3 a union or intersection with a complement forgets it."
+  },
+  {
+    "test": "[not (9007199254740993 = 9007199254740990.0)]",
+    "why": "an integer beyond 2^53 is compared exactly with a decimal, as < and > compare it (owner's decision, 2026-11-21); R3 turns it into a decimal first, so = says true while > says false."
   }
 ]
