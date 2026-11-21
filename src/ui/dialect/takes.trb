@@ -166,7 +166,17 @@ ui-any: function [] [
     unless ui-any-def [
         d: make style-def []
         d/name: 'face  d/events: 'any  d/done: copy []  d/entries: copy []
-        foreach [n s] ui-style-defs [foreach e s/own [unless e/lead [append d/entries e]]]
+        ; its face has the fields of every style, with the first default met, as any taker may read them
+        fields: copy []
+        foreach [n s] ui-style-defs [
+            foreach e s/own [unless e/lead [append d/entries e]]
+            foreach w words-of s/proto [
+                unless any [find words-of face w  find fields to set-word! w] [
+                    append fields reduce [to set-word! w  'quote  get/any in s/proto w]
+                ]
+            ]
+        ]
+        d/proto: make face fields
         set 'ui-any-def d
     ]
     ui-any-def

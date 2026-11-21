@@ -50,6 +50,23 @@ view compose/deep [text (name) button "a" menu (items) hiden  panel [(face) iner
   ]);
 });
 
+test('a face compose puts in ends at the next style, and what follows it is read as any face could take it', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'trebol-check-'));
+  const file = join(dir, 'app.trb');
+  writeFileSync(file, `Trebol []
+x: [text "a"]
+show-it: does [b/pane: layout/only compose/deep [form [(x) submit "Ok" [print 1]]]]
+view [global b: column [] button "x" [show-it]]
+view compose [column [(x) [print 1] button "Ok" [print 1]]]
+view compose [column [(x) red submitt "Ok"]]
+`);
+  const { clean, lines } = await checked([file]);
+  assert.equal(clean, false);
+  assert.deepEqual(lines.map(l => l.slice(dir.length + 1)), [
+    'app.trb:6:31  submitt is not a style; did you mean submit?',
+  ]);
+});
+
 test('check makes each machine without running it: its data is not worked out', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'trebol-check-'));
   const file = join(dir, 'app.trb');

@@ -101,8 +101,11 @@ build-faces: function [
         opt ['global (global?: true)]
         opt [set label set-word!]
         [
-            ; a face that compose puts in: check takes what follows as words of a face it cannot know
-            if (ui-checking) paren! (f: make face []  def: ui-any  used: copy []) any modifier
+            ; a face that compose puts in: check takes what follows as words of a face it cannot know,
+            ; up to the next style; a bare block is its action or pane, which check cannot read either
+            if (ui-checking) paren! (def: ui-any  f: make def/proto []  used: copy []) any [
+                not face-start [block! | modifier]
+            ]
         |   pos: set style-word word! if (ui-style style-word) (
                 def: select ui-style-defs style-word
                 f: make select styles style-word []
