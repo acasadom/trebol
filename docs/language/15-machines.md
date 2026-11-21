@@ -142,10 +142,22 @@ line runs:
 == "machine: data has no bkie; did you mean bike?"
 ```
 
-Other mistakes show when the machine is made too: a state or a word misspelt (with the one it may have meant), a
-state no way leads to, and a `choose` with no event and no `else` out of a state with no other way out, which
-would keep the machine there for good when no `when` holds. `trebol check` finds them all without running the
-program.
+Other mistakes show when the machine is made too: a state or a word misspelt (with the one it may have meant),
+and a `choose` with no event and no `else` out of a state with no other way out, which would keep the machine
+there for good when no `when` holds. `trebol check` finds them all without running the program.
+
+A state no way leads to is not a mistake but a warning: while you are drawing a machine, a state often waits for
+the way to it. The machine is made and runs; the warning shows once in the console (and in the Log of the dev
+tools), with where the state is written, and `trebol check` lists it with `warning:` in front without failing:
+
+```trebol-console
+>> shop: machine [initial open  state open []  state closed []  from open to open on knock]  shop/state
+== open
+>> length? shop/warnings
+== 2
+>> second shop/warnings
+== "no way leads to state closed"
+```
 
 ## States inside states
 

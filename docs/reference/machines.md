@@ -71,7 +71,13 @@ of its final state, or the name of that state; `none` while it goes on); a `to` 
 
 The machine is an object with `state` (a word, or a path when it is in a state inside another; a block of them
 when it is in a parallel), `data`, `done`,
-`outcome`, `error`, the last error taken by `on error`, and `owner`, `false` on the copy of a `shared` machine.
+`outcome`, `error`, the last error taken by `on error`, `owner`, `false` on the copy of a `shared` machine, and
+`warnings`, a block of where and what for each state no way leads to.
+
+A mistake in the block is an error when the machine is made. A state no way leads to is a warning instead: the
+machine is made and runs, the warning is in `warnings` and shows once in the console and the dev tools, with
+where the state is written (only the outermost one, not the states inside it), and `trebol check` lists it with
+`warning:` in front without failing.
 
 A `shared` machine is run by one tab, the first that made it, which holds a lock named after it: only there do
 hooks, timeouts, `run`, `invoke` and `on-save` happen. The other tabs and windows of the same browser and site get

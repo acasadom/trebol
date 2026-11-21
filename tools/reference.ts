@@ -26,7 +26,7 @@ export const NOTES = join(DOCS, '_reference');
 export const OUT = join(DOCS, 'reference');
 
 /** Functions the host calls from DOM events, and those only the machine engine calls: no program calls them. */
-const HOST_ONLY = /^(ui-|share-)/;
+const HOST_ONLY = /^(ui-|share-|host-)/;
 
 interface Topic { file: string; title: string; intro: string; sections: Array<{ name: string; notes: string }> }
 

@@ -29,6 +29,25 @@ test('words set in one line stay for the next', async () => {
   assert.deepEqual(await session(['price: $12.50', 'price * 2']), ['== $12.50', '== $25.00']);
 });
 
+test('a machine with a state no way leads to is made, and the warning is said once where it is written', async () => {
+  const warned: string[] = [];
+  const warn = output.warn;
+  output.warn = text => warned.push(text);
+  try {
+    const shown = await session([
+      'f: does [machine [initial a  state a []  state b []]]',
+      'm: f  in? m \'a', 'f  f  1',
+      'machine [initial a  state a []  state lost []]  2',
+    ]);
+    assert.deepEqual(shown.slice(1), ['== true', '== 1', '== 2']);
+  } finally {
+    output.warn = warn;
+  }
+  assert.equal(warned.length, 2);
+  assert.match(warned[0]!, /^machine: no way leads to state b \(1:\d+\)$/);
+  assert.match(warned[1]!, /^machine: no way leads to state lost/);
+});
+
 test('an open block asks for more lines', async () => {
   const repl = new Repl(consoleHost());
   assert.deepEqual(await repl.feed('b: [1 2'), []);

@@ -50,7 +50,7 @@ ui-sketch: function [
 ; It lays out each block after view or layout (styles of stylize first), and the
 ; faces of each screen and row of rows, which a running app lays out only when shown.
 ui-check: function [
-    "Every problem in the layouts of a program, without running it: [place message ...]"
+    "Every problem in the layouts of a program, without running it: [place message ...]; a warning's message starts with warning:"
     code [block!]
     /local b p n m rest
 ] [
@@ -89,8 +89,10 @@ ui-check: function [
     ; a machine is made without running anything: its data stays unevaluated
     foreach p blocks [
         if 'machine = first p [
-            if error? r: try [machine-engine/make-machine second p] [
+            either error? r: try [machine-engine/make-machine second p] [
                 append ui-checking reduce [any [machine-engine/failed next p] form r/message]
+            ] [
+                foreach [place message] r/warnings [append ui-checking reduce [place rejoin ["warning: machine: " message]]]
             ]
         ]
     ]

@@ -1065,10 +1065,21 @@ Trebol [
 [says? [machine [initial strat  state start []]] "no state strat here; did you mean start?"]
 [says? [machine [initial start  state start []  stat finish []]] "stat is not a word of machine; did you mean state?"]
 [says? [machine [data [email: none]  initial a  state a [on-enter [print data/emial]]]] "data has no emial; did you mean email?"]
-; a state no way leads to
-[says? [machine [initial a  state a []  state b []  state c []  from a to b on go]] "no way leads to state c"]
-[says? [machine [initial a  state a []  state w [initial x  state x []  state y []]  from a to w on go]] "no way leads to state y"]
-[says? [machine [initial a  state a []  state b [initial x  state x []]  from b to a on go]] "no way leads to state b"]
+; a state no way leads to is a warning: the machine is made and runs, the state waits for a way to it
+[
+    unreached: func [spec] [collect [foreach [place message] get in machine-engine/make-machine spec 'warnings [keep message]]]
+    all [
+        ["no way leads to state c"] = unreached [initial a  state a []  state b []  state c []  from a to b on go]
+        ["no way leads to state y"] = unreached [initial a  state a []  state w [initial x  state x []  state y []]  from a to w on go]
+        ["no way leads to state b"] = unreached [initial a  state a []  state b [initial x  state x []]  from b to a on go]
+        [] = unreached [initial a  state a []  state b []  from a to b on go]
+    ]
+]
+[
+    m: machine [initial a  state a []  state b []  state c []  from a to b on go  from c to a on back]
+    send m 'go
+    all [in? m 'b  not in? m 'c  2 = length? get in m 'warnings]
+]
 ; a choose that may never be taken
 [says? [machine [data [n: 0]  initial a  state a []  state b []  from a choose [when [data/n > 0] to b]]] "may stay in a for good"]
 

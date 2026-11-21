@@ -48,6 +48,7 @@ machine: function [
 ] [
     e: machine-engine
     m: e/make-machine spec
+    e/warn m
     e/fresh m
     case [
         m/shared [e/share-start m all [from saved]]

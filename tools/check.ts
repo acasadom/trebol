@@ -12,12 +12,13 @@ import { startHost, startUi, report } from '../src/host/index.ts';
 import { defaultLoader } from '../src/host/modules.ts';
 import { spawn, taskResult } from '../src/host/scheduler.ts';
 
-/** Checks the files; writes each problem as "file:line:col  message". True when there is none. */
+/** Checks the files; writes each problem as "file:line:col  message". True when there is none but warnings. */
 export async function check(files: string[], write: (line: string) => void = console.log): Promise<boolean> {
   // a file named from the working directory imports what is next to it
   const host = startHost({ onError: () => {}, loader: { ...defaultLoader(), base: pathToFileURL(process.cwd() + '/').href } });
   await startUi(host);
   let clean = true;
+  let said = 0;
   for (const file of files) {
     let code: BlockCell;
     try {
@@ -47,8 +48,10 @@ export async function check(files: string[], write: (line: string) => void = con
     const lines = problems.sort((a, b) => a.pos - b.pos).map(p => [p.at, p.message] as const);
     const wide = Math.max(0, ...lines.map(([at]) => at.length));
     for (const [at, message] of lines) write(`${at.padEnd(wide)}  ${message}`);
-    if (lines.length > 0) clean = false;
+    // a warning (a state no way leads to) is said, but the file is still fine
+    if (lines.some(([, message]) => !message.startsWith('warning: '))) clean = false;
+    said += lines.length;
   }
-  if (clean) write('No problems.');
+  if (clean && said === 0) write('No problems.');
   return clean;
 }

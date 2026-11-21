@@ -70,6 +70,25 @@ worse: machine [initial a  state a []  from a to b on go]
   ]);
 });
 
+test('a state no way leads to is a warning: check says it, and the file is still fine', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'trebol-check-'));
+  const file = join(dir, 'app.trb');
+  writeFileSync(file, `Trebol [title: "Check"]
+m: machine [initial a  state a []  state b []  state c []  from a to b on go]
+`);
+  const { clean, lines } = await checked([file]);
+  assert.equal(clean, true);
+  assert.deepEqual(lines.map(l => l.slice(dir.length + 1)), ['app.trb:2:48  warning: machine: no way leads to state c']);
+  // with a mistake beside it, the file is not fine
+  writeFileSync(file, `Trebol [title: "Check"]
+m: machine [initial a  state a []  state b []  state c []  from a to b on go]
+view [buton "Go"]
+`);
+  const after = await checked([file]);
+  assert.equal(after.clean, false);
+  assert.equal(after.lines.length, 2);
+});
+
 test('check knows the rules of the program, and finds a rule that cannot be one', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'trebol-check-'));
   const file = join(dir, 'app.trb');
