@@ -28,6 +28,7 @@ import { syncTree } from './trees.ts';
 import { syncToolbar, syncBreadcrumb } from './toolbars.ts';
 import { syncDialog, syncTabs, syncSteps, syncSplit } from './dialogs.ts';
 import { comingScreen, enteredScreen, setComingScreen } from './screens.ts';
+import { sweepSizes } from './sizes.ts';
 
 export function sync(m: Mounted): void {
   const f = m.face;
@@ -346,6 +347,7 @@ export function setExtra(e: HTMLElement, cls: string[]): void {
  */
 export function react(): void {
   for (const m of reactors) if (!m.el.isConnected && comingScreen?.contains(m.el) !== true) reactors.delete(m);
+  sweepSizes(n => comingScreen?.contains(n) === true);
   if (reacting !== null || reactors.size === 0 || (dirty.length === 0 && !newReactor)) return;
   setNewReactor(false);
   const faces = blockOf(K.Block, [...reactors].map(m => m.face));
