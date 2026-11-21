@@ -362,6 +362,44 @@ Trebol [
     all [m/done  m/state = 'a  none? m/outcome]
 ]
 
+[
+    ; inside a state with no way out of its own, a state with nowhere to go ends the machine
+    m: machine [
+        initial outside
+        state outside []
+        state inside [initial one  state one []  state two []  from one to two on move]
+        from outside to inside on enter
+    ]
+    send m 'enter
+    a: all [in? m 'inside/one  not m/done]
+    send m 'move
+    all [a  m/done  m/last = 'two  not in? m 'inside/two]
+]
+
+[
+    ; with ways out at each level the machine stays in the state inside
+    m: machine [
+        initial outside
+        state outside []
+        state inside [
+            initial one  state one []  state two []  state three []
+            from one to two on move
+            from two to three on move
+            from three to one on back
+            from two to one on back
+        ]
+        from outside to inside on enter
+        from inside to outside on leave
+    ]
+    send m 'enter
+    send m 'move  a: in? m 'inside/two
+    send m 'move  b: in? m 'inside/three
+    send m 'back  c: in? m 'inside/one
+    send m 'move  send m 'back  d: in? m 'inside/one
+    send m 'leave
+    all [a b c d  in? m 'outside  not m/done]
+]
+
 "on error"
 [
     trace: copy []
