@@ -85,6 +85,23 @@ Tools out
 == repairing
 ```
 
+The `on-enter` of the state a machine starts in runs once the line that makes the machine is done, so the
+word the machine is set to is already there, and the hook can send it an event:
+
+```trebol
+counter: machine [
+    initial starting
+    state starting [on-enter [print "Warming up"  send counter 'ready]]
+    state open [on-enter [print "Open"]]
+    from starting to open on ready
+]
+```
+
+```trebol-console
+>> counter/state
+== open
+```
+
 ## Data
 
 A machine keeps its own data, in an object whose fields are given after `data`. Code inside the machine reads it

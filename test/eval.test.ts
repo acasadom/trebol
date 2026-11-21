@@ -345,3 +345,18 @@ describe('nesting deeper than the JS stack', () => {
     assert.equal(r.k === 'done' ? mold(r.v) : r.k, '3');
   });
 });
+
+describe('at-end', () => {
+  test('outside a function it waits for the end of the code, which still gives its own value', () => {
+    assert.equal(ev("t: copy []  at-end [append t 'end]  append t 'body  7"), '7');
+    assert.equal(ev('t'), '[body end]');
+  });
+
+  test('a function that fails leaves its kept blocks to the code around it', () => {
+    assert.equal(ev(`t: copy []
+      f: function [] [at-end [append t 'later]  do make error! "no"]
+      e: try [f]
+      append t 'next
+      t`), '[later next]');
+  });
+});

@@ -52,8 +52,11 @@ machine: function [
     case [
         m/shared [e/share-start m all [from saved]]
         from [e/resume m saved]
-        true [e/start m]
+        true [e/start-later m]
     ]
+    ; the hooks of the initial states run once the expression that called machine is done
+    unless empty? m/queue [at-end compose [machine-engine/begun (m)]]
+    m
 ]
 
 snapshot: function [

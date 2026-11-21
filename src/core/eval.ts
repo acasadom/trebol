@@ -98,6 +98,10 @@ interface DoFrame {
   readonly infix: true;
   start: number;
   state: 0 | 1;
+  /** Blocks `at-end` hung here: each runs once the expression running now is done. */
+  later: BlockCell[] | null;
+  /** Set while one of them runs, so its value is not the block's. */
+  hooking: boolean;
 }
 
 /** One expression: a primary value, then any infix operators after it. */
@@ -217,6 +221,10 @@ export interface Task {
   thrown: Thrown | null;
   /** Set while parked on an `await`. */
   waiting: Promise<Cell> | null;
+  /** Blocks `at-end` keeps, evaluated in order once the task's own code is done. */
+  readonly later: BlockCell[];
+  /** The value the task's own code gave, kept while the `at-end` blocks run. */
+  kept: Cell | null;
 }
 
 export type RunResult =
@@ -227,7 +235,7 @@ export type RunResult =
 
 /** A task that evaluates `block`. */
 export function newTask(rt: Runtime, s: Series<Cell>, i = 0): Task {
-  const t: Task = { rt, stack: [], v: null, thrown: null, waiting: null };
+  const t: Task = { rt, stack: [], v: null, thrown: null, waiting: null, later: [], kept: null };
   pushDo(t, s, i);
   return t;
 }
@@ -271,7 +279,18 @@ function runSteps(t: Task, budget: number): RunResult {
       continue;
     }
     const f = t.stack[t.stack.length - 1];
-    if (f === undefined) return { k: 'done', v: t.v ?? UNSET };
+    if (f === undefined) {
+      // the code is done: the blocks at-end kept run now, and the task still gives what its code gave
+      if (t.kept === null) t.kept = t.v ?? UNSET;
+      const b = t.later.shift();
+      if (b === undefined) {
+        const v = t.kept;
+        t.kept = null;
+        return { k: 'done', v };
+      }
+      pushDo(t, b.s, b.i);
+      continue;
+    }
     switch (f.k) {
       case F.Do: if (f.state === 0) doFrame(t, f); else exprInfix(t, f); break;
       case F.Expr: if (f.state === 0) exprStart(t, f); else exprInfix(t, f); break;
@@ -365,7 +384,38 @@ function unwind(t: Task): RunResult | null {
       break;
   }
   t.stack.pop();
+  if (f.k === F.Do && f.later !== null && f.later.length > 0) handOver(t, f.later);
   return null;
+}
+
+/** Blocks kept by `at-end` on a frame that is left early go to the code around it. */
+function handOver(t: Task, later: BlockCell[]): void {
+  for (let i = t.stack.length - 1; i >= 0; i--) {
+    const g = t.stack[i]!;
+    if (g.k === F.Do) {
+      (g.later ??= []).push(...later);
+      return;
+    }
+  }
+  t.later.push(...later);
+}
+
+/**
+ * Keeps a block to evaluate once the expression that called the function running now is
+ * done (outside a function, once the task's code is done). It is hung on the block that
+ * expression is in, and runs before the expression after it.
+ */
+export function atEnd(t: Task, b: BlockCell): void {
+  let i = t.stack.length - 1;
+  while (i >= 0 && t.stack[i]!.k !== F.Call) i--;
+  for (i--; i >= 0; i--) {
+    const g = t.stack[i]!;
+    if (g.k === F.Do) {
+      (g.later ??= []).push(b);
+      return;
+    }
+  }
+  t.later.push(b);
 }
 
 /** A throw that reached the top: errors as they are, other exits become errors. */
@@ -382,7 +432,7 @@ function uncaught(th: Thrown): ObjectCell {
 // --- frame handlers --------------------------------------------------------------
 
 function pushDo(t: Task, s: Series<Cell>, i: number): void {
-  t.stack.push({ k: F.Do, feed: { s, i }, out: UNSET, infix: true, start: i, state: 0 });
+  t.stack.push({ k: F.Do, feed: { s, i }, out: UNSET, infix: true, start: i, state: 0, later: null, hooking: false });
 }
 
 function pushExpr(t: Task, feed: Feed, infix: boolean): void {
@@ -391,8 +441,15 @@ function pushExpr(t: Task, feed: Feed, infix: boolean): void {
 
 function doFrame(t: Task, f: DoFrame): void {
   if (t.v !== null) {
-    f.out = t.v;
+    if (f.hooking) f.hooking = false;
+    else f.out = t.v;
     t.v = null;
+  }
+  const b = f.later?.shift();
+  if (b !== undefined) {
+    f.hooking = true;
+    pushDo(t, b.s, b.i);
+    return;
   }
   if (f.feed.i >= f.feed.s.data.length) {
     t.stack.pop();

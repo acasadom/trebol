@@ -503,6 +503,70 @@ Trebol [
     all [trace = [b c]  m/state = 'c]
 ]
 
+"the initial state's hooks run once the expression that made the machine is done"
+[
+    ; on-enter of the initial state sees the word the machine was set to
+    trace: copy []
+    m: machine [
+        initial a
+        state a [on-enter [append trace 'a  send m 'go]]
+        state b [on-enter [append trace 'b]]
+        from a to b on go
+    ]
+    all [trace = [a b]  m/state = 'b]
+]
+[
+    ; the next expression sees what the hook did
+    m: machine [data [n: 0] initial a  state a [on-enter [data/n: 1]]]
+    m/data/n = 1
+]
+[
+    ; inside one expression: in the state at once, the hook not run yet
+    m: none
+    seen: reduce [m: machine [data [n: 0] initial a  state a [on-enter [data/n: 1]]]  m/state  m/data/n]
+    all [seen/2 = 'a  seen/3 = 0  m/data/n = 1]
+]
+[
+    ; a nested initial state and its hooks, outermost first
+    trace: copy []
+    m: machine [
+        initial shop
+        state shop [
+            on-enter [append trace 'shop]
+            initial cart
+            state cart [on-enter [append trace 'cart]]
+            state pay []
+            from cart to pay on next
+        ]
+    ]
+    all [trace = [shop cart]  in? m 'shop/cart]
+]
+[
+    ; an event sent in the same expression waits behind the start
+    trace: copy []
+    s: none
+    m: none
+    s: send m: machine [
+        initial a
+        state a [on-enter [append trace 'a]]
+        state b [on-enter [append trace 'b]]
+        from a to b on go
+    ] 'go
+    all [trace = [a b]  s = 'b]
+]
+[
+    ; a failure in the hook is caught by try around the expression
+    e: try [machine [initial a  state a [on-enter [do make error! "boom"]]]]
+    all [error? e  e/message = "boom"]
+]
+[
+    ; made in a function: the hook runs before the function returns its value
+    trace: copy []
+    make-one: function [] [return machine [initial a  state a [on-enter [append trace 'a]]]]
+    m: make-one
+    all [trace = [a]  m/state = 'a]
+]
+
 "in?"
 [
     m: machine [
@@ -1125,4 +1189,42 @@ Trebol [
         true = select select s 'b 'on
         true = select select/only s load "b/x" 'on
     ]
+]
+
+"at-end: a block kept until the expression that called the function is done"
+[
+    trace: copy []
+    f: function [] [at-end [append trace 'later]  append trace 'f  1]
+    x: f + 1
+    append trace 'next
+    all [x = 2  trace = [f later next]]
+]
+[
+    ; inside one expression it has not run yet
+    trace: copy []
+    f: function [] [at-end [append trace 'later]  'f]
+    seen: reduce [f  copy trace]
+    all [seen = [f []]  trace = [later]]
+]
+[
+    ; several run in the order they were kept, and the block's value is not theirs
+    trace: copy []
+    f: function [] [at-end [append trace 1]  at-end [append trace 2]  none]
+    v: do [f 7]
+    all [v = 7  trace = [1 2]]
+]
+[
+    ; a block left by return still runs them, before what comes after the call
+    trace: copy []
+    f: function [] [at-end [append trace 'later]]
+    g: function [] [return f  append trace 'never]
+    g
+    append trace 'next
+    trace = [later next]
+]
+[
+    ; a failure in one is a failure of the expression, caught by try around it
+    f: function [] [at-end [do make error! "late"]  1]
+    e: try [f]
+    all [error? e  e/message = "late"]
 ]

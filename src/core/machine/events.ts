@@ -291,6 +291,8 @@ export const EVENTS = String.raw`
     ]
 
     begin: function [m] [
+        ; start-later shows the initial states before their hooks run: they are entered here
+        clear m/on
         arm-ttl m
         enter-down m reduce [select node m 1 'initial]
         drain m

@@ -47,6 +47,11 @@ states next to the way, then in each level further out.
 
 Each event is finished before the next one starts: one sent by the machine's own code waits its turn.
 
+`machine` gives the machine in its initial states at once, but their `on-enter`, timeouts, `run`, `invoke` and
+ways with no event happen once the expression that called `machine` is done, so the word it is set to already has
+it: `m: machine [... on-enter [send m 'go] ...]` works. An event sent in that same expression waits behind them, and
+a failure among them is a failure of that expression. `restart` and `machine/from` start at once.
+
 A `parallel` has no `initial` and no ways between its states: all of them start when it is entered, and it ends
 when all of them have. A way out of it with no event sees in `event/name` how its state `name` ended (the outcome
 of its final state, or the name of that state; `none` while it goes on); a `to` is taken once all have ended, a
