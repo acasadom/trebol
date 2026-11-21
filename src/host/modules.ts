@@ -385,7 +385,9 @@ interface Store {
 }
 
 const memory = new Map<string, string>();
-const store: Store = (globalThis as { localStorage?: Store }).localStorage ?? {
+// Only a page reads localStorage: Node 25 and later define it too, and reading it there prints a warning.
+const page = typeof (globalThis as { document?: unknown }).document !== 'undefined';
+const store: Store = (page ? (globalThis as { localStorage?: Store }).localStorage : undefined) ?? {
   getItem: k => memory.get(k) ?? null,
   setItem: (k, v) => void memory.set(k, v),
   removeItem: k => void memory.delete(k),
