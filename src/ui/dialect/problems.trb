@@ -17,12 +17,14 @@ ui-problem: func [
 
 ; The faces of a block, as build-faces gives them, or an error with every problem in it.
 ; /in: the block is that of face f, of style def, whose own words come before its faces.
+; Its problems are kept in a block of its own: the handlers of two events may lay out at once, as tasks, and the
+; one that ends first must not take the other's away.
 ui-build: function [spec [block!] labels [block!] /in f def] [
     outer: ui-problems
-    set 'ui-problems copy []
+    found: copy []
+    set 'ui-problems found
     out: try [build-faces either in [ui-head f def spec labels] [spec] labels]
-    found: ui-problems
-    set 'ui-problems outer
+    if same? ui-problems found [set 'ui-problems outer]
     if error? out [do out]
     unless empty? found [either ui-checking [append ui-checking found] [ui-fail found]]
     out

@@ -10,6 +10,7 @@
 // The Trebol code is in machine/, a file per part, joined here in order.
 
 import { SPEC } from './machine/spec.ts';
+import { FRAGMENTS } from './machine/fragments.ts';
 import { CHECKS } from './machine/checks.ts';
 import { RUNNING } from './machine/running.ts';
 import { EVENTS } from './machine/events.ts';
@@ -17,4 +18,4 @@ import { SNAPSHOT } from './machine/snapshot.ts';
 import { SHARED } from './machine/shared.ts';
 import { WORDS } from './machine/words.ts';
 
-export const MACHINE = `\n${[SPEC, CHECKS, RUNNING, EVENTS, SNAPSHOT, SHARED, WORDS].map(part => part.slice(1)).join('')}`;
+export const MACHINE = `\n${[SPEC, FRAGMENTS, CHECKS, RUNNING, EVENTS, SNAPSHOT, SHARED, WORDS].map(part => part.slice(1)).join('')}`;

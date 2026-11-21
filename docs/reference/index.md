@@ -70,7 +70,7 @@ draw
 
 ### F
 
-[`fetch`](#fn-fetch) · [`field-error`](#fn-field-error) · [`fifth`](#fn-fifth) · [`file?`](#fn-file-3f) · [`find`](#fn-find) · [`first`](#fn-first) · [`forall`](#fn-forall) · [`foreach`](#fn-foreach) · [`forever`](#fn-forever) · [`form`](#fn-form) · [`form-values`](#fn-form-values) · [`format-local`](#fn-format-local) · [`forskip`](#fn-forskip) · [`fourth`](#fn-fourth) · [`func`](#fn-func) · [`function`](#fn-function) · [`function?`](#fn-function-3f)
+[`fetch`](#fn-fetch) · [`field-error`](#fn-field-error) · [`fifth`](#fn-fifth) · [`file?`](#fn-file-3f) · [`find`](#fn-find) · [`first`](#fn-first) · [`forall`](#fn-forall) · [`foreach`](#fn-foreach) · [`forever`](#fn-forever) · [`form`](#fn-form) · [`form-values`](#fn-form-values) · [`format-local`](#fn-format-local) · [`forskip`](#fn-forskip) · [`fourth`](#fn-fourth) · [`fragment`](#fn-fragment) · [`fragment?`](#fn-fragment-3f) · [`func`](#fn-func) · [`function`](#fn-function) · [`function?`](#fn-function-3f)
 
 ### G
 

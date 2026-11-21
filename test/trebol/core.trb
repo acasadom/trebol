@@ -294,3 +294,13 @@ Trebol [
 [(suffix? http://x.es/a.html) = %.html]
 [(suffix? http://x.es/a.html?q=1.2) = %.html]
 [none? suffix? http://x.es/a?q=1.2]
+
+"type?/word gives the name of the datatype as a word"
+[
+    all [
+        'integer! = type?/word 3
+        word? type?/word "a"
+        'block! = type?/word []
+        datatype? type? 3
+    ]
+]

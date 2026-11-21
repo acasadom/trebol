@@ -102,7 +102,7 @@ ui/13-styles-of-your-own
 
 The third tutorial builds the same screens again in the designer, `trebol-dev`: faces added from a menu,
 their properties and events set with the mouse, the screen in sight all the time, and the code written back
-as you would write it.
+as you would write it. Its last page draws a machine and tries it.
 
 ```{toctree}
 :maxdepth: 1
@@ -115,6 +115,7 @@ designer/04-events
 designer/05-screens-tabs-rows
 designer/06-styles-of-your-own
 designer/07-the-code
+designer/08-machines
 ```
 
 ```{toctree}
