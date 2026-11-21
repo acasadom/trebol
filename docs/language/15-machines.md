@@ -537,6 +537,39 @@ sale: machine [
 == paid
 ```
 
+The same holds for a plain `state` with no way out: it is not a place to wait in, it is an end. Here `two` has no
+way out, so reaching it ends the stage inside `checking`. `checking` has no way out either, so that ends the
+machine too, and it stays done in `checking`:
+
+```trebol
+form: machine [
+    initial editing
+    state editing []
+    state checking [
+        initial one
+        state one []
+        state two []
+        from one to two on next
+    ]
+    from editing to checking on submit
+]
+```
+
+```trebol-console
+>> send form 'submit
+== checking/one
+>> send form 'next
+== checking
+>> form/done
+== true
+>> in? form 'checking/two
+== false
+```
+
+For the machine to wait in `two`, give `two` a way out, even one that only some later event takes, such as
+`from two to one on again`. A way out of `checking` with an event, such as `from checking to editing on back`,
+keeps the machine going too, but it waits in `checking`, not in `checking/two`.
+
 A machine that is done takes no more events. `restart` starts it again from its `initial` state, with its data
 as it was when it was made.
 
