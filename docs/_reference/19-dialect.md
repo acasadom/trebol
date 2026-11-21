@@ -282,7 +282,9 @@ value of the field of that name). It runs at the end of the round in which that 
 drawn again, once per change however many of the things it reads changed. A reaction that sets what another
 reads runs first, whatever the order of the faces. Changing a series in place is a change too: `append
 name/text "x"`, or `append first values/items 4` to a block inside the block read (see `version-of`). Two reactions that set what the other reads would never
-end: the second time round one of them is left out, and the console says where it is.
+end: the second time round one of them is left out, and the console says where it is. A round checks each
+reaction once and then only those that read what a reaction that ran set, so its time grows with what runs,
+not with the square of the reactions on the page.
 
 ## width
 
