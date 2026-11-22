@@ -1,0 +1,15 @@
+Trebol [title: "A console that follows the server"]
+
+opened: 0
+last-id: none
+news: open-events "/api/events"
+on-open news [opened: opened + 1  if reconnected [refresh "/api/status"]]
+on-message news [
+    last-id: id
+    if event = 'window [refresh "/api/status"]
+]
+
+view [
+    title "Console"
+    text is [either s: cached "/api/status" [rejoin ["Window " s/window]] ["Loading"]]
+]

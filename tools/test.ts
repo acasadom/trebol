@@ -20,6 +20,7 @@ import {
 import { startHost, startUi, runSource, report, fileHandle, TEST_SOURCE, type Host } from '../src/host/index.ts';
 import { spawn, taskResult } from '../src/host/scheduler.ts';
 import { appendText } from '../src/host/markdown.ts';
+import { resetEvents, eventsResponse } from './test-events.ts';
 
 /** What the page of the test running has shown and been asked. */
 let page = fresh();
@@ -153,10 +154,13 @@ native('route-forward', '["Goes one step forward in the history." ]', (_t, f, v)
 async function answer(input: string | URL | Request, init: RequestInit = {}): Promise<Response> {
   const host = page.host!;
   const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-  const method = (init.method ?? 'GET').toUpperCase();
+  const stream = new Headers(init.headers).get('accept') === 'text/event-stream';
+  // an open-events asks for a path that serve declares with EVENTS
+  const method = stream ? 'EVENTS' : (init.method ?? 'GET').toUpperCase();
   const body = typeof init.body === 'string' ? string(init.body) : init.body instanceof FormData || init.body instanceof URLSearchParams ? string(formJson(init.body)) : NONE;
   const call = [word(host, 'test-answer'), { t: K.LitWord, sym: intern(method), bind: host.rt.user } as Cell, string(url), body];
   const got = await taskResult(spawn(host.sch, { data: call }, 0));
+  if (stream && got.t === K.Logic && got.v) return eventsResponse(url);
   if (got.t !== K.Block) {
     page.unanswered.push(`${method} ${url}`);
     return new Response('', { status: 404, statusText: 'Not Found' });
@@ -265,6 +269,7 @@ async function runOne(file: string, source: string, start: number, prelude: numb
     loader: { base, read: href => readFile(fileURLToPath(href), 'utf8'), importJs: browserless },
   });
   page = fresh(host, dirname(file));
+  resetEvents();
   try {
     await startUi(host);
     // the words of the tests are the ones their module's import sets: an app may have words of the same name
@@ -291,6 +296,8 @@ async function runOne(file: string, source: string, start: number, prelude: numb
     // a request with no answer comes first: the error it caused follows from it
     const problem = e instanceof LoadError ? e.message : 'ctx' in (e as object) ? report(e as ObjectCell) : String(e);
     return [...unanswered(), problem].join('\n');
+  } finally {
+    resetEvents();
   }
 }
 

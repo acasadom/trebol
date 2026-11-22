@@ -180,6 +180,25 @@ server fail:
 A request no `serve` answers fails the test, and says which one it was. Files sent with `multipart`, after an
 `attach`, reach `body` as their name, size and type: `body/photo/name`.
 
+A stream of events, as in [news from the server](09-server.md), takes `EVENTS` and a path with no block:
+`serve [EVENTS "/api/events"]` keeps the app's `open-events` open, and the test sends on it with `push`.
+`push` waits until the app's `on-message` ran, and `see` then waits for what it asked again:
+
+```text
+"news from the server"
+[
+    serve [EVENTS "/api/events"]
+    push "/api/events" #(kind: "booking")
+    push/event "/api/events" #(id: 7) 'booking
+    push/event/id "/api/events" #(id: 7) 'booking 42
+    see "Ana Ruiz"
+]
+```
+
+`push/event` gives the event a name, the app's `event`; `push/id` an id, the app's `id`. `end-events
+"/api/events"` ends the stream as a server that restarts would, and waits until the app opened it again, so
+`on-open` ran with `reconnected` true, or closed it.
+
 ## When a test fails
 
 A failing test says what went wrong and where, at the step of the test or at the line of the app:

@@ -250,6 +250,31 @@ back to the screen shows the board as it was, and asks again. It also asks again
 to the tab from another one, and after the app sends a booking or removes one (a `fetch` with `'POST`,
 `'PUT`, `'PATCH` or `'DELETE` to `/api/bookings` or an address under it). `refresh` asks now, for a button.
 
+## News from the server
+
+`cached` asks again when the reader does something; a board on the wall of the workshop wants to follow by
+itself, when a mechanic on another screen books a repair. The server says so on a stream of events, and the
+board asks again for what it shows:
+
+```
+news: open-events "/api/events"
+on-message news [refresh "/api/bookings"]
+on-open news [if reconnected [refresh "/api/bookings"]]
+
+view [
+    title "Workshop"
+    table is [cached "/api/bookings"] [customer "Customer" bike "Bike" due "Due back"]
+]
+```
+
+The server sends an event each time the bookings change, and every face that reads `cached "/api/bookings"`
+follows. A stream that drops, because the server restarted or the network went away for a moment, opens again
+by itself and goes on with the same handlers; `on-open` runs again then, with `reconnected` true, and the
+board asks for what it may have missed. An event's `event` field comes as the word `event`, so one stream can
+carry news of many kinds: `if event = 'booking [...]`. The cookie of the login goes with the stream, as with
+`fetch`; `open-events/with` takes `headers` for a server that wants another sign, and the other options in
+the [reference](../reference/network.md).
+
 ## What's next
 
 The bookings live on a server now. The next page draws: the shop's logo, and its takings as charts.

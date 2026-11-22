@@ -1,0 +1,36 @@
+Trebol [title: "Screen tests of a stream of events"]
+
+state: 'closed  ; a word: the first string starts the tests
+serve [
+    GET "/api/status" [make map! reduce ['window form state]]
+    EVENTS "/api/events"
+]
+
+"news from the server"
+[
+    see "Window closed"
+    state: 'open
+    ; an event with no name is a message, which this app does not follow
+    push "/api/events" #(state: "open")
+    see "Window closed"
+    push/event "/api/events" #(state: "open") 'window
+    see "Window open"
+]
+[
+    push/event/id "/api/events" #(state: "open") 'window 42
+    push "/api/events" "no id of its own"
+    last-id = "42"
+]
+"the stream opens again"
+[
+    see "Window closed"
+    state: 'open
+    end-events "/api/events"
+    see "Window open"
+    opened = 2
+]
+"what the app does not have"
+[
+    e: try [end-events "/api/other"]
+    all [error? e  e/id = 'no-stream]
+]
