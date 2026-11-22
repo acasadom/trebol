@@ -3,6 +3,7 @@
 
 import './natives.ts';
 import './net.ts';
+import './net/streams.ts';
 import './page.ts';
 import './compress.ts';
 import './share.ts';
