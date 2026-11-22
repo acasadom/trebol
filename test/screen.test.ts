@@ -106,6 +106,11 @@ test('cached gives the last answer and asks again after a post or a refresh', as
   assert.ok(passed, lines.join('\n'));
 });
 
+test('serve EVENTS gives the app a stream: push sends events, end-events makes it open again', async () => {
+  const { passed, lines } = await ran(['test/fixtures/screens/events.test.trb']);
+  assert.ok(passed, lines.join('\n'));
+});
+
 test('toast/undo: click "Undo" runs its back block, dismiss and a new screen run its then block', async () => {
   const { passed, lines } = await ran(['test/fixtures/screens/undo.test.trb']);
   assert.equal(passed, false);

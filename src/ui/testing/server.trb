@@ -7,12 +7,13 @@ test-routes: copy []
 
 serve: function [
     "Answers the requests of the app: a method, a path and a block that gives the answer, for each; a later serve comes first."
-    routes [block!] {GET "/api/clients/:id" [...]: the block sees body, query and the :words of the path}
+    routes [block!] {GET "/api/clients/:id" [...]: the block sees body, query and the :words of the path; EVENTS "/api/events" is a stream of events that push writes to}
     /local m p b pos
 ] [
     new: copy []
     parse routes [any [
         set m ['GET | 'POST | 'PUT | 'PATCH | 'DELETE] set p string! set b block! (append new reduce [m p b])
+        | 'EVENTS set p string! (append new reduce ['EVENTS p none])
         | pos: skip (do make error! rejoin ["serve takes a method, a path and a block, not " mold/flat first pos])
     ]]
     ; a later serve, as one in a test, answers before those it follows
@@ -45,7 +46,7 @@ test-match: function [pattern [string!] path [string!]] [
 ]
 
 test-answer: function [
-    "Called by the host for each request of the app: its status and its body as JSON, or none when serve has no answer for it."
+    "Called by the host for each request of the app: its status and its body as JSON, true for a stream of events, or none when serve has no answer for it."
     method [word!] url [string!] body [string! none!]
 ] [
     path: url
@@ -59,6 +60,8 @@ test-answer: function [
     ]
     foreach [m pattern b] test-routes [
         if all [m = method  words: test-match pattern path] [
+            ; a stream of events: the host keeps it open for push
+            if m = 'EVENTS [return true]
             data: all [body  any [attempt [load-json body]  body]]
             append words compose/only [body: (data) query: (query)]
             r: do bind copy/deep b make object! words
