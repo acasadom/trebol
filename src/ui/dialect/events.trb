@@ -13,12 +13,26 @@ run-handler: function [f body [block!] /with ev [object!] /on node "row is this 
     words: compose/only [
         face: (f)
         value: (quoted either given [:v] [f/value])
-        values: (form-values any [scope f])
+        ; gathered only when the block names it: a page of many fields has many reactions
+        values: (either mentions? body 'values [form-values any [scope f]] [none])
     ]
     if find data-styles f/style [append words compose [row: (either on [node] [f/selected])]]
     append words compose [event: (either with [ev] [none])]
     ctx: make object! words
     do bind copy/deep body ctx
+]
+
+; True if a word of that spelling, of any kind, is in the block at any depth,
+; paths and parens included.
+mentions?: function [b [block! paren!] w [word!] /local v] [
+    foreach v b [
+        if any [
+            all [any-word? :v  v = w]
+            all [any-path? :v  mentions? to block! v w]
+            all [any [block? :v  paren? :v]  mentions? v w]
+        ] [return true]
+    ]
+    false
 ]
 
 ; A value as it must appear in a block given to make object!

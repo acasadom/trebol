@@ -26,8 +26,12 @@ Three things happen between that block and what you see.
    first time a field changes. After each round of the scheduler, the host copies the fields of the faces in
    that list to their nodes, and clears it. Repainting costs what changed, not the number of faces.
 
-Changing a series in place, `append count/text "!"`, changes the string but not the field, so it does not
-repaint: set the field again.
+Changing a series in place, `append count/text "!"` or `append clients/data row`, changes no field, so the
+host watches what the fields hold too (`inplace.ts`). Each time it draws a face it walks the series and the row
+objects inside its content fields, at any depth, giving each series a `watch` list and `dirty` mark of its own
+(the core's `touch` fills them on every change) and each row object the face's `watch`, and keeps the face as
+one of their owners. A change to any of them draws its owners again. A face walks only what is new to it; what
+changed is walked again from where it changed, so marking again after one row of fifty thousand is set costs that row.
 
 ## Events
 
@@ -51,7 +55,9 @@ that changed. On a narrow screen the same table is drawn as a list of cards.
 Because the host draws every control, it can give each one what assistive technology needs, every time:
 labels tied to fields, `aria-invalid` and the error message in `aria-describedby`, a disabled `submit` that
 stays in the keyboard order and shows the errors when pressed, toasts in an `aria-live` region, icon buttons
-named by their icon. An app gets all of it without asking.
+named by their icon, and a box that scrolls with nothing focusable inside (a long line of `code`, a wide
+table of plain cells) taking keyboard focus while it scrolls, so the arrow keys can scroll it. An app gets
+all of it without asking.
 
 ## Why this way — and the alternatives
 

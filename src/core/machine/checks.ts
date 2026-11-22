@@ -1,5 +1,5 @@
 // Machines in Trebol (see machine.ts). The engine, part two: the ways out of a state, and the checks of a
-// machine made: every state reached, no choose that hangs, the events it takes, its data.
+// machine made: every state reached (a warning), no choose that hangs, the events it takes, its data.
 
 export const CHECKS = String.raw`
     ; from a to b [on e | on [e f] | on error] [where [...]] [set [...]]
@@ -131,7 +131,8 @@ export const CHECKS = String.raw`
         false
     ]
 
-    ; Every state can be reached: from the initial ones, by the ways out of states that can.
+    ; Every state can be reached: from the initial ones, by the ways out of states that can. One that
+    ; cannot is a warning, not a mistake: the machine runs, and the state waits for a way to it.
     check-reach: function [m] [
         reach: make map! []
         mark: function [id] [
@@ -158,7 +159,26 @@ export const CHECKS = String.raw`
             more: before < length? reach
         ]
         foreach n next m/nodes [
-            unless select reach n/id [fail rejoin ["no way leads to state " n/name] n/place]
+            ; the states inside one no way leads to are said with it
+            if all [not select reach n/id  select reach n/parent] [
+                append m/warnings reduce [n/place rejoin ["no way leads to state " n/name]]
+            ]
+        ]
+    ]
+
+    ; the warnings already said, where they are written: a machine made again says them once
+    warned: copy []
+
+    ; Says the warnings of a machine made where the host shows them (the console, the dev tools).
+    warn: function [m] [
+        unless value? 'host-warn [exit]
+        foreach [place message] m/warnings [
+            here: loaded-at place
+            k: rejoin [any [here ""] " " message]
+            unless find warned k [
+                append warned k
+                host-warn rejoin ["machine: " message either here [rejoin [" (" here ")"]] [""]]
+            ]
         ]
     ]
 

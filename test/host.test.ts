@@ -42,6 +42,10 @@ function upgrade(req: { headers: Record<string, string | string[] | undefined> }
   });
 }
 
+// requests to /slow being answered now, and the most there were at once
+let slowNow = 0;
+let slowMost = 0;
+
 before(async () => {
   server = createServer((req, res) => {
     const url = new URL(req.url!, 'http://x');
@@ -55,7 +59,11 @@ before(async () => {
         res.end('[{"id": 1853920394857203841, "name": "Ana"}, {"id": 2, "name": "Luis"}]');
         return;
       case '/slow':
-        setTimeout(() => json(200, { word: url.searchParams.get('w') }), 60);
+        slowMost = Math.max(slowMost, ++slowNow);
+        setTimeout(() => {
+          slowNow--;
+          json(200, { word: url.searchParams.get('w') });
+        }, 60);
         return;
       case '/never':
         return; // never answers
@@ -391,9 +399,10 @@ describe('http', () => {
   });
 
   test('requests run concurrently', async () => {
-    const start = Date.now();
+    // counted by the server, not timed: a slow machine (coverage, CI) must not make it fail
+    slowMost = 0;
     await ev('a: spawn [fetch base/slow] b: spawn [fetch base/slow] wait [a b]');
-    assert.ok(Date.now() - start < 110, 'two 60 ms requests should overlap');
+    assert.equal(slowMost, 2, 'the two requests should be open at the same time');
   });
 });
 

@@ -419,7 +419,11 @@ A rule, of [`input`](#style-input).
 A rule, of [`input`](#style-input).
 
 `check-async [not taken? value]`: like `check`, but it may wait, for a server with `fetch`; the field shows that
-it is checking.
+it is checking. It runs when the person leaves the field and when a form is sent. If the value changes while a
+check waits, only the newest check gives its answer: a slow answer about the old value never shows on the new
+one. Of several `check-async` on a field, the first that finds a problem is the one shown. A check that fails
+with an error stops showing that it is checking, and the error goes on as any other. An empty field is not
+checked and keeps no old answer.
 
 (word-calc)=
 ## calc
@@ -452,9 +456,11 @@ What a block reads is found by reading it, not by running it: every path in it, 
 that starts with a face's label (`total/text`), with `face` (`face/value`) or with `values` (`values/qty`, the
 value of the field of that name). It runs at the end of the round in which that changed, before the screen is
 drawn again, once per change however many of the things it reads changed. A reaction that sets what another
-reads runs first, whatever the order of the faces. Changing a series in place (`append name/value "x"`) is not
-a change: give the facet a new value, as elsewhere. Two reactions that set what the other reads would never
-end: the second time round one of them is left out, and the console says where it is.
+reads runs first, whatever the order of the faces. Changing a series in place is a change too: `append
+name/text "x"`, or `append first values/items 4` to a block inside the block read (see `version-of`), and the change alone runs it, with no field set. Two reactions that set what the other reads would never
+end: the second time round one of them is left out, and the console says where it is. A round checks each
+reaction once and then only those that read what a reaction that ran set, so its time grows with what runs,
+not with the square of the reactions on the page.
 
 (word-width)=
 ## width

@@ -5,6 +5,7 @@
 import { K, type ObjectCell } from '../../core/index.ts';
 import { get, children, flag } from './faces.ts';
 import { type Mounted, el, appendChildren } from './mount.ts';
+import { watchSize } from './sizes.ts';
 
 export function deviceSize(face: ObjectCell): [number, number] {
   const s = get(face, 'screen');
@@ -35,7 +36,7 @@ export function buildDevice(face: ObjectCell, m: Mounted): HTMLElement {
   };
   fit();
   fits.set(node, fit);
-  new ResizeObserver(fit).observe(node);
+  watchSize(node, fit);
   return node;
 }
 

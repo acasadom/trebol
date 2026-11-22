@@ -24,6 +24,9 @@ Text that does not load is the same `syntax` error as in `load`.
 
 ## load-json
 
+The text must be JSON as its standard says: a line break or other control character inside a string is written
+escaped (`\n`), never as it is. A number may have any number of digits.
+
 ## load-csv
 
 Every field is a `string!`, as in Red: `"01001"` stays a postal code, and the program turns what it means as

@@ -86,6 +86,9 @@ export function isEqual(a: Cell, b: Cell): boolean {
   if (a === b) return true;
   if (isNumeric(a) && isNumeric(b)) {
     if ((isFloat(a) || isFloat(b)) && a.t !== K.Money && b.t !== K.Money) {
+      // an integer past 2^53 has no decimal of its own: compared exactly, as `<` and `>` do
+      const big = (c: Cell): boolean => c.t === K.Integer && !Number.isSafeInteger(I64.toNumber(c.v));
+      if (big(a) || big(b)) return numCmp(a, b) === 0;
       const n = (c: Cell): number => (c.t === K.Integer ? I64.toNumber(c.v) : (c as { v: number }).v);
       return almostEqual(n(a), n(b));
     }
@@ -99,11 +102,22 @@ export function isEqual(a: Cell, b: Cell): boolean {
     const y = b as BlockCell;
     const n = x.s.data.length - x.i;
     if (n !== y.s.data.length - y.i) return false;
-    for (let k = 0; k < n; k++) if (!isEqual(x.s.data[x.i + k]!, y.s.data[y.i + k]!)) return false;
+    for (let k = 0; k < n; k++) if (!itemEqual(x.s.data[x.i + k]!, y.s.data[y.i + k]!)) return false;
     return true;
   }
+  // a date without time is the same day at midnight and two zones the same moment;
+  // a tuple is as long as it needs to be: 1.2.3 = 1.2.3.0 (R3)
+  if ((a.t === K.Date || a.t === K.Tuple) && a.t === b.t) return compare(a, b) === 0;
   return strictEqual(a, b);
 }
+
+/** Of two values, whether they are of one kind for `=` inside a block, where words of
+ * any kind go together and numbers of any kind too, but "ab" is not <ab> (R3). */
+export function sameSort(a: Cell, b: Cell): boolean {
+  return a.t === b.t || (isNumeric(a) && isNumeric(b)) || (isAnyWord(a.t) && isAnyWord(b.t));
+}
+
+const itemEqual = (a: Cell, b: Cell): boolean => sameSort(a, b) && isEqual(a, b);
 
 /** Ordering for `<`, `>` and sort; null when the two cannot be ordered. */
 export function compare(a: Cell, b: Cell): -1 | 0 | 1 | null {

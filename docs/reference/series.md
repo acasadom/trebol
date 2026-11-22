@@ -496,6 +496,12 @@ sort series
 - `/compare comparator` (`any-function!` `integer!`)
 - `/reverse`
 
+The sort is stable: values that compare equal keep their order, with `/reverse` too. The comparator of `/compare`
+gives true when its first value goes first, or an integer, negative when the first goes first, positive when the
+second does and 0 when they are equal. A true or false cannot say two are equal, so with `/reverse` it turns ties
+round; an integer keeps them. With `/skip`, the series must hold whole records: a last one cut short is an
+error.
+
 (fn-extract)=
 ## extract
 
@@ -570,6 +576,12 @@ unique set
 - `set` (`series!`)
 - `/case`
 
+Two values of a series are the same for `unique`, `union`, `intersect`, `difference` and `exclude` only when they
+are of one datatype, words of any kind counting as one: `unique [1 1.0 a a:]` is `[1 1.0 a]`. Values of one
+datatype are then compared with `=`, so inside blocks `[1]` and `[1.0]` are the same. `/case` tells apart the case
+of text and words, and in blocks the datatype too: `unique/case [[1] [1.0] [a] [A]]` keeps all four. This is
+what R3 does.
+
 (fn-union)=
 ## union
 
@@ -621,3 +633,31 @@ exclude a b
 - `a` (`series!` `bitset!`)
 - `b` (`series!` `bitset!`)
 - `/case`
+
+(fn-version-of)=
+## version-of
+
+A number that changes whenever the series, or a series or map inside it, changes.
+
+```text
+version-of series
+```
+
+- `series` (`series!` `map!`)
+
+Every change of what a series holds, by `append`, `insert`, `poke`, `sort` or any other function, gives it a
+new version, greater than any version given before. `version-of` gives the greatest version of the series and
+of every series or map inside it, at any depth, so it changes whenever any of them changes: a reader that keeps
+the series and its version sees a change made in place, which comparing the series with itself never shows.
+Reactions use it ([react](dialect.md#react)). A series never changed since it was made has version 0, and
+binding its words is not a change.
+
+```trebol
+b: [1 [2]]
+v: version-of b
+```
+
+```trebol-console
+>> append second b 3  (version-of b) > v
+== true
+```

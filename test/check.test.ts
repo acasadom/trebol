@@ -50,6 +50,23 @@ view compose/deep [text (name) button "a" menu (items) hiden  panel [(face) iner
   ]);
 });
 
+test('a face compose puts in ends at the next style, and what follows it is read as any face could take it', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'trebol-check-'));
+  const file = join(dir, 'app.trb');
+  writeFileSync(file, `Trebol []
+x: [text "a"]
+show-it: does [b/pane: layout/only compose/deep [form [(x) submit "Ok" [print 1]]]]
+view [global b: column [] button "x" [show-it]]
+view compose [column [(x) [print 1] button "Ok" [print 1]]]
+view compose [column [(x) red submitt "Ok"]]
+`);
+  const { clean, lines } = await checked([file]);
+  assert.equal(clean, false);
+  assert.deepEqual(lines.map(l => l.slice(dir.length + 1)), [
+    'app.trb:6:31  submitt is not a style; did you mean submit?',
+  ]);
+});
+
 test('check makes each machine without running it: its data is not worked out', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'trebol-check-'));
   const file = join(dir, 'app.trb');
@@ -68,6 +85,58 @@ worse: machine [initial a  state a []  from a to b on go]
     'app.trb:6:30  machine: data has no emial; did you mean email?',
     'app.trb:8:40  machine: no state b',
   ]);
+});
+
+test('check makes the fragments a machine uses, from the fragments written before it', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'trebol-check-'));
+  const file = join(dir, 'app.trb');
+  writeFileSync(file, `Trebol [title: "Check"]
+approval: fragment [signal [word!]] [
+    initial waiting
+    state waiting []
+    state accepted []
+    from waiting to accepted on signal
+]
+twice: fragment [] [initial one  state one [use approval with [signal: go]]]
+process: machine [initial quote  state quote [use approval with [signal: yes]]  state other [use twice]  from quote to other on next]
+print state-of process
+`);
+  const good = await checked([file]);
+  assert.deepEqual(good.lines, ['No problems.']);
+  assert.equal(good.clean, true);
+  writeFileSync(file, `Trebol [title: "Check"]
+early: machine [initial a  state a [use approval]]
+approval: fragment [signal [word!]] [initial waiting  state waiting []]
+bad: fragment [blank [no-such-type]] [initial a  state a []]
+late: machine [initial a  state a [use aproval]  state b [use approval with [sign: go]]  from a to b on go]
+`);
+  const { clean, lines } = await checked([file]);
+  assert.equal(clean, false);
+  assert.deepEqual(lines.map(l => l.slice(dir.length + 1)), [
+    // a machine sees only the fragments written before it, as when the file runs
+    'app.trb:2:37  machine: approval has no value: use takes the name of a fragment',
+    'app.trb:4:1   fragment: no-such-type is not a type, in the types of blank',
+    'app.trb:5:36  machine: aproval has no value: use takes the name of a fragment',
+  ]);
+});
+
+test('a state no way leads to is a warning: check says it, and the file is still fine', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'trebol-check-'));
+  const file = join(dir, 'app.trb');
+  writeFileSync(file, `Trebol [title: "Check"]
+m: machine [initial a  state a []  state b []  state c []  from a to b on go]
+`);
+  const { clean, lines } = await checked([file]);
+  assert.equal(clean, true);
+  assert.deepEqual(lines.map(l => l.slice(dir.length + 1)), ['app.trb:2:48  warning: machine: no way leads to state c']);
+  // with a mistake beside it, the file is not fine
+  writeFileSync(file, `Trebol [title: "Check"]
+m: machine [initial a  state a []  state b []  state c []  from a to b on go]
+view [buton "Go"]
+`);
+  const after = await checked([file]);
+  assert.equal(after.clean, false);
+  assert.equal(after.lines.length, 2);
 });
 
 test('check knows the rules of the program, and finds a rule that cannot be one', async () => {

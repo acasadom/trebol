@@ -87,16 +87,20 @@ react-scan: function [f b [block! paren!] sources [block!] targets [block!] /loc
 
 ; What the sources are now. Down a path of an object, each object met is
 ; watched by the host, so that a change to it (a timer of a machine, another
-; tab) runs the reactions at the end of that round.
+; tab) runs the reactions at the end of that round. A series or map is kept
+; with its version, as it is the same series that is kept: a change made in
+; it, or in a series inside it (append values/items 4), shows only there. It
+; is watched too, deeply, so that a change in place alone runs the reactions.
 react-now: function [r /local g facet] [
     out: copy []
     foreach [g facet] r/sources [
-        either word? facet [append/only out select g facet] [
+        either word? facet [g: select g facet] [
             foreach w facet [
                 either object? :g [ui-watch g  g: select g w] [g: none  break]
             ]
-            append/only out :g
         ]
+        append/only out :g
+        if any [series? :g  map? :g] [ui-watch :g  append out version-of :g]
     ]
     out
 ]
@@ -109,12 +113,40 @@ find-same: function [b [block!] v] [
 
 react-due?: func [r] [not strict-equal? r/last react-now r]
 
-; True if a reaction sets something b reads.
-feeds?: function [a b /local g m h n] [
-    foreach [g m] a/targets [
-        foreach [h n] b/sources [if all [same? g h  m = n] [return true]]
+; Where a face's facet is kept in the index of what reads it: faces and other
+; objects are told apart by same?, as they compare by content.
+react-key: function [things [block!] g facet] [
+    unless k: find/same things :g [append things :g  k: back tail things]
+    rejoin [index? k " " mold :facet]
+]
+
+; Which reactions each one feeds, setting what they read, and which feed it:
+; [feeds fed-by], a block of indices for each reaction, read once per round.
+react-links: function [rs [block!] /local g m] [
+    things: copy []
+    readers: make map! []
+    repeat i length? rs [
+        foreach [g m] get in pick rs i 'sources [
+            key: react-key things :g :m
+            either b: select readers key [append b i] [put readers key reduce [i]]
+        ]
     ]
-    false
+    feeds: copy []
+    fed-by: copy []
+    loop length? rs [append/only feeds copy []  append/only fed-by copy []]
+    repeat j length? rs [
+        foreach [g m] get in pick rs j 'targets [
+            if b: select readers react-key things :g :m [
+                foreach i b [
+                    if all [i <> j  not find pick feeds j i] [
+                        append pick feeds j i
+                        append pick fed-by i j
+                    ]
+                ]
+            ]
+        ]
+    ]
+    reduce [feeds fed-by]
 ]
 
 react-run: function [f r] [
@@ -155,29 +187,49 @@ ui-react: function [
     ]
     cut: copy []
     failed: none
+    links: none
+    n: length? rs
     ; a second cascade, for what the forms changed after the first (an error, a disabled submit)
     loop 2 [
-        ran: copy []
+        ran: array/initial n false
+        waiting: array/initial n false
+        due: copy []
+        order: copy []
         forever [
-            due: copy []
-            repeat i length? rs [if all [not find ran i  react-due? pick rs i] [append due i]]
-            if empty? due [break]
+            ; all not run yet are checked when none waits: a block can change
+            ; what another reads in ways that reading it does not show
+            if empty? due [
+                repeat i n [if all [not ran/:i  react-due? pick rs i] [append due i  waiting/:i: true]]
+                if empty? due [break]
+                unless links [links: react-links rs]
+            ]
             ; the first that no other one due feeds; if they all feed each other, the first
             i: first due
             foreach j due [
                 ok: true
-                foreach k due [if all [k <> j  feeds? pick rs k pick rs j] [ok: false  break]]
+                foreach k pick links/2 j [if waiting/:k [ok: false  break]]
                 if ok [i: j  break]
             ]
+            remove find due i
+            waiting/:i: false
             r: pick rs i
-            e: try [react-run pick fs i r  none]
-            if all [error? :e  not failed] [failed: :e]
-            r/last: react-now r
-            append ran i
+            ; one run before it can have put back what it reads
+            if react-due? r [
+                e: try [react-run pick fs i r  none]
+                if all [error? :e  not failed] [failed: :e]
+                r/last: react-now r
+                ran/:i: true
+                append order i
+                ; what reads what it sets may be due now
+                foreach k pick links/1 i [
+                    if all [not ran/:k  not waiting/:k  react-due? pick rs k] [append due k  waiting/:k: true]
+                ]
+                sort due
+            ]
         ]
-        if empty? ran [break]
+        if empty? order [break]
         ; what reads again what changed after it ran is in a cycle: it waits for the next change
-        foreach i ran [
+        foreach i order [
             r: pick rs i
             if react-due? r [
                 where: loaded-at r/body
@@ -186,7 +238,7 @@ ui-react: function [
             ]
         ]
         scopes: copy []
-        foreach i ran [
+        foreach i order [
             f: pick fs i
             s: any [f/form f/root]
             if all [s  not find-same scopes s] [append scopes s]

@@ -18,6 +18,8 @@ import { mold, form } from '../mold.ts';
 import { pick, poke, blockFind } from '../access.ts';
 import type { Runtime, Step } from '../eval.ts';
 import { native, value, fail, doBlock, hostCall } from './define.ts';
+import { pushAll } from '../arrays.ts';
+import { touch } from '../values.ts';
 
 /** Loads a string into a block bound to the user context. */
 const TREBOL = canon(intern('trebol'));
@@ -95,7 +97,7 @@ native('form', '["The value as text for people to read." value [any-type!]]', (_
 function makeObject(proto: Ctx | null, spec: BlockCell, kind: typeof K.Object | typeof K.Error): { obj: ObjectCell; body: Series<Cell> } {
   const ctx = context();
   if (proto !== null) {
-    ctx.keys.push(...proto.keys);
+    pushAll(ctx.keys, proto.keys);
     for (const v of proto.vals) ctx.vals.push(rebindValue(v, proto, ctx));
   }
   collectSetWords(spec.s, spec.i, ctx);
@@ -362,11 +364,13 @@ native('put', '["Sets the value of a key; gives the value." series [map! object!
     if (at < 0 || at + 1 >= x.s.data.length) {
       const items = at < 0 ? [key, v] : [v];
       ownMeta(x.s);
+      touch(x.s);
       x.s.data.push(...items);
       if (x.s.nl) x.s.nl.push(...items.map(() => false));
       if (x.s.pos) x.s.pos.push(...items.map(() => -1));
     } else {
       x.s.data[at + 1] = v;
+      touch(x.s);
     }
     return value(v);
   }

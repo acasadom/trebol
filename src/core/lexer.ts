@@ -51,14 +51,24 @@ export interface LoadOptions {
 export function loadSpans(src: string): BlockCell {
   const lx = new Lexer(src);
   lx.track = true;
-  lx.parseSeries(null);
+  topSeries(lx);
   return { t: K.Block, s: { data: lx.lastSpans! }, i: 0 };
 }
 
 /** Loads source text into a block. Throws LoadError on malformed input. */
 export function load(src: string, opts: LoadOptions = {}): BlockCell {
   const lx = new Lexer(src, opts.file);
-  return { t: K.Block, s: lx.parseSeries(null), i: 0 };
+  return { t: K.Block, s: topSeries(lx, opts.file), i: 0 };
+}
+
+/** Reads the whole text; blocks nested deeper than the stack allows are a load error, not a crash. */
+function topSeries(lx: Lexer, file?: string): Series<Cell> {
+  try {
+    return lx.parseSeries(null);
+  } catch (e) {
+    if (e instanceof RangeError && /call stack/i.test(e.message)) throw new LoadError('blocks nested too deep', 1, 1, file);
+    throw e;
+  }
 }
 
 // --- token classification table --------------------------------------------

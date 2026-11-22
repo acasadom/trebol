@@ -8,6 +8,7 @@
 // Like draw.ts, this builds plain elements and knows nothing of the DOM.
 
 import { svgEl, type El } from './draw.ts';
+import { extent } from '../core/arrays.ts';
 
 export type ChartKind = 'bar' | 'line' | 'area' | 'pie';
 
@@ -76,10 +77,10 @@ function axes(spec: ChartSpec): El[] {
     });
   }
   const all = tops.flat().concat(bases.flat(), [0]);
-  const steps = ticks(Math.min(...all), Math.max(...all), all.every(Number.isInteger));
+  const steps = ticks(...extent(all), all.every(Number.isInteger));
   const lo = steps[0]!;
   const hi = steps[steps.length - 1]!;
-  const left = Math.max(...steps.map(t => format(t).length)) * FONT * 0.6 + 8;
+  const left = extent(steps.map(t => format(t).length))[1] * FONT * 0.6 + 8;
   const right = 8;
   const top = FONT;
   const bottom = FONT * 2 + 4;
@@ -95,7 +96,7 @@ function axes(spec: ChartSpec): El[] {
   const band = plotW / n;
   const x = (i: number) => left + band * (i + 0.5);
   // as many labels as fit, evenly spread
-  const room = Math.max(1, Math.floor(plotW / (Math.max(...labels.map(l => l.length)) * FONT * 0.6 + 12)));
+  const room = Math.max(1, Math.floor(plotW / (Math.max(0, extent(labels.map(l => l.length))[1]) * FONT * 0.6 + 12)));
   const every = Math.ceil(n / room);
   labels.forEach((l, i) => {
     if (i % every === 0) out.push(svgEl('text', { ...LABEL, x: x(i), y: top + plotH + FONT + 4, 'text-anchor': 'middle', 'dominant-baseline': 'middle' }, [], l));

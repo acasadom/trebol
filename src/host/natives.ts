@@ -1,17 +1,32 @@
 // Host natives that are not about the network: console, time, tasks and
 // timers. They work wherever there is a JS event loop (browser or Node).
 
+import { devLog } from './devlog.ts';
 import {
-  K, NONE, UNSET, I64, native, value, form, mold, date, word, pick, throwError, getWord,
-  type Cell, type BlockCell, type Step,
+  K, NONE, UNSET, I64, native, value, form, mold, date, word, pick, throwError, getWord, text,
+  type Cell, type BlockCell, type StringCell, type Step,
 } from '../core/index.ts';
 import {
   schedulerOf, spawn, spawnHandler, cancelTask, taskResult, makeHandle, handleOf, dropHandle,
   type HostTask,
 } from './scheduler.ts';
 
-/** Where `print` writes; the browser host points this at the page console. */
-export const output = { line: (text: string) => console.log(text) };
+/**
+ * Where `print` writes, and where warnings go (a state of a machine no way leads to); the browser
+ * host points `line` at the page console, and the dev tools list the warnings.
+ */
+export const output = {
+  line: (text: string) => console.log(text),
+  warn: (text: string) => {
+    console.warn(`Trebol: ${text}`);
+    devLog.note('warning', text);
+  },
+};
+
+native('host-warn', '["Says a warning where the host shows them: the console, the dev tools." text [string!]]', (_t, f) => {
+  output.warn(text(f.args[0] as StringCell));
+  return value(UNSET);
+});
 
 native('write-line', '["Writes a value and a new line to the output." value [any-type!]]', (_t, f) => {
   output.line(form(f.args[0]!));

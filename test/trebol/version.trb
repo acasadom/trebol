@@ -1,0 +1,39 @@
+Trebol [
+    title: "Version tests"
+    ; version-of: every change of a series, or of a series inside it, gives a new number. Not in R3.
+]
+
+"version-of grows with every change of the series"
+[b: [1 2]  v: version-of b  append b 3  (version-of b) > v]
+[b: [1 2]  v: version-of b  insert b 0  (version-of b) > v]
+[b: [1 2]  v: version-of b  change b 9  (version-of b) > v]
+[b: [1 2]  v: version-of b  remove b  (version-of b) > v]
+[b: [1 2]  v: version-of b  clear b  (version-of b) > v]
+[b: [1 2]  v: version-of b  take b  (version-of b) > v]
+[b: [1 2]  v: version-of b  poke b 1 5  (version-of b) > v]
+[b: [1 2]  v: version-of b  b/2: 7  (version-of b) > v]
+[b: [a 1]  v: version-of b  put b 'a 2  (version-of b) > v]
+[b: [a 1]  v: version-of b  put b 'c 3  (version-of b) > v]
+[m: make map! [a 1]  v: version-of m  put m 'b 2  (version-of m) > v]
+[m: make map! [a 1]  v: version-of m  m/a: 5  (version-of m) > v]
+[b: [2 1]  v: version-of b  sort b  (version-of b) > v]
+[b: [2 1]  v: version-of b  reverse b  (version-of b) > v]
+[b: [1 2 3]  v: version-of b  random b  (version-of b) > v]
+[a: [1 2]  c: [3 4]  v: version-of a  swap a c  (version-of a) > v]
+[b: [1 none 2]  v: version-of b  trim b  (version-of b) > v]
+[s: " ab "  v: version-of s  trim s  (version-of s) > v]
+[s: "ab"  v: version-of s  uppercase s  (version-of s) > v]
+[s: "ab"  v: version-of s  s/1: #"x"  (version-of s) > v]
+[s: "ab"  v: version-of s  parse s [change "a" "z" to end]  (version-of s) > v]
+
+"version-of looks inside, at any depth"
+[b: [1 [2 [3]]]  v: version-of b  append b/2/2 4  (version-of b) > v]
+[b: [1 "a"]  v: version-of b  append b/2 "b"  (version-of b) > v]
+[b: reduce [make map! [a [1]]]  v: version-of b  append select b/1 'a 2  (version-of b) > v]
+[b: [1 [2]]  w: version-of b/2  append b 3  w = version-of b/2]
+
+"a series not changed keeps its version"
+[b: [1 [2]]  v: version-of b  first b  copy b  find b 1  v = version-of b]
+[0 = version-of [1 2]]
+[0 = version-of copy [1 2]]
+[b: [1]  append/only b b  integer? version-of b]

@@ -198,6 +198,8 @@ body {
 .tb-panel.tb-success { border-color: var(--tb-success); }
 .tb-panel.tb-warning { border-color: var(--tb-warning); }
 .tb-panel:focus-visible, .tb-column:focus-visible, .tb-row:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-focus-ring); }
+/* a box that scrolls with nothing focusable inside takes focus, so the keyboard scrolls it (scrollers.ts) */
+[data-tb-scroller]:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-focus-ring); }
 .tb-panel.tb-primary:focus-visible { box-shadow: inset 0 0 0 1px var(--tb-primary), 0 0 0 3px var(--tb-focus-ring); }
 .tb-panel > .tb-panel-title { margin: 0; font-family: var(--tb-headings); font-size: 17px; line-height: 1.35; font-weight: 600; letter-spacing: -0.01em; }
 .tb-divider { border: 0; border-top: var(--tb-line) solid var(--tb-border); margin: var(--tb-space-2) 0; width: 100%; }

@@ -20,6 +20,7 @@ import {
 } from '../values.ts';
 import { fieldText } from './csv.ts';
 import { native, value, fail } from './define.ts';
+import { pushAll } from '../arrays.ts';
 
 const used = (c: Cell): boolean => c === TRUE;
 const NAME = /^[A-Za-z_][A-Za-z0-9_-]*$/;
@@ -45,7 +46,16 @@ function decode(s: string): string {
 interface Open { name: string; atts: Cell; out: Cell[]; at: number }
 
 /** Parses XML text into a block of nodes; returns an error message when it is not well formed. */
+// sticky: each matches at the place given, over the whole text, however long a name or a value
+const CLOSE = /<\/([^\s>]+)\s*>/y;
+const OPEN = /<([^\s/>=]+)/y;
+const ATTRIBUTE = /([^\s/>=]+)\s*=\s*("[^"]*"|'[^']*')/y;
+
 export function parseXml(src: string): Cell[] | string {
+  const at = (re: RegExp, k: number): RegExpExecArray | null => {
+    re.lastIndex = k;
+    return re.exec(src);
+  };
   let i = src.charCodeAt(0) === 0xfeff ? 1 : 0;
   const n = src.length;
   const stack: Open[] = [];
@@ -97,7 +107,7 @@ export function parseXml(src: string): Cell[] | string {
         to = skipTo('>', 'a DOCTYPE');
       }
     } else if (src[i + 1] === '/') {
-      const m = /^<\/([^\s>]+)\s*>/.exec(src.slice(i, i + 512));
+      const m = at(CLOSE, i);
       if (m === null) return `a closing tag on line ${lineAt(i)} is not written right`;
       flush();
       const open = stack.pop();
@@ -106,7 +116,7 @@ export function parseXml(src: string): Cell[] | string {
       out().push(nameCell(open.name), block(open.out), open.atts);
       to = i + m[0].length;
     } else {
-      const m = /^<([^\s/>=]+)/.exec(src.slice(i, i + 512));
+      const m = at(OPEN, i);
       if (m === null) return `a < on line ${lineAt(i)} starts no tag; write it &lt;`;
       flush();
       const name = m[1]!;
@@ -116,7 +126,7 @@ export function parseXml(src: string): Cell[] | string {
         while (k < n && /\s/.test(src[k]!)) k++;
         if (k >= n) return `<${name}> on line ${lineAt(i)} never ends`;
         if (src[k] === '>' || src.startsWith('/>', k)) break;
-        const a = /^([^\s/>=]+)\s*=\s*("[^"]*"|'[^']*')/.exec(src.slice(k, k + 4096));
+        const a = at(ATTRIBUTE, k);
         if (a === null) return `an attribute of <${name}> on line ${lineAt(k)} is not written right`;
         atts.push(nameCell(a[1]!), string(decode(a[2]!.slice(1, -1))));
         k += a[0].length;
@@ -165,8 +175,8 @@ const isNone = (c: Cell): boolean => c.t === K.None || (c.t === K.Word && spell(
 function attsText(c: Cell): string | null {
   const pairs: Cell[] = [];
   if (isNone(c)) return '';
-  if (c.t === K.Map) pairs.push(...c.s.data);
-  else if (c.t === K.Block) pairs.push(...c.s.data.slice(c.i));
+  if (c.t === K.Map) pushAll(pairs, c.s.data);
+  else if (c.t === K.Block) pushAll(pairs, c.s.data.slice(c.i));
   else if (c.t === K.Object) c.ctx.keys.forEach((k, j) => pairs.push({ t: K.Word, sym: k, bind: null }, c.ctx.vals[j]!));
   else return null;
   let s = '';

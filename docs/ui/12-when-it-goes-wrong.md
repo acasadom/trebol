@@ -55,6 +55,10 @@ Run it after a change that does not show up, before anything else: a mistyped wo
 view from showing. It runs nothing of the app but the imports at the top of a file, since a module only defines
 things: that is how it knows the [rules](02-forms.md#rules-of-your-own) a package adds.
 
+A line that starts with `warning:` is not a mistake: the app runs as it is. A state of a
+[machine](../language/15-machines.md) no way leads to is one, since it may only be waiting for the way to it.
+`trebol check` fails only for mistakes.
+
 ## The panel of errors
 
 Under `npx trebol dev`, an error the app does not catch shows on the page itself, over the app, with *Close*
@@ -93,7 +97,7 @@ browser's console.
 
 **Log** lists what happened, newest last: each event with its face (`click · button "Book in"`, `input ·
 field name "Name" "Ann"`), each request with its answer and how long it took (`POST /api/bookings 422 · 34 ms`),
-each toast, each error, and each change of state of a machine (`repair: received → work/checking`), whether
+each toast, each error, each warning (a state of a machine no way leads to), and each change of state of a machine (`repair: received → work/checking`), whether
 an event, a timer or another tab moved it. When a button seems to do nothing, the log tells whether the click arrived, whether a
 request left and what the server answered.
 
@@ -165,15 +169,6 @@ show-open: does [status/text: "Open"]
 **Only inputs have a field name.** In `field email "Email"` the word after the style is the name of the field,
 its key in `values`. A text, a heading or a button take no such word; give them a name with a set-word before
 them: `total: text "0"`.
-
-**Changing a block in place does not repaint.** Setting a face's field shows the change: `clients/data:
-rows`. Changing the block it holds, with `append clients/data row`, changes the data but the face does not
-know; set the field again to show it:
-
-```text
-append clients/data row
-clients/data: clients/data
-```
 
 ## Where to go from here
 

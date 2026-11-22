@@ -18,6 +18,7 @@ import { pick } from '../access.ts';
 import { isEqual, compare, toDec } from '../compare.ts';
 import type { Step } from '../eval.ts';
 import { native, op, value, fail, truthy } from './define.ts';
+import { touch } from '../values.ts';
 
 const A = { Add: 0, Sub: 1, Mul: 2, Div: 3, Rem: 4 } as const;
 type Arith = (typeof A)[keyof typeof A];
@@ -403,6 +404,7 @@ native('random', '["A random value: an integer from 1 to it, a decimal up to it,
       return value(pick(v, integer(randomInt(n))) as Cell);
     }
     ownMeta(s.s);
+    touch(s.s);
     const arrays = [s.s.data, (s.s as { nl?: unknown[] }).nl, (s.s as { pos?: unknown[] }).pos].filter(x => x !== undefined) as unknown[][];
     for (let i = n - 1; i > 0; i--) {
       const j = Math.floor(nextRandom() * (i + 1));

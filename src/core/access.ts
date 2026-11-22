@@ -13,6 +13,7 @@ import {
 } from './values.ts';
 import { ctxFind, ctxSet } from './ctx.ts';
 import { mold } from './mold.ts';
+import { touch } from './values.ts';
 
 /** Keys of maps and selects: words by symbol (any word type), the rest strictly. */
 export function sameKey(a: Cell, b: Cell): boolean {
@@ -166,9 +167,11 @@ export function poke(cur: Cell, key: Cell, v: Cell): string | null {
       const i = mapFind(cur.s, key);
       if (i >= 0) {
         cur.s.data[i] = v;
+        touch(cur.s);
       } else {
         const k = isAnyWord(key.t) ? { t: K.Word, sym: (key as WordCell).sym, bind: null } as Cell : key;
         cur.s.data.push(k, v);
+        touch(cur.s);
       }
       return null;
     }
@@ -179,11 +182,13 @@ export function poke(cur: Cell, key: Cell, v: Cell): string | null {
     if (n !== null) {
       if (n < 0 || b.i + n >= b.s.data.length) return `index ${n + 1} is out of range`;
       b.s.data[b.i + n] = v;
+      touch(b.s);
       return null;
     }
     const at = blockFind(b.s, b.i, key);
     if (at < 0 || at + 1 >= b.s.data.length) return `${mold(key)} not found in the block`;
     b.s.data[at + 1] = v;
+    touch(b.s);
     return null;
   }
   if (cur.t === K.String) {
@@ -192,6 +197,7 @@ export function poke(cur: Cell, key: Cell, v: Cell): string | null {
     if (n === null || v.t !== K.Char) return `cannot set ${mold(key)} in a string`;
     if (n < 0 || s.i + n >= s.s.data.length) return `index ${n + 1} is out of range`;
     s.s.data[s.i + n] = v.v;
+    touch(s.s);
     return null;
   }
   return `cannot set ${mold(key)} in ${aKindName(cur.t)}`;

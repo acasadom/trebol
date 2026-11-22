@@ -6,6 +6,7 @@ import { readOrbit, layoutOrbit, shownEdges, edgeLabel, bubble, gradients, edgeP
 import { get, str, own, flag } from './faces.ts';
 import { type Mounted, host, fire, el } from './mount.ts';
 import { SVG_NS, svgNode } from './drawings.ts';
+import { watchSize } from './sizes.ts';
 
 export interface OrbitVis {
   key: string;
@@ -76,20 +77,18 @@ export function buildOrbit(m: Mounted): HTMLElement {
   m.kids = st;
   orbitCamera(m, st);
   orbitKeys(m, st);
-  if (typeof ResizeObserver !== 'undefined') {
-    new ResizeObserver(() => {
-      if (svg.clientWidth === st.width && svg.clientHeight === st.height) return;
-      st.width = svg.clientWidth;
-      st.height = svg.clientHeight;
-      // a move under way ends where the new size fits; titles take the new zoom
-      const fit = fitCamera(st.width, st.height, st.box);
-      if (st.camTo !== null) st.camTo = fit;
-      else st.cam = fit;
-      orbitDressAll(m, st, fit.s);
-      orbitApplyCam(st);
-      orbitDrawEdges(st);
-    }).observe(svg);
-  }
+  watchSize(svg, () => {
+    if (svg.clientWidth === st.width && svg.clientHeight === st.height) return;
+    st.width = svg.clientWidth;
+    st.height = svg.clientHeight;
+    // a move under way ends where the new size fits; titles take the new zoom
+    const fit = fitCamera(st.width, st.height, st.box);
+    if (st.camTo !== null) st.camTo = fit;
+    else st.cam = fit;
+    orbitDressAll(m, st, fit.s);
+    orbitApplyCam(st);
+    orbitDrawEdges(st);
+  });
   return node;
 }
 

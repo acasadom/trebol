@@ -319,3 +319,44 @@ describe('tasks', () => {
     assert.equal(ev('type? :negate'), 'native!');
   });
 });
+
+describe('nesting deeper than the JS stack', () => {
+  const deep = (n: number) => '['.repeat(n) + ']'.repeat(n);
+
+  test('load of blocks nested too deep is a load error, not a crash', () => {
+    assert.throws(() => load(deep(100000)), /nested too deep/);
+    assert.equal(evErr(`load ${JSON.stringify(deep(100000))}`), 'load');
+    assert.equal(ev(`attempt [load ${JSON.stringify(deep(100000))}]`), 'none');
+  });
+
+  test('a stack overflow in a native is a Trebol error that attempt catches', () => {
+    const src = 'b: copy [] loop 100000 [b: reduce [b]]';
+    assert.equal(evErr(`${src} mold b`), 'stack-overflow');
+    assert.equal(ev(`${src} attempt [mold b]`), 'none');
+  });
+
+  test('another task keeps running after one overflows', () => {
+    const bad = load('b: copy [] loop 100000 [b: reduce [b]] mold b');
+    const good = load('1 + 2');
+    bindSeries(bad.s, rt.user, true);
+    bindSeries(good.s, rt.user, true);
+    assert.equal(run(newTask(rt, bad.s, 0)).k, 'error');
+    const r = run(newTask(rt, good.s, 0));
+    assert.equal(r.k === 'done' ? mold(r.v) : r.k, '3');
+  });
+});
+
+describe('at-end', () => {
+  test('outside a function it waits for the end of the code, which still gives its own value', () => {
+    assert.equal(ev("t: copy []  at-end [append t 'end]  append t 'body  7"), '7');
+    assert.equal(ev('t'), '[body end]');
+  });
+
+  test('a function that fails leaves its kept blocks to the code around it', () => {
+    assert.equal(ev(`t: copy []
+      f: function [] [at-end [append t 'later]  do make error! "no"]
+      e: try [f]
+      append t 'next
+      t`), '[later next]');
+  });
+});

@@ -7,6 +7,7 @@ import { chartSvg, SERIES_COLORS, pieColor, type ChartKind, type Series } from '
 import { get, str, own, display, flag, word } from './faces.ts';
 import { type Mounted, el } from './mount.ts';
 import { columns, cellText } from './tables.ts';
+import { watchSize } from './sizes.ts';
 
 export const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -72,11 +73,9 @@ export function buildChart(m: Mounted): HTMLElement {
   node.append(caption, plot, legend, empty, table);
   const parts: ChartParts = { caption, plot, svg, legend, table, empty, width: 0 };
   m.kids = parts;
-  if (typeof ResizeObserver !== 'undefined') {
-    new ResizeObserver(() => {
-      if (plot.clientWidth !== parts.width) drawChart(m);
-    }).observe(plot);
-  }
+  watchSize(plot, () => {
+    if (plot.clientWidth !== parts.width) drawChart(m);
+  });
   return node;
 }
 

@@ -35,6 +35,32 @@ export interface Series<T> {
    * anything changes them.
    */
   sharedMeta?: boolean;
+  /**
+   * Version: set by `touch` on every change of what the series holds, from one
+   * clock shared by all series, so a later change always gives a greater
+   * number. Undefined (0) for a series never changed since it was made.
+   * Binding its words is not a change.
+   */
+  ver?: number;
+  /**
+   * Set by a host that shows this series (in a UI face, or read by a reaction):
+   * the first change through `touch` pushes the series here and sets `dirty`,
+   * as `ctxSet` does for a context, so the host repaints what shows it. The
+   * host clears `dirty` when it repaints.
+   */
+  watch?: Series<unknown>[];
+  dirty?: boolean;
+}
+
+let clock = 0;
+
+/** Marks a series changed: gives it the next version. Call it on every edit of what a series holds. */
+export function touch(s: Series<unknown>): void {
+  s.ver = ++clock;
+  if (s.watch !== undefined && s.dirty !== true) {
+    s.dirty = true;
+    s.watch.push(s);
+  }
 }
 
 /** Gives a series its own `nl` and `pos` before they are changed. Call it before every edit of them. */

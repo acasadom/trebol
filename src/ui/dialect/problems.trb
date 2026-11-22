@@ -50,9 +50,9 @@ ui-sketch: function [
 ; It lays out each block after view or layout (styles of stylize first), and the
 ; faces of each screen and row of rows, which a running app lays out only when shown.
 ui-check: function [
-    "Every problem in the layouts of a program, without running it: [place message ...]"
+    "Every problem in the layouts of a program, without running it: [place message ...]; a warning's message starts with warning:"
     code [block!]
-    /local b p n m rest
+    /local b p n m rest old
 ] [
     set 'ui-checking copy []
     blocks: copy []
@@ -68,6 +68,8 @@ ui-check: function [
                 unless 'stylize = first p [walk b]
             )
             | 'machine set b block! (append/only blocks reduce ['machine b])
+            ; a fragment of machine: the machines written after it may use it
+            | set n set-word! 'fragment set m block! set b block! (append/only blocks reduce ['fragment p to word! n m b])
             ; a rule of the program: its words may follow a style
             | 'rule set n lit-word! set m [string! | map! | block!] set b block! (append/only blocks reduce ['rule p reduce [to word! n m b]])
             | set b [block! | paren!] (walk b)
@@ -86,16 +88,35 @@ ui-check: function [
     ]]
     foreach p blocks [if 'rule = first p [attempt-at second p [apply/only :rule third p]]]
     foreach p blocks [if 'stylize = first p [attempt-at next p [stylize copy/deep second p]]]
-    ; a machine is made without running anything: its data stays unevaluated
+    ; a machine is made without running anything: its data stays unevaluated. The words its use names are
+    ; the fragments written before it, made from their text, as the program would have set them.
+    fragments: copy []
     foreach p blocks [
+        if 'fragment = first p [
+            ctx: make object! append collect [foreach [n f] fragments [keep to set-word! n]] none
+            foreach [n f] fragments [set in ctx n f]
+            attempt-at second p [
+                f: fragment copy/deep p/4 bind copy/deep p/5 ctx
+                if old: find/skip fragments p/3 2 [remove/part old 2]
+                append fragments reduce [p/3 f]
+            ]
+        ]
         if 'machine = first p [
-            if error? r: try [machine-engine/make-machine second p] [
+            b: second p
+            unless empty? fragments [
+                ctx: make object! append collect [foreach [n f] fragments [keep to set-word! n]] none
+                foreach [n f] fragments [set in ctx n f]
+                b: bind copy/deep b ctx
+            ]
+            either error? r: try [machine-engine/make-machine b] [
                 append ui-checking reduce [any [machine-engine/failed next p] form r/message]
+            ] [
+                foreach [place message] r/warnings [append ui-checking reduce [place rejoin ["warning: machine: " message]]]
             ]
         ]
     ]
     foreach p blocks [
-        unless find [stylize machine rule] first p [
+        unless find [stylize machine rule fragment] first p [
             ; the faces of screens and of a row of rows are read with the view, as the app shows them later
             attempt-at next p [layout second p]
         ]

@@ -418,5 +418,29 @@
   {
     "test": "[s: intersect complement charset \"ab\" complement charset \"bc\" all [not find/case s #\"c\" find s #\"d\"]]",
     "why": "Sets of bitsets keep a complement's meaning: in R3 a union or intersection with a complement forgets it."
+  },
+  {
+    "test": "[not (9007199254740993 = 9007199254740990.0)]",
+    "why": "an integer beyond 2^53 is compared exactly with a decimal, as < and > compare it (owner's decision, 2026-11-21); R3 turns it into a decimal first, so = says true while > says false."
+  },
+  {
+    "test": "[(sort/reverse/compare [[a 3] [b 1] [c 2] [d 1]] func [x y] [either x/2 < y/2 [-1] [either x/2 > y/2 [1] [0]]]) = [[a 3] [c 2] [b 1] [d 1]]]",
+    "why": "a comparator that gives an integer gives it as x compared with y (negative: x goes first), as Red does; R3 reads it the other way round, so its plain sort comes out descending."
+  },
+  {
+    "test": "[decimal? load-json rejoin [\"0.\" append/dup copy \"\" \"1\" 401]]",
+    "why": "a JSON number is read as a decimal however many digits it has; this R3 cannot load a decimal written with so many digits."
+  },
+  {
+    "test": "[v: append/dup copy \"\" \"x\" 4096 a: third load-xml rejoin [{<a b=\"} v {\"/>}] 4096 = length? a/b]",
+    "why": "R3 has no load-xml."
+  },
+  {
+    "test": "[n: append/dup copy \"\" \"t\" 600 n = to string! first load-xml rejoin [\"<\" n \"></\" n \">\"]]",
+    "why": "R3 has no load-xml."
+  },
+  {
+    "test": "[(unique [[$1.00] [1] [10%] [0.1]]) == [[$1.00] [10%]]]",
+    "why": "[$1] = [1] in R3 too, and R3 gives one of unique [[$1] [1]], but in a longer series its hash keeps them apart."
   }
 ]

@@ -63,6 +63,9 @@ view [
 `row` lays out its faces side by side, where `view` stacks them. Roles are words, so the action sets one
 with a lit-word: `'success` is green and `'muted` is grey, whatever the theme.
 
+Changing what a field holds works the same: `append status/text " Back soon."` adds to the string the text
+shows, and the page shows it too. So does a row added to the block a table shows, as the tables chapter does.
+
 A name belongs to its view. Two views can each have a `status` without one touching the other, and code
 outside the view does not see it. That keeps a large app's screens from tripping over each other's names;
 when code outside a view does need a face, `global` before the name makes it a word of the whole program.
@@ -165,7 +168,7 @@ You can also keep the files apart and let a CDN bring Trebol. Add a page called 
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Cog &amp; Chain</title>
-<script type="module" src="https://cdn.jsdelivr.net/npm/trebol@0.1/dist/trebol.js"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/trebol@0.4/dist/trebol.js"></script>
 <script type="text/trebol" src="app.trb"></script>
 </head>
 <body></body>

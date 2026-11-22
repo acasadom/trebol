@@ -1,10 +1,10 @@
-// Series natives: navigation, editing, searching, ordering and set operations.
+// Series natives: navigation, editing, searching and ordering (set operations are in sets.ts).
 //
 // Blocks hold cells, strings code points and binaries bytes; the helpers in
 // series.ts hide the difference. Searching is case-insensitive unless /case,
 // as `=` is.
 
-import { K, isAnyBlock, isAnyString, kindBit, type Kind } from '../kinds.ts';
+import { K, isAnyBlock, isAnyString, kindBit } from '../kinds.ts';
 import { bitHas } from '../bitset.ts';
 import * as I64 from '../int64.ts';
 import {
@@ -15,8 +15,7 @@ import {
 import { bindSeries, copyDeep } from '../ctx.ts';
 import { isEqual, compare, foldCase } from '../compare.ts';
 import { pick } from '../access.ts';
-import { context, time, sameValue, string, bitset, type BitsetCell } from '../values.ts';
-import { dateDiff } from './math.ts';
+import { context, sameValue, string, type BitsetCell } from '../values.ts';
 import { sourceOf } from '../mold.ts';
 import {
   splice, itemsFor, lengthOf, at, clampIndex,
@@ -24,6 +23,8 @@ import {
 } from '../series.ts';
 import { T, type Step, type NativeFrame } from '../eval.ts';
 import { native, value, fail, truthy, doBlock } from './define.ts';
+import { pushAll } from '../arrays.ts';
+import { touch } from '../values.ts';
 
 const num = (c: Cell): number => I64.toNumber((c as { v: I64.I64 }).v);
 const used = (c: Cell): boolean => c === TRUE;
@@ -67,8 +68,8 @@ function toPut(s: SeriesCell, v: Cell, only: boolean, part: Cell | null, dup: Ce
     add = [];
     nl = oneNl === undefined ? undefined : [];
     for (let k = 0; k < times; k++) {
-      add.push(...one);
-      if (nl !== undefined) nl.push(...oneNl!);
+      pushAll(add, one);
+      if (nl !== undefined) pushAll(nl, oneNl!);
     }
   }
   return nl === undefined ? { add } : { add, nl };
@@ -137,6 +138,7 @@ native('clear', '["Removes everything from the series\' position to its tail." s
   const x = f.args[0]!;
   if (x.t === K.Map) {
     x.s.data.length = 0;
+    touch(x.s);
     return value(x);
   }
   const s = x as SeriesCell;
@@ -172,6 +174,7 @@ native('reverse', '["Reverses the order of the values from the series\' position
   const end = used(f.args[1]!) ? partEnd(s, f.args[2]!) : s.s.data.length;
   const d = s.s.data as Item[];
   ownMeta(s.s);
+  touch(s.s);
   const nl = s.s.nl;
   for (let a = s.i, b = end - 1; a < b; a++, b--) {
     [d[a], d[b]] = [d[b]!, d[a]!];
@@ -377,6 +380,8 @@ native('sort', '["Sorts the series in place." series [series!] /case /skip size 
   const rev = used(a[6]!);
   if (f.phase === 0) {
     const d = s.s.data as Item[];
+    // as in R3, a last record cut short is an error, not a record of its own
+    if ((d.length - s.i) % size !== 0) return fail('script', 'out-of-range', `sort/skip ${size}: the series has ${d.length - s.i} values, not whole records of ${size}`);
     const recs: Item[][] = [];
     for (let i = s.i; i < d.length; i += size) recs.push(d.slice(i, i + size));
     f.data = { src: recs, dst: recs.slice(), width: 1, lo: 0, mid: 0, hi: 0, i: 0, j: 0, k: 0, merging: false } satisfies SortState;
@@ -385,8 +390,9 @@ native('sort', '["Sorts the series in place." series [series!] /case /skip size 
   const st = f.data as SortState;
   let answer: boolean | null = null;
   if (v !== null) {
-    answer = v.t === K.Integer ? num(v) < 0 : truthy(v);
-    if (rev) answer = !answer;
+    // an integer says how the two compare, so 0 keeps them as they are either way
+    if (v.t === K.Integer) answer = rev ? num(v) > 0 : num(v) < 0;
+    else answer = rev ? !truthy(v) : truthy(v);
   }
   const cellOf = (r: Item[], at = 0): Cell => cellAt({ ...s, s: { data: r }, i: 0 } as SeriesCell, at);
   let bad = false;
@@ -404,6 +410,7 @@ native('sort', '["Sorts the series in place." series [series!] /case /skip size 
   const d = s.s.data as Item[];
   for (let k = 0; k < flat.length; k++) d[s.i + k] = flat[k]!;
   ownMeta(s.s);
+  touch(s.s);
   if (s.s.nl) s.s.nl.fill(false, s.i);
   return value(s);
 });
@@ -468,11 +475,11 @@ native('remove-each', "[\"Removes the values of a series for which the block giv
   if (v !== null || th !== null) {
     const from = st.pos - n;
     const chunk = (data.s.data as Item[]).slice(from, Math.min(from + n, data.s.data.length));
-    if (broke || v === null || !truthy(v)) st.keep.push(...chunk);
+    if (broke || v === null || !truthy(v)) pushAll(st.keep, chunk);
   }
   const step = broke ? null : eachNext(f, st, data);
   if (step !== null) return step;
-  if (broke) st.keep.push(...(data.s.data as Item[]).slice(st.pos));
+  if (broke) pushAll(st.keep, (data.s.data as Item[]).slice(st.pos));
   splice(data.s as Series<Item>, 0, data.s.data.length, st.keep);
   return value(data);
 });
@@ -488,7 +495,7 @@ native('map-each', "[\"A block of what the block gives for each value of a serie
   f.thrown = null;
   if (th !== null && th.kind === T.Break) return value({ t: K.Block, s: { data: st.out }, i: 0 });
   if (v !== null && v.t !== K.Unset) {
-    if (v.t === K.Block) st.out.push(...v.s.data.slice(v.i));
+    if (v.t === K.Block) pushAll(st.out, v.s.data.slice(v.i));
     else st.out.push(v);
   }
   return eachNext(f, st, data) ?? value({ t: K.Block, s: { data: st.out }, i: 0 });
@@ -506,66 +513,3 @@ function bitsetHolds(b: BitsetCell, v: Cell, cased: boolean): boolean {
       return false;
   }
 }
-
-// --- set operations ----------------------------------------------------------------
-
-function itemEq(t: Kind, cased: boolean): (a: Item, b: Item) => boolean {
-  if (isAnyBlock(t)) return (a, b) => (cased ? strictEqual(a as Cell, b as Cell) : isEqual(a as Cell, b as Cell));
-  if (cased || t === K.Binary) return (a, b) => a === b;
-  return (a, b) => foldCase(a as number) === foldCase(b as number);
-}
-
-function distinct(list: Item[], eq: (a: Item, b: Item) => boolean): Item[] {
-  const out: Item[] = [];
-  for (const x of list) if (!out.some(y => eq(x, y))) out.push(x);
-  return out;
-}
-
-function setResult(like: SeriesCell, list: Item[]): Cell {
-  return { t: like.t, s: { data: list }, i: 0 } as Cell;
-}
-
-// Of two bitsets, the one holding what op says of being in each. A complemented bitset
-// (neg) holds what its bits do not, so each side is flipped before op and the result after.
-function bitsetOp(a: BitsetCell, b: BitsetCell, op: (x: number, y: number) => number): Cell {
-  const neg = op(a.neg ? 1 : 0, b.neg ? 1 : 0) !== 0;
-  const n = Math.max(a.s.data.length, b.s.data.length);
-  const bytes: number[] = [];
-  for (let i = 0; i < n; i++) {
-    const x = (a.s.data[i] ?? 0) ^ (a.neg ? 0xff : 0);
-    const y = (b.s.data[i] ?? 0) ^ (b.neg ? 0xff : 0);
-    bytes.push((op(x, y) ^ (neg ? 0xff : 0)) & 0xff);
-  }
-  return bitset(bytes, neg);
-}
-
-function setOp(f: NativeFrame, two: boolean, pick: (a: Item[], b: Item[], eq: (x: Item, y: Item) => boolean) => Item[], bits?: (x: number, y: number) => number): Step {
-  if (two && (f.args[0]!.t === K.Bitset || f.args[1]!.t === K.Bitset)) {
-    const [x, y] = f.args as [Cell, Cell];
-    if (x.t !== K.Bitset || y.t !== K.Bitset || bits === undefined) return fail('script', 'bad-set', 'a bitset goes only with another bitset');
-    return value(bitsetOp(x, y, bits));
-  }
-  const a = f.args[0] as SeriesCell;
-  const b = two ? f.args[1] as SeriesCell : null;
-  if (b !== null && isAnyBlock(a.t) !== isAnyBlock(b.t)) return fail('script', 'bad-set', 'both series must be of the same kind');
-  const eq = itemEq(a.t, used(f.args[two ? 2 : 1]!));
-  const xs = (a.s.data as Item[]).slice(a.i);
-  const ys = b === null ? [] : (b.s.data as Item[]).slice(b.i);
-  return value(setResult(a, pick(xs, ys, eq)));
-}
-
-native('unique', '["The values of the series, each once." set [series!] /case]', (_t, f) => setOp(f, false, (a, _b, eq) => distinct(a, eq)));
-native('union', '["The values that are in either series, each once." a [series! bitset!] b [series! bitset!] /case]', (_t, f) => setOp(f, true, (a, b, eq) => distinct([...a, ...b], eq), (x, y) => x | y));
-native('intersect', '["The values that are in both series." a [series! bitset!] b [series! bitset!] /case]', (_t, f) =>
-  setOp(f, true, (a, b, eq) => distinct(a.filter(x => b.some(y => eq(x, y))), eq), (x, y) => x & y));
-// Of two dates, the time between them (R3).
-native('difference', '["The values that are in one series but not the other; of two dates, the time between them." a [series! date! bitset!] b [series! date! bitset!] /case]', (_t, f) => {
-  const [a, b] = f.args as [Cell, Cell];
-  if (a.t === K.Date || b.t === K.Date) {
-    if (a.t !== K.Date || b.t !== K.Date) return fail('script', 'bad-set', 'difference takes two dates or two series');
-    return value(time(dateDiff(a.v, b.v)));
-  }
-  return setOp(f, true, (xs, ys, eq) => distinct([...xs.filter(x => !ys.some(y => eq(x, y))), ...ys.filter(y => !xs.some(x => eq(x, y)))], eq), (x, y) => x ^ y);
-});
-native('exclude', '["The values of the first series that are not in the second." a [series! bitset!] b [series! bitset!] /case]', (_t, f) =>
-  setOp(f, true, (a, b, eq) => distinct(a.filter(x => !b.some(y => eq(x, y))), eq), (x, y) => x & ~y));

@@ -16,7 +16,7 @@ export const SHARED = String.raw`
             none? m/channel
             share-lock share-name m compose [machine-engine/took (m)]
         ] [
-            either saved [resume m saved] [start m]
+            either saved [resume m saved] [start-later m]
         ] [
             m/owner: false
             share-ask m/channel mold/all [hello]
@@ -94,7 +94,7 @@ export const SHARED = String.raw`
             timers: make map! []  serial: 0  deferred: copy []
             on: copy []  results: make map! []  last: caller: none
             busy: false  exiting: false  on-save: saver: none
-            shared: channel: seen: none  owner: true  asks: copy []  using: copy []
+            shared: channel: seen: none  owner: true  asks: copy []  using: copy []  warnings: copy []
             scope: make object! [data: event: none]
         ]
         add-node m none none
@@ -118,6 +118,29 @@ export const SHARED = String.raw`
     start: function [m] [
         append/only m/queue reduce [none make object! []]
         run m
+    ]
+
+    ; The start of a machine that machine makes: it is in its initial states at once, and machine
+    ; runs their hooks once the expression that made it is done, so they see the word it was set
+    ; to. An event sent before that waits in the queue behind the start.
+    start-later: function [m] [
+        append m/on firsts m select node m 1 'initial
+        m/state: where m
+        append/only m/queue reduce [none make object! []]
+        m
+    ]
+
+    begun: function [m] [unless any [m/busy  empty? m/queue] [run m]]
+
+    ; A state and the states inside it a start enters.
+    firsts: function [m id] [
+        out: reduce [id]
+        n: node m id
+        case [
+            n/parallel [foreach c n/children [append out firsts m c]]
+            not empty? n/children [append out firsts m n/initial]
+        ]
+        out
     ]
 ]
 

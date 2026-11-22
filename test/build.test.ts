@@ -30,6 +30,13 @@ test('the installed command runs a script and serves an app', async () => {
   const run = spawnSync(process.execPath, [cli], { input: 'print 1 + 2', encoding: 'utf8', cwd: project });
   assert.equal(run.stderr, '');
   assert.equal(run.stdout, '3\n');
+  // Node 25 and later define localStorage and warn when a script reads it: the command never reads it
+  const node26 = join(project, 'node26.mjs');
+  writeFileSync(node26, `Object.defineProperty(globalThis, 'localStorage', { configurable: true, get() {
+    process.stderr.write('ExperimentalWarning: localStorage was read\\n'); return undefined; } });\n`);
+  const later = spawnSync(process.execPath, ['--import', node26, cli], { input: 'print 1 + 2', encoding: 'utf8', cwd: project });
+  assert.equal(later.stderr, '');
+  assert.equal(later.stdout, '3\n');
   const version = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version;
   assert.equal(spawnSync(process.execPath, [cli, '--version'], { encoding: 'utf8' }).stdout, `trebol ${version}\n`);
   // the tutorial's supplier, with ws inside (port 8089 may be taken by the docs tests: only its loading is checked)

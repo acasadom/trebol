@@ -13,6 +13,7 @@ import { crc32, adler32, md5, sha1, sha256 } from '../hash.ts';
 import { utf8 } from '../series.ts';
 import { fieldText } from './csv.ts';
 import { native, value, fail } from './define.ts';
+import { pushAll } from '../arrays.ts';
 
 /** The bytes of a binary, or the UTF-8 bytes of a string. */
 function bytesOf(v: Cell): number[] {
@@ -62,7 +63,7 @@ function unhex(cps: readonly number[]): number[] {
   const out: number[] = [];
   let bytes: number[] = [];
   const flush = () => {
-    if (bytes.length > 0) out.push(...codePoints(new TextDecoder().decode(new Uint8Array(bytes))));
+    if (bytes.length > 0) pushAll(out, codePoints(new TextDecoder().decode(new Uint8Array(bytes))));
     bytes = [];
   };
   for (let i = 0; i < cps.length; i++) {
@@ -111,8 +112,8 @@ native('enhex', '["Writes the characters a URL cannot hold as %xx escapes." valu
 /** The names and values of a map, an object or a block, as a query writes them; null when one is not a name. */
 export function queryText(c: Cell): string | null {
   const pairs: Cell[] = [];
-  if (c.t === K.Map) pairs.push(...c.s.data);
-  else if (c.t === K.Block) pairs.push(...c.s.data.slice(c.i));
+  if (c.t === K.Map) pushAll(pairs, c.s.data);
+  else if (c.t === K.Block) pushAll(pairs, c.s.data.slice(c.i));
   else if (c.t === K.Object) c.ctx.keys.forEach((k, j) => pairs.push({ t: K.Word, sym: k, bind: null }, c.ctx.vals[j]!));
   const parts: string[] = [];
   const part = (name: string, v: Cell): void => {

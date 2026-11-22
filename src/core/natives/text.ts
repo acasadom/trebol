@@ -19,6 +19,8 @@ import { typesOf } from '../func.ts';
 import { textOf, utf8, at, type SeriesCell } from '../series.ts';
 import { T, type Feed, type Step } from '../eval.ts';
 import { native, value, fail, truthy, doBlock } from './define.ts';
+import { spliceAll } from '../arrays.ts';
+import { touch } from '../values.ts';
 
 const used = (c: Cell): boolean => c === TRUE;
 const num = (c: Cell): number => I64.toNumber((c as { v: I64.I64 }).v);
@@ -39,6 +41,7 @@ function recase(upper: boolean) {
     const s = x as StringCell;
     const end = used(f.args[1]!) ? Math.min(s.s.data.length, s.i + num(f.args[2]!)) : s.s.data.length;
     for (let i = s.i; i < end; i++) s.s.data[i] = conv(s.s.data[i]!);
+    if (end > s.i) touch(s.s);
     return value(s);
   };
 }
@@ -52,8 +55,9 @@ native('trim', '["Removes spaces at both ends, or with refinements other spaces 
   const x = f.args[0]!;
   if (x.t === K.Block) {
     const kept = x.s.data.filter((c, i) => i < x.i || c.t !== K.None);
-    x.s.data.splice(0, x.s.data.length, ...kept);
+    spliceAll(x.s.data, 0, x.s.data.length, kept);
     ownMeta(x.s);
+    touch(x.s);
     if (x.s.nl) x.s.nl.length = 0;
     if (x.s.pos) x.s.pos.length = 0;
     return value(x);
@@ -81,7 +85,8 @@ native('trim', '["Removes spaces at both ends, or with refinements other spaces 
     if (tail || !head) while (b > a && isSpace(cps[b - 1]!)) b--;
     cps = cps.slice(a, b);
   }
-  s.s.data.splice(s.i, s.s.data.length - s.i, ...cps);
+  spliceAll(s.s.data, s.i, s.s.data.length - s.i, cps);
+  touch(s.s);
   return value(s);
 });
 

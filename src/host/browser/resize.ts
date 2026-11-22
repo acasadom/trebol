@@ -7,6 +7,7 @@
 import { type ObjectCell } from '../../core/index.ts';
 import { keepOwn } from './faces.ts';
 import { el } from './mount.ts';
+import { watchSize, unwatchSize } from './sizes.ts';
 
 const LEAST = 96;     // the narrowest a column gets
 const STEP = 16;      // a key press, 64 with Shift
@@ -63,6 +64,7 @@ export function syncResize(node: HTMLElement, face: ObjectCell, written: string[
     if (g !== undefined) {
       for (const h of Array.from(node.querySelectorAll(':scope > .tb-grid-handle'))) h.remove();
       grids.delete(node);
+      unwatchSize(node);
     }
     return;
   }
@@ -70,7 +72,7 @@ export function syncResize(node: HTMLElement, face: ObjectCell, written: string[
   if (g === undefined || g.written.join(' ') !== written.join(' ')) {
     const fresh: Grid = { face, written, widths: written.map(() => null), key: null, place: () => {} };
     fresh.place = () => placeHandles(node, fresh);
-    if (g === undefined) new ResizeObserver(() => grids.get(node)?.place()).observe(node);
+    if (g === undefined) watchSize(node, () => grids.get(node)?.place());
     g = fresh;
     grids.set(node, g);
   }

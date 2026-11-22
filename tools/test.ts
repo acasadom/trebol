@@ -53,7 +53,7 @@ native('show', '["Draws a face and everything in it." face [object!]]', (_t, f) 
 native('shown-view', '["The view on show; none before the first." ]', () => value(page.view));
 native('apply-theme', '["Changes the look of the whole screen." spec [object!]]', (_t, f) => value(f.args[0]!));
 // no rounds here: the tests run the reactions themselves
-native('ui-watch', '["Marks an object a reaction reads, so that a change to it runs the reactions at the end of the round." object [object!]]', (_t, f) => value(f.args[0]!));
+native('ui-watch', '["Marks an object, series or map a reaction reads, so that a change to it, or in place in it, runs the reactions at the end of the round." value [object! series! map!]]', (_t, f) => value(f.args[0]!));
 native('repaint', '["Redraws the faces that changed." ]', () => value(blockOf(K.Block, [])));
 native('print-faces', '["Opens the print dialog for the page, or for one face only." face [object! none!]]', () => value(NONE));
 // a test has no cursor: the text goes at the end

@@ -50,7 +50,7 @@ draw
 
 ### A
 
-[`abs`](#fn-abs) · [`add`](#fn-add) · [`add-rule`](#fn-add-rule) · [`ajoin`](#fn-ajoin) · [`all`](#fn-all) · [`also`](#fn-also) · [`alter`](#fn-alter) · [`and`](#fn-and) · [`and~`](#fn-and-7e) · [`any`](#fn-any) · [`any-block?`](#fn-any-block-3f) · [`any-function?`](#fn-any-function-3f) · [`any-object?`](#fn-any-object-3f) · [`any-path?`](#fn-any-path-3f) · [`any-string?`](#fn-any-string-3f) · [`any-type?`](#fn-any-type-3f) · [`any-value?`](#fn-any-value-3f) · [`any-word?`](#fn-any-word-3f) · [`append`](#fn-append) · [`apply`](#fn-apply) · [`arccosine`](#fn-arccosine) · [`arcsine`](#fn-arcsine) · [`arctangent`](#fn-arctangent) · [`arctangent2`](#fn-arctangent2) · [`array`](#fn-array) · [`as-pair`](#fn-as-pair) · [`at`](#fn-at) · [`attempt`](#fn-attempt)
+[`abs`](#fn-abs) · [`add`](#fn-add) · [`add-rule`](#fn-add-rule) · [`ajoin`](#fn-ajoin) · [`all`](#fn-all) · [`also`](#fn-also) · [`alter`](#fn-alter) · [`and`](#fn-and) · [`and~`](#fn-and-7e) · [`any`](#fn-any) · [`any-block?`](#fn-any-block-3f) · [`any-function?`](#fn-any-function-3f) · [`any-object?`](#fn-any-object-3f) · [`any-path?`](#fn-any-path-3f) · [`any-string?`](#fn-any-string-3f) · [`any-type?`](#fn-any-type-3f) · [`any-value?`](#fn-any-value-3f) · [`any-word?`](#fn-any-word-3f) · [`append`](#fn-append) · [`apply`](#fn-apply) · [`arccosine`](#fn-arccosine) · [`arcsine`](#fn-arcsine) · [`arctangent`](#fn-arctangent) · [`arctangent2`](#fn-arctangent2) · [`array`](#fn-array) · [`as-pair`](#fn-as-pair) · [`at`](#fn-at) · [`at-end`](#fn-at-end) · [`attempt`](#fn-attempt)
 
 ### B
 
@@ -134,7 +134,7 @@ draw
 
 ### V
 
-[`validate-face`](#fn-validate-face) · [`value?`](#fn-value-3f) · [`values-of`](#fn-values-of) · [`view`](#fn-view)
+[`validate-face`](#fn-validate-face) · [`value?`](#fn-value-3f) · [`values-of`](#fn-values-of) · [`version-of`](#fn-version-of) · [`view`](#fn-view)
 
 ### W
 

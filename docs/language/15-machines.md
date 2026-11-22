@@ -85,6 +85,23 @@ Tools out
 == repairing
 ```
 
+The `on-enter` of the state a machine starts in runs once the line that makes the machine is done, so the
+word the machine is set to is already there, and the hook can send it an event:
+
+```trebol
+counter: machine [
+    initial starting
+    state starting [on-enter [print "Warming up"  send counter 'ready]]
+    state open [on-enter [print "Open"]]
+    from starting to open on ready
+]
+```
+
+```trebol-console
+>> counter/state
+== open
+```
+
 ## Data
 
 A machine keeps its own data, in an object whose fields are given after `data`. Code inside the machine reads it
@@ -125,10 +142,22 @@ line runs:
 == "machine: data has no bkie; did you mean bike?"
 ```
 
-Other mistakes show when the machine is made too: a state or a word misspelt (with the one it may have meant), a
-state no way leads to, and a `choose` with no event and no `else` out of a state with no other way out, which
-would keep the machine there for good when no `when` holds. `trebol check` finds them all without running the
-program.
+Other mistakes show when the machine is made too: a state or a word misspelt (with the one it may have meant),
+and a `choose` with no event and no `else` out of a state with no other way out, which would keep the machine
+there for good when no `when` holds. `trebol check` finds them all without running the program.
+
+A state no way leads to is not a mistake but a warning: while you are drawing a machine, a state often waits for
+the way to it. The machine is made and runs; the warning shows once in the console (and in the Log of the dev
+tools), with where the state is written, and `trebol check` lists it with `warning:` in front without failing:
+
+```trebol-console
+>> shop: machine [initial open  state open []  state closed []  from open to open on knock]  shop/state
+== open
+>> length? shop/warnings
+== 2
+>> second shop/warnings
+== "no way leads to state closed"
+```
 
 ## States inside states
 
@@ -508,6 +537,39 @@ sale: machine [
 == paid
 ```
 
+The same holds for a plain `state` with no way out: it is not a place to wait in, it is an end. Here `two` has no
+way out, so reaching it ends the stage inside `checking`. `checking` has no way out either, so that ends the
+machine too, and it stays done in `checking`:
+
+```trebol
+form: machine [
+    initial editing
+    state editing []
+    state checking [
+        initial one
+        state one []
+        state two []
+        from one to two on next
+    ]
+    from editing to checking on submit
+]
+```
+
+```trebol-console
+>> send form 'submit
+== checking/one
+>> send form 'next
+== checking
+>> form/done
+== true
+>> in? form 'checking/two
+== false
+```
+
+For the machine to wait in `two`, give `two` a way out, even one that only some later event takes, such as
+`from two to one on again`. A way out of `checking` with an event, such as `from checking to editing on back`,
+keeps the machine going too, but it waits in `checking`, not in `checking/two`.
+
 A machine that is done takes no more events. `restart` starts it again from its `initial` state, with its data
 as it was when it was made.
 
@@ -602,6 +664,10 @@ made:
 ** Near: [use retry with [work: [1]]]
 ** At: 1:30
 ```
+
+`use` takes the fragment that its word holds when the machine is made, so a fragment is written before the
+machines that use it. `trebol check` makes the fragments of a file in the same order, without running anything
+else, and a machine that uses a name with no fragment in it yet is a mistake at the `use`.
 
 ## Keeping a machine
 

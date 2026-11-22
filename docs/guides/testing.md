@@ -39,7 +39,8 @@ Trebol tries never to be worse than Rebol 3 or Red. `npm run r3check` runs the T
 Oldes build) and lists every test whose result differs. Each accepted difference is written in
 `test/r3-differences.json` with the reason for it; a new difference fails the check until someone decides,
 and a listed one that now agrees is reported too, so the list never goes stale. [](../from-rebol.md) is that
-list, put in order for people.
+list, put in order for people. Every push and pull request runs it in CI against a fixed R3 release, so a
+difference cannot slip in unseen.
 
 ## Why this way — and the alternatives
 

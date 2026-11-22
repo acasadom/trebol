@@ -9,7 +9,7 @@ import * as I64 from '../int64.ts';
 import { NONE, UNSET, TRUE, block, context, type Cell, type BlockCell, type Ctx, type WordCell } from '../values.ts';
 import { bindSeries, copyDeep, setWord } from '../ctx.ts';
 import { at } from '../series.ts';
-import { T, type Feed, type NativeFrame, type Thrown } from '../eval.ts';
+import { T, atEnd, type Feed, type NativeFrame, type Thrown } from '../eval.ts';
 import { isEqual } from '../compare.ts';
 import { native, value, fail, truthy, doBlock, hostCall } from './define.ts';
 import { loadUser } from './data.ts';
@@ -27,6 +27,11 @@ function caught(f: NativeFrame): Thrown | null {
 }
 
 // --- evaluation ------------------------------------------------------------------
+
+native('at-end', '["Evaluates a block once the expression that called the function running now is done; outside a function, once the code is done." body [block!]]', (t, f) => {
+  atEnd(t, f.args[0] as BlockCell);
+  return value(UNSET);
+});
 
 native('do', '["Evaluates a block, source text or a script file; gives the last value." value [any-type!] /next "Evaluates only the first expression of a block" position [word!] "Set to the block after it"]', (t, f, v) => {
   if (f.phase === 1) return value(v!);
