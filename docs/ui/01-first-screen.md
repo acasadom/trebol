@@ -168,7 +168,7 @@ You can also keep the files apart and let a CDN bring Trebol. Add a page called 
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Cog &amp; Chain</title>
-<script type="module" src="https://cdn.jsdelivr.net/npm/trebol@0.4/dist/trebol.js"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/trebol@0.5/dist/trebol.js"></script>
 <script type="text/trebol" src="app.trb"></script>
 </head>
 <body></body>
