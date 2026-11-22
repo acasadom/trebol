@@ -31,44 +31,68 @@ async function timed(src: string): Promise<{ out: string; ms: number }> {
   return { out, ms: performance.now() - t0 };
 }
 
+// Time is not compared with a fixed limit, which a slow machine misses: each case runs with N reactions and
+// with 4 times as many, on a fresh host. Time in proportion to what runs grows about 4 times; the square of
+// the reactions there, 16 times. A floor keeps rounds of a few milliseconds from being noise.
 const N = Number(process.env.REACT_N ?? 320);
-const LIMIT = Number(process.env.REACT_LIMIT ?? 400);
+const MOST = 9;
+const FLOOR = 20;
+
+async function fresh(): Promise<void> {
+  host = startHost({ onError: () => {}, loader: { base: 'file:///', read: href => readFile(fileURLToPath(href), 'utf8') } });
+  await startUi(host);
+}
+
+/** The times a case gives with n and with 4n reactions, which must grow in proportion to n. */
+async function grows(name: string, run: (n: number) => Promise<number[]>): Promise<void> {
+  await fresh();
+  const small = await run(N);
+  await fresh();
+  const big = await run(4 * N);
+  small.forEach((ms, i) => {
+    console.log(`${name} [${i}]: ${ms.toFixed(0)} ms with ${N}, ${big[i]!.toFixed(0)} ms with ${4 * N}`);
+    assert.ok(big[i]! < MOST * Math.max(ms, FLOOR), `${name} [${i}]: ${ms} ms with ${N}, ${big[i]} ms with ${4 * N}`);
+  });
+}
+
+const chain = (n: number): string => {
+  // a1: text "0"  a2: text is [form 1 + to integer! a1/text]  ...
+  let spec = 'a1: text "0"';
+  for (let i = 2; i <= n; i++) spec += `  a${i}: text is [form 1 + to integer! a${i - 1}/text]`;
+  return spec;
+};
 
 describe('many reactions', () => {
-  test(`a chain of ${N}, each reading the one before`, async () => {
-    // a1: text "0"  a2: text is [form 1 + to integer! a1/text]  ...
-    let spec = 'a1: text "0"';
-    for (let i = 2; i <= N; i++) spec += `  a${i}: text is [form 1 + to integer! a${i - 1}/text]`;
-    await ev(`v: view [${spec}]  ui-react v`);
-    const r = await timed(`v/pane/1/text: "1"  ui-react v  select last v/pane 'text`);
-    console.log(`chain change: ${r.ms.toFixed(0)} ms`);
-    assert.equal(r.out, `"${N}"`);
-    assert.ok(r.ms < LIMIT, `${r.ms} ms`);
+  test('a chain, each reading the one before: a change at its head', async () => {
+    await grows('chain change', async n => {
+      await ev(`v: view [${chain(n)}]  ui-react v`);
+      const r = await timed(`v/pane/1/text: "1"  ui-react v  select last v/pane 'text`);
+      assert.equal(r.out, `"${n}"`);
+      return [r.ms];
+    });
   });
 
-  test(`${N} that read their own source, one changed`, async () => {
-    let spec = '';
-    for (let i = 1; i <= N; i++) spec += `  s${i}: text "x"  text is [join s${i}/text "!"]`;
-    await ev(`v: view [${spec}]`);
-    const shown = await timed(`ui-react v  v/pane/2/text`);
-    console.log(`first show of many: ${shown.ms.toFixed(0)} ms`);
-    assert.equal(shown.out, '"x!"');
-    const r = await timed(`v/pane/1/text: "y"  ui-react v  v/pane/2/text`);
-    console.log(`one of many: ${r.ms.toFixed(0)} ms`);
-    assert.equal(r.out, '"y!"');
-    const idle = await timed(`ui-react v  v/pane/2/text`);
-    console.log(`idle round: ${idle.ms.toFixed(0)} ms`);
-    assert.ok(shown.ms < LIMIT * 2 && r.ms < LIMIT && idle.ms < LIMIT, `${shown.ms} ${r.ms} ${idle.ms} ms`);
+  test('many that read their own source, one changed', async () => {
+    await grows('own source', async n => {
+      let spec = '';
+      for (let i = 1; i <= n; i++) spec += `  s${i}: text "x"  text is [join s${i}/text "!"]`;
+      await ev(`v: view [${spec}]`);
+      const shown = await timed(`ui-react v  v/pane/2/text`);
+      assert.equal(shown.out, '"x!"');
+      const r = await timed(`v/pane/1/text: "y"  ui-react v  v/pane/2/text`);
+      assert.equal(r.out, '"y!"');
+      const idle = await timed(`ui-react v  v/pane/2/text`);
+      return [shown.ms, r.ms, idle.ms];
+    });
   });
 
-  test(`the first show of a chain of ${N}`, async () => {
-    let spec = 'a1: text "0"';
-    for (let i = 2; i <= N; i++) spec += `  a${i}: text is [form 1 + to integer! a${i - 1}/text]`;
-    await ev(`v: view [${spec}]`);
-    const r = await timed(`ui-react v  select last v/pane 'text`);
-    console.log(`first show: ${r.ms.toFixed(0)} ms`);
-    assert.equal(r.out, `"${N - 1}"`);
-    assert.ok(r.ms < LIMIT * 2, `${r.ms} ms`);
+  test('the first show of a chain', async () => {
+    await grows('first show', async n => {
+      await ev(`v: view [${chain(n)}]`);
+      const r = await timed(`ui-react v  select last v/pane 'text`);
+      assert.equal(r.out, `"${n - 1}"`);
+      return [r.ms];
+    });
   });
 
   test('values is gathered when the block names it, at any depth', async () => {
