@@ -15,7 +15,7 @@ import { basename, dirname, extname, join, relative, resolve, sep } from 'node:p
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   K, NONE, TRUE, UNSET, makeError, load, LoadError, intern, ctxFind, ctxAdd, context, bindSeries, scriptStart, native, value, string, text, blockOf, form, mold, spell,
-  sourceOf, type Cell, type BlockCell, type ObjectCell, type StringCell, type WordCell,
+  sourceOf, isAnyBlock, type Cell, type Ctx, type Series, type BlockCell, type ObjectCell, type StringCell, type WordCell,
 } from '../src/core/index.ts';
 import { startHost, startUi, runSource, report, fileHandle, TEST_SOURCE, type Host } from '../src/host/index.ts';
 import { spawn, taskResult } from '../src/host/scheduler.ts';
@@ -281,11 +281,13 @@ async function runOne(file: string, source: string, start: number, prelude: numb
     // the file anew, so nothing a test changed in it reaches the next one
     const code = load(source, { file });
     bindSeries(code.s, host.rt.user, true);
+    bindSeries(code.s, own);
+    // the words the test file sets are its own, as a module's: they never change a word of the app
+    bindSeries(code.s, fileWords(code.s, start));
     const s = code.s;
     await taskResult(spawn(host.sch, { data: s.data.slice(start, prelude), pos: s.pos?.slice(start, prelude), file }, 0));
     if (app !== null) await runSource(host, await readFile(app, 'utf8'), relative(process.cwd(), app) || app);
     const test = s.data[at] as BlockCell;
-    bindSeries(test.s, own);
     const got = await taskResult(spawn(host.sch, test.s, test.i));
     // a notice still waiting goes when the test ends: what waits for it runs, and its requests need answers too
     await taskResult(spawn(host.sch, { data: [{ t: K.Word, sym: intern('ui-toasts-done'), bind: host.rt.lib }] }, 0));
@@ -299,6 +301,23 @@ async function runOne(file: string, source: string, start: number, prelude: numb
   } finally {
     resetEvents();
   }
+}
+
+/** A context with every word the test file sets, at any depth, after its header; each starts unset. */
+function fileWords(s: Series<Cell>, from: number): Ctx {
+  const own = context();
+  const seen = new Set<Series<Cell>>();
+  const walk = (b: Series<Cell>, i: number): void => {
+    if (seen.has(b)) return;
+    seen.add(b);
+    for (; i < b.data.length; i++) {
+      const c = b.data[i]!;
+      if (c.t === K.SetWord) { if (ctxFind(own, (c as WordCell).sym) < 0) ctxAdd(own, (c as WordCell).sym, UNSET); }
+      else if (isAnyBlock(c.t)) walk((c as BlockCell).s, 0);
+    }
+  };
+  walk(s, from);
+  return own;
 }
 
 const unanswered = (): string[] => page.unanswered.map(r => `serve has no answer for ${r}`);

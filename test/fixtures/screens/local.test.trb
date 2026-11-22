@@ -19,3 +19,10 @@ serve [
     asked = 2
 ]
 [not value? 'parts]
+
+"the words a test file sets are its own"
+[
+    greet: "not a function"
+    click "Load"
+    see "Hello the server's"
+]

@@ -106,7 +106,7 @@ test('cached gives the last answer and asks again after a post or a refresh', as
   assert.ok(passed, lines.join('\n'));
 });
 
-test('the set-words of a serve block are local to its answer, as in a function', async () => {
+test('the set-words of a serve block are local to its answer, and those of a test file are the file\'s own', async () => {
   const { passed, lines } = await ran(['test/fixtures/screens/local.test.trb']);
   assert.ok(passed, lines.join('\n'));
 });

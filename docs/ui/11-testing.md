@@ -175,6 +175,10 @@ asked: 0
 serve [GET "/api/bookings" [set 'asked asked + 1  booked]]
 ```
 
+The words the test file sets are its own too, as in a module: a test that says `greet: "Ana"` makes a
+`greet` of the file, and the app's `greet` goes on being what the app made it. The test still reads every
+word of the app, as `board/selected/id` above does, and changes one only through what the app does.
+
 What comes before the first group runs before the app starts, in every test: the data the server keeps and
 the `serve` that answers. A `serve` inside a test comes before the ones it follows, so one test can make the
 server fail:
