@@ -102,6 +102,10 @@ board/data: bookings
 The table shows what the server kept, not what was typed: the server has the last word, and the `id` it gave
 is what the app uses to name the booking from now on.
 
+The options block of `fetch/with` is an object of its own, so `[body: body]` would read the option it is
+making, not a word `body` of the app: give that word another name, as `values` here, or see
+[fetch](../reference/network.md#fetch).
+
 ## When the server says no
 
 Some rules only the server knows. This workshop is closed on Sundays, and a form cannot know which days a

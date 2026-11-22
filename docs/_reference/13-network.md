@@ -28,6 +28,20 @@ The options of `/with`, a block or an object:
 A network failure, a timeout and, without `full`, an answer with an HTTP error are access errors, which
 `try` catches.
 
+The block of options is made into an object of its own, as `make object!` makes one, so each option it sets
+is a new word of that object, and a word of the same name to the right reads that new word, not the
+program's: in `fetch/with url [body: body]` the second `body` is the option itself, which has no value yet,
+and `fetch` fails with `body has no value`. Give the program's word another name, or put its value in
+with `compose`:
+
+```
+order: #(bike: "Road" due: 2026-11-20)
+fetch/with "/api/bookings" [body: order]
+
+body: #(bike: "Road" due: 2026-11-20)
+fetch/with "/api/bookings" compose/only [body: (body)]
+```
+
 ## cached
 
 For a face that shows what a server has, with `is` or `react`: `table is [cached "/api/bookings"] [...]`. The
@@ -109,7 +123,9 @@ last id in a `Last-Event-ID` header, for the server to send what came after it.
 - `on-close` runs, too, when the program calls `close-stream`, and, with `reconnect: no`, when the server ends
   the stream (`value` is `none` for both).
 
-The options of `/with`, a block or an object, are those of `fetch` that apply, and two of its own:
+The options of `/with`, a block or an object, are those of `fetch` that apply, and two of its own. As in
+`fetch`, the block is an object of its own: in `[headers: headers]` the second `headers` is the option, not
+the program's word, so give that word another name:
 
 | Option | What it does |
 | --- | --- |
