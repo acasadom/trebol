@@ -45,6 +45,7 @@ function upgrade(req: { headers: Record<string, string | string[] | undefined> }
 // requests to /slow being answered now, and the most there were at once
 let slowNow = 0;
 let slowMost = 0;
+const streamCalls: Record<string, number> = {};
 
 before(async () => {
   server = createServer((req, res) => {
@@ -109,6 +110,33 @@ before(async () => {
       case '/text':
         res.writeHead(200, { 'content-type': 'text/plain' });
         res.end('plain text');
+        return;
+      case '/again': {
+        // the first stream gives an id and ends; the next ones say the id they were sent and stay open
+        const n = streamCalls.again = (streamCalls.again ?? 0) + 1;
+        res.writeHead(200, { 'content-type': 'text/event-stream' });
+        if (n === 1) res.end('retry: 20\nid: 7\ndata: one\n\n');
+        else res.write(`data: ${req.headers['last-event-id']}\n\n`);
+        return;
+      }
+      case '/refuse':
+        res.writeHead(Number(url.searchParams.get('status')));
+        res.end();
+        return;
+      case '/flaky': {
+        const n = streamCalls.flaky = (streamCalls.flaky ?? 0) + 1;
+        if (n === 1) {
+          res.writeHead(503);
+          res.end();
+          return;
+        }
+        res.writeHead(200, { 'content-type': 'text/event-stream' });
+        res.write('data: ok\n\n');
+        return;
+      }
+      case '/echo-events':
+        res.writeHead(200, { 'content-type': 'text/event-stream' });
+        res.end(`data: ${JSON.stringify({ token: req.headers['x-token'], a: url.searchParams.get('a'), last: req.headers['last-event-id'] })}\n\n`);
         return;
       case '/events':
         res.writeHead(200, { 'content-type': 'text/event-stream' });
@@ -413,6 +441,54 @@ describe('streams', () => {
       on-message feed [append/only got reduce [event value]]
       wait 0.08 close feed got`);
     assert.equal(r, '[[message #(n: 1)] [note "two"] [message "3"]]');
+  });
+
+  test('a stream that ends opens again on the same handle, with Last-Event-ID, and on-open says so', async () => {
+    const r = await ev(`got: copy []
+      s: open-events base/again
+      on-open s [append got reconnected]
+      on-message s [append/only got reduce [value id]]
+      wait 0.15 close-stream s got`);
+    assert.equal(r, '[false ["one" "7"] true ["7" "7"]]');
+  });
+
+  test('a 4xx stops the stream with on-error and on-close; a 204 only closes it', async () => {
+    const r = await ev(`got: copy []
+      s: open-events base/refuse?status=401
+      on-error s [append got reduce [status attempt]]
+      on-close s [append got 'closed]
+      t: open-events base/refuse?status=204
+      on-error t [append got 'error]
+      on-close t [append got value]
+      wait 0.1 got`);
+    assert.ok(r === '[401 1 closed 204]' || r === '[204 401 1 closed]', r);
+  });
+
+  test('a server error is one failed attempt: on-error, then it tries again after a second', async () => {
+    const r = await ev(`got: copy []
+      s: open-events base/flaky
+      on-error s [append got reduce [status attempt]]
+      on-open s [append got reconnected]
+      on-message s [append got value]
+      wait 1.3 close-stream s got`);
+    assert.equal(r, '[503 1 false "ok"]');
+  });
+
+  test('open-events/with sends headers, query and last-id; reconnect: no ends it with on-close', async () => {
+    const r = await ev(`got: copy []
+      s: open-events/with base/echo-events [headers: [x-token "abc"] query: [a 1] last-id: 5 reconnect: no]
+      on-message s [append got value]
+      on-close s [append got 'closed]
+      wait 0.08 got`);
+    assert.equal(r, '[#(token: "abc" a: "1" last: "5") closed]');
+  });
+
+  test('close-stream runs on-close of a stream of events', async () => {
+    const r = await ev(`got: copy []
+      s: open-events base/again
+      on-close s [append got 'closed]
+      wait 0.03 close-stream s wait 0.01 got`);
+    assert.equal(r, '[closed]');
   });
 
   test('websocket: messages, send and JSON', async () => {

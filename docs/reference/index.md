@@ -66,7 +66,7 @@ draw
 
 ### E
 
-[`either`](#fn-either) · [`email?`](#fn-email-3f) · [`empty?`](#fn-empty-3f) · [`enbase`](#fn-enbase) · [`enhex`](#fn-enhex) · [`equal?`](#fn-equal-3f) · [`error?`](#fn-error-3f) · [`even?`](#fn-even-3f) · [`every`](#fn-every) · [`exclude`](#fn-exclude) · [`exit`](#fn-exit) · [`exp`](#fn-exp) · [`extract`](#fn-extract)
+[`either`](#fn-either) · [`email?`](#fn-email-3f) · [`empty?`](#fn-empty-3f) · [`enbase`](#fn-enbase) · [`enhex`](#fn-enhex) · [`equal?`](#fn-equal-3f) · [`error?`](#fn-error-3f) · [`even?`](#fn-even-3f) · [`events-request`](#fn-events-request) · [`every`](#fn-every) · [`exclude`](#fn-exclude) · [`exit`](#fn-exit) · [`exp`](#fn-exp) · [`extract`](#fn-extract)
 
 ### F
 
@@ -106,7 +106,7 @@ draw
 
 ### O
 
-[`object?`](#fn-object-3f) · [`odd?`](#fn-odd-3f) · [`on-close`](#fn-on-close) · [`on-error`](#fn-on-error) · [`on-message`](#fn-on-message) · [`op?`](#fn-op-3f) · [`open`](#fn-open) · [`open-events`](#fn-open-events) · [`open-socket`](#fn-open-socket) · [`or`](#fn-or) · [`or~`](#fn-or-7e)
+[`object?`](#fn-object-3f) · [`odd?`](#fn-odd-3f) · [`on-close`](#fn-on-close) · [`on-error`](#fn-on-error) · [`on-message`](#fn-on-message) · [`on-open`](#fn-on-open) · [`op?`](#fn-op-3f) · [`open`](#fn-open) · [`open-events`](#fn-open-events) · [`open-socket`](#fn-open-socket) · [`or`](#fn-or) · [`or~`](#fn-or-7e)
 
 ### P
 

@@ -135,7 +135,7 @@ native('download', '["Gives the user a file to save: text (as UTF-8), bytes, or 
 
 // --- HTTP ------------------------------------------------------------------------
 
-function field(opts: ObjectCell | null, name: string): Cell | null {
+export function field(opts: ObjectCell | null, name: string): Cell | null {
   if (opts === null) return null;
   const i = ctxFind(opts.ctx, intern(name));
   const v = i < 0 ? undefined : opts.ctx.vals[i];
@@ -143,10 +143,10 @@ function field(opts: ObjectCell | null, name: string): Cell | null {
 }
 
 /** A yes-or-no option: on unless it is missing, none or false. */
-const isOn = (v: Cell | null): boolean => v !== null && !(v.t === K.Logic && !v.v);
+export const isOn = (v: Cell | null): boolean => v !== null && !(v.t === K.Logic && !v.v);
 
 /** Pairs from a block [name value ...], a map or an object, as strings. */
-function pairs(c: Cell): Array<[string, string]> {
+export function pairs(c: Cell): Array<[string, string]> {
   const out: Array<[string, string]> = [];
   const name = (k: Cell) => (k.t >= K.Word && k.t <= K.Issue ? spell((k as WordCell).sym) : form(k));
   if (c.t === K.Block || c.t === K.Map) {

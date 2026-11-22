@@ -169,10 +169,12 @@ check 3
 With `fetch`, the counter asks and the supplier answers, once. Some news comes without asking: the day's
 delivery is packed, then on the road, then at the door. `open-events` opens a stream of **server-sent events**,
 news that only the server sends, and `on-message` runs a block for each piece, with the news in `value`. A JSON
-piece comes as a map, as with `fetch`. `on-close` runs when the server ends the stream:
+piece comes as a map, as with `fetch`. A stream that fails or ends opens again by itself, the way a browser
+keeps one; today's news is over when the delivery is at the door, so the counter asks with `reconnect: no`,
+and `on-close` runs when the supplier ends the stream:
 
 ```trebol-console
->> news: open-events http://localhost:8089/deliveries
+>> news: open-events/with http://localhost:8089/deliveries [reconnect: no]
 == #[handle!]
 >> on-message news [print ["the delivery is" value/step]]
 == #[handle!]
@@ -185,6 +187,13 @@ the delivery is delivered
 no more news today
 == none
 ```
+
+Without `reconnect: no` the stream waits a second and opens again on the same handle, so its handlers go on
+working; the wait doubles each time it fails, up to 30 seconds. `on-open` runs each time it is open, with
+`reconnected` true after the first, for a program to ask again for what it may have missed. `on-error` runs
+for each attempt that fails, and the stream goes on trying, unless the server answers that it does not want
+it (a 204, or a 4xx such as 401 when the user is no longer signed in): then it stops, and `on-close` runs.
+`close-stream` ends it for good.
 
 A **WebSocket** goes both ways, and stays open: the shop can ask the supplier's order desk again and again
 without a new request each time. `open-socket` waits until it is open; `send` sends a value (a map or a block

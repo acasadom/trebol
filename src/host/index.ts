@@ -4,6 +4,7 @@
 import './natives.ts';
 import './net.ts';
 import './net/streams.ts';
+import './net/events.ts';
 import './page.ts';
 import './compress.ts';
 import './share.ts';
@@ -41,6 +42,16 @@ fetch: func [
     ; what was kept of the same path is old now
     if all [with  find [post put patch delete] attempt [to word! select options 'method]] [ui-cache-touched url]
     answer
+]
+
+open-events: func [
+    "Opens a stream of server-sent events; gives a handle. It opens again by itself when it fails or the server ends it."
+    url [url! string!]
+    /with "headers, query, cookies, reconnect, last-id"
+        options [block! object!]
+][
+    if all [with block? options] [options: make object! options]
+    events-request url either with [options] [none]
 ]
 
 ; --- answers kept: cached and refresh ---------------------------------------------
