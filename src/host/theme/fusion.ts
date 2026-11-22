@@ -48,6 +48,7 @@ select.tb-input:focus { box-shadow: 0 0 0 2px var(--tb-focus-ring); }
 }
 .tb-list > li { padding: var(--tb-space-2) var(--tb-space-3); }
 .tb-selectable :is(tbody > tr, .tb-list > li).tb-selected, .tb-tree li.tb-selected > .tb-tree-row { background: var(--tb-primary); color: var(--tb-on-primary); }
+.tb-selectable :is(tbody > tr, .tb-list > li).tb-selected [data-tb-role], .tb-tree li.tb-selected > .tb-tree-row [data-tb-role] { color: inherit; }
 .tb-list > li.tb-selected .tb-list-secondary, .tb-tree li.tb-selected > .tb-tree-row .tb-tree-toggle { color: inherit; }
 .tb-tree-row { border-radius: 0; }
 .tb-progress { height: 20px; border: 1px solid var(--tb-border-strong); border-radius: 3px; background: var(--tb-surface); }

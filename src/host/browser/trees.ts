@@ -6,6 +6,7 @@ import { get, str, own, flag, icon } from './faces.ts';
 import { type Mounted, rowOf, fire, el } from './mount.ts';
 import { type Source, type Target, insertionAt } from './drag.ts';
 import { columns, sameRow, cellText } from './tables.ts';
+import { roleField, roleOf, paintRole } from './row-roles.ts';
 
 export const CHILDREN = intern('children');
 export const EXPANDED = intern('expanded');
@@ -68,7 +69,9 @@ export function newTreeItem(): HTMLElement {
 /** Creates, updates, moves or removes the items of a tree, level by level, by key. */
 export function syncTree(m: Mounted): void {
   const f = m.face;
-  const label = columns(f)[0]?.sym ?? intern('name');
+  const first = columns(f)[0];
+  const label = first?.sym ?? intern('name');
+  const rowRole = roleField(f);
   const keyWord = get(f, 'key');
   const key = keyWord.t === K.Word || keyWord.t === K.LitWord ? (keyWord as WordCell).sym : intern('id');
   const selected = get(f, 'selected');
@@ -94,6 +97,9 @@ export function syncTree(m: Mounted): void {
       const text = cellText(rowField(node, label));
       const name = item.firstElementChild!.lastElementChild!;
       if (name.textContent !== text) name.textContent = text;
+      // the row of a node in the role its data names, and its label in the one its column reads
+      paintRole(item.firstElementChild as HTMLElement, roleOf(node, rowRole));
+      paintRole(name as HTMLElement, roleOf(node, first?.roleBy ?? null));
       const kids = rowField(node, CHILDREN);
       const folder = kids.t === K.Block;
       // `expanded: true` opens a node the first time it shows as one that holds others: a row that was a leaf

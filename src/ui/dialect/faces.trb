@@ -69,10 +69,12 @@ face: make object! [
     multiple: false     ; an upload or a lookup takes more than one
     accept: none        ; the files an upload takes: ["pdf" "image/*"]; a photo, images unless told
     pane: none
-    columns: none       ; table, list and tree: [field "Label" ...]; a column of images, [field ["Label" image round]]
+    columns: none       ; table, list and tree: [field "Label" ...]; a column of images, [field ["Label" image round]];
+                        ; a column painted in a row's role, [field ["Label" role-by tone]]
     data: none          ; table, list and tree: a block of map! or object! rows (a tree's
                         ; have their own in `children`); breadcrumb: its items; orbit: its focus, nodes, edges and trail
     key: 'id            ; the row field that identifies a row
+    role-by: none       ; table, list and board: the row field whose value is the role a row is painted in
     morph: none         ; a name shared with a face of the next screen, which this one becomes as the screen
                         ; changes: a word, or a block of values; a table or list gives each row its name and key
     selected: none      ; the row last chosen

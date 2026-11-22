@@ -162,6 +162,31 @@ workshop/data: bookings
 A list suits a narrow column beside a form, or a phone; a table suits the screen where the rows are the
 work.
 
+## Colour from the data
+
+Some rows matter more than others: a bike that is late, a payment that failed. The row already says so in one of
+its fields, and `role-by` paints the row in the role that field names. After a column, it paints only that
+column's cell:
+
+```trebol-ui
+view [
+    global table workshop role-by alert [
+        customer "Customer" bike "Bike" state "State" role-by tone
+    ]
+]
+
+workshop/data: [
+    #(customer: "Ada Lovelace" bike: "Road" state: "Ready" tone: success)
+    #(customer: "Grace Hopper" bike: "City" state: "Waiting for parts" tone: warning)
+    #(customer: "Alan Turing" bike: "Mountain" state: "Two days late" tone: danger alert: danger)
+]
+```
+
+The roles are those of every face: `success`, `warning`, `danger`, `primary`, `accent` and `muted`. The field
+may hold a word or a text, as a server sends it, in any case. A row whose field is missing, `none` or a value
+that names no role is drawn as usual: the data is not the layout's, so it is never a problem. Lists, boards and
+trees take `role-by` the same way; in a list, a column's role paints its text.
+
 ## A board
 
 Work that goes through stages reads best as a board: a lane for each stage, and a card for each job in the lane

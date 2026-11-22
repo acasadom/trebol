@@ -84,6 +84,7 @@ stylize [
         lanes: block :lanes-of "a word and a label for each lane"
         card: 'card [block!] :columns-of "the fields a card shows"
         key: 'key [word!] "the field that tells one card from another"
+        role-by: 'role-by [word!] "the field of a card whose value, success or danger, is the role the card is painted in"
         done: :board-check
     ]]
     breadcrumb: face [style: 'breadcrumb  takes: [data: block :crumbs-of "its items: a label and where each goes"]]

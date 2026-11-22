@@ -50,6 +50,7 @@ ui-define/abstract 'rows-face 'face [takes: [
     name: first label "the word that labels it: table clients is clients: table"
     columns: block :columns-of "the field of each column and its header"
     key: 'key [word!] "the field that tells one row from another"
+    role-by: 'role-by [word!] "the field of a row whose value, success or danger, is the role the row is painted in"
 ]]
 
 ; the space of pad and gap: a step, none or wide

@@ -104,7 +104,7 @@ board-fill: function [f /local id label] [
         f/pane: collect [
             foreach [id label] f/lanes [
                 cards: make select styles 'list [
-                    drag: true  owner: f  text: ""
+                    drag: true  owner: f  text: ""  role-by: f/role-by
                     columns: any [f/card  columns-of [title]]
                     events: compose/deep [on-select [board-pick (f) row]]
                 ]

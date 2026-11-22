@@ -335,6 +335,13 @@ goes back, as does a touch anywhere else or a scroll.
 place in the selection and moves as itself when the rows change. `key "Ctrl+S"`: the shortcut of a button or
 link.
 
+## role-by
+
+`role-by tone`: the field of each row whose value, `success`, `danger`, `warning`, `primary`, `accent` or
+`muted`, as a word or a text, is the role a table, list, board or tree paints that row or card in. In a block of
+columns, after a column, `[state "State" role-by tone]`, it paints that column's cell instead. Any other value
+paints nothing.
+
 ## morph
 
 `morph 'logo`: a name the face shares with a face of the next screen; as the screen changes, one becomes the

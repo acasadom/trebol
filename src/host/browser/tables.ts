@@ -7,9 +7,13 @@ import { mayMove, rowPlaces, moveRows, leaveRow } from '../motion.ts';
 import { get, str, own, display, flag, icon } from './faces.ts';
 import { type Mounted, host, rowOf, fire, el } from './mount.ts';
 import { handlerFor } from './events.ts';
+import { roleField, roleOf, paintRole } from './row-roles.ts';
 
-/** A column; `image` when it shows each row's picture, `round` when cut to a circle. */
-export interface Column { sym: Sym; word: Cell; label: string; image: boolean; round: boolean }
+/**
+ * A column; `image` when it shows each row's picture, `round` when cut to a circle; `roleBy`, the field
+ * whose value is the role each cell is painted in.
+ */
+export interface Column { sym: Sym; word: Cell; label: string; image: boolean; round: boolean; roleBy: Sym | null }
 
 export function columns(face: ObjectCell): Column[] {
   const c = get(face, 'columns');
@@ -19,11 +23,14 @@ export function columns(face: ObjectCell): Column[] {
   for (let i = c.i; i + 1 < d.length; i += 2) {
     const w = d[i]!;
     if (w.t !== K.Word) continue;
-    // a column of images keeps its label in a block with what it is: ["Photo" image round]
+    // a column of images keeps its label in a block with what it is: ["Photo" image round];
+    // one painted in a row's role, the field it reads it from: ["Status" role-by tone]
     const spec = d[i + 1]!;
     const parts = spec.t === K.Block ? (spec as BlockCell).s.data.slice((spec as BlockCell).i) : [spec];
-    const has = (name: string): boolean => parts.some(p => p.t === K.Word && canon((p as WordCell).sym) === canon(intern(name)));
-    out.push({ sym: (w as WordCell).sym, word: w, label: translate(parts[0] ?? NONE, host.rt), image: has('image'), round: has('round') });
+    const at = (name: string): number => parts.findIndex(p => p.t === K.Word && canon((p as WordCell).sym) === canon(intern(name)));
+    const by = parts[at('role-by') + 1];
+    const roleBy = at('role-by') > 0 && by !== undefined && by.t === K.Word ? (by as WordCell).sym : null;
+    out.push({ sym: (w as WordCell).sym, word: w, label: translate(parts[0] ?? NONE, host.rt), image: at('image') > 0, round: at('round') > 0, roleBy });
   }
   return out;
 }
@@ -183,6 +190,7 @@ export function drawRows(m: Mounted, again = true): void {
   const morph = morphName(get(f, 'morph'));
   const keyWord = get(f, 'key');
   const keySym = keyWord.t === K.Word || keyWord.t === K.LitWord ? (keyWord as WordCell).sym : intern('id');
+  const rowRole = roleField(f);
   // rows added, taken away or in another order move to their places, when all of them are drawn
   const moved = old.size > 0 && count <= DRAW_ALL_UP_TO && !printing && box.isConnected && mayMove()
     && !sameKeys(old, m.items) && m.items.some(it => old.has(it.k));
@@ -209,6 +217,7 @@ export function drawRows(m: Mounted, again = true): void {
       if (morph !== null) item.dataset['tbMorph'] = `${morph} ${form(rowField(row, keySym))}`;
       else delete item.dataset['tbMorph'];
       fillRow(item, row, cols, table);
+      paintRole(item, roleOf(row, rowRole));
       if (selectable) item.tabIndex = 0;
       else item.removeAttribute('tabindex');
       const on = selected.t !== K.None && sameRow(selected, row);
@@ -447,6 +456,7 @@ export function fillRow(item: HTMLElement, row: Cell, cols: Column[], table: boo
       }
       set(td, cellText(v));
       td.classList.toggle('tb-num', NUMERIC.has(v.t));
+      paintRole(td as HTMLElement, roleOf(row, c.roleBy));
     });
     return;
   }
@@ -454,8 +464,29 @@ export function fillRow(item: HTMLElement, row: Cell, cols: Column[], table: boo
   const pic = cols.find(c => c.image);
   if (pic !== undefined) thumb(item, rowField(row, pic.sym), pic.round);
   else item.querySelector(':scope > .tb-thumb')?.remove();
-  const [first, ...rest] = cols.filter(c => !c.image).map(c => cellText(rowField(row, c.sym)));
+  const [first, ...rest] = cols.filter(c => !c.image).map(c => ({ text: cellText(rowField(row, c.sym)), role: roleOf(row, c.roleBy) }));
   const texts = item.querySelector(':scope > .tb-list-texts')!;
-  set(texts.children[0]!, first ?? '');
-  set(texts.children[1]!, rest.filter(Boolean).join(' · '));
+  const primary = texts.children[0] as HTMLElement;
+  set(primary, first?.text ?? '');
+  paintRole(primary, first?.role ?? null);
+  fillSecondary(texts.children[1] as HTMLElement, rest.filter(p => p.text !== ''));
+}
+
+/** The quieter line of a list item: its values joined by dots, each in a span of its own when painted in a role. */
+function fillSecondary(line: HTMLElement, parts: { text: string; role: string | null }[]): void {
+  const text = parts.map(p => p.text).join(' · ');
+  const roles = parts.map(p => p.role ?? '').join(' ');
+  if (line.textContent === text && (line.dataset['tbRoles'] ?? '') === roles) return;
+  if (roles.trim() === '') {
+    line.textContent = text;
+    delete line.dataset['tbRoles'];
+    return;
+  }
+  line.dataset['tbRoles'] = roles;
+  line.replaceChildren(...parts.flatMap((p, i) => {
+    const span = el('span');
+    span.textContent = p.text;
+    paintRole(span, p.role);
+    return i === 0 ? [span] : [document.createTextNode(' · '), span];
+  }));
 }

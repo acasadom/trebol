@@ -48,6 +48,7 @@ select.tb-input:focus { box-shadow: 0 0 0 1px var(--tb-border), 0 0 0 4px var(--
 .tb-list { padding: 4px; box-shadow: none; }
 .tb-list > li { border-bottom: 0; border-radius: 6px; }
 .tb-selectable :is(tbody > tr, .tb-list > li).tb-selected, .tb-tree li.tb-selected > .tb-tree-row { background: var(--tb-primary); color: var(--tb-on-primary); }
+.tb-selectable :is(tbody > tr, .tb-list > li).tb-selected [data-tb-role], .tb-tree li.tb-selected > .tb-tree-row [data-tb-role] { color: inherit; }
 .tb-list > li.tb-selected .tb-list-secondary, .tb-tree li.tb-selected > .tb-tree-row .tb-tree-toggle { color: inherit; }
 .tb-tree-row { border-radius: 6px; }
 .tb-menu, .tb-lookup-list { padding: 5px; border-radius: 8px; background: color-mix(in oklch, var(--tb-raised) 82%, transparent); -webkit-backdrop-filter: blur(24px) saturate(1.6); backdrop-filter: blur(24px) saturate(1.6); animation: none; }

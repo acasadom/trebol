@@ -88,6 +88,7 @@ It takes what [`face`](#style-face) takes, and:
 - a word, right after the style: the word that labels it: table clients is clients: table
 - a block (`columns`): the field of each column and its header
 - [`key`](#word-key) and a word: the field that tells one row from another
+- [`role-by`](#word-role-by) and a word: the field of a row whose value, success or danger, is the role the row is painted in
 
 What a face that shows rows takes: its columns, and the field that tells rows apart.
 
@@ -699,6 +700,10 @@ Among the rows, `[head 1 "Title"]` is the title of a group, the width of the tab
 subtotals; level 2 is indented. Neither is chosen or sorted: `sortable` sorts the rows inside each group. A
 list shows them too. A column followed by `image` shows each row's picture, from the address or file in its
 field, and `image round` cuts it to a circle: `table people [photo "" image round name "Name"]`.
+`role-by tone` after the table's name paints each row in the role its `tone` field names, `success`, `danger`,
+`warning`, `primary`, `accent` or `muted`, as a word or a text in any case: the row is tinted with a bar at its
+start. After a column, `[state "State" role-by tone]`, it paints that column's cell in it instead. A value that
+names no role, or none, paints nothing; data is never a problem of the layout.
 
 (style-list)=
 ## list
@@ -706,7 +711,7 @@ field, and `image round` cuts it to a circle: `table people [photo "" image roun
 Made from [`rows-face`](#style-rows-face).
 
 The same rows as a table, as a list: the first field stands out and the rest go on a second line. The picture of
-a column of images goes first.
+a column of images goes first. `role-by` paints a whole item, and, after a column, its text.
 
 (style-board)=
 ## board
@@ -720,11 +725,12 @@ It takes what [`face`](#style-face) takes, and:
 - a block (`lanes`): a word and a label for each lane
 - [`card`](#word-card) and a block: the fields a card shows
 - [`key`](#word-key) and a word: the field that tells one card from another
+- [`role-by`](#word-role-by) and a word: the field of a card whose value, success or danger, is the role the card is painted in
 
 Cards in lanes: `board jobs by status [todo "To do" doing "Doing" done "Done"]` makes a lane for each word, with
 its label, and puts in it, as a card, each row of its `data` whose `status` names it, a word or a text. A card
 shows the row's `title`, or the fields of `card [title "Job" who "Mechanic"]`, the first one large, as a list
-does. A card can be dragged to another lane, or moved there from its menu; then its field names that lane and
+does. `role-by tone` paints each card in the role its `tone` names, as in a table. A card can be dragged to another lane, or moved there from its menu; then its field names that lane and
 `on-drop` runs, with `event/row`, `event/from` and `event/to`: when it gives `false`, the card goes back.
 `on-select`, or the block after the lanes when there is none, runs when a card is chosen, with it as `row`. When the field holds a machine, a lane is a state: a card goes to the
 lane only by a way of its machine from where it is to that state, whose event the drop sends.
@@ -807,7 +813,7 @@ Made from [`rows-face`](#style-rows-face).
 It fires [`on-expand`](#word-on-expand).
 
 Rows with rows inside, in their `children`, which open and close. Like a table, its rows can be chosen and
-dragged.
+dragged, and `role-by` paints a row, or, after its column, its label.
 
 (style-screens)=
 ## screens

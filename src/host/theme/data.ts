@@ -107,4 +107,19 @@ export const DATA = String.raw`
 .tb-board .tb-list > li, .tb-board .tb-list > li:last-child { background: var(--tb-surface); border: var(--tb-line) solid var(--tb-border); border-radius: var(--tb-radius); box-shadow: var(--tb-shadow-1); }
 .tb-board .tb-empty { display: none; }
 
+/* rows and cells painted in the role their data names (role-by): a row tinted, with a bar at its start;
+   a cell, list text or tree label in the role's colour */
+[data-tb-role="primary"] { --tb-role: var(--tb-primary); --tb-role-soft: var(--tb-primary-soft); --tb-role-ink: var(--tb-primary-ink); }
+[data-tb-role="accent"] { --tb-role: var(--tb-accent); --tb-role-soft: var(--tb-accent-soft); --tb-role-ink: var(--tb-accent-ink); }
+[data-tb-role="danger"] { --tb-role: var(--tb-danger); --tb-role-soft: var(--tb-danger-soft); --tb-role-ink: var(--tb-danger-ink); }
+[data-tb-role="success"] { --tb-role: var(--tb-success); --tb-role-soft: var(--tb-success-soft); --tb-role-ink: var(--tb-success-ink); }
+[data-tb-role="warning"] { --tb-role: var(--tb-warning); --tb-role-soft: var(--tb-warning-soft); --tb-role-ink: var(--tb-warning-ink); }
+[data-tb-role="muted"] { --tb-role: var(--tb-muted); --tb-role-soft: var(--tb-muted-soft); --tb-role-ink: var(--tb-muted-ink); }
+/* :where keeps these below a chosen row's look */
+:where(.tb-table tbody > tr, .tb-list > li, .tb-tree-row)[data-tb-role] { background: var(--tb-role-soft); }
+:where(.tb-table tbody > tr[data-tb-role]) > td:first-child, :where(.tb-list > li, .tb-tree-row)[data-tb-role] { box-shadow: inset 3px 0 0 var(--tb-role); }
+.tb-board .tb-list > li[data-tb-role] { box-shadow: inset 3px 0 0 var(--tb-role), var(--tb-shadow-1); }
+.tb-table td[data-tb-role], .tb-list-texts [data-tb-role], .tb-tree-label[data-tb-role] { color: var(--tb-role-ink); font-weight: 550; }
+.tb-table td[data-tb-role="muted"], .tb-list-texts [data-tb-role="muted"], .tb-tree-label[data-tb-role="muted"] { font-weight: inherit; }
+
 `;
