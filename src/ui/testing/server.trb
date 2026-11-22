@@ -64,6 +64,10 @@ test-answer: function [
             if m = 'EVENTS [return true]
             data: all [body  any [attempt [load-json body]  body]]
             append words compose/only [body: (data) query: (query)]
+            ; the set-words of the block are local to this answer, as in a function: the app's words stay
+            foreach w collect-words/deep/set b [
+                unless find words to set-word! w [append words reduce [to set-word! w none]]
+            ]
             r: do bind copy/deep b make object! words
             return either all [object? :r  in r 'reply-status] [
                 reduce [r/reply-status  to-json :r/reply-data]

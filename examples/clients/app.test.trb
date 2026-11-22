@@ -12,7 +12,7 @@ serve [
     POST "/api/clients" [
         client: copy body
         client/id: next-id
-        next-id: next-id + 1
+        set 'next-id next-id + 1
         append people client
         client
     ]

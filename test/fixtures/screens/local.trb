@@ -1,0 +1,8 @@
+Trebol [title: "An app with a word a server answer also sets"]
+
+greet: func [name] [rejoin ["Hello " name]]
+
+view [
+    note: text "Nothing yet"
+    button "Load" [data: fetch "/api/note"  note/text: greet data/text]
+]

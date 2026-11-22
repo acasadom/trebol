@@ -1,0 +1,21 @@
+Trebol [title: "The words a serve block sets are its own" app: %local.trb]
+
+asked: 0
+serve [
+    GET "/api/note" [
+        greet: "the server's"
+        parts: [extra: 1]
+        set 'asked asked + 1
+        make map! reduce ['text greet]
+    ]
+]
+
+"a serve block keeps its set-words to itself"
+[
+    click "Load"
+    see "Hello the server's"
+    click "Load"
+    see "Hello the server's"
+    asked = 2
+]
+[not value? 'parts]
