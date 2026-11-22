@@ -2,7 +2,8 @@ Trebol [title: "Live"]
 
 ; A chat over a WebSocket, and who is in it over server-sent events, from
 ; the server in server.ts that `npm run dev` runs. Open the page in two tabs
-; and talk to yourself.
+; and talk to yourself. Stop `npm run dev` and start it again: the stream of
+; who is in the chat opens again by itself, and the page comes back.
 
 chat: none
 
@@ -26,6 +27,9 @@ on-message activity [
     online/text: rejoin [value/online either value/online = 1 [" person"] [" people"] " in the chat"]
     if value/note [toast value/note]
 ]
+; the server went away: the stream tries again, a second later and then longer
+on-error activity [online/text: "Reconnecting…"]
+on-open activity [if reconnected [toast "Back online"]]
 
 view [
     title "Live"
