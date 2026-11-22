@@ -22,6 +22,10 @@ Text that does not load is the same `syntax` error as in `load`.
 
 ## to-json
 
+The words `true`, `false` and `none` are written as the JSON values `true`, `false` and `null`, so a map
+literal such as `#(paid: false)`, which keeps them as words, gives the JSON a server expects. A lit-word such
+as `'false`, and every other word, is written as a string.
+
 ## load-json
 
 The text must be JSON as its standard says: a line break or other control character inside a string is written

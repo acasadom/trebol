@@ -265,6 +265,11 @@ Trebol [
 [(to-json make object! [a: 1 f: does [2]]) = {{"a":1}}]
 [(to-json reduce [1 :add]) = "[1,null]"]
 
+"json writes the words true false none of a map literal as JSON values"
+[(to-json #(on: true off: false gone: none)) = {{"on":true,"off":false,"gone":null}}]
+[(to-json [yes true 'false]) = {["yes",true,"false"]}]
+[(to-json reduce [true none]) = "[true,null]"]
+
 "decimals show 15 digits and compare as R3"
 [(mold 0.1 + 0.2) = "0.3"]
 [(mold/all 0.1 + 0.2) = "0.30000000000000004"]

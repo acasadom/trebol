@@ -52,6 +52,10 @@ to-json value
 
 - `value` (`any-type!`)
 
+The words `true`, `false` and `none` are written as the JSON values `true`, `false` and `null`, so a map
+literal such as `#(paid: false)`, which keeps them as words, gives the JSON a server expects. A lit-word such
+as `'false`, and every other word, is written as a string.
+
 (fn-load-json)=
 ## load-json
 
