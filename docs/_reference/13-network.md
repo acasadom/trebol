@@ -126,6 +126,25 @@ on-message news [if event = 'window [refresh "/api/status"]]
 on-error news [print ["stream down, attempt" attempt]]
 ```
 
+A stream the server refused stays closed: to go on, the program signs in again and opens a new one, which
+is a new handle, so it sets its handlers again. A function that opens the stream and, on a 401 or 403, calls
+itself does both; keeping the last `id` and giving it as `last-id` lets the server send what was missed.
+When signing in again fails too, the program should not open the stream again, or it asks forever.
+
+```
+last-seen: none
+listen: does [
+    news: open-events/with "/api/events" [last-id: last-seen]
+    on-message news [last-seen: any [id last-seen]  refresh "/api/status"]
+    on-close news [
+        if find [401 403] value [
+            if renew-token [listen]     ; renew-token: the app's own, true when signed in again
+        ]
+    ]
+]
+listen
+```
+
 ## events-request
 
 What `open-events` calls with its options as an object, or `none`; a program calls `open-events`.
