@@ -275,6 +275,33 @@ carry news of many kinds: `if event = 'booking [...]`. The cookie of the login g
 `fetch`; `open-events/with` takes `headers` for a server that wants another sign, and the other options in
 the [reference](../reference/network.md).
 
+The login does not last forever. When it runs out, the server answers the stream with 401 and the stream
+stays closed: asking again would get the same answer. `on-close` runs then, with the status in `value`; the
+board signs in again and opens a new stream, which is a new handle, so it sets the handlers again. Doing it
+all in one function, which calls itself, keeps them in one place; the last `id` goes with the new stream as
+`last-id`, for the server to send the news the board missed:
+
+```
+last-seen: none
+listen: does [
+    news: open-events/with "/api/events" [last-id: last-seen]
+    on-message news [
+        last-seen: any [id last-seen]
+        refresh "/api/bookings"
+    ]
+    on-close news [
+        if find [401 403] value [
+            if sign-in-again [listen]
+        ]
+    ]
+]
+listen
+```
+
+`sign-in-again` is the board's own: it asks the server for a new login and gives true when it got one. When
+it gives false, the board does not open the stream again, or it would ask forever; it shows the login screen
+instead.
+
 ## What's next
 
 The bookings live on a server now. The next page draws: the shop's logo, and its takings as charts.
