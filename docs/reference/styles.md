@@ -193,6 +193,7 @@ Made from [`face`](#style-face).
 It takes what [`face`](#style-face) takes, and:
 
 - [`count`](#word-count): a number that changes runs from the old one to the new
+- [`shrink`](#word-shrink): on one line, as large as its width lets it be
 
 The title of the page or of a screen: the text the browser shows for it, too.
 
@@ -204,6 +205,7 @@ Made from [`face`](#style-face).
 It takes what [`face`](#style-face) takes, and:
 
 - [`count`](#word-count): a number that changes runs from the old one to the new
+- [`shrink`](#word-shrink): on one line, as large as its width lets it be
 
 A heading inside a page.
 
@@ -215,6 +217,7 @@ Made from [`face`](#style-face).
 It takes what [`face`](#style-face) takes, and:
 
 - [`count`](#word-count): a number that changes runs from the old one to the new
+- [`shrink`](#word-shrink): on one line, as large as its width lets it be
 
 Text. A date, a time, a number or an amount is shown in the format of the active language.
 

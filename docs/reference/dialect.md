@@ -245,6 +245,15 @@ A flag, of [`title`](#style-title), [`heading`](#style-heading), [`text`](#style
 A text, heading, title or stat whose number, percent or amount changes runs from the old one to the new, in about
 half a second: `title count is [total]`. Not the first it shows, nor with less motion asked for.
 
+(word-shrink)=
+## shrink
+
+A flag, of [`title`](#style-title), [`heading`](#style-heading) and [`text`](#style-text).
+
+A text, heading or title on one line, its letters as large as its width lets the line be, never larger than its
+own size nor smaller than about half of it (then it ends in `…`): `title shrink is [total]`. In a row it takes an
+equal share of what is left.
+
 (word-drag)=
 ## drag
 

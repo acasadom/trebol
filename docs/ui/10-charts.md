@@ -189,6 +189,23 @@ ends on, each written in the active language. The number it first shows does not
 the user asked the system for less motion: it is there at once. A number, a percent and an amount count; a
 text that is no number shows as it is.
 
+A large number in a narrow place, a phone or a column of a grid, would break in two. With `shrink`, a text,
+heading or title stays on one line and its letters are as large as its width lets them be, never larger than its
+own size: in a wide place it looks as it always does, in a narrow one it is made smaller.
+
+```trebol-ui
+view [
+    grid 3 [
+        title shrink "$1,240.00"
+        title shrink "$98,765,432.10"
+        title shrink "7"
+    ]
+]
+```
+
+It never goes below about half its size: a line that still does not fit ends in `…`. It works with `count`, so a
+number that runs keeps fitting.
+
 A `stat` says what such a number is, puts a line under it, and draws how it got there: the board at the top of
 a screen that tells the shop how the day goes.
 

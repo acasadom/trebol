@@ -13,6 +13,7 @@ import { isData } from './drag.ts';
 import { rangeText } from './calendar.ts';
 import { shortcutAria, shortcutLabel } from './keys.ts';
 import { countRun } from './count.ts';
+import { shrinkTarget } from './shrink.ts';
 import { syncPick } from './pick.ts';
 import { syncSlider, syncProgress, syncIcon, required, syncRadio } from './fields.ts';
 import { syncMedia, syncPhoto, syncUpload } from './uploads.ts';
@@ -161,8 +162,10 @@ function draw(m: Mounted): void {
     }
     case 'title': case 'heading': case 'text': {
       const tv = get(f, 'text');
-      if (flag(f, 'count') && countRun(m, tv)) break;
-      m.el.textContent = tv.t === K.None ? '' : tv.t === K.Map || tv.t === K.Word ? translate(tv, host.rt) : display(tv);
+      const shown = tv.t === K.None ? '' : tv.t === K.Map || tv.t === K.Word ? translate(tv, host.rt) : display(tv);
+      const into = shrinkTarget(m, flag(f, 'shrink'), shown);
+      if (flag(f, 'count') && countRun(m, tv, into)) break;
+      into.textContent = shown;
       break;
     }
     case 'tile': {

@@ -207,6 +207,14 @@ body {
 .tb-title { margin: 0; font-family: var(--tb-headings); font-size: 28px; line-height: 1.2; font-weight: 650; letter-spacing: -0.02em; }
 .tb-heading { margin: 0; font-family: var(--tb-headings); font-size: 20px; line-height: 1.3; font-weight: 600; letter-spacing: -0.01em; }
 .tb-text { margin: 0; }
+/* shrink: one line, its letters as large as the face's width lets them be (--tb-shrink-chars, set as it is drawn,
+   each character about 0.62 of the size wide), never larger than the face's own size nor smaller than 0.6 of it */
+.tb-shrink { container-type: inline-size; min-width: 0; }
+.tb-row > .tb-shrink { flex: 1 1 0; }
+.tb-shrink > .tb-shrink-line {
+  display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  font-size: clamp(0.6em, calc(100cqi / (0.62 * var(--tb-shrink-chars, 4))), 1em);
+}
 .tb-code {
   margin: 0; box-sizing: border-box; contain: inline-size; /* a long line scrolls; it never widens what holds it */
   padding: var(--tb-space-3) var(--tb-space-4); overflow-x: auto; white-space: pre; tab-size: 4;

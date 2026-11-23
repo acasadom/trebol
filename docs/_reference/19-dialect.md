@@ -150,6 +150,12 @@ Cuts an image to a circle, as for a person's photo: `image %ada.jpg "Ada" 48x48 
 A text, heading, title or stat whose number, percent or amount changes runs from the old one to the new, in about
 half a second: `title count is [total]`. Not the first it shows, nor with less motion asked for.
 
+## shrink
+
+A text, heading or title on one line, its letters as large as its width lets the line be, never larger than its
+own size nor smaller than about half of it (then it ends in `…`): `title shrink is [total]`. In a row it takes an
+equal share of what is left.
+
 ## drag
 
 It can be dragged: it carries its value, or the row in a table, list or tree.
