@@ -106,6 +106,11 @@ test('cached gives the last answer and asks again after a post or a refresh', as
   assert.ok(passed, lines.join('\n'));
 });
 
+test('the set-words of a serve block are local to its answer, and those of a test file are the file\'s own', async () => {
+  const { passed, lines } = await ran(['test/fixtures/screens/local.test.trb']);
+  assert.ok(passed, lines.join('\n'));
+});
+
 test('serve EVENTS gives the app a stream: push sends events, end-events makes it open again', async () => {
   const { passed, lines } = await ran(['test/fixtures/screens/events.test.trb']);
   assert.ok(passed, lines.join('\n'));

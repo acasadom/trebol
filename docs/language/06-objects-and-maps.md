@@ -205,6 +205,14 @@ does the reverse:
 == {{"customer":"Lin Wei","due":"2026-11-09","total":34.5}}
 ```
 
+In a map written with `#(...)` the values are not evaluated, so `true`, `false` and `none` stay words there.
+`to-json` still writes them as the JSON values a server expects:
+
+```trebol-console
+>> to-json #(paid: false note: none)
+== {{"paid":false,"note":null}}
+```
+
 Text between braces is a string too, written `{...}` instead of `"..."`: it can span lines and hold double
 quotes, which makes it the natural way to write JSON. The braces here are doubled because the outer pair
 delimits the string and the inner pair belongs to the JSON. In the second tutorial the shop fetches its

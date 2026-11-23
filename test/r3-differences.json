@@ -96,6 +96,14 @@
     "why": "Same: to-json."
   },
   {
+    "test": "[(to-json #[on: true off: false gone: none]) = {{\"on\":true,\"off\":false,\"gone\":null}}]",
+    "why": "Same: to-json."
+  },
+  {
+    "test": "[(to-json [yes true 'false]) = {[\"yes\",true,\"false\"]}]",
+    "why": "Same: to-json."
+  },
+  {
     "test": "[integer? 2 ** 62]",
     "why": "An integer to a whole power stays an exact integer, as in Red; R3 always gives a decimal."
   },

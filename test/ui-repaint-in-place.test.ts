@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { native, value, touch, type Ctx, type ObjectCell, type Series, type Cell } from '../src/core/index.ts';
 import { startHost, startUi, runSource, type Host } from '../src/host/index.ts';
 import { dirtySeries, watchShown, watchChanged, ownersOf, isFace } from '../src/host/browser/inplace.ts';
+import { paneFaces, paneMoved } from '../src/host/browser/faces.ts';
 
 native('show', '[root [object!]]', (_t, f) => value(f.args[0]!));
 native('ui-watch', '[value [object! series! map!]]', (_t, f) => value(f.args[0]!));
@@ -111,6 +112,25 @@ describe('a face shown changes in place', () => {
     const { owner } = await face(`v: view [text "x"]  v/pane/1`);
     await runSource(host, `append v/pane/1/text "y"`);
     assert.deepEqual(changed(), [owner]);
+  });
+
+  test('faces put in or taken out of its pane redraw it, with the faces it now holds', async () => {
+    const { f, owner } = await face(`v: view [panel [text "a"]]  v/pane/1`);
+    const was = paneFaces(f);
+    assert.equal(paneMoved(f, was), false);
+    await runSource(host, `append v/pane/1/pane layout/only [text "b"]`);
+    assert.deepEqual(changed(), [owner]);
+    assert.equal(paneMoved(f, was), true);
+    const two = paneFaces(f);
+    await runSource(host, `reverse v/pane/1/pane`);
+    assert.deepEqual(changed(), [owner]);
+    assert.equal(paneMoved(f, two), true);
+    await runSource(host, `remove v/pane/1/pane`);
+    assert.deepEqual(changed(), [owner]);
+    assert.equal(paneFaces(f).length, 1);
+    await runSource(host, `clear v/pane/1/pane`);
+    assert.deepEqual(changed(), [owner]);
+    assert.equal(paneFaces(f).length, 0);
   });
 
   test('children, handlers and other faces are not its content', async () => {

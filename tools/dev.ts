@@ -13,7 +13,9 @@
 //
 // An app can bring its own backend: `api` names a module whose `handleApi`
 // answers requests, and whose `handleUpgrade`, if it has one, takes the
-// requests to open a WebSocket (see examples/api.ts).
+// requests to open a WebSocket (see examples/api.ts). Or the backend is a
+// server of its own, in any language: `proxy` sends the paths under a prefix
+// to it (see dev-proxy.ts).
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { Socket } from 'node:net';
@@ -24,6 +26,7 @@ import { dirname, join, extname, normalize, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { stripTypeScriptTypes } from 'node:module';
 import { headTags } from './bundle.ts';
+import { forward, forwardUpgrade, proxyFor, type Proxy } from './dev-proxy.ts';
 
 /** Answers a request; returns false to let the dev server serve files. */
 export type ApiHandler = (req: IncomingMessage, res: ServerResponse, url: URL) => Promise<boolean>;
@@ -38,6 +41,8 @@ export interface DevOptions {
   port?: number;
   /** Path of a module exporting `handleApi` and maybe `handleUpgrade` (see ApiHandler, UpgradeHandler). */
   api?: string;
+  /** Prefixes whose requests and WebSockets go to another server; they come before `api` and the files. */
+  proxy?: readonly Proxy[];
   /** True lets other machines on the network in; by default only this machine reaches the server. */
   open?: boolean;
 }
@@ -123,6 +128,7 @@ export async function startDev(options: DevOptions = {}): Promise<Dev> {
     : null;
   const api = mod?.handleApi ?? null;
   const upgrade = mod?.handleUpgrade ?? null;
+  const proxies = options.proxy ?? [];
   const map = importMap();
   const mark = devMark(root);
   const clients = new Set<ServerResponse>();
@@ -136,6 +142,11 @@ export async function startDev(options: DevOptions = {}): Promise<Dev> {
       res.write(': connected\n\n');
       clients.add(res);
       req.on('close', () => clients.delete(res));
+      return;
+    }
+    const proxy = proxyFor(proxies, url.pathname);
+    if (proxy !== null) {
+      forward(proxy, req, res);
       return;
     }
     if (api !== null && await api(req, res, url)) return;
@@ -178,7 +189,10 @@ export async function startDev(options: DevOptions = {}): Promise<Dev> {
   });
 
   server.on('upgrade', (req: IncomingMessage, socket: Duplex, head: Buffer) => {
-    if (upgrade === null || !upgrade(req, socket, head, new URL(req.url ?? '/', 'http://x'))) socket.destroy();
+    const url = new URL(req.url ?? '/', 'http://x');
+    const proxy = proxyFor(proxies, url.pathname);
+    if (proxy !== null) forwardUpgrade(proxy, req, socket, head);
+    else if (upgrade === null || !upgrade(req, socket, head, url)) socket.destroy();
   });
   // open WebSockets and event streams of the API would keep close() waiting
   const sockets = new Set<Socket>();

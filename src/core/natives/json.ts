@@ -183,7 +183,8 @@ function jsonString(s: string): string {
 /** Functions have no JSON form: a field holding one is left out, as JSON.stringify does. */
 const isFunc = (c: Cell): boolean => c.t === K.Function || c.t === K.Native || c.t === K.Op;
 
-/** Serializes a value as JSON. Cycles, and functions in a block, become null. */
+/** Serializes a value as JSON. Cycles, and functions in a block, become null. The words true, false and
+ *  none become the JSON values true, false and null; other words become strings. */
 export function toJson(v: Cell, seen: Set<unknown> = new Set()): string {
   switch (v.t) {
     case K.None: case K.Unset: return 'null';
@@ -241,7 +242,13 @@ export function toJson(v: Cell, seen: Set<unknown> = new Set()): string {
     }
   }
   if (isAnyString(v.t)) return jsonString(text(v as StringCell));
-  if (isAnyWord(v.t)) return jsonString(spell((v as WordCell).sym));
+  if (isAnyWord(v.t)) {
+    const name = spell((v as WordCell).sym);
+    // A map literal keeps true/false/none as words (as Red): JSON means the values.
+    if (v.t === K.Word && (name === 'true' || name === 'false')) return name;
+    if (v.t === K.Word && name === 'none') return 'null';
+    return jsonString(name);
+  }
   return 'null';
 }
 

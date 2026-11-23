@@ -92,6 +92,7 @@ select.tb-input:focus { box-shadow: var(--tb-raise), var(--tb-ring); }
   .tb-table tr > :last-child { border-right: 0; }
 }
 .tb-selectable :is(tbody > tr, .tb-list > li).tb-selected, .tb-tree li.tb-selected > .tb-tree-row { background: var(--tb-primary); color: var(--tb-on-primary); }
+.tb-selectable :is(tbody > tr, .tb-list > li).tb-selected [data-tb-role], .tb-tree li.tb-selected > .tb-tree-row [data-tb-role] { color: inherit; }
 .tb-list > li.tb-selected .tb-list-secondary, .tb-tree li.tb-selected > .tb-tree-row .tb-tree-toggle { color: inherit; }
 .tb-selectable tbody tr.tb-selected:focus-visible, .tb-selectable .tb-list > li.tb-selected:focus-visible { box-shadow: inset 0 0 0 2px var(--tb-focus), inset 0 0 0 3px var(--tb-on-primary); }
 .tb-tree-row { border-radius: 0; }

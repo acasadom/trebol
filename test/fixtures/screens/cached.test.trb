@@ -3,7 +3,7 @@ Trebol [title: "Screen tests of cached and refresh"]
 bikes: []
 asked: 0
 serve [
-    GET "/api/bikes" [asked: asked + 1  copy/deep bikes]
+    GET "/api/bikes" [set 'asked asked + 1  copy/deep bikes]
     POST "/api/bikes" [append bikes make map! reduce ['name body/name]  #(ok: true)]
 ]
 

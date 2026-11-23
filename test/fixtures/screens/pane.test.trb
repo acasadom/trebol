@@ -3,3 +3,6 @@ Trebol [title: "Faces code puts in a pane are checked as those of the layout"]
 "a check of a field put in by code"
 [type "Word" "bad"  see "it is not good"]
 [type "Word" "good"  see/not "it is not good"]
+
+"a field appended to a pane by code"
+[click "More"  type "Another" "bad"  see "it is not good"]

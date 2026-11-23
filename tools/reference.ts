@@ -205,7 +205,7 @@ function wordLists(): Map<string, string[]> {
 /** The lists of ui.trb the dialect reads words from, and what a word of each is. */
 const WORD_LISTS: Record<string, string> = {
   roles: 'A role', sizes: 'A size', aligns: 'An alignment of the children', valigns: 'A vertical alignment of a row\'s children',
-  'chart-kinds': 'A kind of chart',
+  'chart-kinds': 'A kind of chart', 'timeline-orders': 'An order of a timeline',
 };
 
 /** The words build-faces reads after any face, whatever its style takes. */

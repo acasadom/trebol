@@ -215,6 +215,17 @@ read only.
 
 A bar: its value is a percent or a number from 0 to 1; with `none`, it moves without saying how far.
 
+## stat
+
+A number that stands for something, as a dashboard shows it: `stat "Takings" $1240.00`. Its text says what the
+number is, its value is the number, and a second text is the line under it: `stat "Late" 3 "of 41 this week"`.
+`trend [3 5 4 8]` draws the numbers it had, oldest first, as a small line at its foot, ending on a dot; two
+numbers at least, or it is a problem of the layout. A role colours the number and the line (`stat "Late" 3
+danger`), and with `count` a new number runs from the old one, as a text's does. `is [...]` gives it its number.
+On its own it is a card; in a panel it drops its border. The number is as large as the width of the stat lets it
+be, so four in a row never break one in two. A screen reader reads the text, the number and the line under it;
+the trend is for the eye.
+
 ## image
 
 An image, from a file or an address: `image %logo.png`. Its text is what a screen reader says for it; without
@@ -243,6 +254,14 @@ column names each point and the others are the series, each in a color of the th
 percents show as they do in a table. A pie shows the first series. `stacked` puts the series of a bar or area
 chart on top of each other, and `small`, `medium` or `large` sets its height. The string is its caption.
 Setting `data` redraws it, and a screen reader reads the same numbers as a table.
+
+When the first column of every row is a moment, a `date!` or a text in ISO form, the points stand at their
+moments, oldest first, and the axis steps by round seconds, minutes, hours, days, months or years in the active
+language. A line or area with more points than room for a dot each (one per 6 pixels) has no dots and is drawn
+thinned to each pixel's first, lowest, highest and last value; the pointer then shows a rule and the values of
+the nearest point. `right-axis` after a column, `[at "When" bikes "Bikes" takings "Takings" right-axis]`, puts
+that series on its own scale with its numbers on the right. The steps up the side go from two to five, by the
+chart's height.
 
 ## orbit
 
@@ -310,18 +329,34 @@ Among the rows, `[head 1 "Title"]` is the title of a group, the width of the tab
 subtotals; level 2 is indented. Neither is chosen or sorted: `sortable` sorts the rows inside each group. A
 list shows them too. A column followed by `image` shows each row's picture, from the address or file in its
 field, and `image round` cuts it to a circle: `table people [photo "" image round name "Name"]`.
+`role-by tone` after the table's name paints each row in the role its `tone` field names, `success`, `danger`,
+`warning`, `primary`, `accent` or `muted`, as a word or a text in any case: the row is tinted with a bar at its
+start. After a column, `[state "State" role-by tone]`, it paints that column's cell in it instead. A value that
+names no role, or none, paints nothing; data is never a problem of the layout.
 
 ## list
 
 The same rows as a table, as a list: the first field stands out and the rest go on a second line. The picture of
-a column of images goes first.
+a column of images goes first. `role-by` paints a whole item, and, after a column, its text.
+
+## timeline
+
+What happened, and when, under the day it happened: `timeline log [at text who]`. Its rows are those of a list,
+a block of map! or object! rows. The first column is the field that says when, a date! or a text in ISO form as a
+server sends it (`"2026-11-23T09:30:00Z"`); the second is what happened, and the rest go on a quieter line beneath.
+A date with a zone is that moment anywhere; one without is the time on the clock where the page is; one with no
+time is the whole day, shown without a time. Each day has its heading, Today, Yesterday or its weekday and date,
+in the language of the page; rows with no moment go last, under none. `newest` rows come first unless `oldest`;
+with `relative`, a time less than a day ago says how long ago it was, 5 minutes ago, and keeps saying it as time
+goes by. `role-by tone` paints each row's mark and text in the role its `tone` names. A timeline without the field of
+its time and of its text is a problem of the layout. Its text is what it says when it has no rows.
 
 ## board
 
 Cards in lanes: `board jobs by status [todo "To do" doing "Doing" done "Done"]` makes a lane for each word, with
 its label, and puts in it, as a card, each row of its `data` whose `status` names it, a word or a text. A card
 shows the row's `title`, or the fields of `card [title "Job" who "Mechanic"]`, the first one large, as a list
-does. A card can be dragged to another lane, or moved there from its menu; then its field names that lane and
+does. `role-by tone` paints each card in the role its `tone` names, as in a table. A card can be dragged to another lane, or moved there from its menu; then its field names that lane and
 `on-drop` runs, with `event/row`, `event/from` and `event/to`: when it gives `false`, the card goes back.
 `on-select`, or the block after the lanes when there is none, runs when a card is chosen, with it as `row`. When the field holds a machine, a lane is a state: a card goes to the
 lane only by a way of its machine from where it is to that state, whose event the drop sends.
@@ -364,7 +399,7 @@ word its action receives; the last, without a word, is where they are.
 ## tree
 
 Rows with rows inside, in their `children`, which open and close. Like a table, its rows can be chosen and
-dragged.
+dragged, and `role-by` paints a row, or, after its column, its label.
 
 ## screens
 

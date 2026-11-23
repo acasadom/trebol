@@ -147,7 +147,7 @@ Cuts an image to a circle, as for a person's photo: `image %ada.jpg "Ada" 48x48 
 
 ## count
 
-A text, heading or title whose number, percent or amount changes runs from the old one to the new, in about
+A text, heading, title or stat whose number, percent or amount changes runs from the old one to the new, in about
 half a second: `title count is [total]`. Not the first it shows, nor with less motion asked for.
 
 ## drag
@@ -177,6 +177,19 @@ An upload or a lookup takes more than one.
 ## sortable
 
 A table whose headers sort the rows it has, without the program. See `on-sort` for the program to sort them.
+
+## newest
+
+A timeline whose newest rows come first, as it starts.
+
+## oldest
+
+A timeline whose oldest rows come first, as a story is told.
+
+## relative
+
+A timeline whose times less than a day ago say how long ago they were, `5 minutes ago`, and keep saying it as time
+goes by; older ones show the time on the clock, as their day is said above them.
 
 ## stacked
 
@@ -334,6 +347,18 @@ goes back, as does a touch anywhere else or a scroll.
 `key code`: the field that tells the rows of a table, list or tree apart, `id` unless told; a row keeps its
 place in the selection and moves as itself when the rows change. `key "Ctrl+S"`: the shortcut of a button or
 link.
+
+## role-by
+
+`role-by tone`: the field of each row whose value, `success`, `danger`, `warning`, `primary`, `accent` or
+`muted`, as a word or a text, is the role a table, list, board, tree or timeline paints that row or card in. In a block of
+columns, after a column, `[state "State" role-by tone]`, it paints that column's cell instead. Any other value
+paints nothing.
+
+## trend
+
+`trend [3 5 4 8]`: the numbers a stat had, oldest first, numbers or amounts, two at least. It draws them as a
+small line at the stat's foot, ending on a dot, in the colour of its role.
 
 ## morph
 

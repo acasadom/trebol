@@ -165,6 +165,20 @@ starting with `:` in the path takes that part of the address: `"/api/bookings/:i
 `/api/bookings/2` with `id` as `"2"`. What the block gives is the answer, sent as JSON; `reply` gives it a
 status other than 200.
 
+The words the block sets are its own, as in a `function`: `b: copy body` above makes a `b` for that answer
+alone, and never changes a word of the app with the same name. To change a word of the test file, a count of
+the requests say, the block uses `set`, and changing a block in place, as `append booked b` does, needs
+nothing:
+
+```text
+asked: 0
+serve [GET "/api/bookings" [set 'asked asked + 1  booked]]
+```
+
+The words the test file sets are its own too, as in a module: a test that says `greet: "Ana"` makes a
+`greet` of the file, and the app's `greet` goes on being what the app made it. The test still reads every
+word of the app, as `board/selected/id` above does, and changes one only through what the app does.
+
 What comes before the first group runs before the app starts, in every test: the data the server keeps and
 the `serve` that answers. A `serve` inside a test comes before the ones it follows, so one test can make the
 server fail:

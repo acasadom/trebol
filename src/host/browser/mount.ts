@@ -6,7 +6,7 @@ import { spawn, taskResult, type HostTask } from '../scheduler.ts';
 import { linkHref } from '../markdown.ts';
 import { devLog } from '../devlog.ts';
 import { faceRef } from '../devtools.ts';
-import { get, str, flag, word, children, iconName, icon } from './faces.ts';
+import { get, str, flag, word, children, iconName, icon, paneFaces } from './faces.ts';
 import { listen } from './events.ts';
 import { buildInput, buildCheck, buildSlider, buildRadio, buildProgress } from './fields.ts';
 import { buildUpload, buildPhoto } from './uploads.ts';
@@ -18,6 +18,8 @@ import { buildOrbit } from './orbits.ts';
 import { buildRowsField } from './row-faces.ts';
 import { buildRich } from './richtext.ts';
 import { buildRows } from './tables.ts';
+import { buildStat } from './stats.ts';
+import { buildTimeline } from './timelines.ts';
 import { buildTree } from './trees.ts';
 import { buildToolbar, buildBreadcrumb } from './toolbars.ts';
 import { buildDialog, buildTabs, buildSteps, buildSplit } from './dialogs.ts';
@@ -33,6 +35,8 @@ export interface Mounted {
   label: HTMLElement | null;
   error: HTMLElement | null;
   kids: unknown;
+  /** A container: the faces its pane held when it was last drawn, so code that edits the pane in place redraws it. */
+  paneFaces: Ctx[];
   /** Where children or rows go, when it is not `el`. */
   box: HTMLElement | null;
   /** Rows of a table or list, by key. */
@@ -173,7 +177,7 @@ export const INPUTS = new Set(['field', 'password', 'number', 'money', 'date', '
 export function build(face: ObjectCell): HTMLElement {
   const style = word(face, 'style') ?? 'face';
   const m: Mounted = {
-    face, el: null!, input: null, label: null, error: null, kids: get(face, 'pane'),
+    face, el: null!, input: null, label: null, error: null, kids: get(face, 'pane'), paneFaces: paneFaces(face),
     box: null, rows: null, empty: null, button: null, radios: null, open: null, shown: undefined,
     typing: 0, typed: null, items: [], first: 0, end: 0, rowHeight: 0,
   };
@@ -276,6 +280,8 @@ export function build(face: ObjectCell): HTMLElement {
         break;
       }
       case 'progress': node = buildProgress(m); break;
+      case 'stat': node = buildStat(m); break;
+      case 'timeline': node = buildTimeline(m); break;
       case 'image': node = el('img', 'tb-image'); break;
       case 'video': case 'audio': {
         const media = el(style, `tb-${style}`) as HTMLMediaElement;

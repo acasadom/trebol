@@ -23,7 +23,7 @@ add-reaction: function [f k b l] [
     append f/reactions make reaction [kind: k  body: b  later: l]
 ]
 
-value-styles: append copy input-styles [progress image video audio]
+value-styles: append copy input-styles [progress stat image video audio]
 
 ; The facet `is` sets: data for a table, list, tree or chart, a canvas's draw,
 ; an input's value, and text for the rest.

@@ -102,6 +102,10 @@ board/data: bookings
 The table shows what the server kept, not what was typed: the server has the last word, and the `id` it gave
 is what the app uses to name the booking from now on.
 
+The options block of `fetch/with` is an object of its own, so `[body: body]` would read the option it is
+making, not a word `body` of the app: give that word another name, as `values` here, or see
+[fetch](../reference/network.md#fetch).
+
 ## When the server says no
 
 Some rules only the server knows. This workshop is closed on Sundays, and a form cannot know which days a
@@ -274,6 +278,52 @@ board asks for what it may have missed. An event's `event` field comes as the wo
 carry news of many kinds: `if event = 'booking [...]`. The cookie of the login goes with the stream, as with
 `fetch`; `open-events/with` takes `headers` for a server that wants another sign, and the other options in
 the [reference](../reference/network.md).
+
+The login does not last forever. When it runs out, the server answers the stream with 401 and the stream
+stays closed: asking again would get the same answer. `on-close` runs then, with the status in `value`; the
+board signs in again and opens a new stream, which is a new handle, so it sets the handlers again. Doing it
+all in one function, which calls itself, keeps them in one place; the last `id` goes with the new stream as
+`last-id`, for the server to send the news the board missed:
+
+```
+last-seen: none
+listen: does [
+    news: open-events/with "/api/events" [last-id: last-seen]
+    on-message news [
+        last-seen: any [id last-seen]
+        refresh "/api/bookings"
+    ]
+    on-close news [
+        if find [401 403] value [
+            if sign-in-again [listen]
+        ]
+    ]
+]
+listen
+```
+
+`sign-in-again` is the board's own: it asks the server for a new login and gives true when it got one. When
+it gives false, the board does not open the stream again, or it would ask forever; it shows the login screen
+instead.
+
+## Your own server, while you write the app
+
+The examples here talk to a server inside the documentation. Your app talks to yours, written in whatever
+language you like, and once published both usually sit behind one site, so `/api/bookings` reaches it. While
+you write the app, `trebol dev` can stand in for that site: `--proxy` sends every address under a prefix to
+your server and passes its answers back.
+
+```sh
+npx trebol dev --proxy /api=http://localhost:8080
+```
+
+Now `/api/bookings` goes to `http://localhost:8080/api/bookings`, with its method, body, headers and cookies,
+and the app keeps writing `fetch "/api/bookings"` as it will in production: one origin, so no CORS to set
+up. Event streams come through as the server sends them, so `open-events` hears each piece of news at once,
+and so do WebSockets opened under the prefix. Repeat `--proxy` for more prefixes; an address goes to the
+longest prefix it falls under, and `/apis` is not under `/api`. When your server is not running, the request
+answers 502 and says so, `cannot reach http://localhost:8080 for /api (ECONNREFUSED)`, which the app reads
+as any other failed request.
 
 ## What's next
 

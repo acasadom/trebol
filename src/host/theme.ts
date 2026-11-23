@@ -12,6 +12,8 @@ import { FORMS } from './theme/forms.ts';
 import { NAVIGATION } from './theme/navigation.ts';
 import { MEDIA } from './theme/media.ts';
 import { DATA } from './theme/data.ts';
+import { STATS } from './theme/stats.ts';
+import { TIMELINES } from './theme/timelines.ts';
 import { DIALOGS } from './theme/dialogs.ts';
 import { PANES } from './theme/panes.ts';
 import { POPUPS } from './theme/popups.ts';
@@ -103,6 +105,9 @@ export const ROLES = [
 export type Role = (typeof ROLES)[number];
 
 /** Text/background pairs that must reach WCAG AA (4.5:1). */
+/** The roles a face, a row or a cell is painted in, each with a soft tint and an ink. */
+export const INKED = ['danger', 'primary', 'accent', 'success', 'warning', 'muted'] as const;
+
 export const CONTRAST_PAIRS: ReadonlyArray<[Role, Role]> = [
   ['text', 'bg'], ['text', 'surface'], ['text', 'raised'],
   ['muted', 'bg'], ['muted', 'surface'],
@@ -228,6 +233,18 @@ export function contrast(x: Oklch, y: Oklch): number {
   return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
 }
 
+/**
+ * A role's colour made readable as text on `under`: as it is when it already reads at 4.5:1, else darker (or
+ * lighter on a dark surface) a step at a time, keeping its hue, until it does.
+ */
+export function roleInk(c: Oklch, under: Oklch): Oklch {
+  const step = under.l > 0.5 ? -0.01 : 0.01;
+  let ink = c;
+  // with a margin, for the soft tint of a painted row behind it
+  while (contrast(ink, under) < 4.7 && ink.l > 0 && ink.l < 1) ink = { ...ink, l: Math.round((ink.l + step) * 100) / 100 };
+  return ink;
+}
+
 const encode = (x: number): number => (x <= 0.0031308 ? 12.92 * x : 1.055 * x ** (1 / 2.4) - 0.055);
 const decode = (x: number): number => (x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4);
 
@@ -285,8 +302,11 @@ function colorVars(t: ThemeParams, dark: boolean): string {
   const p = palette(t, dark);
   const lines = ROLES.map(r => `  --tb-${r}: ${css(p[r])};`);
   lines.push(`  --tb-focus-ring: ${css(p.focus, dark ? 0.5 : 0.35)};`);
-  lines.push(`  --tb-danger-soft: ${css(p.danger, dark ? 0.16 : 0.08)};`);
-  lines.push(`  --tb-primary-soft: ${css(p.primary, dark ? 0.16 : 0.08)};`);
+  // the soft tint of each role, behind a row or a card painted in it, and its ink, the role as readable text
+  for (const r of INKED) {
+    lines.push(`  --tb-${r}-soft: ${css(p[r], dark ? 0.16 : 0.08)};`);
+    lines.push(`  --tb-${r}-ink: ${css(roleInk(p[r], p.surface))};`);
+  }
   lines.push(`  --tb-overlay: ${css(n0(p), dark ? 0.6 : 0.4)};`);
   lines.push(`  --tb-scrim: ${css(p.bg, scrimAlpha(p))};`);
   const shadow = dark ? '0 0 0 1px oklch(100% 0 0 / 0.06)' : `0 1px 2px ${css(n0(p), 0.06)}`;
@@ -345,7 +365,7 @@ export function themeCss(t: ThemeParams): string {
 }
 
 /** Component rules, one file per kind of face under theme/. Only token variables appear there, never raw values of color. */
-const COMPONENTS = `\n${[LAYOUT, FORMS, NAVIGATION, MEDIA, DATA, DIALOGS, PANES, POPUPS, TOASTS, DEVTOOLS, RESPONSIVE].map(part => part.slice(1)).join('')}`;
+const COMPONENTS = `\n${[LAYOUT, FORMS, NAVIGATION, MEDIA, DATA, STATS, TIMELINES, DIALOGS, PANES, POPUPS, TOASTS, DEVTOOLS, RESPONSIVE].map(part => part.slice(1)).join('')}`;
 
 /** What a skin changes on top of the component rules: '' for the modern one. */
 const SKINS: Record<Skin, string> = { modern: '', classic: CLASSIC, cupertino: CUPERTINO, fusion: FUSION, fluent: FLUENT };

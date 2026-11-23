@@ -7,7 +7,7 @@ import { translate } from '../index.ts';
 import { runNow, type HostTask } from '../scheduler.ts';
 import { devLog } from '../devlog.ts';
 import { changeScreen, mayMove, unfold, fold, isFolding } from '../motion.ts';
-import { get, str, optionText, entriesOf, isGroup, optionsOf, optionsKey, fillSelect, own, display, flag, word } from './faces.ts';
+import { get, str, optionText, entriesOf, isGroup, optionsOf, optionsKey, fillSelect, own, display, flag, word, paneFaces, paneMoved } from './faces.ts';
 import { type Mounted, host, byNode, byCtx, dirty, reactors, newReactor, reacting, fire, el, INPUTS, syncMark, iconLabel, appendChildren, setNewReactor, setReacting } from './mount.ts';
 import { isData } from './drag.ts';
 import { rangeText } from './calendar.ts';
@@ -17,6 +17,8 @@ import { syncPick } from './pick.ts';
 import { syncSlider, syncProgress, syncIcon, required, syncRadio } from './fields.ts';
 import { syncMedia, syncPhoto, syncUpload } from './uploads.ts';
 import { syncWidget } from './widget.ts';
+import { syncStat } from './stats.ts';
+import { syncTimeline } from './timelines.ts';
 import { syncLookup } from './lookup.ts';
 import { syncCanvas, syncChart } from './drawings.ts';
 import { syncOrbit } from './orbits.ts';
@@ -187,6 +189,8 @@ function draw(m: Mounted): void {
     // its data may have changed: the dialect deals the cards to their lanes again, if they moved
     case 'board': void fire('ui-board', f); break;
     case 'progress': syncProgress(m); return;
+    case 'stat': syncStat(m); return;
+    case 'timeline': syncTimeline(m); return;
     case 'canvas': syncCanvas(m); return;
     case 'chart': syncChart(m); return;
     case 'orbit': syncOrbit(m); return;
@@ -271,8 +275,10 @@ function draw(m: Mounted): void {
   }
   // children replaced by code: rebuild this container
   const kids = get(f, 'pane');
-  if (kids.t === K.Block && (m.kids as BlockCell | undefined)?.s !== kids.s) {
+  // a new block, or the same one with faces put in, taken out or moved (append f/pane ...)
+  if (kids.t === K.Block && ((m.kids as BlockCell | undefined)?.s !== kids.s || paneMoved(f, m.paneFaces))) {
     m.kids = kids;
+    m.paneFaces = paneFaces(f);
     if (style === 'rows') {
       placeEntries(m);
       void fire('ui-pane', f);
