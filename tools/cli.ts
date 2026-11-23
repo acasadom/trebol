@@ -3,7 +3,7 @@
 //
 //   trebol                    the interactive console (a script when stdin is not a terminal)
 //   trebol file.trb           runs a script
-//   trebol dev [folder] [--port 5173] [--api api.ts] [--host]
+//   trebol dev [folder] [--port 5173] [--api api.ts] [--proxy /api=http://host:port ...] [--host]
 //   trebol check [file.trb ...]  the problems in the layouts of the files (default: app.trb), without running them
 //   trebol test [file.test.trb|folder ...]  the screen tests (default: every *.test.trb under the current folder)
 //   trebol build [folder] [--out dir] [--csp]  the app as one page to publish (default: folder/build); see bundle.ts
@@ -17,7 +17,7 @@ import { readFileSync } from 'node:fs';
 import { relative } from 'node:path';
 import { consoleHost, runScript, startRepl } from './console.ts';
 
-const USAGE = 'usage: trebol [file.trb] | trebol --version | trebol dev [folder] [--port n] [--api file] [--host] | trebol check [file.trb ...] | trebol test [file.test.trb|folder ...] | trebol build [folder] [--out dir] [--csp] | trebol supplier';
+const USAGE = 'usage: trebol [file.trb] | trebol --version | trebol dev [folder] [--port n] [--api file] [--proxy /prefix=url ...] [--host] | trebol check [file.trb ...] | trebol test [file.test.trb|folder ...] | trebol build [folder] [--out dir] [--csp] | trebol supplier';
 
 const [command, ...rest] = process.argv.slice(2);
 const version = (): string => (JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string }).version;
@@ -61,9 +61,19 @@ async function dev(args: string[]): Promise<void> {
   let port: number | undefined;
   let api: string | undefined;
   let open = false;
+  const proxy: import('./dev-proxy.ts').Proxy[] = [];
+  const { parseProxy } = await import('./dev-proxy.ts');
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
     if (a === '--port') port = Number(args[++i]);
+    else if (a === '--proxy') {
+      const p = parseProxy(args[++i] ?? '');
+      if (typeof p === 'string') {
+        console.error(p);
+        process.exit(1);
+      }
+      proxy.push(p);
+    }
     else if (a === '--host') open = true;
     else if (a === '--api') api = args[++i];
     else if (root === undefined && !a.startsWith('-')) root = a;
@@ -77,8 +87,9 @@ async function dev(args: string[]): Promise<void> {
     process.exit(1);
   }
   const { startDev } = await import('./dev.ts');
-  const server = await startDev({ root, port, api, open });
+  const server = await startDev({ root, port, api, proxy, open });
   console.log(`trebol dev: http://localhost:${server.port}/${open ? ' (open to the network)' : ''}`);
+  for (const p of proxy) console.log(`  ${p.prefix} -> ${p.target.href}`);
 }
 
 async function buildCommand(args: string[]): Promise<void> {

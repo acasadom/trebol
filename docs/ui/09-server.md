@@ -306,6 +306,25 @@ listen
 it gives false, the board does not open the stream again, or it would ask forever; it shows the login screen
 instead.
 
+## Your own server, while you write the app
+
+The examples here talk to a server inside the documentation. Your app talks to yours, written in whatever
+language you like, and once published both usually sit behind one site, so `/api/bookings` reaches it. While
+you write the app, `trebol dev` can stand in for that site: `--proxy` sends every address under a prefix to
+your server and passes its answers back.
+
+```sh
+npx trebol dev --proxy /api=http://localhost:8080
+```
+
+Now `/api/bookings` goes to `http://localhost:8080/api/bookings`, with its method, body, headers and cookies,
+and the app keeps writing `fetch "/api/bookings"` as it will in production: one origin, so no CORS to set
+up. Event streams come through as the server sends them, so `open-events` hears each piece of news at once,
+and so do WebSockets opened under the prefix. Repeat `--proxy` for more prefixes; an address goes to the
+longest prefix it falls under, and `/apis` is not under `/api`. When your server is not running, the request
+answers 502 and says so, `cannot reach http://localhost:8080 for /api (ECONNREFUSED)`, which the app reads
+as any other failed request.
+
 ## What's next
 
 The bookings live on a server now. The next page draws: the shop's logo, and its takings as charts.
