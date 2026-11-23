@@ -235,7 +235,8 @@ function draw(m: Mounted): void {
     case 'tab': if (m.button !== null) m.button.textContent = t ?? ''; break;
     case 'panel': {
       let h = m.el.querySelector<HTMLElement>(':scope > .tb-panel-title');
-      if (t === null) h?.remove();
+      // a panel made of a style's layout: shows its text through the faces of that layout
+      if (t === null || flag(f, 'composed')) h?.remove();
       else {
         if (h === null) {
           h = el('h2', 'tb-panel-title');

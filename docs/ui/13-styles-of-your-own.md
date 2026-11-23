@@ -159,7 +159,8 @@ view [
 ]
 ```
 
-A style whose layout has no `slot` takes no block: giving it one is a problem of the layout. A style made from
+A face of such a style shows only what its layout says: `section` is a panel, but its text is not drawn as the
+panel's title, only where the layout puts it. A style whose layout has no `slot` takes no block: giving it one is a problem of the layout. A style made from
 one with a `layout:` holds the same faces, unless it says a `layout:` of its own.
 
 ## Styles to make others from

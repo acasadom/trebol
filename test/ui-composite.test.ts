@@ -150,4 +150,10 @@ describe('styles made of other styles', () => {
       reduce [select ui-style-defs/kpi 'slot  select ui-style-defs/section 'slot  block? ui-style-defs/kpi/layout]`);
     assert.equal(mold(got), '[false true true]');
   });
+  test('a face of it is marked composed, so the host does not draw its text a second time', async () => {
+    const got = await run(`${KPI}
+      root: view [section "Booking" [text "a"]  panel "Plain" [text "b"]]
+      reduce [root/pane/1/composed root/pane/2/composed]`);
+    assert.equal(mold(got), '[true false]');
+  });
 });
