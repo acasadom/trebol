@@ -4,6 +4,7 @@ import {
   load, LoadError, K, kindName, spell, text, unpackPos, decToNumber, date, mold,
   type Cell, type BlockCell,
 } from '../src/core/index.ts';
+import { fullYear } from '../src/core/lexer.ts';
 
 /** Loads source and returns its single value. */
 function one(src: string): Cell {
@@ -97,6 +98,22 @@ describe('scalars', () => {
       assert.deepEqual(one(mold(d)), d);
     }
     assert.equal(mold(date({ y: 2026, m: 1, d: 1, time: null, zone: null })), '1-Jan-2026');
+  });
+
+  test('a year of one or two digits is the one at most 50 years from now, as R3 reads it', () => {
+    assert.equal(fullYear(76, 2026), 2076);
+    assert.equal(fullYear(77, 2026), 1977);
+    assert.equal(fullYear(0, 2026), 2000);
+    assert.equal(fullYear(5, 2026), 2005);
+    assert.equal(fullYear(77, 2027), 2077);
+    assert.equal(fullYear(30, 2090), 2130);
+    const now = new Date().getUTCFullYear();
+    const year = (src: string): number => { const c = one(src); assert.ok(c.t === K.Date); return c.v.y; };
+    assert.equal(year('1-Jan-99'), fullYear(99, now));
+    assert.equal(year('23/11/5'), fullYear(5, now));
+    assert.equal(year('1-Jan-099'), 99);
+    assert.equal(year('1-Jan-0099'), 99);
+    assert.equal(year('1-Jan-100'), 100);
   });
 
   test('invalid dates are rejected', () => {
