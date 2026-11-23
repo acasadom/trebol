@@ -188,6 +188,40 @@ panel's title, only where the layout puts it. Its `style` is its own name, `sect
 container it is drawn as, `panel`. A style whose layout has no `slot` takes no block: giving it one is a problem of the layout. A style made from
 one with a `layout:` holds the same faces, unless it says a `layout:` of its own.
 
+## Faces from what it holds
+
+The faces of a `layout:` may also come from a field of the face. A container in it whose reaction lays out a
+block made from that field (`layout/only`, as in [Faces made by code](03-layout.md)) holds new faces each time
+the field changes:
+
+```trebol-ui
+stylize [
+    progress-log: column [
+        steps: none
+        takes: [steps: block "what has been done, in order"]
+        layout: [
+            text muted small bold is [it/text]
+            column rail react [
+                face/pane: layout/only collect [
+                    foreach s any [it/steps []] [keep compose [text (s)]]
+                ]
+            ]
+        ]
+    ]
+]
+view [
+    log: progress-log "Brompton, flat tyre" ["Booked in" "Inner tube changed"]
+    button "Ready" [log/steps: append copy log/steps "Ready to collect"]
+]
+```
+
+Trebol's own `stat` and `timeline` are made this way, with no code of their own in the browser: `stat` is a
+panel of texts and a canvas, and `timeline` a column whose days are laid out from its rows, each a `column named`
+with a `heading small` and a `column rail` of what happened. A face of the layout with a `rate` and an
+`on-time` says its faces again as time goes by: the timeline does it every half minute, so Today becomes
+Yesterday after midnight. Their source, in `src/ui/dialect/stats.trb` and `timelines.trb`, is a good place to
+start a style of your own.
+
 ## Styles to make others from
 
 Four styles are only made from, never written: `face`, where every style starts; `container`, a face that holds
