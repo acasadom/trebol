@@ -6,7 +6,7 @@ import { spawn, taskResult, type HostTask } from '../scheduler.ts';
 import { linkHref } from '../markdown.ts';
 import { devLog } from '../devlog.ts';
 import { faceRef } from '../devtools.ts';
-import { get, str, flag, word, children, iconName, icon, paneFaces } from './faces.ts';
+import { get, str, flag, word, children, iconName, icon, paneFaces, drawnStyle } from './faces.ts';
 import { listen } from './events.ts';
 import { buildInput, buildCheck, buildSlider, buildRadio, buildProgress } from './fields.ts';
 import { buildUpload, buildPhoto } from './uploads.ts';
@@ -175,7 +175,7 @@ export function el<T extends keyof HTMLElementTagNameMap>(tag: T, cls?: string):
 export const INPUTS = new Set(['field', 'password', 'number', 'money', 'date', 'date-range', 'time', 'area', 'choice']);
 
 export function build(face: ObjectCell): HTMLElement {
-  const style = word(face, 'style') ?? 'face';
+  const style = drawnStyle(face) ?? 'face';
   const m: Mounted = {
     face, el: null!, input: null, label: null, error: null, kids: get(face, 'pane'), paneFaces: paneFaces(face),
     box: null, rows: null, empty: null, button: null, radios: null, open: null, shown: undefined,

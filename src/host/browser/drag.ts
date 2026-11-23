@@ -5,7 +5,7 @@
 
 import { K, NONE, type Cell, type ObjectCell } from '../../core/index.ts';
 import { inDevtools } from '../devtools.ts';
-import { get, str, flag, word, children } from './faces.ts';
+import { get, str, flag, word, children, drawnStyle } from './faces.ts';
 import { type Mounted, byNode, rowOf, byCtx, fire, el } from './mount.ts';
 import { seenKeys } from './events.ts';
 import { swallowNextClick } from './swipe.ts';
@@ -99,7 +99,7 @@ export function targetAt(src: Source, x: number, y: number): Target | null {
   return null;
 }
 
-export const horizontal = (m: Mounted): boolean => word(m.face, 'style') === 'row';
+export const horizontal = (m: Mounted): boolean => drawnStyle(m.face) === 'row';
 
 export function insertionAt(m: Mounted, x: number, y: number): number {
   const across = horizontal(m);

@@ -64,7 +64,6 @@ ui-compose: function [f def place [block!]] [
     if error? out [do out]
     bind-labels spec labels reduce [to set-word! 'it f]
     f/pane: out
-    f/composed: true
     follow-it out given make object! reduce [to set-word! 'it f]
 ]
 

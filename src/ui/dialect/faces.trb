@@ -34,7 +34,7 @@ face: make object! [
     round: false        ; an image: cut to a circle, as for a person's photo
     count: false        ; a text whose number changes runs from the old one to the new
     shrink: false       ; a text on one line, its letters as large as its width lets them be, never larger than its size
-    composed: false     ; holds the faces of its style's layout:, which show its text
+    composed: false     ; holds the faces of its style's layout: (the container it is drawn as: panel), which show its text
     trend: none         ; a stat: the numbers that came before its own, drawn as a small line
     tag: none           ; a widget: the name of the element it is, as the page's JavaScript defines it
     props: none         ; a widget: the element's properties, an object

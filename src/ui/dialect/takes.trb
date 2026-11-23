@@ -127,6 +127,11 @@ ui-define: function [name [word!] base defaults [block!] /abstract /local w own 
     set [own events done written] takes-of takes name
     set [lay slot] composite-layout name parent defaults
     proto: make proto defaults
+    ; a face made of a layout says its own name, as in R2, and composed the container it is drawn as
+    if lay [
+        unless word? proto/composed [proto/composed: proto/style]
+        proto/style: name
+    ]
     foreach e own [
         if all [set-word? e/field  not find [rule custom name label] e/how] [
             w: to word! e/field

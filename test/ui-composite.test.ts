@@ -53,7 +53,8 @@ describe('styles made of other styles', () => {
       k: first root/pane
       ui-react root
       reduce [k/style collect [foreach g k/pane [keep g/style  keep g/text]]]`);
-    assert.equal(mold(got), '[column [text "Takings" heading $1240.00 text "12 repairs today"]]');
+    // as in R2, the face says its own style; composed is the container it is drawn as
+    assert.equal(mold(got), '[kpi [text "Takings" heading $1240.00 text "12 repairs today"]]');
   });
 
   test('a change to a field of it reaches its faces', async () => {
@@ -124,7 +125,7 @@ describe('styles made of other styles', () => {
       c: first root/pane
       s: first c/pane
       reduce [collect [foreach g c/pane [keep g/style]]  collect [foreach g s/pane [keep g/text]]]`);
-    assert.equal(mold(got), '[[panel column] ["Inside" "given"]]');
+    assert.equal(mold(got), '[[section kpi] ["Inside" "given"]]');
   });
 
   test('a block given to one with no slot, or slot out of a layout:, is a problem of the layout', async () => {
@@ -152,11 +153,12 @@ describe('styles made of other styles', () => {
       reduce [select ui-style-defs/kpi 'slot  select ui-style-defs/section 'slot  block? ui-style-defs/kpi/layout]`);
     assert.equal(mold(got), '[false true true]');
   });
-  test('a face of it is marked composed, so the host does not draw its text a second time', async () => {
+  test('a face of it says its own style and, in composed, the container it is drawn as', async () => {
     const got = await run(`${KPI}
-      root: view [section "Booking" [text "a"]  panel "Plain" [text "b"]]
-      reduce [root/pane/1/composed root/pane/2/composed]`);
-    assert.equal(mold(got), '[true false]');
+      stylize [part: section [hint: none]]
+      root: view [section "Booking" [text "a"]  panel "Plain" [text "b"]  part "Inner" [text "c"]]
+      collect [foreach f root/pane [keep f/style  keep f/composed]]`);
+    assert.equal(mold(got), '[section panel panel false part panel]');
   });
   test('its role and size reach the faces of its layout that say none, and follow it', async () => {
     const got = await run(`${KPI}
