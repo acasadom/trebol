@@ -7,7 +7,7 @@ import { translate } from '../index.ts';
 import { runNow, type HostTask } from '../scheduler.ts';
 import { devLog } from '../devlog.ts';
 import { changeScreen, mayMove, unfold, fold, isFolding } from '../motion.ts';
-import { get, str, optionText, entriesOf, isGroup, optionsOf, optionsKey, fillSelect, own, display, flag, word, paneFaces, paneMoved, drawnStyle } from './faces.ts';
+import { get, str, optionText, entriesOf, isGroup, optionsOf, optionsKey, fillSelect, own, display, flag, word, paneFaces, paneMoved, drawnStyle, frameRole } from './faces.ts';
 import { type Mounted, host, byNode, byCtx, dirty, reactors, newReactor, reacting, fire, el, INPUTS, syncMark, iconLabel, appendChildren, setNewReactor, setReacting } from './mount.ts';
 import { isData } from './drag.ts';
 import { rangeText } from './calendar.ts';
@@ -50,7 +50,7 @@ export function sync(m: Mounted): void {
 function draw(m: Mounted): void {
   const f = m.face;
   const style = drawnStyle(f) ?? '';
-  const role = word(f, 'role');
+  const role = frameRole(f);
   const t = str(f, 'text');
   const hidden = flag(f, 'hidden');
   const err = str(f, 'error');

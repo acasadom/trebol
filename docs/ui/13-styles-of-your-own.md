@@ -141,7 +141,8 @@ view [
 
 Each `tally` gets faces of its own, and the labels written in `layout:` belong to that face only: the layout
 around it does not see them. A role or size given to it (`success`, `large`) reaches the faces of its layout that
-say none of their own, here the number, and follows it when it changes. `trebol check` reads the faces of `layout:` as it reads any others, so a mistake in
+say none of their own, here the number, and follows it when it changes; the face itself keeps no colour of it,
+so a panel made this way never gets a coloured border. `trebol check` reads the faces of `layout:` as it reads any others, so a mistake in
 them is a problem of every layout that uses the style.
 
 Faces of such a style share a row equally, and go on to the next line before they get narrower than a few

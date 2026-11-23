@@ -4,11 +4,12 @@ import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { native, value, mold, form, errorField, type Cell, type ObjectCell } from '../src/core/index.ts';
+import { native, value, mold, form, errorField, type Cell, type ObjectCell, type BlockCell } from '../src/core/index.ts';
 import { startHost, startUi, runSource, type Host } from '../src/host/index.ts';
 import { setHost } from '../src/host/browser/mount.ts';
 import { LAYOUT } from '../src/host/theme/layout.ts';
 import { markComposed } from '../src/host/browser/composed.ts';
+import { frameRole } from '../src/host/browser/faces.ts';
 
 native('show', '[root [object!]]', (_t, f) => value(f.args[0]!));
 native('ui-watch', '[value [object! series! map!]]', (_t, f) => value(f.args[0]!));
@@ -179,8 +180,17 @@ describe('styles made of other styles', () => {
     markComposed(node, null);
     assert.deepEqual([...attrs], [['role', 'group']]);
   });
+  test('its role is for its faces, not its frame', async () => {
+    const got = await run(`${KPI}
+      root: view [kpi "Takings" 5 success  panel "Plain" success [text "b"]]
+      ui-react root
+      reduce [root/pane/1  root/pane/2  root/pane/1/pane/2/role]`);
+    const [kpi, panel, inner] = (got as BlockCell).s.data as Cell[];
+    assert.deepEqual([frameRole(kpi as ObjectCell), frameRole(panel as ObjectCell), mold(inner!)], [null, 'success', 'success']);
+  });
   test('in a panel it is no card of its own, and in a row its faces share it equally (theme)', () => {
-    assert.match(LAYOUT, /\.tb-panel \.tb-panel\.tb-composed \{ margin: 0; padding: 0; background: none; border: 0;/);
+    // its pad goes with the card, even one it says
+    assert.match(LAYOUT, /\.tb-panel \.tb-panel\.tb-composed \{ margin: 0; padding: 0 !important; background: none; border: 0;/);
     assert.match(LAYOUT, /\.tb-row > \.tb-composed \{ flex: 1 1 10rem; min-width: 0; \}/);
   });
 });
