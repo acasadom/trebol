@@ -159,7 +159,7 @@ timeline-days: function [rows columns order relative role-by told] [
             day: d/1/date
             items: copy []
             append out compose/deep/only [
-                column gap 2 [text muted small bold (day-label day)  column rail (items)]
+                column gap 2 [heading muted small (day-label day)  column rail (items)]
             ]
         ]
         append items timeline-item d/4 d/1 columns relative role-by

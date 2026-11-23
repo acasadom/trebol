@@ -81,11 +81,13 @@ The title of the page or of a screen: the text the browser shows for it, too.
 
 ## heading
 
-A heading inside a page.
+A heading inside a page. A `small` one is a heading over a few lines, as the day over what happened in it: the
+size of the text around it, still strong, and one level under the headings around it for a screen reader.
 
 ## text
 
-Text. A date, a time, a number or an amount is shown in the format of the active language.
+Text. A date, a time, a number or an amount is shown in the format of the active language; a date or a time is
+also said in a way a machine reads, and a date has its full form in its tooltip (see `clock` and `ago`).
 
 ## code
 

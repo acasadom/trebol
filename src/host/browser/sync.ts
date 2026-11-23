@@ -176,6 +176,11 @@ function draw(m: Mounted): void {
       const sv = momentShown(f, tv);
       const shown = tv.t === K.None ? '' : tv.t === K.Map || tv.t === K.Word ? translate(tv, host.rt) : display(sv);
       const into = shrinkTarget(m, flag(f, 'shrink'), shown);
+      // a small heading is one level under the headings around it, as it looks
+      if (style === 'heading') {
+        if (word(f, 'size') === 'small') m.el.setAttribute('aria-level', '3');
+        else m.el.removeAttribute('aria-level');
+      }
       if (flag(f, 'count') && countRun(m, tv, into)) break;
       momentTarget(into, tv).textContent = shown;
       break;
