@@ -757,10 +757,14 @@ a column of images goes first. `role-by` paints a whole item, and, after a colum
 (style-timeline)=
 ## timeline
 
-Made from [`rows-face`](#style-rows-face). It starts with `order: newest`.
+Made from [`column`](#style-column). It starts with `composed: column`, `order: newest`. Fields of its own: `told: none`.
 
-It takes what [`rows-face`](#style-rows-face) takes, and:
+It takes what [`column`](#style-column) takes, and:
 
+- a word, right after the style: the word that labels it: timeline log is log: timeline
+- a block (`columns`): the field of when, the field of what happened, and those of the line beneath
+- [`key`](#word-key) and a word: the field that tells one row from another
+- [`role-by`](#word-role-by) and a word: the field of a row whose value, success or danger, is the role its mark is painted in
 - one of `newest`, `oldest` (`order`): which rows come first: newest, as it starts, or oldest
 - [`relative`](#word-relative): a time says how long ago it was, 5 minutes ago, and keeps saying it
 

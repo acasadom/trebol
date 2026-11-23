@@ -590,7 +590,7 @@ A word followed by its value, of [`table`](#style-table).
 (word-key)=
 ## key
 
-A word followed by its value, of [`rows-face`](#style-rows-face), [`button`](#style-button), [`link`](#style-link) and [`board`](#style-board).
+A word followed by its value, of [`rows-face`](#style-rows-face), [`button`](#style-button), [`link`](#style-link), [`board`](#style-board) and [`timeline`](#style-timeline).
 
 `key code`: the field that tells the rows of a table, list or tree apart, `id` unless told; a row keeps its
 place in the selection and moves as itself when the rows change. `key "Ctrl+S"`: the shortcut of a button or
@@ -599,7 +599,7 @@ link.
 (word-role-by)=
 ## role-by
 
-A word followed by its value, of [`rows-face`](#style-rows-face) and [`board`](#style-board).
+A word followed by its value, of [`rows-face`](#style-rows-face), [`board`](#style-board) and [`timeline`](#style-timeline).
 
 `role-by tone`: the field of each row whose value, `success`, `danger`, `warning`, `primary`, `accent` or
 `muted`, as a word or a text, is the role a table, list, board, tree or timeline paints that row or card in. In a block of
