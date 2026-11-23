@@ -22,12 +22,15 @@ Texts in several languages and values in the format of each. A text per language
 
 ## local-date
 
-A date with a zone is a moment anywhere; `local-date` says it as the clock where the page is read it then,
-in its summer time or its winter time. A page in New York:
+A date with a zone is a moment anywhere; `local-date` gives the same moment as the clock where the page is
+read it then, with that clock's zone, summer time or winter time. The moment is never lost: in the hour the
+clocks go back, the two 1:15s have different zones and still compare in the order they happened. A page in
+New York:
 
 ```trebol
-local-date 1-Jul-2026/4:30+0:00   ; 1-Jul-2026/0:30, summer time
-local-date 1-Dec-2026/4:30+0:00   ; 30-Nov-2026/23:30, winter time
+local-date 1-Jul-2026/4:30+0:00   ; 1-Jul-2026/0:30-4:00, summer time
+local-date 1-Dec-2026/4:30+0:00   ; 30-Nov-2026/23:30-5:00, winter time
+local-date 1-Jul-2026/0:30        ; 1-Jul-2026/0:30-4:00, no zone: the time on that clock
 local-date 1-Dec-2026             ; 1-Dec-2026, no time: as it is
 ```
 

@@ -1,10 +1,11 @@
 // timeline: what happened, and when, under the day it happened
 // (src/ui/dialect/timelines.trb, a composite made of columns, headings and texts).
-import { test, describe, beforeEach } from 'node:test';
+import { test, describe, beforeEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { native, value, mold, form, errorField, type Cell, type ObjectCell } from '../src/core/index.ts';
+import { native, value, mold, form, errorField, type Cell, type ObjectCell, type BlockCell } from '../src/core/index.ts';
+import { isoOf } from '../src/host/dates.ts';
 import { startHost, startUi, runSource, type Host } from '../src/host/index.ts';
 import { setHost } from '../src/host/browser/mount.ts';
 
@@ -105,8 +106,8 @@ describe('timeline', () => {
       ]
       root: view [timeline [at text] oldest is [log]]
       ui-react root
-      reduce [local-date 1-Jul-2025/4:30+0:00  local-date 1-Dec-2025/4:30+0:00  local-date 1-Jul-2025  days-of first root/pane]`));
-    assert.equal(mold(got), '[1-Jul-2025/0:30 30-Nov-2025/23:30 1-Jul-2025 ["Tuesday, July 1, 2025" [[none "summer" 0:30 none] [none "no zone" 4:30 none]] "Sunday, November 30, 2025" [[none "winter" 23:30 none]]]]');
+      reduce [local-date 1-Jul-2025/4:30+0:00  local-date 1-Dec-2025/4:30+0:00  local-date 1-Jul-2025/0:30  local-date 1-Jul-2025  days-of first root/pane]`));
+    assert.equal(mold(got), '[1-Jul-2025/0:30-4:00 30-Nov-2025/23:30-5:00 1-Jul-2025/0:30-4:00 1-Jul-2025 ["Tuesday, July 1, 2025" [[none "summer" 0:30 none] [none "no zone" 4:30 none]] "Sunday, November 30, 2025" [[none "winter" 23:30 none]]]]');
   });
 
   test('when the clocks go back, moments with a zone keep the order they happened in, shown at their own time', async () => {
@@ -121,6 +122,48 @@ describe('timeline', () => {
       ui-react root
       days-of first root/pane`));
     assert.equal(mold(got), '["Sunday, November 2, 2025" [[none "second" 1:15 none] [none "first" 1:45 none] [none "earlier" 1:00 none]]]');
+  });
+
+  test('local-date never changes the moment: in the hour the clocks go back, and on an old clock with seconds', async () => {
+    for (const zone of ['America/New_York', 'Europe/Madrid']) {
+      const got = await inZone(zone, () => run(`
+        all collect [foreach d [2-Nov-2025/5:45+0:00 2-Nov-2025/6:15+0:00 1-Jan-1890/12:00+0:00 31-Dec-0099/23:30+0:00 30-Mar-2025/1:30+0:00] [
+          keep d = local-date d
+        ]]`));
+      assert.equal(mold(got), 'true', zone);
+    }
+  });
+
+  test('rows with and without a zone come in the order they happened, whatever the order of the data', async () => {
+    // 2 Nov 2025 in New York: 1:30 with no zone is the first 1:30, 05:30Z; 05:45Z is 1:45 and 06:15Z is 1:15
+    const rows = ['#(at: "2025-11-02T05:45:00Z" text: "a")', '#(at: "2025-11-02T06:15:00Z" text: "b")', '#(at: 2-Nov-2025/1:30 text: "c")'];
+    const orders = [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]];
+    for (const order of orders) {
+      const got = await inZone('America/New_York', () => run(`${said}
+        log: [${order.map(i => rows[i]).join(' ')}]
+        root: view [timeline [at text] is [log]]
+        ui-react root
+        days-of first root/pane`));
+      assert.equal(mold(got), '["Sunday, November 2, 2025" [[none "b" 1:15 none] [none "a" 1:45 none] [none "c" 1:30 none]]]', `order ${order}`);
+    }
+  });
+
+  test('relative says how long ago each moment was, and the machine reads each 1:15 with its own zone', async () => {
+    mock.timers.enable({ apis: ['Date'], now: Date.parse('2025-11-02T06:30:00Z') });
+    try {
+      const got = await inZone('America/New_York', () => run(`${said}
+        log: [#(at: "2025-11-02T06:15:00Z" text: "second") #(at: "2025-11-02T05:15:00Z" text: "first")]
+        root: view [timeline [at text] relative is [log]]
+        ui-react root
+        f: first root/pane
+        held: collect [foreach g f/pane/1/pane/1/pane/2/pane [keep g/pane/1/pane/2/text]]
+        reduce [days-of f  held]`));
+      const [days, held] = (got as BlockCell).s.data;
+      assert.equal(mold(days!), '["Today" [[none "second" "15 minutes ago" none] [none "first" "1 hour ago" none]]]');
+      assert.deepEqual((held as BlockCell).s.data.map(isoOf), ['2025-11-02T01:15-05:00', '2025-11-02T01:15-04:00']);
+    } finally {
+      mock.timers.reset();
+    }
   });
 
   test('oldest puts a whole day before its times; rows at the same moment keep their order', async () => {

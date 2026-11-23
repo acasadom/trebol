@@ -212,8 +212,8 @@ view [
 The day headings say Today and Yesterday, or the weekday and date, in the language of the page, and they change
 by themselves after midnight. A time can be a `date!` or, as a server sends it, a text in ISO form. A date with
 a zone is that moment anywhere, said as the clock where the page is read it then, summer time or winter time
-(see `local-date`), and dates with a zone keep the order they happened in, also in the hour the clocks go back;
-one without is the time on that clock; one with no time is a whole day, shown without a time. `role-by` paints each mark and its text, as it paints a list's rows.
+(see `local-date`); one without is the time on that clock; rows go in the order they happened, with a zone
+or without, also in the hour the clocks go back, and `relative` says how long ago each really was; one with no time is a whole day, shown without a time. `role-by` paints each mark and its text, as it paints a list's rows.
 
 A log of what is going on now reads better with `relative`: a time less than a day ago says how long ago it was,
 `5 minutes ago`, and keeps saying it as time goes by. A story told from the start takes `oldest`:

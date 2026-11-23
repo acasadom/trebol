@@ -148,15 +148,19 @@ export function fullDateText(v: Cell, lang: string): string | null {
   try { return new Intl.DateTimeFormat(lang, opts).format(ms); } catch { return null; }
 }
 
-native('local-date', '["The moment a date names as the clock where the page is read it then, with no zone: in New York 1-Jul-2026/4:30+0:00 is 1-Jul-2026/0:30, and 1-Dec-2026/4:30+0:00 is 30-Nov-2026/23:30. A date with no time or no zone stays as it is." date [date!]]', (_t, f) => {
+// The zone of the result is the clock's own at that moment, so the moment is never lost: in the hour the clocks go
+// back, 1:45-4:00 and 1:15-5:00 are told apart and ordered as they happened.
+native('local-date', '["The same moment as the clock where the page is reads it then, with that clock\'s zone: in New York 1-Jul-2026/4:30+0:00 is 1-Jul-2026/0:30-4:00, and 1-Dec-2026/4:30+0:00 is 30-Nov-2026/23:30-5:00. A date with no zone is the time on that clock, and gets its zone: 1-Jul-2026/0:30 is 1-Jul-2026/0:30-4:00; a time the clock skips when it goes forward is read an hour on, 8-Mar-2026/2:30 is 8-Mar-2026/3:30-4:00. A date with no time stays as it is." date [date!]]', (_t, f) => {
   const v = f.args[0]!;
-  if (v.t !== K.Date) return value(v);
-  const d = v.v;
-  const { time, zone } = d;
-  if (time === null || zone === null) return value(v);
-  const at = new Date(utcDayMs(d.y, d.m, d.d) + Math.floor(time / NS_PER_MS) - zone * 60000);
-  const ms = ((at.getHours() * 60 + at.getMinutes()) * 60 + at.getSeconds()) * 1000 + at.getMilliseconds();
-  return value(date({ y: at.getFullYear(), m: at.getMonth() + 1, d: at.getDate(), time: ms * NS_PER_MS + time % NS_PER_MS, zone: null }));
+  if (v.t !== K.Date || v.v.time === null) return value(v);
+  const moment = momentOf(v)!.ms;
+  // a zone holds whole minutes; an old one of the clock in seconds (Madrid in 1890 was -0:14:44) is cut to
+  // them, and the time is read from the moment with that zone, so the moment stays exact
+  const zone = Math.trunc(-new Date(moment).getTimezoneOffset());
+  const at = new Date(moment + zone * 60000);
+  const ms = ((at.getUTCHours() * 60 + at.getUTCMinutes()) * 60 + at.getUTCSeconds()) * 1000 + at.getUTCMilliseconds();
+  const time = ms * NS_PER_MS + v.v.time % NS_PER_MS;
+  return value(date({ y: at.getUTCFullYear(), m: at.getUTCMonth() + 1, d: at.getUTCDate(), time, zone }));
 });
 
 native('day-label', '["The day of a date said in the active language, from today where the page is: Today, Yesterday, Tomorrow, or its weekday and date, with the year when it is another." date [date!]]', (t, f) => {
