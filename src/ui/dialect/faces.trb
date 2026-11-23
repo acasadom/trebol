@@ -25,6 +25,7 @@ face: make object! [
     narrow-only: false  ; shown only on narrow screens
     wide-only: false    ; hidden on narrow screens
     hidden: false
+    rate: none          ; ticks: times a second (integer) or the time between (time!); each fires on-time
     disabled: false
     readonly: false     ; shown and sent, but the user cannot change it, and no rule applies
     inert: false        ; shown as it is, but neither it nor its children can be used

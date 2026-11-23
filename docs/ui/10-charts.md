@@ -273,6 +273,25 @@ Its text says what the number is and a second text is the line under it. `trend`
 oldest first, and draws them as a small line ending on a dot; a role colours the number and the line. Each stat
 is a card of its own, so a `grid` lines them up, and the trends sit at the foot of each, side by side.
 
+## A face that ticks
+
+Some faces say something that changes with time alone: a clock, how long a bike has been on the stand. With
+`rate`, as in R2 and Red, a face ticks — `rate 1` once a second, `rate 0:00:30` every half minute — and each tick
+runs its `on-time`:
+
+```trebol-ui
+since: now
+view [
+    panel "On the stand" [
+        title "0:00:00" rate 1 on-time [face/text: form to time! round difference now since]
+        text muted "since the bike came in"
+    ]
+]
+```
+
+It ticks only while the face is on the page: a screen that leaves takes its ticks with it. `face/rate: none`
+stops it, and a new rate starts it again.
+
 ## Moving through a graph
 
 Some things are not rows but a web: customers ride bikes, bikes have repairs, repairs need parts. An `orbit`

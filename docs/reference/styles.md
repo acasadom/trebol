@@ -40,8 +40,9 @@ Every face takes:
 - [`menu`](#word-menu) and a block: its context menu, or the menu a button opens
 - [`morph`](#word-morph) and a lit-word or a block: a name shared with a face of the next screen, which this one becomes
 - [`with`](#word-with) and a block: a block run bound to the face once it is read: the last way out, for a field nothing else sets
+- [`rate`](#word-rate) and an integer or a time: ticks while shown, each firing on-time: rate 2 is twice a second, rate 0:00:30 every half minute
 
-It fires [`on-over`](#word-on-over), [`on-dbl-click`](#word-on-dbl-click), [`on-key`](#word-on-key), [`on-focus`](#word-on-focus), [`on-unfocus`](#word-on-unfocus), [`on-menu`](#word-on-menu), [`on-select`](#word-on-select), [`on-drop`](#word-on-drop), [`on-reorder`](#word-on-reorder).
+It fires [`on-over`](#word-on-over), [`on-dbl-click`](#word-on-dbl-click), [`on-key`](#word-on-key), [`on-focus`](#word-on-focus), [`on-unfocus`](#word-on-unfocus), [`on-menu`](#word-on-menu), [`on-select`](#word-on-select), [`on-drop`](#word-on-drop), [`on-reorder`](#word-on-reorder), [`on-time`](#word-on-time).
 
 What every face is and takes. Its last way out, `with [...]`, runs a block bound to the face once it is read,
 to set a field no word sets: use it when nothing else does, since check and a designer cannot see into it.

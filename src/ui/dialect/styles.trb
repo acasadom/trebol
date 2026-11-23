@@ -25,7 +25,8 @@ ui-define/abstract 'face none [takes: [
     menu: 'menu [block!] :menu-of "its context menu, or the menu a button opens"
     morph: 'morph [lit-word! block!] :morph-of "a name shared with a face of the next screen, which this one becomes"
     with: 'with [block!] "a block run bound to the face once it is read: the last way out, for a field nothing else sets"
-    on: [on-over on-dbl-click on-key on-focus on-unfocus on-menu on-select on-drop on-reorder]
+    rate: 'rate [integer! time!] :rate-of "ticks while shown, each firing on-time: rate 2 is twice a second, rate 0:00:30 every half minute"
+    on: [on-over on-dbl-click on-key on-focus on-unfocus on-menu on-select on-drop on-reorder on-time]
     done: :ui-run-with
 ]]
 
@@ -59,6 +60,9 @@ spacing-of: function [v f place [block!]] [
 ]
 ui-faces: func [b [block!]] [build-faces b ui-labels]
 morph-of: func [v] [either block? v [v] [to word! v]]
+rate-of: function [v f place [block!]] [
+    either v > either integer? v [0] [0:00] [v] [ui-problem place "a rate is more than none: rate 2 or rate 0:00:30"]
+]
 
 ; --- containers
 

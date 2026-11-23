@@ -32,6 +32,7 @@ import { syncToolbar, syncBreadcrumb } from './toolbars.ts';
 import { syncDialog, syncTabs, syncSteps, syncSplit } from './dialogs.ts';
 import { comingScreen, enteredScreen, setComingScreen } from './screens.ts';
 import { sweepSizes } from './sizes.ts';
+import { syncRate, sweepRates } from './rates.ts';
 import { laterMarkScrollers } from './scrollers.ts';
 import { dirtySeries, watchShown, watchChanged, ownersOf } from './inplace.ts';
 
@@ -97,6 +98,7 @@ function draw(m: Mounted): void {
   if (flag(f, 'drag') && !isData(m) && m.el.tabIndex < 0) m.el.tabIndex = 0;
   space(m.el, 'padding', get(f, 'pad'));
   space(m.el, 'gap', get(f, 'gap'));
+  syncRate(m);
 
   if (style === 'radio') return syncRadio(m, err);
   if (style === 'slider') return syncSlider(m, err);
@@ -349,6 +351,7 @@ export function showComing(box: HTMLElement, f: ObjectCell, loading: boolean): v
     box.toggleAttribute('data-tb-loading', entering);
     enteredScreen(box);
     sweepSizes();   // the screen that left took its faces with it
+    sweepRates();
     laterMarkScrollers();
   });
 }
@@ -378,6 +381,7 @@ export function setExtra(e: HTMLElement, cls: string[]): void {
 export function react(): void {
   for (const m of reactors) if (!m.el.isConnected && comingScreen?.contains(m.el) !== true) reactors.delete(m);
   sweepSizes(n => comingScreen?.contains(n) === true);
+  sweepRates(n => comingScreen?.contains(n) === true);
   laterMarkScrollers();
   if (reacting !== null || reactors.size === 0 || (dirty.length === 0 && dirtySeries.length === 0 && !newReactor)) return;
   setNewReactor(false);

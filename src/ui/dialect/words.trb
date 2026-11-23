@@ -66,7 +66,7 @@ event-word?: func [w [word!]] [
 ; The events a face, a view or a screen answers to.
 ui-events: [
     on-back on-change on-close on-dbl-click on-drop on-end on-enter on-expand on-find on-focus on-key
-    on-leave on-menu on-over on-reorder on-search on-select on-sort on-unfocus
+    on-leave on-menu on-over on-reorder on-search on-select on-sort on-time on-unfocus
 ]
 
 ; An on- word that is no event is a problem of the layout at place: on-chnage, "did you mean on-change?".

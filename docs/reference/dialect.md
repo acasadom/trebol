@@ -627,6 +627,15 @@ A word followed by its value, of [`face`](#style-face).
 face's fields. It is the last way out, for a field no word of the style sets; `trebol check` does not run it and a
 designer shows it as code, so a style that needs a field often is better given a word for it in its `takes:`.
 
+(word-rate)=
+## rate
+
+A word followed by its value, of [`face`](#style-face).
+
+`rate 2` makes a face tick twice a second, `rate 0:00:30` every half minute, as in R2 and Red; each tick runs its
+`on-time` while the face is on the page. A new rate starts the ticks again, `face/rate: none` stops them, and a
+face taken off the page stops by itself.
+
 (word-poster)=
 ## poster
 
@@ -793,6 +802,13 @@ clicked: it is in `event/face`.
 An event: the block after it runs when it happens.
 
 When a header of a table is chosen: `event/column` and `event/order` say how to sort, and the program sorts.
+
+(word-on-time)=
+## on-time
+
+An event: the block after it runs when it happens.
+
+At each tick of its `rate`.
 
 (word-on-unfocus)=
 ## on-unfocus

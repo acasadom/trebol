@@ -394,6 +394,12 @@ show in both screens move; the rest go with their screen.
 face's fields. It is the last way out, for a field no word of the style sets; `trebol check` does not run it and a
 designer shows it as code, so a style that needs a field often is better given a word for it in its `takes:`.
 
+## rate
+
+`rate 2` makes a face tick twice a second, `rate 0:00:30` every half minute, as in R2 and Red; each tick runs its
+`on-time` while the face is on the page. A new rate starts the ticks again, `face/rate: none` stops them, and a
+face taken off the page stops by itself.
+
 ## poster
 
 `poster %intro.jpg`: the image a video shows before it plays.
@@ -494,6 +500,10 @@ clicked: it is in `event/face`.
 ## on-sort
 
 When a header of a table is chosen: `event/column` and `event/order` say how to sort, and the program sorts.
+
+## on-time
+
+At each tick of its `rate`.
 
 ## on-unfocus
 
