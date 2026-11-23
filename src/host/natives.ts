@@ -84,8 +84,8 @@ native('wait', '["Waits a number of seconds, or for tasks to finish; other tasks
   return {
     k: 'await',
     p: new Promise<Cell>(resolve => {
-      const id = setTimeout(() => resolve(NONE), ms);
-      if (me) me.abort = () => clearTimeout(id);
+      const stop = after(ms, () => resolve(NONE));
+      if (me) me.abort = stop;
     }),
   };
 });

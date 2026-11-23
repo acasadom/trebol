@@ -71,7 +71,7 @@ day-label date
 (fn-local-date)=
 ## local-date
 
-The moment a date names as the clock where the page is read it then, with no zone: in New York 1-Jul-2026/4:30+0:00 is 1-Jul-2026/0:30, and 1-Dec-2026/4:30+0:00 is 30-Nov-2026/23:30. A date with no time or no zone stays as it is.
+The same moment as the clock where the page is reads it then, with that clock's zone: in New York 1-Jul-2026/4:30+0:00 is 1-Jul-2026/0:30-4:00, and 1-Dec-2026/4:30+0:00 is 30-Nov-2026/23:30-5:00. A date with no zone is the time on that clock, and gets its zone: 1-Jul-2026/0:30 is 1-Jul-2026/0:30-4:00; a time the clock skips when it goes forward is read an hour on, 8-Mar-2026/2:30 is 8-Mar-2026/3:30-4:00. A date with no time stays as it is.
 
 ```text
 local-date date
@@ -79,12 +79,15 @@ local-date date
 
 - `date` (`date!`)
 
-A date with a zone is a moment anywhere; `local-date` says it as the clock where the page is read it then,
-in its summer time or its winter time. A page in New York:
+A date with a zone is a moment anywhere; `local-date` gives the same moment as the clock where the page is
+read it then, with that clock's zone, summer time or winter time. The moment is never lost: in the hour the
+clocks go back, the two 1:15s have different zones and still compare in the order they happened. A page in
+New York:
 
 ```trebol
-local-date 1-Jul-2026/4:30+0:00   ; 1-Jul-2026/0:30, summer time
-local-date 1-Dec-2026/4:30+0:00   ; 30-Nov-2026/23:30, winter time
+local-date 1-Jul-2026/4:30+0:00   ; 1-Jul-2026/0:30-4:00, summer time
+local-date 1-Dec-2026/4:30+0:00   ; 30-Nov-2026/23:30-5:00, winter time
+local-date 1-Jul-2026/0:30        ; 1-Jul-2026/0:30-4:00, no zone: the time on that clock
 local-date 1-Dec-2026             ; 1-Dec-2026, no time: as it is
 ```
 

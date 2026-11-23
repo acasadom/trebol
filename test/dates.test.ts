@@ -90,4 +90,15 @@ describe('moments and how they are said, from the host', () => {
     assert.equal(ago(now - 5 * 60e3, 'es'), 'hace 5 minutos');
     assert.equal(ago(at(2026, 11, 23), 'en', true), 'today');
   });
+
+  test('days are counted right across the year 100, which Date.UTC reads as 1900', () => {
+    const early = (y: number, m: number, d: number, h = 0): number => {
+      const t = new Date(2000, 0, 1, h);
+      t.setFullYear(y, m - 1, d);
+      return t.getTime();
+    };
+    const now = early(99, 12, 31, 10);
+    assert.equal(relativeText({ ms: early(100, 1, 1), allDay: true }, now, 'en'), 'tomorrow');
+    assert.equal(relativeText({ ms: early(99, 12, 30), allDay: true }, now, 'en'), 'yesterday');
+  });
 });

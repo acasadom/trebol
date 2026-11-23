@@ -154,7 +154,7 @@ export function renderCalendar(): void {
   const thead = el('thead');
   thead.append(names);
   const body = el('tbody');
-  const start = Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), 1);
+  const start = utcDayMs(at.getUTCFullYear(), at.getUTCMonth() + 1, 1);
   let ms = start - ((new Date(start).getUTCDay() - first + 7) % 7) * DAY_MS;
   const label = fmt({ dateStyle: 'full' });
   do {
@@ -199,8 +199,9 @@ export function spanTo(d: Date): void {
 export function addMonths(d: Date, n: number): Date {
   const y = d.getUTCFullYear(), m = d.getUTCMonth() + n;
   // the same day, or the last one of a shorter month
-  const last = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
-  return new Date(Date.UTC(y, m, Math.min(d.getUTCDate(), last)));
+  // utcDayMs, not Date.UTC, which reads the years 0 to 99 as 19xx
+  const last = new Date(utcDayMs(y, m + 2, 0)).getUTCDate();
+  return new Date(utcDayMs(y, m + 1, Math.min(d.getUTCDate(), last)));
 }
 
 export function focusDay(): void {

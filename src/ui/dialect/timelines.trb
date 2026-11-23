@@ -63,9 +63,7 @@ timeline-moment: function [v] [
         ] [return none]
         v: attempt [to date! replace v " " "T"]
     ]
-    unless date? :v [return none]
-    ; the clock where the page is, as it read then: a summer moment in its summer time
-    local-date v
+    either date? :v [v] [none]
 ]
 
 ; The text of a value of a row, for a text face: none when there is nothing to say.
@@ -84,9 +82,8 @@ timeline-say: func [v] [
 ; and the tooltip have it.
 timeline-time: function [m relative] [
     unless all [m  m/time] [return none]
-    here: now
-    here: here/date + here/time
-    either all [relative  24:00 > abs difference here m] [[text muted small ago]] [[text muted small clock]]
+    ; m has its zone (local-date), so the difference is between moments
+    either all [relative  24:00 > abs difference now m] [[text muted small ago]] [[text muted small clock]]
 ]
 
 ; The faces of a text with what it says, which may be any value a text face shows.
@@ -127,6 +124,10 @@ timeline-item: function [row m columns relative role-by] [
 ; The faces of the rows: under the day they happened, newest first or oldest first, the
 ; rows of a day in the same order; rows at the same moment keep the order of the data. A
 ; whole day goes before the times of that day when oldest first, after them when newest.
+; Each moment is taken as the clock where the page is reads it, with that clock's zone then
+; (local-date): it goes under that day and shows that time, and keeps the moment it is, so
+; rows are put in order by the moments, with or without a zone, also when the clocks go
+; back an hour: 05:45Z (1:45-4:00 in New York) comes before 06:15Z (1:15-5:00).
 ; Rows with no moment go last, as they come, under no day.
 timeline-days: function [rows columns order relative role-by told] [
     if any [not block? rows  not block? columns  4 > length? columns] [return copy []]
@@ -138,13 +139,18 @@ timeline-days: function [rows columns order relative role-by told] [
         i: i + 1
         if any [map? :row  object? :row] [
             m: timeline-moment select row columns/1
-            either m [append/only dated reduce [m  either m/time [1] [0]  i  row]] [append/only undated row]
+            either m [append/only dated reduce [local-date m  either m/time [1] [0]  i  row]] [append/only undated row]
         ]
     ]
+    ; a/1 the date on the page's clock, a/2 1 when it has a time, a/3 its place in the data,
+    ; a/5 the date as given; the moments of two dates with a zone are compared, else the clock
+    ; a/1 the date on the page's clock with its zone then, so dates with a time compare as the
+    ; moments they are; a/2 1 when it has a time; a/3 its place in the data
     sort/compare dated func [a b] [
         case [
-            a/1 <> b/1 [either newest [a/1 > b/1] [a/1 < b/1]]
+            a/1/date <> b/1/date [either newest [a/1/date > b/1/date] [a/1/date < b/1/date]]
             a/2 <> b/2 [either newest [a/2 > b/2] [a/2 < b/2]]
+            a/1 <> b/1 [either newest [a/1 > b/1] [a/1 < b/1]]
             true [a/3 < b/3]
         ]
     ]

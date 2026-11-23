@@ -176,6 +176,10 @@ async function evErr(src: string): Promise<string> {
 }
 
 describe('tasks and timers', () => {
+  test('a wait of 30 days waits: it does not end at once as a setTimeout of that many milliseconds would', async () => {
+    assert.equal(await ev('done: false t: spawn [wait 720:00 done: true] wait 0.05 cancel t done'), 'false');
+  });
+
   test('wait pauses only the task', async () => {
     assert.equal(await ev('t: spawn [wait 0.02 "late"] r: copy [] append r "early" append r wait t r'), '["early" "late"]');
   });
@@ -416,6 +420,10 @@ describe('http', () => {
 
   test('form posts', async () => {
     assert.equal(await ev('r: fetch/with base/echo [form: [a 1 b "x y"]] r/body'), '"a=1&b=x+y"');
+  });
+
+  test('a timeout of 30 days does not end the request at once', async () => {
+    assert.equal(await ev('done: false t: spawn [attempt [fetch/with base/never [timeout: 720:00]] done: true] wait 0.05 cancel t done'), 'false');
   });
 
   test('HTTP errors, timeouts and cancellation are catchable errors', async () => {
