@@ -28,7 +28,7 @@ test-walk: function [f parent out] [
     append out reduce [f parent]
     unless block? f/pane [exit]
     ; a browser links the faces code puts in a pane to their view and form; here, when they are looked at
-    if all [f/root  not empty? f/pane  object? first f/pane  none? get in first f/pane 'root] [ui-pane f]
+    if all [f/root  foreach c f/pane [if all [object? c  none? get in c 'root] [break/return true]]] [ui-pane f]
     case [
         f/style = 'tabs [
             ; the label of every tab, the faces of the one chosen

@@ -202,6 +202,41 @@ view [
 `autoplay` plays it as soon as it can, always without sound, since browsers let nothing else play on its own.
 `on-end` runs when it ends.
 
+## Faces made from data
+
+So far every face was written in the layout. When how many there are comes from data, a list of bikes the
+server sends, code writes the block of the dialect and lays it out. `layout/only` turns a block into its faces,
+without a view around them, and a container shows whatever faces its `pane` holds:
+
+```trebol-ui
+bikes: [
+    ["Road bike" "Brakes rub" warning]
+    ["City bike" "New chain" success]
+]
+card: func [bike] [compose/deep [panel (bike/1) [text (bike/2) (bike/3)]]]
+view [
+    width small
+    button "Bike in" [
+        append in-shop/pane layout/only card ["Cargo bike" "Flat tyre" danger]
+    ]
+    global in-shop: grid []
+]
+in-shop/pane: layout/only collect [foreach b bikes [keep card b]]
+```
+
+```trebol-test
+"the bikes come from the data, and the button adds one"
+[see "Road bike"  see "New chain"  see/not "Cargo bike"]
+[click "Bike in"  see "Cargo bike"  see "Flat tyre"]
+```
+
+`compose` puts the bike's values in the block: the dialect sees them as if they had been written there. Giving a
+container a new block of faces draws them in place of the old ones, and so do `append`, `insert`, `remove` or
+`clear` on the block it holds. The faces put in this way belong to the screen as those written in it do: a
+field put in a form is one of its values and its checks show, and the theme, the phone and the tests treat
+them all alike. The names given inside a block are local to that `layout`, as in any other; `global` names a
+face the rest of the app reaches.
+
 ## A face in JavaScript
 
 Sooner or later a screen needs something Trebol does not draw: a map, a code editor, a library someone else

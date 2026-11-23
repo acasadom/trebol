@@ -1,6 +1,6 @@
 // --- reading faces -----------------------------------------------------------------
 
-import { K, NONE, form, ctxFind, intern, spell, type Cell, type MapCell, type ObjectCell, type WordCell } from '../../core/index.ts';
+import { K, NONE, form, ctxFind, intern, spell, type Cell, type MapCell, type ObjectCell, type WordCell, type Ctx } from '../../core/index.ts';
 import { mapAt, shown, translate, uiText, activeLanguage, LOCAL_KINDS } from '../index.ts';
 import { iconNode } from '../icons.ts';
 import { host, el } from './mount.ts';
@@ -121,6 +121,17 @@ export function children(face: ObjectCell): ObjectCell[] {
   const c = get(face, 'pane');
   if (c.t !== K.Block) return [];
   return c.s.data.slice(c.i).filter(x => x.t === K.Object) as ObjectCell[];
+}
+
+/** The contexts of a face's children, to tell whether code changed its pane in place. */
+export function paneFaces(face: ObjectCell): Ctx[] {
+  return children(face).map(c => c.ctx);
+}
+
+/** Whether the pane holds other faces, or in another order, than `was`. */
+export function paneMoved(face: ObjectCell, was: Ctx[]): boolean {
+  const now = children(face);
+  return now.length !== was.length || now.some((c, i) => c.ctx !== was[i]);
 }
 
 /** The name of a face's icon (`#search` -> "search"). */

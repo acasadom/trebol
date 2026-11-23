@@ -5,7 +5,18 @@ links, and the values of forms. See [building screens](../ui/01-first-screen.md)
 
 ## view
 
+`view` of a block lays it out first, as `layout` does; given a face from `layout`, it shows that one. The view
+becomes the page, held by the word `page`, and its `screens`, if it has some, follow the browser's link.
+
 ## layout
+
+Gives the view face that `view` would show, without showing it, so code can change it first. With `/only` it
+gives the block of faces, with no view around them, to put in a container: `box/pane: layout/only [text "New"]`
+draws them in place of the faces it held, and `append box/pane layout/only [...]`, `insert`, `remove` and
+`clear` on the pane draw it again too. The new faces join the view and the form they are put in: a field is one
+of the form's values, and its checks show. A block made with `compose` lays out the values code puts in it, so
+faces can come from data. Each layout copies its block, so laying out the same block twice gives faces of their
+own; the names it gives are local to it, unless written with `global`.
 
 ## stylize
 

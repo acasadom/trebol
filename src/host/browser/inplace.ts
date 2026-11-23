@@ -15,8 +15,11 @@ import { K, isSeries, intern, canon, type Cell, type Ctx, type Series, type Sym,
 /** Series shown by a face, or read by a reaction, changed since the last repaint (filled by the core). */
 export const dirtySeries: Series<unknown>[] = [];
 
-/** Fields of a face that hold no content shown: its children, handlers, rules and rows' own state. */
-const SKIP = new Set<Sym>(['pane', 'action', 'events', 'reactions', 'template', 'built', 'owner', 'rules'].map(w => canon(intern(w))));
+/**
+ * Fields of a face that hold no content shown: handlers, rules and rows' own state. The pane is
+ * walked: its block is marked, so `append f/pane face` redraws f, and the faces in it mark their own.
+ */
+const SKIP = new Set<Sym>(['action', 'events', 'reactions', 'template', 'built', 'owner', 'rules'].map(w => canon(intern(w))));
 
 const FACE = ['style', 'pane', 'reactions'].map(w => canon(intern(w)));
 
