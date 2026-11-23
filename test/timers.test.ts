@@ -66,6 +66,18 @@ describe('timers', () => {
     assert.ok(asked.every(ms => ms <= LONGEST_WAIT), `asked for ${asked}`);
   });
 
+  test('a long repeat stopped by its own run leaves no wait behind', () => {
+    const asked = clocks();
+    let n = 0;
+    const stop = repeat(30 * DAY, () => { n++; stop(); });
+    advance(31 * DAY);
+    assert.equal(n, 1);
+    const waits = asked.length;
+    advance(90 * DAY);
+    assert.equal(n, 1);
+    assert.equal(asked.length, waits, 'a wait was set after the stop');
+  });
+
   test('a short wait is one interval of at least a millisecond', () => {
     const asked = clocks();
     let n = 0;

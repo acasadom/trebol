@@ -29,7 +29,8 @@ export function repeat(ms: number, fn: () => void): () => void {
     stopWait = after(ms, () => {
       if (stopped) return;
       fn();
-      next();
+      // fn may have stopped it: then no wait is left behind
+      if (!stopped) next();
     });
   };
   next();
