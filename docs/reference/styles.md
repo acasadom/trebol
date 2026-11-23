@@ -218,6 +218,7 @@ It takes what [`face`](#style-face) takes, and:
 
 - [`count`](#word-count): a number that changes runs from the old one to the new
 - [`shrink`](#word-shrink): on one line, as large as its width lets it be
+- [`bold`](#word-bold): its letters heavier, as the label over a number
 
 Text. A date, a time, a number or an amount is shown in the format of the active language.
 

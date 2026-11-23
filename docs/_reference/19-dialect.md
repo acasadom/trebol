@@ -153,6 +153,11 @@ Cuts an image to a circle, as for a person's photo: `image %ada.jpg "Ada" 48x48 
 A text, heading, title or stat whose number, percent or amount changes runs from the old one to the new, in about
 half a second: `title count is [total]`. Not the first it shows, nor with less motion asked for.
 
+## bold
+
+A text with heavier letters, as the label over a number or the name in a line: `text "Takings" muted bold`.
+Headings and titles are bold already.
+
 ## shrink
 
 A text, heading or title on one line, its letters as large as its width lets the line be, never larger than its

@@ -11,3 +11,7 @@ test('every role but muted colours a text, heading or title in its readable shad
   // muted greys any face, a text too
   assert.match(LAYOUT, /\.tb-muted \{ color: var\(--tb-muted\); \}/);
 });
+
+test('bold makes the letters of a text heavier', () => {
+  assert.match(LAYOUT, /\.tb-text\.tb-bold \{ font-weight: 550; \}/);
+});

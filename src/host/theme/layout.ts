@@ -211,6 +211,7 @@ body {
 .tb-title { margin: 0; font-family: var(--tb-headings); font-size: 28px; line-height: 1.2; font-weight: 650; letter-spacing: -0.02em; }
 .tb-heading { margin: 0; font-family: var(--tb-headings); font-size: 20px; line-height: 1.3; font-weight: 600; letter-spacing: -0.01em; }
 .tb-text { margin: 0; }
+.tb-text.tb-bold { font-weight: 550; }
 /* shrink: one line, its letters as large as the face's width lets them be (--tb-shrink-chars, set as it is drawn,
    each character about 0.62 of the size wide), never larger than the face's own size nor smaller than 0.6 of it */
 .tb-shrink { container-type: inline-size; min-width: 0; }

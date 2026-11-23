@@ -248,6 +248,14 @@ A flag, of [`title`](#style-title), [`heading`](#style-heading), [`text`](#style
 A text, heading, title or stat whose number, percent or amount changes runs from the old one to the new, in about
 half a second: `title count is [total]`. Not the first it shows, nor with less motion asked for.
 
+(word-bold)=
+## bold
+
+A flag, of [`text`](#style-text).
+
+A text with heavier letters, as the label over a number or the name in a line: `text "Takings" muted bold`.
+Headings and titles are bold already.
+
 (word-shrink)=
 ## shrink
 

@@ -113,7 +113,11 @@ split-check: func [f place [block!]] [
 stylize [
     title: face [style: 'title  takes: [count: 'count "a number that changes runs from the old one to the new"  shrink: 'shrink "on one line, as large as its width lets it be"]]
     heading: face [style: 'heading  takes: [count: 'count "a number that changes runs from the old one to the new"  shrink: 'shrink "on one line, as large as its width lets it be"]]
-    text: face [style: 'text  takes: [count: 'count "a number that changes runs from the old one to the new"  shrink: 'shrink "on one line, as large as its width lets it be"]]
+    text: face [style: 'text  takes: [
+        count: 'count "a number that changes runs from the old one to the new"
+        shrink: 'shrink "on one line, as large as its width lets it be"
+        bold: 'bold "its letters heavier, as the label over a number"
+    ]]
     code: face [style: 'code]
     divider: face [style: 'divider]
 ]
