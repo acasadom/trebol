@@ -108,6 +108,10 @@ The whole page: its children one under another. `view [...]` shows it; words bef
 
 Made from [`container`](#style-container).
 
+It takes what [`container`](#style-container) takes, and:
+
+- [`rail`](#word-rail): its children go down a line, each with a mark on it: steps, or what happened one after another
+
 Children one under another.
 
 (style-row)=

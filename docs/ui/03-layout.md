@@ -237,6 +237,25 @@ field put in a form is one of its values and its checks show, and the theme, the
 them all alike. The names given inside a block are local to that `layout`, as in any other; `global` names a
 face the rest of the app reaches.
 
+## One after another
+
+Some things come in order: the steps of a repair, what happened to a bike. A `column` with `rail` puts its children
+down a line, each with a mark on it, and the role of a child paints its mark:
+
+```trebol-ui
+view [
+    width small
+    column rail [
+        column success [text "Booked in"  text muted small "Monday, by Ada"]
+        column success [text "Brakes ordered"  text muted small "Tuesday"]
+        column primary [text "On the stand"  text muted small "now"]
+        column [text muted "Ready to collect"]
+    ]
+]
+```
+
+A screen reader hears it as a list, each child an item of it.
+
 ## A face in JavaScript
 
 Sooner or later a screen needs something Trebol does not draw: a map, a code editor, a library someone else

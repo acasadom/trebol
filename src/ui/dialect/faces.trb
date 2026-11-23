@@ -34,6 +34,7 @@ face: make object! [
     mark-text: none
     round: false        ; an image: cut to a circle, as for a person's photo
     count: false        ; a text whose number changes runs from the old one to the new
+    rail: false         ; a column: its children down a line, a mark each
     bold: false         ; a text with heavier letters, as the label over a number
     shrink: false       ; a text on one line, its letters as large as its width lets them be, never larger than its size
     composed: false     ; holds the faces of its style's layout: (the container it is drawn as: panel), which show its text

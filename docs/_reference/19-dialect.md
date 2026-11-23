@@ -169,6 +169,11 @@ equal share of what is left.
 A canvas as wide as it can be and as tall as its extent: `canvas 100x32 stretch [line 0x28 50x10 100x4]`. It is
 drawn again at each width; its points spread across it, while its lines, dots and text keep their size.
 
+## rail
+
+On a `column`: its children go down a line, each with a mark on it, and the role of a child paints its mark; a
+screen reader hears a list. `column rail [text "Booked in" text "On the stand"]`.
+
 ## drag
 
 It can be dragged: it carries its value, or the row in a table, list or tree.

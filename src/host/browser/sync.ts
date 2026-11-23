@@ -33,6 +33,7 @@ import { syncDialog, syncTabs, syncSteps, syncSplit } from './dialogs.ts';
 import { comingScreen, enteredScreen, setComingScreen } from './screens.ts';
 import { sweepSizes } from './sizes.ts';
 import { syncRate, sweepRates } from './rates.ts';
+import { markRail } from './rails.ts';
 import { laterMarkScrollers } from './scrollers.ts';
 import { dirtySeries, watchShown, watchChanged, ownersOf } from './inplace.ts';
 
@@ -64,6 +65,7 @@ function draw(m: Mounted): void {
   if (flag(f, 'wide-only')) cls.push('tb-wide-only');
   if (flag(f, 'fit')) cls.push('tb-fit');
   if (flag(f, 'bold')) cls.push('tb-bold');
+  if (flag(f, 'rail')) cls.push('tb-rail');
   if (flag(f, 'segmented')) cls.push('tb-segmented');
   if (flag(f, 'drop')) cls.push('tb-drop-zone');
   // made of its style's layout: (composites.trb); the theme makes it part of a panel it is in
@@ -306,6 +308,7 @@ function draw(m: Mounted): void {
     // let the dialect link the new faces to their view and form
     void fire('ui-pane', f);
   }
+  if (style === 'column') markRail(m.box ?? m.el, flag(f, 'rail'));
   if (style === 'screens') settleScreen(m.box ?? m.el, f);
 }
 
