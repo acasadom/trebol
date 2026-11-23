@@ -6,7 +6,7 @@
 import { K } from '../../core/index.ts';
 import { activeLanguage } from '../index.ts';
 import { rowField } from '../rows.ts';
-import { timelineDays, dayLabel, timeText, type Moment } from '../timeline-days.ts';
+import { timelineDays, dayLabel, timeText, type Moment } from '../dates.ts';
 import { get, str, own, word, flag } from './faces.ts';
 import { type Mounted, host, rowOf, el, newId } from './mount.ts';
 import { columns, cellText } from './tables.ts';

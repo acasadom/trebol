@@ -1,5 +1,5 @@
 // timeline: what happened, and when, under the day it happened
-// (src/ui/dialect/timelines.trb, drawn by src/host/browser/timelines.ts from src/host/timeline-days.ts).
+// (src/ui/dialect/timelines.trb, drawn by src/host/browser/timelines.ts from src/host/dates.ts).
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { native, value, mold, form, errorField, intern, type Cell, type ObjectCell } from '../src/core/index.ts';
 import { startHost, startUi, runSource, type Host } from '../src/host/index.ts';
 import { setHost } from '../src/host/browser/mount.ts';
-import { momentOf, dayOf, timelineDays, dayLabel, relativeText, clockText, timeText } from '../src/host/timeline-days.ts';
+import { momentOf, dayOf, timelineDays, dayLabel, relativeText, clockText, timeText } from '../src/host/dates.ts';
 import { rowField } from '../src/host/rows.ts';
 
 native('show', '[root [object!]]', (_t, f) => value(f.args[0]!));

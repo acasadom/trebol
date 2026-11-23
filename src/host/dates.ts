@@ -1,8 +1,10 @@
-// The rows of a timeline: the moment each one happened, the order they go in, the days they fall under,
-// and how a day and a moment are said in a language. No DOM here, so the tests run it in Node.
+// Dates said for people: the moment a value names, the day it falls on where the page is, and how a day and a
+// moment are said in a language (day-label, time-ago); also the rows of a timeline under their days. No DOM
+// here, so the tests run it in Node.
 
-import { K, text, type Cell, type Sym, type StringCell } from '../core/index.ts';
+import { K, text, native, value, string, type Cell, type Sym, type StringCell } from '../core/index.ts';
 import { rowField } from './rows.ts';
+import { activeLanguage } from './locale.ts';
 
 const NS_PER_MS = 1e6;
 
@@ -142,3 +144,13 @@ export function relativeText(at: Moment, now: number, lang: string): string {
   if (Math.abs(days) < 365) return say(r(a / (30 * 86400)), 'month');
   return say(r(a / (365 * 86400)), 'year');
 }
+
+native('day-label', '["The day of a date said in the active language, from today where the page is: Today, Yesterday, Tomorrow, or its weekday and date, with the year when it is another." date [date!]]', (t, f) => {
+  const at = momentOf(f.args[0]!)!;
+  return value(string(dayLabel(at.ms, Date.now(), activeLanguage(t.rt))));
+});
+
+native('time-ago', '["How long ago a date was, or how long until it, in the active language: now, 5 minutes ago, 3 hours ago, in 2 days. A date with no time is said in days." date [date!]]', (t, f) => {
+  const at = momentOf(f.args[0]!)!;
+  return value(string(relativeText(at, Date.now(), activeLanguage(t.rt))));
+});
