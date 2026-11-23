@@ -133,18 +133,19 @@ stylize [
 ]
 view [
     row [
-        tally "Bikes in" 12 "3 since this morning"
+        tally "Bikes in" 12 "3 since this morning" success
         tally "Waiting for parts" 4 "the oldest since Monday"
     ]
 ]
 ```
 
 Each `tally` gets faces of its own, and the labels written in `layout:` belong to that face only: the layout
-around it does not see them. `trebol check` reads the faces of `layout:` as it reads any others, so a mistake in
+around it does not see them. A role or size given to it (`success`, `large`) reaches the faces of its layout that
+say none of their own, here the number, and follows it when it changes. `trebol check` reads the faces of `layout:` as it reads any others, so a mistake in
 them is a problem of every layout that uses the style.
 
 Where `layout:` says `slot`, go the faces written in a block after the style, read where they are written, so
-they see that layout's labels:
+they see that layout's labels and keep their own role and size:
 
 ```trebol-ui
 stylize [

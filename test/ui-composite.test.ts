@@ -156,4 +156,15 @@ describe('styles made of other styles', () => {
       reduce [root/pane/1/composed root/pane/2/composed]`);
     assert.equal(mold(got), '[true false]');
   });
+  test('its role and size reach the faces of its layout that say none, and follow it', async () => {
+    const got = await run(`${KPI}
+      root: view [kpi "Takings" 12 "today" success large  section "S" warning [text "mine"]]
+      k: first root/pane
+      ui-react root
+      a: collect [foreach g k/pane [keep g/role  keep g/size]]
+      k/role: 'danger
+      ui-react root
+      reduce [a  k/pane/2/role  k/pane/1/role  root/pane/2/pane/1/role  root/pane/2/pane/2/role]`);
+    assert.equal(mold(got), '[[muted large success large muted large] danger muted warning none]');
+  });
 });

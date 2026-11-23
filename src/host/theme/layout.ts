@@ -215,8 +215,8 @@ body {
 }
 .tb-small { font-size: 13px; }
 .tb-muted { color: var(--tb-muted); }
-.tb-text.tb-danger { color: var(--tb-danger); }
-.tb-text.tb-success { color: var(--tb-success); }
-.tb-text.tb-primary { color: var(--tb-primary); }
+.tb-text.tb-danger, .tb-heading.tb-danger { color: var(--tb-danger); }
+.tb-text.tb-success, .tb-heading.tb-success { color: var(--tb-success); }
+.tb-text.tb-primary, .tb-heading.tb-primary { color: var(--tb-primary); }
 
 `;

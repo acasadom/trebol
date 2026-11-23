@@ -65,6 +65,23 @@ ui-compose: function [f def place [block!]] [
     bind-labels spec labels reduce [to set-word! 'it f]
     f/pane: out
     f/composed: true
+    follow-it out given make object! reduce [to set-word! 'it f]
+]
+
+; The faces of a layout that say no role or size of their own take the face's, and follow
+; it when it changes: `kpi "Takings" 12 success` colours its number. Those given for slot
+; are the user's and keep theirs; a face made of a layout passes it on to its own.
+follow-it: function [faces [block!] given [block!] ctx [object!]] [
+    foreach g faces [
+        unless find/same given g [
+            foreach facet [role size] [
+                if none? select g facet [
+                    add-reaction g 'react bind reduce [to set-path! reduce ['face facet] to path! reduce ['it facet]] ctx false
+                ]
+            ]
+            if all [block? g/pane  not g/composed] [follow-it g/pane given ctx]
+        ]
+    ]
 ]
 
 ; slot in a block of faces: where those given go, or a problem out of a layout:.
