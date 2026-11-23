@@ -64,11 +64,8 @@ timeline-moment: function [v] [
         v: attempt [to date! replace v " " "T"]
     ]
     unless date? :v [return none]
-    if v/zone [
-        v: v/utc + now/zone
-        v: v/date + v/time
-    ]
-    v
+    ; the clock where the page is, as it read then: a summer moment in its summer time
+    local-date v
 ]
 
 ; The text of a value of a row, for a text face: none when there is nothing to say.

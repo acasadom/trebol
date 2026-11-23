@@ -68,6 +68,26 @@ day-label date
 == "Wednesday, January 1, 2020"
 ```
 
+(fn-local-date)=
+## local-date
+
+The moment a date names as the clock where the page is read it then, with no zone: in New York 1-Jul-2026/4:30+0:00 is 1-Jul-2026/0:30, and 1-Dec-2026/4:30+0:00 is 30-Nov-2026/23:30. A date with no time or no zone stays as it is.
+
+```text
+local-date date
+```
+
+- `date` (`date!`)
+
+A date with a zone is a moment anywhere; `local-date` says it as the clock where the page is read it then,
+in its summer time or its winter time. A page in New York:
+
+```trebol
+local-date 1-Jul-2026/4:30+0:00   ; 1-Jul-2026/0:30, summer time
+local-date 1-Dec-2026/4:30+0:00   ; 30-Nov-2026/23:30, winter time
+local-date 1-Dec-2026             ; 1-Dec-2026, no time: as it is
+```
+
 (fn-time-ago)=
 ## time-ago
 

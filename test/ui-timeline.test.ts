@@ -8,6 +8,16 @@ import { native, value, mold, form, errorField, type Cell, type ObjectCell } fro
 import { startHost, startUi, runSource, type Host } from '../src/host/index.ts';
 import { setHost } from '../src/host/browser/mount.ts';
 
+// A timeline reads moments on the clock where the page is: the tests set that clock, so they say the same
+// wherever they run. One test moves it to New York, whose clocks change in March and November.
+process.env.TZ = 'UTC';
+
+/** Runs a test on the clock of a zone, then puts the clock back. */
+async function inZone<T>(zone: string, f: () => Promise<T>): Promise<T> {
+  process.env.TZ = zone;
+  try { return await f(); } finally { process.env.TZ = 'UTC'; }
+}
+
 native('show', '[root [object!]]', (_t, f) => value(f.args[0]!));
 native('ui-watch', '[value [object! series! map!]]', (_t, f) => value(f.args[0]!));
 
@@ -84,6 +94,19 @@ describe('timeline', () => {
       f: first root/pane
       reduce [f/style days-of f  f/pane/2/hidden  day-label 1-Mar-2025]`);
     assert.equal(mold(got), '[timeline ["Saturday, March 1, 2025" [[danger "c" 11:05 "Grace · Shop"] [success "b" 9:30 "Ada"] [muted "whole day" none none]] "Friday, February 28, 2025" [[none "a" 17:40 none]] [[none "none" none none] [none "text" none none]]] true "Saturday, March 1, 2025"]');
+  });
+
+  test('a moment with a zone is read on the clock where the page is as it was then, summer or winter', async () => {
+    const got = await inZone('America/New_York', () => run(`${said}
+      log: [
+        #(at: "2025-07-01T04:30:00Z" text: "summer")
+        #(at: 1-Dec-2025/4:30+0:00 text: "winter")
+        #(at: 1-Jul-2025/4:30 text: "no zone")
+      ]
+      root: view [timeline [at text] oldest is [log]]
+      ui-react root
+      reduce [local-date 1-Jul-2025/4:30+0:00  local-date 1-Dec-2025/4:30+0:00  local-date 1-Jul-2025  days-of first root/pane]`));
+    assert.equal(mold(got), '[1-Jul-2025/0:30 30-Nov-2025/23:30 1-Jul-2025 ["Tuesday, July 1, 2025" [[none "summer" 0:30 none] [none "no zone" 4:30 none]] "Sunday, November 30, 2025" [[none "winter" 23:30 none]]]]');
   });
 
   test('oldest puts a whole day before its times; rows at the same moment keep their order', async () => {

@@ -2,7 +2,7 @@
 // moment are said in a language (day-label, time-ago), and how a machine reads them (<time datetime>). No DOM
 // here, so the tests run it in Node.
 
-import { K, text, native, value, string, utcDayMs, type Cell, type StringCell } from '../core/index.ts';
+import { K, text, native, value, string, date, utcDayMs, type Cell, type StringCell } from '../core/index.ts';
 import { activeLanguage } from './locale.ts';
 
 const NS_PER_MS = 1e6;
@@ -146,6 +146,17 @@ export function fullDateText(v: Cell, lang: string): string | null {
   if (d.time !== null) opts.timeStyle = 'short';
   try { return new Intl.DateTimeFormat(lang, opts).format(ms); } catch { return null; }
 }
+
+native('local-date', '["The moment a date names as the clock where the page is read it then, with no zone: in New York 1-Jul-2026/4:30+0:00 is 1-Jul-2026/0:30, and 1-Dec-2026/4:30+0:00 is 30-Nov-2026/23:30. A date with no time or no zone stays as it is." date [date!]]', (_t, f) => {
+  const v = f.args[0]!;
+  if (v.t !== K.Date) return value(v);
+  const d = v.v;
+  const { time, zone } = d;
+  if (time === null || zone === null) return value(v);
+  const at = new Date(utcDayMs(d.y, d.m, d.d) + Math.floor(time / NS_PER_MS) - zone * 60000);
+  const ms = ((at.getHours() * 60 + at.getMinutes()) * 60 + at.getSeconds()) * 1000 + at.getMilliseconds();
+  return value(date({ y: at.getFullYear(), m: at.getMonth() + 1, d: at.getDate(), time: ms * NS_PER_MS + time % NS_PER_MS, zone: null }));
+});
 
 native('day-label', '["The day of a date said in the active language, from today where the page is: Today, Yesterday, Tomorrow, or its weekday and date, with the year when it is another." date [date!]]', (t, f) => {
   const at = momentOf(f.args[0]!)!;
