@@ -274,6 +274,8 @@ export function pokeValue(cur: Cell, key: Cell, v: Cell): Cell | string {
           if (v.t !== K.Time) return `a date's time is a time, not ${mold(v)}`;
           return date({ ...d, time: v.v });
         case 'zone':
+          // none drops the zone and keeps the clock, as R3 does
+          if (v.t === K.None) return date({ ...d, zone: null, time: d.time ?? 0 });
           if (v.t !== K.Time) return `a date's zone is a time, not ${mold(v)}`;
           return date({ ...d, zone: Math.round(v.v / NS_MIN), time: d.time ?? 0 });
         case 'hour': case 'minute': case 'second': {

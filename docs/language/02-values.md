@@ -143,6 +143,15 @@ dates subtracted give the days between them, each taken on its day in UTC; `diff
 == 14:30
 ```
 
+Setting the zone to `none` drops it and keeps the clock: the date is then that time wherever it is read:
+
+```trebol-console
+>> pickup/zone: none
+== none
+>> pickup
+== 15-Nov-2026/1:30
+```
+
 Pairs (`390x844`) and tuples (`1.2.3`) set their parts the same way: `size/x: 400`. `due:` gave the date a
 name; the next page is about names.
 
