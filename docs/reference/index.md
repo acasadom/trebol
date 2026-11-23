@@ -94,7 +94,7 @@ draw
 
 ### L
 
-[`last`](#fn-last) · [`last?`](#fn-last-3f) · [`layout`](#fn-layout) · [`length?`](#fn-length-3f) · [`lesser-or-equal?`](#fn-lesser-or-equal-3f) · [`lesser?`](#fn-lesser-3f) · [`lit-path?`](#fn-lit-path-3f) · [`lit-word?`](#fn-lit-word-3f) · [`load`](#fn-load) · [`load-csv`](#fn-load-csv) · [`load-json`](#fn-load-json) · [`load-local`](#fn-load-local) · [`load-query`](#fn-load-query) · [`load-spans`](#fn-load-spans) · [`load-xml`](#fn-load-xml) · [`loaded-at`](#fn-loaded-at) · [`localize`](#fn-localize) · [`log-10`](#fn-log-10) · [`log-2`](#fn-log-2) · [`log-e`](#fn-log-e) · [`logic?`](#fn-logic-3f) · [`loop`](#fn-loop) · [`lowercase`](#fn-lowercase)
+[`last`](#fn-last) · [`last?`](#fn-last-3f) · [`layout`](#fn-layout) · [`length?`](#fn-length-3f) · [`lesser-or-equal?`](#fn-lesser-or-equal-3f) · [`lesser?`](#fn-lesser-3f) · [`lit-path?`](#fn-lit-path-3f) · [`lit-word?`](#fn-lit-word-3f) · [`load`](#fn-load) · [`load-csv`](#fn-load-csv) · [`load-json`](#fn-load-json) · [`load-local`](#fn-load-local) · [`load-query`](#fn-load-query) · [`load-spans`](#fn-load-spans) · [`load-xml`](#fn-load-xml) · [`loaded-at`](#fn-loaded-at) · [`local-date`](#fn-local-date) · [`localize`](#fn-localize) · [`log-10`](#fn-log-10) · [`log-2`](#fn-log-2) · [`log-e`](#fn-log-e) · [`logic?`](#fn-logic-3f) · [`loop`](#fn-loop) · [`lowercase`](#fn-lowercase)
 
 ### M
 

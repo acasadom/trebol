@@ -2,6 +2,7 @@
 // timers. They work wherever there is a JS event loop (browser or Node).
 
 import { devLog } from './devlog.ts';
+import { after, repeat } from './timers.ts';
 import {
   K, NONE, UNSET, I64, native, value, form, mold, date, word, pick, throwError, getWord, text,
   type Cell, type BlockCell, type StringCell, type Step,
@@ -98,15 +99,15 @@ native('spawn', '["Starts a task that evaluates a block on its own; gives a hand
 native('delay', '["Evaluates a block once, after a while; gives a handle." time [number! time!] body [block!]]', (t, f) => {
   const sch = schedulerOf(t);
   const body = f.args[1] as BlockCell;
-  const id = setTimeout(() => spawnHandler(sch, body, {}), millis(f.args[0]!));
-  return value(makeHandle('timer', { stop: () => clearTimeout(id) } satisfies Timer));
+  const stop = after(millis(f.args[0]!), () => spawnHandler(sch, body, {}));
+  return value(makeHandle('timer', { stop } satisfies Timer));
 });
 
 native('every', '["Evaluates a block again and again, every so often; gives a handle." time [number! time!] body [block!]]', (t, f) => {
   const sch = schedulerOf(t);
   const body = f.args[1] as BlockCell;
-  const id = setInterval(() => spawnHandler(sch, body, {}), Math.max(1, millis(f.args[0]!)));
-  return value(makeHandle('timer', { stop: () => clearInterval(id) } satisfies Timer));
+  const stop = repeat(millis(f.args[0]!), () => spawnHandler(sch, body, {}));
+  return value(makeHandle('timer', { stop } satisfies Timer));
 });
 
 /** Anything cancellable registers here by handle kind. */

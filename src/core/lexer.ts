@@ -121,6 +121,16 @@ function shiftDecimal(text: string, shift: number): number {
   return Number(`${m[1]}e${Number(m[2] ?? 0) + shift}`);
 }
 
+/**
+ * The year a year of one or two digits names, as R3 reads it: the one at most 50 years from now, so in 2026
+ * 1-Jan-76 is 2076 and 1-Jan-77 is 1977. Three digits or more are the year as written: 1-Jan-0099 is 99.
+ */
+export function fullYear(n: number, thisYear = new Date().getUTCFullYear()): number {
+  const last = thisYear + 50;
+  const y = Math.floor(last / 100) * 100 + n;
+  return y > last ? y - 100 : y;
+}
+
 function daysInMonth(y: number, m: number): number {
   if (m === 2) return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0 ? 29 : 28;
   return [4, 6, 9, 11].includes(m) ? 30 : 31;
@@ -617,7 +627,7 @@ class Lexer {
     const [, a, , monthText, b, rest] = m;
     let y: number;
     let d: number;
-    if (a!.length >= 3) { y = Number(a); d = Number(b); } else { d = Number(a); y = Number(b); }
+    if (a!.length >= 3) { y = Number(a); d = Number(b); } else { d = Number(a); y = b!.length <= 2 ? fullYear(Number(b)) : Number(b); }
     let mon: number;
     if (/^\d+$/.test(monthText!)) {
       mon = Number(monthText);

@@ -4,7 +4,7 @@
 
 import {
   K, native, value, string, form, text, formatDec, spell, ctxFind, intern, integer, decimal, percent, money, dec,
-  decToNumber, I64,
+  decToNumber, I64, utcDayMs,
   type Cell, type ObjectCell, type StringCell, type WordCell, type MapCell, type Runtime,
 } from '../core/index.ts';
 
@@ -70,10 +70,10 @@ export function formatLocal(c: Cell, lang: string): string | null {
     }
     case K.Date: {
       const d = c.v;
-      const ms = Date.UTC(d.y, d.m - 1, d.d) + (d.time ?? 0) / NS_PER_MS;
+      const ms = utcDayMs(d.y, d.m, d.d) + (d.time ?? 0) / NS_PER_MS;
       const opts: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'numeric', day: 'numeric', timeZone: 'UTC' };
       if (d.time !== null) Object.assign(opts, { hour: 'numeric', minute: '2-digit' });
-      // years before 100 would be read as 19xx
+      // a year before 100, written short, would read as 19xx
       if (d.y < 100) return null;
       return safe(() => new Intl.DateTimeFormat(lang, opts).format(ms));
     }

@@ -14,6 +14,7 @@ import {
 import { ctxFind, ctxSet } from './ctx.ts';
 import { mold } from './mold.ts';
 import { touch } from './values.ts';
+import { daysOf, civilOf } from './days.ts';
 
 /** Keys of maps and selects: words by symbol (any word type), the rest strictly. */
 export function sameKey(a: Cell, b: Cell): boolean {
@@ -43,15 +44,14 @@ const DATE_PARTS = ['year', 'month', 'day', 'time', 'zone', 'date', 'weekday', '
 const TIME_PARTS = ['hour', 'minute', 'second'] as const;
 const NS_HOUR = 3600e9;
 const NS_MIN = 60e9;
-const DAY_MS = 86400000;
+const DAY_NS = 86400e9;
 
 /** The same moment in UTC, as R3's date/utc: a date with no time or no zone stays as it is. */
 function utcOf(d: Readonly<DateVal>): Cell {
   if (d.time === null || d.zone === null) return date(d);
-  const ms = Date.UTC(d.y, d.m - 1, d.d) + Math.floor(d.time / 1e6) - d.zone * 60000;
-  const u = new Date(ms);
-  const day = Date.UTC(u.getUTCFullYear(), u.getUTCMonth(), u.getUTCDate());
-  return date({ y: u.getUTCFullYear(), m: u.getUTCMonth() + 1, d: u.getUTCDate(), time: d.time - d.zone * NS_MIN - (day - Date.UTC(d.y, d.m - 1, d.d)) * 1e6, zone: 0 });
+  const ns = d.time - d.zone * NS_MIN;
+  const shift = Math.floor(ns / DAY_NS);
+  return date({ ...civilOf(daysOf(d.y, d.m, d.d) + shift), time: ns - shift * DAY_NS, zone: 0 });
 }
 
 function partName(key: Cell): string | null {
@@ -115,8 +115,8 @@ export function pick(cur: Cell, key: Cell): Cell | string {
         case 'zone': return d.zone === null ? NONE : time(d.zone * NS_MIN);
         case 'date': return date({ y: d.y, m: d.m, d: d.d, time: null, zone: null });
         // ISO weekday: Monday is 1, Sunday 7; 1970-01-01 was a Thursday
-        case 'weekday': return integer(((Date.UTC(d.y, d.m - 1, d.d) / DAY_MS) % 7 + 10) % 7 + 1);
-        case 'yearday': return integer((Date.UTC(d.y, d.m - 1, d.d) - Date.UTC(d.y, 0, 1)) / DAY_MS + 1);
+        case 'weekday': return integer((daysOf(d.y, d.m, d.d) % 7 + 10) % 7 + 1);
+        case 'yearday': return integer(daysOf(d.y, d.m, d.d) - daysOf(d.y, 1, 1) + 1);
         case 'utc': return utcOf(d);
         case 'hour': case 'minute': case 'second':
           return d.time === null ? NONE : pick(time(d.time), key.t === K.Integer ? integer(TIME_PARTS.indexOf(p) + 1) : key);
@@ -265,9 +265,7 @@ export function pokeValue(cur: Cell, key: Cell, v: Cell): Cell | string {
           if (n === null || !Number.isInteger(n)) return `a date's ${p} is a whole number, not ${mold(v)}`;
           const y = p === 'year' ? n : d.y, m = p === 'month' ? n : d.m, day = p === 'day' ? n : d.d;
           // past the end of its month or year, a date goes on, as R3's does
-          const u = new Date(Date.UTC(2000, m - 1, day));
-          u.setUTCFullYear(y + u.getUTCFullYear() - 2000);
-          return date({ ...d, y: u.getUTCFullYear(), m: u.getUTCMonth() + 1, d: u.getUTCDate() });
+          return date({ ...d, ...civilOf(daysOf(y, m, day)) });
         }
         case 'time':
           if (v.t === K.None) return date({ ...d, time: null, zone: null });

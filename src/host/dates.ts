@@ -2,10 +2,21 @@
 // moment are said in a language (day-label, time-ago), and how a machine reads them (<time datetime>). No DOM
 // here, so the tests run it in Node.
 
-import { K, text, native, value, string, type Cell, type StringCell } from '../core/index.ts';
+import { K, text, native, value, string, date, utcDayMs, type Cell, type StringCell } from '../core/index.ts';
 import { activeLanguage } from './locale.ts';
 
 const NS_PER_MS = 1e6;
+
+/**
+ * The moment a clock where the page is reads a calendar date and a time of day in nanoseconds: the clock's
+ * own reading, so a day when the clocks change is right. new Date(y, m, d) would read 0 to 99 as 19xx.
+ */
+function localMs(y: number, m: number, d: number, ns = 0): number {
+  const t = new Date(2000, 0, 1);
+  t.setFullYear(y, m - 1, d);
+  t.setHours(0, 0, 0, ns / NS_PER_MS);
+  return t.getTime();
+}
 
 /** When a row happened: the moment in milliseconds since 1970, and whether it was a whole day, with no time. */
 export interface Moment { ms: number; allDay: boolean }
@@ -20,17 +31,16 @@ const ISO = /^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\
 export function momentOf(v: Cell): Moment | null {
   if (v.t === K.Date) {
     const d = v.v;
-    if (d.time === null) return { ms: new Date(d.y, d.m - 1, d.d).getTime(), allDay: true };
-    if (d.zone !== null) return { ms: Date.UTC(d.y, d.m - 1, d.d) + d.time / NS_PER_MS - d.zone * 60000, allDay: false };
-    const local = new Date(d.y, d.m - 1, d.d);
-    return { ms: local.getTime() + d.time / NS_PER_MS, allDay: false };
+    if (d.time === null) return { ms: localMs(d.y, d.m, d.d), allDay: true };
+    if (d.zone !== null) return { ms: utcDayMs(d.y, d.m, d.d) + d.time / NS_PER_MS - d.zone * 60000, allDay: false };
+    return { ms: localMs(d.y, d.m, d.d, d.time), allDay: false };
   }
   if (v.t === K.String) {
     const s = text(v as StringCell).trim();
     if (!ISO.test(s)) return null;
     if (s.length === 10) {
       const [y, m, d] = s.split('-').map(Number);
-      return { ms: new Date(y!, m! - 1, d!).getTime(), allDay: true };
+      return { ms: localMs(y!, m!, d!), allDay: true };
     }
     const ms = Date.parse(s.replace(' ', 'T'));
     return Number.isNaN(ms) ? null : { ms, allDay: false };
@@ -97,9 +107,10 @@ export function relativeText(at: Moment, now: number, lang: string): string {
 const DAY_NS = 24 * 3600 * 1e9;
 const two = (n: number): string => String(n).padStart(2, '0');
 
-/** A time of day as HTML's datetime writes it: 09:30, 09:30:15, 09:30:15.250. */
+/** A time of day as HTML's datetime writes it: 09:30, 09:30:15, 09:30:15.250. Below a millisecond is cut, never
+ * rounded, so the last instant of a day stays 23:59:59.999 and never becomes 24:00. */
 function clockIso(ns: number): string {
-  const ms = Math.round(ns / NS_PER_MS);
+  const ms = Math.floor(ns / NS_PER_MS);
   const h = Math.floor(ms / 3600000), m = Math.floor(ms / 60000) % 60, s = Math.floor(ms / 1000) % 60, frac = ms % 1000;
   let out = `${two(h)}:${two(m)}`;
   if (s !== 0 || frac !== 0) out += `:${two(s)}`;
@@ -130,11 +141,22 @@ export function isoOf(v: Cell): string | null {
 export function fullDateText(v: Cell, lang: string): string | null {
   if (v.t !== K.Date || v.v.y < 100) return null;
   const d = v.v;
-  const ms = Date.UTC(d.y, d.m - 1, d.d) + (d.time ?? 0) / NS_PER_MS;
+  const ms = utcDayMs(d.y, d.m, d.d) + (d.time ?? 0) / NS_PER_MS;
   const opts: Intl.DateTimeFormatOptions = { dateStyle: 'full', timeZone: 'UTC' };
   if (d.time !== null) opts.timeStyle = 'short';
   try { return new Intl.DateTimeFormat(lang, opts).format(ms); } catch { return null; }
 }
+
+native('local-date', '["The moment a date names as the clock where the page is read it then, with no zone: in New York 1-Jul-2026/4:30+0:00 is 1-Jul-2026/0:30, and 1-Dec-2026/4:30+0:00 is 30-Nov-2026/23:30. A date with no time or no zone stays as it is." date [date!]]', (_t, f) => {
+  const v = f.args[0]!;
+  if (v.t !== K.Date) return value(v);
+  const d = v.v;
+  const { time, zone } = d;
+  if (time === null || zone === null) return value(v);
+  const at = new Date(utcDayMs(d.y, d.m, d.d) + Math.floor(time / NS_PER_MS) - zone * 60000);
+  const ms = ((at.getHours() * 60 + at.getMinutes()) * 60 + at.getSeconds()) * 1000 + at.getMilliseconds();
+  return value(date({ y: at.getFullYear(), m: at.getMonth() + 1, d: at.getDate(), time: ms * NS_PER_MS + time % NS_PER_MS, zone: null }));
+});
 
 native('day-label', '["The day of a date said in the active language, from today where the page is: Today, Yesterday, Tomorrow, or its weekday and date, with the year when it is another." date [date!]]', (t, f) => {
   const at = momentOf(f.args[0]!)!;

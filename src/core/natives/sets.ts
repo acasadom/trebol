@@ -22,6 +22,7 @@ import { dateDiff } from './math.ts';
 import type { SeriesCell, Item } from '../series.ts';
 import type { Step, NativeFrame } from '../eval.ts';
 import { native, value, fail } from './define.ts';
+import { utcDayMs } from '../days.ts';
 
 const used = (c: Cell): boolean => c === TRUE;
 
@@ -75,7 +76,7 @@ function scalarKey(c: Cell): string | null {
     case K.Time: return 't' + c.v;
     case K.Pair: return 'p' + c.x + ',' + c.y;
     case K.Tuple: { const v = [...c.v]; while (v.at(-1) === 0) v.pop(); return 'u' + v.join('.'); }
-    case K.Date: { const d = c.v; return 'd' + (Date.UTC(d.y, d.m - 1, d.d) + (d.time ?? 0) / 1e6 - (d.zone ?? 0) * 60000); }
+    case K.Date: { const d = c.v; return 'd' + (utcDayMs(d.y, d.m, d.d) + (d.time ?? 0) / 1e6 - (d.zone ?? 0) * 60000); }
   }
   return 'x' + c.t;
 }

@@ -64,9 +64,9 @@ Trebol [
     m: machine [
         initial outer
         state outer [
-            timeout 0.03
+            timeout 0.3
             initial in1
-            state in1 [timeout 0.01]
+            state in1 [timeout 0.05]
             state in2 []
             from in1 to in2 on timeout
             from in2 to in1 on back
@@ -74,8 +74,8 @@ Trebol [
         final out
         from outer to out on timeout
     ]
-    wait 0.015  inside: m/state
-    wait 0.05
+    wait 0.15  inside: m/state
+    wait 0.3
     all [inside = 'outer/in2  m/state = 'out]
 ]
 [
