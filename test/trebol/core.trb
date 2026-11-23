@@ -48,6 +48,16 @@ Trebol [
 [d: 14-Nov-2026 none? d/hour]
 [d: 9-Nov-2026 1 = d/weekday]
 [d: 15-Nov-2026 7 = d/weekday]
+[d: 23-Nov-2026/1:00+3:00 22-Nov-2026/22:00+0:00 == d/utc]
+[d: 23-Nov-2026/1:00+3:00 0:00 = d/utc/zone]
+[d: 23-Nov-2026/1:00 23-Nov-2026/1:00 == d/utc]
+[d: 23-Nov-2026 23-Nov-2026 == d/utc]
+[d: 1-Jan-2027/0:30+2:00 31-Dec-2026/22:30+0:00 == d/utc]
+[1 = (23-Nov-2026/9:30 - 22-Nov-2026/23:00)]
+[0 = (23-Nov-2026/1:00+3:00 - 22-Nov-2026/23:00)]
+[-1 = (22-Nov-2026 - 23-Nov-2026/12:00)]
+[6 = (14-Nov-2026 - 8-Nov-2026)]
+[47:30 = difference 23-Nov-2026/23:30 22-Nov-2026]
 
 "reflection"
 [f: func ["Doc." a [integer!] /r b] [a] ["Doc." a [integer!] /r b] = spec-of :f]

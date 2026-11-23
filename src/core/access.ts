@@ -9,7 +9,7 @@ import { canon, spell } from './symbols.ts';
 import * as I64 from './int64.ts';
 import {
   NONE, integer, char, decimal, time, date, pair, tuple, strictEqual, codePoints, fromCodePoints,
-  type Cell, type Series, type BlockCell, type StringCell, type WordCell,
+  type Cell, type Series, type BlockCell, type StringCell, type WordCell, type DateVal,
 } from './values.ts';
 import { ctxFind, ctxSet } from './ctx.ts';
 import { mold } from './mold.ts';
@@ -44,6 +44,15 @@ const TIME_PARTS = ['hour', 'minute', 'second'] as const;
 const NS_HOUR = 3600e9;
 const NS_MIN = 60e9;
 const DAY_MS = 86400000;
+
+/** The same moment in UTC, as R3's date/utc: a date with no time or no zone stays as it is. */
+function utcOf(d: Readonly<DateVal>): Cell {
+  if (d.time === null || d.zone === null) return date(d);
+  const ms = Date.UTC(d.y, d.m - 1, d.d) + Math.floor(d.time / 1e6) - d.zone * 60000;
+  const u = new Date(ms);
+  const day = Date.UTC(u.getUTCFullYear(), u.getUTCMonth(), u.getUTCDate());
+  return date({ y: u.getUTCFullYear(), m: u.getUTCMonth() + 1, d: u.getUTCDate(), time: d.time - d.zone * NS_MIN - (day - Date.UTC(d.y, d.m - 1, d.d)) * 1e6, zone: 0 });
+}
 
 function partName(key: Cell): string | null {
   return isAnyWord(key.t) ? spell(canon((key as WordCell).sym)) : null;
@@ -108,6 +117,7 @@ export function pick(cur: Cell, key: Cell): Cell | string {
         // ISO weekday: Monday is 1, Sunday 7; 1970-01-01 was a Thursday
         case 'weekday': return integer(((Date.UTC(d.y, d.m - 1, d.d) / DAY_MS) % 7 + 10) % 7 + 1);
         case 'yearday': return integer((Date.UTC(d.y, d.m - 1, d.d) - Date.UTC(d.y, 0, 1)) / DAY_MS + 1);
+        case 'utc': return utcOf(d);
         case 'hour': case 'minute': case 'second':
           return d.time === null ? NONE : pick(time(d.time), key.t === K.Integer ? integer(TIME_PARTS.indexOf(p) + 1) : key);
       }
