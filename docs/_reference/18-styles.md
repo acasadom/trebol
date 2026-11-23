@@ -255,6 +255,14 @@ percents show as they do in a table. A pie shows the first series. `stacked` put
 chart on top of each other, and `small`, `medium` or `large` sets its height. The string is its caption.
 Setting `data` redraws it, and a screen reader reads the same numbers as a table.
 
+When the first column of every row is a moment, a `date!` or a text in ISO form, the points stand at their
+moments, oldest first, and the axis steps by round seconds, minutes, hours, days, months or years in the active
+language. A line or area with more points than room for a dot each (one per 6 pixels) has no dots and is drawn
+thinned to each pixel's first, lowest, highest and last value; the pointer then shows a rule and the values of
+the nearest point. `right-axis` after a column, `[at "When" bikes "Bikes" takings "Takings" right-axis]`, puts
+that series on its own scale with its numbers on the right. The steps up the side go from two to five, by the
+chart's height.
+
 ## orbit
 
 One node of a graph in the middle and its neighbours on rings around it, joined by their edges:

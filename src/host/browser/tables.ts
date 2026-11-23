@@ -11,9 +11,9 @@ import { roleField, roleOf, paintRole } from './row-roles.ts';
 
 /**
  * A column; `image` when it shows each row's picture, `round` when cut to a circle; `roleBy`, the field
- * whose value is the role each cell is painted in.
+ * whose value is the role each cell is painted in; `right`, a series of a chart on its own scale on the right.
  */
-export interface Column { sym: Sym; word: Cell; label: string; image: boolean; round: boolean; roleBy: Sym | null }
+export interface Column { sym: Sym; word: Cell; label: string; image: boolean; round: boolean; roleBy: Sym | null; right: boolean }
 
 export function columns(face: ObjectCell): Column[] {
   const c = get(face, 'columns');
@@ -30,7 +30,7 @@ export function columns(face: ObjectCell): Column[] {
     const at = (name: string): number => parts.findIndex(p => p.t === K.Word && canon((p as WordCell).sym) === canon(intern(name)));
     const by = parts[at('role-by') + 1];
     const roleBy = at('role-by') > 0 && by !== undefined && by.t === K.Word ? (by as WordCell).sym : null;
-    out.push({ sym: (w as WordCell).sym, word: w, label: translate(parts[0] ?? NONE, host.rt), image: at('image') > 0, round: at('round') > 0, roleBy });
+    out.push({ sym: (w as WordCell).sym, word: w, label: translate(parts[0] ?? NONE, host.rt), image: at('image') > 0, round: at('round') > 0, roleBy, right: at('right-axis') > 0 });
   }
   return out;
 }

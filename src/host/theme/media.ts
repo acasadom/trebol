@@ -32,7 +32,12 @@ export const MEDIA = String.raw`
 .tb-canvas.tb-fill > svg { width: 100%; }
 .tb-chart { display: flex; flex-direction: column; gap: var(--tb-space-2); align-self: stretch; width: 100%; margin: 0; min-width: 0; }
 .tb-chart-caption { font-weight: 600; }
-.tb-chart-plot { width: 100%; min-width: 0; }
+.tb-chart-plot { position: relative; width: 100%; min-width: 0; }
+.tb-chart-rule { position: absolute; width: 1px; margin-left: -0.5px; background: var(--tb-muted); opacity: 0.6; pointer-events: none; }
+.tb-chart-tip { position: absolute; z-index: 1; display: grid; gap: 2px; padding: var(--tb-space-1) var(--tb-space-2); border: 1px solid var(--tb-border); border-radius: var(--tb-radius); background: var(--tb-surface); color: var(--tb-text); box-shadow: var(--tb-shadow-2); font-size: 13px; white-space: nowrap; pointer-events: none; }
+.tb-chart-tip-head { color: var(--tb-muted); }
+.tb-chart-tip-line { display: flex; align-items: center; gap: var(--tb-space-2); font-variant-numeric: tabular-nums; }
+.tb-chart-tip[hidden], .tb-chart-rule[hidden] { display: none; }
 .tb-chart-plot > svg { display: block; width: 100%; height: auto; overflow: visible; }
 .tb-chart-legend { display: flex; flex-wrap: wrap; gap: var(--tb-space-1) var(--tb-space-4); margin: 0; padding: 0; list-style: none; color: var(--tb-muted); font-size: 13px; }
 .tb-chart-key { display: inline-flex; align-items: center; gap: var(--tb-space-2); }

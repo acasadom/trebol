@@ -190,7 +190,7 @@ describe('layout', () => {
    app.trb:5:5  feild is not a style; did you mean field?
    app.trb:6:26 min takes a number, an amount, a date or a time
    app.trb:7:15 text does not take 1.5
-   app.trb:8:17 table columns are words, each with an optional label, then image or image round, then role-by and a field
+   app.trb:8:17 table columns are words, each with an optional label, then image or image round, then role-by and a field, or right-axis
    app.trb:9:11 pad takes a step from 0 to 7`,
       '[buton "Save" field]', 'app.trb:3:5']);
     // one problem is the message itself

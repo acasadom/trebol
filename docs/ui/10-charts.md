@@ -130,6 +130,44 @@ reader reads every chart as a table of the same numbers. A chart with no rows sa
 `chart/data: rows` draws it again, so a chart that follows a server is a `fetch` and an assignment, as the
 workshop board was on the last page.
 
+## Over time
+
+When the first column holds moments, `date!` values or texts in ISO form as servers send them
+(`"2026-11-16T08:30:00Z"`), the chart puts each point at its moment: two readings an hour apart stand twice as
+far as two half an hour apart, and the axis steps by round hours, days, months or years, in the app's language.
+The rows can come in any order; the chart draws them oldest first.
+
+A week of the workshop, read every half hour, is more points than have room for a dot each. Then the line has
+no dots, and the pointer reads it instead: a rule down the chart at the nearest moment, and its values beside
+it. `right-axis` after a column puts that series on its own scale, with its numbers on the right, so bikes and
+money share one chart without one flattening the other:
+
+```trebol-ui
+readings: copy []
+moment: 2026-11-16/0:00
+till: $0.00
+loop 7 * 48 [
+    hour: moment/time/hour
+    if moment/time = 0:00 [till: $0.00]
+    open?: all [hour >= 8  hour < 19]
+    bikes: either open? [3 + (hour - 8 * (19 - hour) / 6)] [0]
+    till: till + ($6.50 * bikes)
+    append readings make map! reduce ['at moment  'bikes bikes  'takings till]
+    moment: moment + 0:30
+]
+
+view [
+    global chart line week small "The workshop this week" [
+        at "When" bikes "Bikes in" takings "Takings today" right-axis
+    ]
+]
+week/data: readings
+```
+
+With two scales, the numbers of each side take the color of its series. A small chart has fewer steps up its
+side, so its numbers never crowd. Bars go on a time axis too, each at its moment, as wide as the two closest
+let them be.
+
 ## Numbers that count
 
 A number on its own often says more than a chart: the takings of the day, the bikes still waiting. With

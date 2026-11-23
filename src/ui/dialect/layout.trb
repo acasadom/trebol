@@ -170,18 +170,20 @@ spacing: func [n [integer!] place [block!]] [
 ; [name "Name" email] -> [name "Name" email "email"]
 ; A column of images keeps what it is with its label: [photo "" image round] -> [photo ["" image round]]
 ; A column painted in a row's role does the same: [status "Status" role-by tone] -> [status ["Status" role-by tone]]
+; And a series of a chart on its own scale on the right: [load "Load" right-axis] -> [load ["Load" right-axis]]
 columns-of: function [spec [block!] /local w label kind p by] [
     out: copy []
     parse spec [any [
         set w word! (label: form w  kind: none) opt [set label text-rule]
         opt ['image (kind: copy [image]) opt ['round (append kind 'round)]]
         opt ['role-by set by word! (kind: any [kind copy []]  append kind reduce ['role-by by])]
+        opt ['right-axis (kind: any [kind copy []]  append kind 'right-axis)]
         (
             label: text-of label
             append out w
             append/only out either kind [head insert/only kind label] [label]
         )
-        | p: skip (ui-problem p "table columns are words, each with an optional label, then image or image round, then role-by and a field") to end
+        | p: skip (ui-problem p "table columns are words, each with an optional label, then image or image round, then role-by and a field, or right-axis") to end
     ]]
     out
 ]
