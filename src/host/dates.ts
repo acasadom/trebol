@@ -2,7 +2,7 @@
 // moment are said in a language (day-label, time-ago), and how a machine reads them (<time datetime>). No DOM
 // here, so the tests run it in Node.
 
-import { K, text, native, value, string, date, utcDayMs, type Cell, type StringCell } from '../core/index.ts';
+import { K, text, native, value, string, date, utcDayMs, daysOf, type Cell, type StringCell } from '../core/index.ts';
 import { activeLanguage } from './locale.ts';
 
 const NS_PER_MS = 1e6;
@@ -52,7 +52,8 @@ export function momentOf(v: Cell): Moment | null {
 function daysBetween(from: number, to: number): number {
   const a = new Date(from);
   const b = new Date(to);
-  return Math.round((Date.UTC(b.getFullYear(), b.getMonth(), b.getDate()) - Date.UTC(a.getFullYear(), a.getMonth(), a.getDate())) / 86400000);
+  // counted with daysOf: Date.UTC would read the years 0 to 99 as 19xx
+  return daysOf(b.getFullYear(), b.getMonth() + 1, b.getDate()) - daysOf(a.getFullYear(), a.getMonth() + 1, a.getDate());
 }
 
 /** A text with its first letter in capitals, as a heading starts: "today" -> "Today". */
