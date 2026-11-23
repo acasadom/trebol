@@ -111,6 +111,7 @@ Made from [`container`](#style-container).
 It takes what [`container`](#style-container) takes, and:
 
 - [`rail`](#word-rail): its children go down a line, each with a mark on it: steps, or what happened one after another
+- [`named`](#word-named): one part of the page, named by its first text or heading for a screen reader
 
 Children one under another.
 

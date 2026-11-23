@@ -256,6 +256,23 @@ view [
 
 A screen reader hears it as a list, each child an item of it.
 
+When the steps go under a heading, `named` makes the column one part of the page, named by its first text or
+heading: a screen reader says that name as it goes in. A `small` heading sits over a few lines as the day over
+what happened in it:
+
+```trebol-ui
+view [
+    width small
+    column named [
+        heading muted small "Monday"
+        column rail [
+            column success [text "Booked in"  text muted small "by Ada"]
+            column primary [text "On the stand"]
+        ]
+    ]
+]
+```
+
 ## A face in JavaScript
 
 Sooner or later a screen needs something Trebol does not draw: a map, a code editor, a library someone else

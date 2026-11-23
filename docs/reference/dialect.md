@@ -298,6 +298,14 @@ A flag, of [`column`](#style-column).
 On a `column`: its children go down a line, each with a mark on it, and the role of a child paints its mark; a
 screen reader hears a list. `column rail [text "Booked in" text "On the stand"]`.
 
+(word-named)=
+## named
+
+A flag, of [`column`](#style-column).
+
+On a `column`: it is one part of the page, named by its first text, heading or title, and a screen reader says
+that name as it goes in. `column named [heading small "Monday" column rail [...]]`.
+
 (word-drag)=
 ## drag
 

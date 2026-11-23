@@ -35,6 +35,7 @@ import { sweepSizes } from './sizes.ts';
 import { momentShown, momentTarget } from './moments.ts';
 import { syncRate, sweepRates } from './rates.ts';
 import { markRail } from './rails.ts';
+import { markNamed } from './named.ts';
 import { laterMarkScrollers } from './scrollers.ts';
 import { dirtySeries, watchShown, watchChanged, ownersOf } from './inplace.ts';
 
@@ -315,7 +316,10 @@ function draw(m: Mounted): void {
     // let the dialect link the new faces to their view and form
     void fire('ui-pane', f);
   }
-  if (style === 'column') markRail(m.box ?? m.el, flag(f, 'rail'));
+  if (style === 'column') {
+    markRail(m.box ?? m.el, flag(f, 'rail'));
+    markNamed(m.box ?? m.el, flag(f, 'named'));
+  }
   if (style === 'screens') settleScreen(m.box ?? m.el, f);
 }
 

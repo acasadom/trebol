@@ -185,6 +185,11 @@ drawn again at each width; its points spread across it, while its lines, dots an
 On a `column`: its children go down a line, each with a mark on it, and the role of a child paints its mark; a
 screen reader hears a list. `column rail [text "Booked in" text "On the stand"]`.
 
+## named
+
+On a `column`: it is one part of the page, named by its first text, heading or title, and a screen reader says
+that name as it goes in. `column named [heading small "Monday" column rail [...]]`.
+
 ## drag
 
 It can be dragged: it carries its value, or the row in a table, list or tree.

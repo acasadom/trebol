@@ -70,6 +70,7 @@ stylize [
     view: container [style: 'view  takes: [on: [on-key on-find]]]
     column: container [style: 'column  takes: [
         rail: 'rail "its children go down a line, each with a mark on it: steps, or what happened one after another"
+        named: 'named "one part of the page, named by its first text or heading for a screen reader"
     ]]
     row: container [style: 'row  takes: [valign: one-of valigns "where its children go up and down"]]
     form: container [style: 'form  takes: [done: :steps-take-submits]]
