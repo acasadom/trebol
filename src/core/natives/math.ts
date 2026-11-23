@@ -19,6 +19,7 @@ import { isEqual, compare, toDec } from '../compare.ts';
 import type { Step } from '../eval.ts';
 import { native, op, value, fail, truthy } from './define.ts';
 import { touch } from '../values.ts';
+import { daysOf, civilOf } from '../days.ts';
 
 const A = { Add: 0, Sub: 1, Mul: 2, Div: 3, Rem: 4 } as const;
 type Arith = (typeof A)[keyof typeof A];
@@ -152,12 +153,11 @@ const DAY_NS = 86400e9;
 
 /** Days since 1970-01-01 for a calendar date. */
 function dayNumber(d: DateVal): number {
-  return Date.UTC(d.y, d.m - 1, d.d) / 86400000;
+  return daysOf(d.y, d.m, d.d);
 }
 
 function fromDayNumber(n: number, time: number | null, zone: number | null): Cell {
-  const js = new Date(n * 86400000);
-  return date({ y: js.getUTCFullYear(), m: js.getUTCMonth() + 1, d: js.getUTCDate(), time, zone });
+  return date({ ...civilOf(n), time, zone });
 }
 
 /** date ± integer days, date ± time, date - date in days. */

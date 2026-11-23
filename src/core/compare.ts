@@ -9,6 +9,7 @@ import { canon, spell } from './symbols.ts';
 import * as I64 from './int64.ts';
 import { decCmp, decFromNumber, decFromBig, type Dec } from './dec.ts';
 import { strictEqual, type Cell, type BlockCell, type StringCell, type WordCell } from './values.ts';
+import { utcDayMs } from './days.ts';
 
 const isNumeric = (c: Cell): boolean =>
   c.t === K.Integer || c.t === K.Decimal || c.t === K.Percent || c.t === K.Money;
@@ -158,5 +159,5 @@ export function compare(a: Cell, b: Cell): -1 | 0 | 1 | null {
 
 /** UTC milliseconds for ordering dates; a date without zone counts as UTC. */
 function dateKey(d: { y: number; m: number; d: number; time: number | null; zone: number | null }): number {
-  return Date.UTC(d.y, d.m - 1, d.d) + (d.time ?? 0) / 1e6 - (d.zone ?? 0) * 60000;
+  return utcDayMs(d.y, d.m, d.d) + (d.time ?? 0) / 1e6 - (d.zone ?? 0) * 60000;
 }

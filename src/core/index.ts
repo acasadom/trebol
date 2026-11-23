@@ -13,6 +13,7 @@ export * from './errors.ts';
 export * from './func.ts';
 export * from './compare.ts';
 export { pick, poke } from './access.ts';
+export { daysOf, civilOf, utcDayMs } from './days.ts';
 export { splice } from './series.ts';
 export {
   T, F, run, resume, resumeError, newTask, registerNative, throwError, currentFile,

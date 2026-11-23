@@ -132,7 +132,9 @@ function formatZone(minutes: number): string {
 }
 
 export function formatDate(v: DateVal): string {
-  let out = `${v.d}-${MONTH_ABBR[v.m - 1]}-${v.y}`;
+  // the year in four digits, as R3 writes it, so the year 99 is never read as 1999
+  const year = v.y >= 0 && v.y < 1000 ? String(v.y).padStart(4, '0') : String(v.y);
+  let out = `${v.d}-${MONTH_ABBR[v.m - 1]}-${year}`;
   if (v.time !== null) {
     out += '/' + formatTime(v.time);
     if (v.zone !== null) out += formatZone(v.zone);

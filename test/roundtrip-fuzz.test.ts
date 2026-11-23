@@ -61,7 +61,7 @@ function randomScalar(): Cell {
     case 5: return pair(int(4000) - 2000, (int(400) - 200) / 4);
     case 6: return tuple(Array.from({ length: 3 + int(5) }, () => int(256)));
     case 7: {
-      const y = 1900 + int(300);
+      const y = rand() < 0.2 ? int(1000) : 1900 + int(300);
       const m = 1 + int(12);
       const withTime = rand() < 0.5;
       return date({

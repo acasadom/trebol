@@ -93,6 +93,9 @@ adding a number adds days:
 == 6
 ```
 
+Trebol always writes the year in four digits, so an old date of the year 99 comes back as `1-Jan-0099`,
+never as a date of 1999.
+
 A time is hours and minutes; a repair that takes an hour and a half and another that takes 45 minutes add
 up as you expect:
 

@@ -1,7 +1,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  load, LoadError, K, kindName, spell, text, unpackPos, decToNumber,
+  load, LoadError, K, kindName, spell, text, unpackPos, decToNumber, date, mold,
   type Cell, type BlockCell,
 } from '../src/core/index.ts';
 
@@ -88,6 +88,15 @@ describe('scalars', () => {
     assert.ok(iso.t === K.Date && iso.v.zone === 0);
     const west = one('2026-10-30/8:00-0530');
     assert.ok(west.t === K.Date && west.v.zone === -330);
+  });
+
+  test('a year before 1000 is molded in four digits and read back as written', () => {
+    for (const y of [0, 5, 98, 99, 999]) {
+      const d = date({ y, m: 1, d: 1, time: null, zone: null });
+      assert.equal(mold(d), `1-Jan-${String(y).padStart(4, '0')}`);
+      assert.deepEqual(one(mold(d)), d);
+    }
+    assert.equal(mold(date({ y: 2026, m: 1, d: 1, time: null, zone: null })), '1-Jan-2026');
   });
 
   test('invalid dates are rejected', () => {

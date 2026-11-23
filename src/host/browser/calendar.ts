@@ -4,7 +4,7 @@
 // pattern. Arrows move by days and weeks, Page Up/Down by months, Home/End to
 // the ends of the week, Enter or Space picks, Esc closes. Days are UTC dates.
 
-import { K, NONE, string, spell, type Cell, type ObjectCell, type WordCell } from '../../core/index.ts';
+import { K, NONE, string, spell, utcDayMs, type Cell, type ObjectCell, type WordCell } from '../../core/index.ts';
 import { activeLanguage, weekStart } from '../index.ts';
 import { get, own, display, word, icon } from './faces.ts';
 import { host, newId, fire, el } from './mount.ts';
@@ -18,7 +18,7 @@ export const DAY_MS = 86400000;
 
 /** A date! cell as a UTC date at midnight, or null. */
 export function utcDate(v: Cell): Date | null {
-  return v.t === K.Date ? new Date(Date.UTC(v.v.y, v.v.m - 1, v.v.d)) : null;
+  return v.t === K.Date ? new Date(utcDayMs(v.v.y, v.v.m, v.v.d)) : null;
 }
 
 export function isoDay(d: Date): string {
