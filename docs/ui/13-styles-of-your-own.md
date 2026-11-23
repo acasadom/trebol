@@ -163,7 +163,8 @@ view [
 ]
 ```
 
-A plain `panel` keeps its card wherever it is, and its own width in a row.
+A plain `panel` keeps its card wherever it is, and its own width in a row. To a screen reader each face of a
+style made of others is one group, named by its text: "Bikes in", then what its layout holds.
 
 Where `layout:` says `slot`, go the faces written in a block after the style, read where they are written, so
 they see that layout's labels and keep their own role and size:

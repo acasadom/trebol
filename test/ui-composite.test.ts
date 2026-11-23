@@ -8,6 +8,7 @@ import { native, value, mold, form, errorField, type Cell, type ObjectCell } fro
 import { startHost, startUi, runSource, type Host } from '../src/host/index.ts';
 import { setHost } from '../src/host/browser/mount.ts';
 import { LAYOUT } from '../src/host/theme/layout.ts';
+import { markComposed } from '../src/host/browser/composed.ts';
 
 native('show', '[root [object!]]', (_t, f) => value(f.args[0]!));
 native('ui-watch', '[value [object! series! map!]]', (_t, f) => value(f.args[0]!));
@@ -167,6 +168,14 @@ describe('styles made of other styles', () => {
       ui-react root
       reduce [a  k/pane/2/role  k/pane/1/role  root/pane/2/pane/1/role  root/pane/2/pane/2/role]`);
     assert.equal(mold(got), '[[muted large success large muted large] danger muted warning none]');
+  });
+  test('to a screen reader it is a group named by its text, and nameless with none', () => {
+    const attrs = new Map<string, string>();
+    const node = { setAttribute: (k: string, v: string) => { attrs.set(k, v); }, removeAttribute: (k: string) => { attrs.delete(k); } };
+    markComposed(node, 'Takings');
+    assert.deepEqual([...attrs], [['role', 'group'], ['aria-label', 'Takings']]);
+    markComposed(node, null);
+    assert.deepEqual([...attrs], [['role', 'group']]);
   });
   test('in a panel it is no card of its own, and in a row its faces share it equally (theme)', () => {
     assert.match(LAYOUT, /\.tb-panel \.tb-panel\.tb-composed \{ margin: 0; padding: 0; background: none; border: 0;/);
