@@ -109,6 +109,20 @@ describe('timeline', () => {
     assert.equal(mold(got), '[1-Jul-2025/0:30 30-Nov-2025/23:30 1-Jul-2025 ["Tuesday, July 1, 2025" [[none "summer" 0:30 none] [none "no zone" 4:30 none]] "Sunday, November 30, 2025" [[none "winter" 23:30 none]]]]');
   });
 
+  test('when the clocks go back, moments with a zone keep the order they happened in, shown at their own time', async () => {
+    // 2 Nov 2025 in New York: 05:45Z is 1:45 summer time and 06:15Z is 1:15 winter time
+    const got = await inZone('America/New_York', () => run(`${said}
+      log: [
+        #(at: "2025-11-02T05:45:00Z" text: "first")
+        #(at: "2025-11-02T06:15:00Z" text: "second")
+        #(at: "2025-11-02T05:00:00Z" text: "earlier")
+      ]
+      root: view [timeline [at text] is [log]]
+      ui-react root
+      days-of first root/pane`));
+    assert.equal(mold(got), '["Sunday, November 2, 2025" [[none "second" 1:15 none] [none "first" 1:45 none] [none "earlier" 1:00 none]]]');
+  });
+
   test('oldest puts a whole day before its times; rows at the same moment keep their order', async () => {
     const got = await run(`${said}
       log: [
