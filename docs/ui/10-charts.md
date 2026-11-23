@@ -65,6 +65,51 @@ The canvas starts empty, and setting its `draw` draws it: every time it is set, 
 animate it. (In the dialect, a word after `canvas` would be read as a word of the dialect, not as the value
 it holds; `compose` is the other way to put a block in.)
 
+## As wide as it can be
+
+A canvas with `stretch` is as wide as what holds it and as tall as its extent. Its points spread across that
+width, and only its points: lines keep their width, dots stay round and text keeps its size, so a small drawing
+can run under a number from one side of a card to the other. A percent after a color draws that much of it,
+with what is under it showing through, which makes an area under a line:
+
+```trebol-ui
+takings: [820 760 990 1040 930 1240]
+
+line-of: function [numbers] [
+    lo: hi: first numbers
+    foreach n numbers [lo: min lo n  hi: max hi n]
+    step: 100 / ((length? numbers) - 1)
+    points: copy []
+    repeat i length? numbers [
+        y: 28 - to integer! ((pick numbers i) - lo * 24 / (hi - lo))
+        append points as-pair i - 1 * step y
+    ]
+    points
+]
+
+points: line-of takings
+
+view [
+    panel [
+        heading "Takings this week"
+        global week: canvas 100x32 stretch []
+    ]
+]
+
+week/draw: compose [
+    pen off fill-pen primary 14%
+    polygon (points) 100x32 0x32
+    pen primary line-width 2 line-join round fill-pen off
+    line (points)
+    pen raised fill-pen primary
+    circle (last points) 4
+]
+```
+
+The canvas is 100 units wide, so the six days sit 20 apart, and on a wide card they sit further apart. The
+last dot has a ring of `raised`, the color of the card under it, so it stands out from the line. Make the
+window narrower and the line follows it.
+
 ## A chart
 
 Most of the time, though, the numbers are already rows, and a chart reads them directly. Its block is a

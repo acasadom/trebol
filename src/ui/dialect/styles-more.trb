@@ -32,6 +32,7 @@ stylize [
     canvas: face [style: 'canvas  extent: 300x150  takes: [
         extent: [pair!] "the size of its drawing space"
         draw: block "what it draws, in the draw dialect"
+        stretch: 'stretch "as wide as it can be and as tall as its extent: its points spread across, its lines and dots keep their size"
     ]]
     chart: face [style: 'chart  kind: 'bar  takes: [
         kind: first one-of chart-kinds "the kind of chart"

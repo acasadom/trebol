@@ -91,6 +91,7 @@ face: make object! [
     segmented: false    ; a radio: its options as buttons joined in a bar, one pressed
     draw: none          ; a canvas: the block of the draw dialect it shows
     extent: none        ; a canvas: the size of its drawing space, a pair
+    stretch: false      ; a canvas: as wide as it can be, as tall as its extent; its points spread, its sizes stay
     form: none          ; the enclosing form, if any
     root: none          ; the view this face belongs to
     place: none         ; where the face was written, file:line:col; none if made at run time

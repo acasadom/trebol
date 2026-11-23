@@ -4,17 +4,21 @@ The commands of the draw dialect, which a [`canvas`](styles.md) shows: `canvas 1
 60x60 50]`. It is Red's draw dialect, a subset of it, drawn as SVG. Points are pairs in the canvas's own space,
 from `0x0` at the top left to its size at the bottom right, and the drawing scales with the canvas. Each
 command draws with the pen, fill and font in force: they start as the theme's text color, no fill, a line 1
-wide and the size of the page's text. Colors are the theme's, so a drawing looks right in light and dark.
+wide and the size of the page's text. Colors are the theme's, so a drawing looks right in light and dark: its
+roles `primary`, `accent`, `danger`, `success`, `warning`, `muted`, `text`, `border`, `surface`, `raised` (the
+color of a card) and `bg`, or Red's color words. A canvas with `stretch` spreads its points across its width,
+and only its points: radii, sizes of ellipses and arcs, widths of lines and text stay what they say.
 See [drawings and charts](../ui/10-charts.md).
 
 ## pen
 
-The color of lines, outlines and text from here on; `pen off` draws none.
+The color of lines, outlines and text from here on; `pen off` draws none. A percent after the color draws that
+much of it, with what is under it showing through: `pen primary 40%`.
 
 ## fill-pen
 
 The color inside the shapes drawn from here on; `fill-pen off` leaves them empty. A line or a curve is never
-filled.
+filled. As with `pen`, `fill-pen primary 14%` lets what is under the shape show through.
 
 ## line-width
 

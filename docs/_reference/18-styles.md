@@ -243,7 +243,8 @@ dark; muted text takes the color of the text there.
 
 A drawing: `canvas 120x120 [fill-pen primary circle 60x60 50]`. The pair is the size of its drawing space, and
 the block is in the [draw dialect](draw.md). It is as wide as that size, or narrower when there is no room,
-and `fill` makes it as wide as it can be. With a string, the drawing is a picture with that name for a screen
+and `fill` makes it as wide as it can be. `stretch` makes it as wide as it can be and as tall as its
+size: it is drawn again at each width, its points spread across it, its lines, dots and text keep their size. With a string, the drawing is a picture with that name for a screen
 reader; without one, it is decoration. Setting `draw` redraws it.
 
 ## chart
