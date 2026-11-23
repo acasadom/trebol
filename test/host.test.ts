@@ -422,6 +422,10 @@ describe('http', () => {
     assert.equal(await ev('r: fetch/with base/echo [form: [a 1 b "x y"]] r/body'), '"a=1&b=x+y"');
   });
 
+  test('a timeout of 30 days does not end the request at once', async () => {
+    assert.equal(await ev('done: false t: spawn [attempt [fetch/with base/never [timeout: 720:00]] done: true] wait 0.05 cancel t done'), 'false');
+  });
+
   test('HTTP errors, timeouts and cancellation are catchable errors', async () => {
     assert.equal(await evErr('fetch base/missing'), 'http');
     assert.equal(await evErr('fetch/with base/never [timeout: 0.05]'), 'timeout');

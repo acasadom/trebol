@@ -12,6 +12,7 @@ import {
 } from '../core/index.ts';
 import { schedulerOf, spawn, spawnHandler, makeHandle, handleOf } from './scheduler.ts';
 import { devLog } from './devlog.ts';
+import { after } from './timers.ts';
 
 // --- files -----------------------------------------------------------------------
 //
@@ -333,7 +334,7 @@ native('http-request', '["Sends an HTTP request; used by fetch." url [url! strin
   const credentials: RequestCredentials = cookies === null ? 'same-origin' : isOn(cookies) ? 'include' : 'omit';
   const ctl = new AbortController();
   let timedOut = false;
-  const timer = timeout !== null ? setTimeout(() => { timedOut = true; ctl.abort(); }, toSeconds(timeout) * 1000) : null;
+  const stopTimer = timeout !== null ? after(toSeconds(timeout) * 1000, () => { timedOut = true; ctl.abort(); }) : null;
   const me = schedulerOf(t).byTask.get(t);
   if (me) me.abort = () => ctl.abort();
   const verb = method === null ? (body === undefined ? 'GET' : 'POST') : form(method).toUpperCase();
@@ -374,7 +375,7 @@ native('http-request', '["Sends an HTTP request; used by fetch." url [url! strin
       if (ctl.signal.aborted) throw makeError('access', 'cancelled', `request to ${url} was cancelled`);
       throw makeError('access', 'network', `cannot reach ${url}: ${(e as Error).message}`);
     } finally {
-      if (timer !== null) clearTimeout(timer);
+      stopTimer?.();
       shown?.end();
       devLog.request(verb, url, status, Date.now() - started, problem);
     }
