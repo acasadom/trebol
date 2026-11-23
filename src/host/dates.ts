@@ -107,9 +107,10 @@ export function relativeText(at: Moment, now: number, lang: string): string {
 const DAY_NS = 24 * 3600 * 1e9;
 const two = (n: number): string => String(n).padStart(2, '0');
 
-/** A time of day as HTML's datetime writes it: 09:30, 09:30:15, 09:30:15.250. */
+/** A time of day as HTML's datetime writes it: 09:30, 09:30:15, 09:30:15.250. Below a millisecond is cut, never
+ * rounded, so the last instant of a day stays 23:59:59.999 and never becomes 24:00. */
 function clockIso(ns: number): string {
-  const ms = Math.round(ns / NS_PER_MS);
+  const ms = Math.floor(ns / NS_PER_MS);
   const h = Math.floor(ms / 3600000), m = Math.floor(ms / 60000) % 60, s = Math.floor(ms / 1000) % 60, frac = ms % 1000;
   let out = `${two(h)}:${two(m)}`;
   if (s !== 0 || frac !== 0) out += `:${two(s)}`;

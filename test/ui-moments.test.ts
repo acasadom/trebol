@@ -31,6 +31,9 @@ describe('moments a text shows', () => {
     assert.equal(isoOf(date({ y: 2026, m: 11, d: 23, time: 9 * H + 30 * M, zone: null })), '2026-11-23T09:30');
     assert.equal(isoOf(date({ y: 2026, m: 11, d: 23, time: 9 * H + 30 * M + 15e9, zone: 120 })), '2026-11-23T09:30:15+02:00');
     assert.equal(isoOf(date({ y: 2026, m: 1, d: 5, time: 0, zone: -330 })), '2026-01-05T00:00-05:30');
+    // the last instant of a day is cut to the millisecond, never rounded up to 24:00
+    assert.equal(isoOf(date({ y: 2026, m: 11, d: 23, time: 24 * H - 1, zone: null })), '2026-11-23T23:59:59.999');
+    assert.equal(isoOf(time(24 * H - 1)), '23:59:59.999');
     assert.equal(isoOf(time(9 * H + 5 * M + 250e6)), '09:05:00.250');
     assert.equal(isoOf(time(30 * H)), null);
     assert.equal(isoOf(integer(3)), null);
