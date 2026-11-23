@@ -18,6 +18,9 @@ that is no event is a problem too (`on-chnage is not an event; did you mean on-c
 would never run (a `widget` takes any, as its element fires its own); a click is the block after the face, not an `on-click`. The faces of a
 screen or of a row of `rows` are laid out, and checked, when they are first shown.
 
+A role on a `text`, `heading` or `title` colours its letters, in a shade of the role's color that reads well
+on the page: `title "Overdue" danger`.
+
 (word-primary)=
 ## primary
 

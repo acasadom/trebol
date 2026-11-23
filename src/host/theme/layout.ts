@@ -227,8 +227,11 @@ body {
 }
 .tb-small { font-size: 13px; }
 .tb-muted { color: var(--tb-muted); }
-.tb-text.tb-danger, .tb-heading.tb-danger { color: var(--tb-danger); }
-.tb-text.tb-success, .tb-heading.tb-success { color: var(--tb-success); }
-.tb-text.tb-primary, .tb-heading.tb-primary { color: var(--tb-primary); }
+/* a role colours the letters of a text, heading or title, in the shade of it that reads on the page (-ink) */
+:is(.tb-text, .tb-heading, .tb-title).tb-primary { color: var(--tb-primary-ink); }
+:is(.tb-text, .tb-heading, .tb-title).tb-accent { color: var(--tb-accent-ink); }
+:is(.tb-text, .tb-heading, .tb-title).tb-success { color: var(--tb-success-ink); }
+:is(.tb-text, .tb-heading, .tb-title).tb-warning { color: var(--tb-warning-ink); }
+:is(.tb-text, .tb-heading, .tb-title).tb-danger { color: var(--tb-danger-ink); }
 
 `;
