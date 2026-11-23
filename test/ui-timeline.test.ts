@@ -51,11 +51,19 @@ describe('timeline', () => {
     assert.equal(mold(got), '["a timeline takes the field of its time and of its text: timeline log [at text]" "a timeline takes the field of its time and of its text: timeline log [at text]"]');
   });
 
-  // what the faces of a timeline say: per day its heading and, per row, [role what time note]
+  // what the faces of a timeline say: per day its heading and, per row, [role what time note]; a time is
+  // the moment its text holds as the host shows it (src/host/browser/moments.ts): ago or clock
   const said = `
+    shown: func [t] [
+        case [
+            t/ago [time-ago t/text]
+            t/clock [to time! reduce [t/text/hour t/text/minute]]
+            true [t/text]
+        ]
+    ]
     item: func [g] [
         line: g/pane/1/pane
-        reduce [g/role  line/1/text  either line/2 [line/2/text] [none]  either g/pane/2 [g/pane/2/text] [none]]
+        reduce [g/role  line/1/text  either line/2 [shown line/2] [none]  either g/pane/2 [g/pane/2/text] [none]]
     ]
     days-of: func [f] [
         collect [foreach d f/pane/1/pane [

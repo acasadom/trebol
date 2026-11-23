@@ -292,6 +292,20 @@ view [
 It ticks only while the face is on the page: a screen that leaves takes its ticks with it. `face/rate: none`
 stops it, and a new rate starts it again.
 
+A text of a date can say how long ago it was with `ago`, and only its time with `clock`; either way its tooltip
+has the whole date, and a screen reader or a search engine reads the moment itself. With a rate, the `ago` text
+keeps up by itself:
+
+```trebol-ui
+booked: now - 0:20
+view [
+    panel "Booked in" [
+        text clock is [booked]
+        text muted ago rate 0:00:30 is [booked]
+    ]
+]
+```
+
 ## Moving through a graph
 
 Some things are not rows but a web: customers ride bikes, bikes have repairs, repairs need parts. An `orbit`

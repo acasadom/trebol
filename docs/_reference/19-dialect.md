@@ -164,6 +164,17 @@ A text, heading or title on one line, its letters as large as its width lets the
 own size nor smaller than about half of it (then it ends in `…`): `title shrink is [total]`. In a row it takes an
 equal share of what is left.
 
+## clock
+
+A text of a date with a time shows only the time, to the minute, as a timetable does: `text clock is [job/booked]`
+shows 9:30 AM. Any text of a date or a time says it in a way a machine reads too, and a date has its full form,
+Monday, November 23, 2026 at 9:30 AM, in its tooltip: with `clock` it is still the whole moment there.
+
+## ago
+
+A text of a date says how long ago it was, or how long until it, in the language of the page: 5 minutes ago,
+in 2 days. With `rate` it says it again at each tick, with no `on-time`: `text ago rate 0:00:30 is [job/booked]`.
+
 ## stretch
 
 A canvas as wide as it can be and as tall as its extent: `canvas 100x32 stretch [line 0x28 50x10 100x4]`. It is

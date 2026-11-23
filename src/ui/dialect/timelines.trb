@@ -81,15 +81,15 @@ timeline-say: func [v] [
     ]
 ]
 
-; The time a row shows: none for a whole day, as its day says it; with relative, how long
-; ago it was while that is under a day (5 minutes ago), else the time on the clock, since
-; the day is said above it.
+; How a row shows its moment: none for a whole day, as its day says it; with relative, how
+; long ago it was while that is under a day (5 minutes ago), else its time on the clock,
+; since the day is said above it. Either way the text holds the whole moment, so a machine
+; and the tooltip have it.
 timeline-time: function [m relative] [
     unless all [m  m/time] [return none]
     here: now
     here: here/date + here/time
-    t: m/time
-    either all [relative  24:00 > abs difference here m] [time-ago m] [to time! reduce [t/hour t/minute]]
+    either all [relative  24:00 > abs difference here m] [[text muted small ago]] [[text muted small clock]]
 ]
 
 ; The faces of a text with what it says, which may be any value a text face shows.
@@ -109,7 +109,7 @@ timeline-item: function [row m columns relative role-by] [
         ]
     ]
     what: timeline-text compose [text fill (any [role []])] any [timeline-say select row columns/3  ""]
-    if time: timeline-time m relative [append what timeline-text [text muted small] time]
+    if shows: timeline-time m relative [append what timeline-text shows m]
     line: compose/only [row top gap 3 (what)]
     rest: copy []
     foreach [field label] skip columns 4 [

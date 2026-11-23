@@ -145,6 +145,48 @@ export function relativeText(at: Moment, now: number, lang: string): string {
   return say(r(a / (365 * 86400)), 'year');
 }
 
+const DAY_NS = 24 * 3600 * 1e9;
+const two = (n: number): string => String(n).padStart(2, '0');
+
+/** A time of day as HTML's datetime writes it: 09:30, 09:30:15, 09:30:15.250. */
+function clockIso(ns: number): string {
+  const ms = Math.round(ns / NS_PER_MS);
+  const h = Math.floor(ms / 3600000), m = Math.floor(ms / 60000) % 60, s = Math.floor(ms / 1000) % 60, frac = ms % 1000;
+  let out = `${two(h)}:${two(m)}`;
+  if (s !== 0 || frac !== 0) out += `:${two(s)}`;
+  if (frac !== 0) out += `.${String(frac).padStart(3, '0')}`;
+  return out;
+}
+
+/**
+ * A date! or a time of day as HTML's datetime writes it, so a machine reads the moment a text shows:
+ * 2026-11-23, 2026-11-23T09:30, 2026-11-23T09:30+02:00, 09:30. Null for anything else.
+ */
+export function isoOf(v: Cell): string | null {
+  if (v.t === K.Time) return v.v >= 0 && v.v < DAY_NS ? clockIso(v.v) : null;
+  if (v.t !== K.Date) return null;
+  const d = v.v;
+  if (d.y < 1 || d.y > 9999) return null;
+  let out = `${String(d.y).padStart(4, '0')}-${two(d.m)}-${two(d.d)}`;
+  if (d.time === null) return out;
+  out += `T${clockIso(d.time)}`;
+  if (d.zone !== null) {
+    const z = Math.abs(d.zone);
+    out += `${d.zone < 0 ? '-' : '+'}${two(Math.floor(z / 60))}:${two(z % 60)}`;
+  }
+  return out;
+}
+
+/** A date! said in full in a language, as its clock reads it: Monday, November 23, 2026 at 9:30 AM. Null for anything else. */
+export function fullDateText(v: Cell, lang: string): string | null {
+  if (v.t !== K.Date || v.v.y < 100) return null;
+  const d = v.v;
+  const ms = Date.UTC(d.y, d.m - 1, d.d) + (d.time ?? 0) / NS_PER_MS;
+  const opts: Intl.DateTimeFormatOptions = { dateStyle: 'full', timeZone: 'UTC' };
+  if (d.time !== null) opts.timeStyle = 'short';
+  try { return new Intl.DateTimeFormat(lang, opts).format(ms); } catch { return null; }
+}
+
 native('day-label', '["The day of a date said in the active language, from today where the page is: Today, Yesterday, Tomorrow, or its weekday and date, with the year when it is another." date [date!]]', (t, f) => {
   const at = momentOf(f.args[0]!)!;
   return value(string(dayLabel(at.ms, Date.now(), activeLanguage(t.rt))));

@@ -1,12 +1,14 @@
 // rate: a face that ticks. As in R2 and Red, `rate 2` is twice a second and `rate 0:00:30` once every half
 // minute; each tick fires the face's on-time while its node is on the page. Changing the rate starts the
 // ticks again, none stops them, and a face taken off the page stops: after each round of changes
-// `sweepRates` lets go of every node that was on the page and is no longer, as sweepSizes does.
+// `sweepRates` lets go of every node that was on the page and is no longer, as sweepSizes does. A text with
+// `ago` says again how long ago its date was at each tick, with no on-time.
 
 import { K, I64, type Cell } from '../../core/index.ts';
-import { get } from './faces.ts';
+import { get, flag } from './faces.ts';
 import { type Mounted } from './mount.ts';
 import { fireEvent } from './events.ts';
+import { sync } from './sync.ts';
 
 interface Ticking { ms: number; id: ReturnType<typeof setInterval>; m: Mounted; seen: boolean }
 
@@ -34,7 +36,9 @@ export function syncRate(m: Mounted): void {
   if (now !== undefined) stop(node);
   if (ms === null) return;
   const t: Ticking = { ms, m, seen: node.isConnected, id: setInterval(() => {
-    if (node.isConnected) fireEvent(t.m.face, 'on-time');
+    if (!node.isConnected) return;
+    if (flag(t.m.face, 'ago')) sync(t.m);
+    fireEvent(t.m.face, 'on-time');
   }, Math.max(1, ms)) };
   ticking.set(node, t);
 }

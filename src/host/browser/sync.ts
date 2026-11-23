@@ -32,6 +32,7 @@ import { syncToolbar, syncBreadcrumb } from './toolbars.ts';
 import { syncDialog, syncTabs, syncSteps, syncSplit } from './dialogs.ts';
 import { comingScreen, enteredScreen, setComingScreen } from './screens.ts';
 import { sweepSizes } from './sizes.ts';
+import { momentShown, momentTarget } from './moments.ts';
 import { syncRate, sweepRates } from './rates.ts';
 import { markRail } from './rails.ts';
 import { laterMarkScrollers } from './scrollers.ts';
@@ -172,10 +173,11 @@ function draw(m: Mounted): void {
     }
     case 'title': case 'heading': case 'text': {
       const tv = get(f, 'text');
-      const shown = tv.t === K.None ? '' : tv.t === K.Map || tv.t === K.Word ? translate(tv, host.rt) : display(tv);
+      const sv = momentShown(f, tv);
+      const shown = tv.t === K.None ? '' : tv.t === K.Map || tv.t === K.Word ? translate(tv, host.rt) : display(sv);
       const into = shrinkTarget(m, flag(f, 'shrink'), shown);
       if (flag(f, 'count') && countRun(m, tv, into)) break;
-      into.textContent = shown;
+      momentTarget(into, tv).textContent = shown;
       break;
     }
     case 'tile': {

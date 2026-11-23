@@ -224,6 +224,8 @@ It takes what [`face`](#style-face) takes, and:
 - [`count`](#word-count): a number that changes runs from the old one to the new
 - [`shrink`](#word-shrink): on one line, as large as its width lets it be
 - [`bold`](#word-bold): its letters heavier, as the label over a number
+- [`clock`](#word-clock): a date with a time shows only the time; the whole moment is in its tooltip
+- [`ago`](#word-ago): a date says how long ago it was, 5 minutes ago; with rate, it keeps saying it
 
 Text. A date, a time, a number or an amount is shown in the format of the active language.
 
