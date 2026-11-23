@@ -224,7 +224,9 @@ numbers at least, or it is a problem of the layout. A role colours the number an
 danger`), and with `count` a new number runs from the old one, as a text's does. `is [...]` gives it its number.
 On its own it is a card; in a panel it drops its border. The number is as large as the width of the stat lets it
 be, so four in a row never break one in two. A screen reader reads the text, the number and the line under it;
-the trend is for the eye.
+the trend is for the eye. It is made of other styles, as an app makes its own: a panel whose `layout:` holds a
+`text`, a `title shrink`, a `text` and a `canvas stretch` (see
+[styles of your own](../ui/13-styles-of-your-own.md)).
 
 ## image
 

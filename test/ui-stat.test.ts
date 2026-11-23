@@ -47,6 +47,32 @@ describe('stat', () => {
     assert.equal(mold(got), '["a trend takes two numbers or more: trend [3 5 4 8]" "a trend takes two numbers or more: trend [3 5 4 8]"]');
   });
 
+  test('is made of a label, its number, the line under it and a canvas, which follow it', async () => {
+    const got = await run(`
+      root: view [stat "Takings" $1240.00 "12 repairs today" trend [980 1100] success count  stat "Jobs" 7]
+      ui-react root
+      a: first root/pane  b: second root/pane
+      reduce [
+          a/composed collect [foreach g a/pane [keep g/style]]
+          a/pane/1/text a/pane/1/bold a/pane/2/text a/pane/2/role a/pane/2/count a/pane/2/shrink a/pane/3/text
+          a/pane/4/stretch a/pane/4/hidden b/pane/3/hidden b/pane/4/hidden b/pane/2/count b/pane/2/role
+      ]`);
+    assert.equal(mold(got), '[panel [text title text canvas] "Takings" true $1240.00 success true true "12 repairs today" true false true true false none]');
+  });
+
+  test('its trend is drawn in the colour of its role, from the foot of a canvas 100x40', async () => {
+    const got = await run(`
+      root: view [stat "a" trend [2 6 4]  stat "b" trend [3 $3.00] muted  stat "c" trend [1 50%] danger  stat "d" success  stat "e"]
+      ui-react root
+      collect [foreach f root/pane [keep/only f/pane/4/draw]]`);
+    assert.equal(mold(got).replace(/\s+/g, ' ').replace(/\[ /g, '[').replace(/ \]/g, ']'), '[' + [
+      '[pen off fill-pen primary 14% polygon 0x37 50x11 100x24 100x40 0x40 pen primary line-width 2 line-join round line-cap round fill-pen off line 0x37 50x11 100x24 pen raised fill-pen primary circle 100x24 4.5]',
+      '[pen off fill-pen border-strong 14% polygon 0x24 100x24 100x40 0x40 pen border-strong line-width 2 line-join round line-cap round fill-pen off line 0x24 100x24 pen raised fill-pen border-strong circle 100x24 4.5]',
+      '[pen off fill-pen danger 14% polygon 0x11 100x37 100x40 0x40 pen danger line-width 2 line-join round line-cap round fill-pen off line 0x11 100x37 pen raised fill-pen danger circle 100x37 4.5]',
+      'none', 'none',
+    ].join(' ') + ']');
+  });
+
   test('the trend: its numbers, a line through them and where its last point is', () => {
     const ns = trendNumbers({ t: 0 } as unknown as Cell);
     assert.deepEqual(ns, []);
