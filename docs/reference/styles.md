@@ -733,6 +733,26 @@ Made from [`rows-face`](#style-rows-face).
 The same rows as a table, as a list: the first field stands out and the rest go on a second line. The picture of
 a column of images goes first. `role-by` paints a whole item, and, after a column, its text.
 
+(style-timeline)=
+## timeline
+
+Made from [`rows-face`](#style-rows-face). It starts with `order: newest`.
+
+It takes what [`rows-face`](#style-rows-face) takes, and:
+
+- one of `newest`, `oldest` (`order`): which rows come first: newest, as it starts, or oldest
+- [`relative`](#word-relative): a time says how long ago it was, 5 minutes ago, and keeps saying it
+
+What happened, and when, under the day it happened: `timeline log [at text who]`. Its rows are those of a list,
+a block of map! or object! rows. The first column is the field that says when, a date! or a text in ISO form as a
+server sends it (`"2026-11-23T09:30:00Z"`); the second is what happened, and the rest go on a quieter line beneath.
+A date with a zone is that moment anywhere; one without is the time on the clock where the page is; one with no
+time is the whole day, shown without a time. Each day has its heading, Today, Yesterday or its weekday and date,
+in the language of the page; rows with no moment go last, under none. `newest` rows come first unless `oldest`;
+with `relative`, a time less than a day ago says how long ago it was, 5 minutes ago, and keeps saying it as time
+goes by. `role-by tone` paints each row's mark and text in the role its `tone` names. A timeline without the field of
+its time and of its text is a problem of the layout. Its text is what it says when it has no rows.
+
 (style-board)=
 ## board
 

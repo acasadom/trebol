@@ -13,6 +13,7 @@ import { NAVIGATION } from './theme/navigation.ts';
 import { MEDIA } from './theme/media.ts';
 import { DATA } from './theme/data.ts';
 import { STATS } from './theme/stats.ts';
+import { TIMELINES } from './theme/timelines.ts';
 import { DIALOGS } from './theme/dialogs.ts';
 import { PANES } from './theme/panes.ts';
 import { POPUPS } from './theme/popups.ts';
@@ -364,7 +365,7 @@ export function themeCss(t: ThemeParams): string {
 }
 
 /** Component rules, one file per kind of face under theme/. Only token variables appear there, never raw values of color. */
-const COMPONENTS = `\n${[LAYOUT, FORMS, NAVIGATION, MEDIA, DATA, STATS, DIALOGS, PANES, POPUPS, TOASTS, DEVTOOLS, RESPONSIVE].map(part => part.slice(1)).join('')}`;
+const COMPONENTS = `\n${[LAYOUT, FORMS, NAVIGATION, MEDIA, DATA, STATS, TIMELINES, DIALOGS, PANES, POPUPS, TOASTS, DEVTOOLS, RESPONSIVE].map(part => part.slice(1)).join('')}`;
 
 /** What a skin changes on top of the component rules: '' for the modern one. */
 const SKINS: Record<Skin, string> = { modern: '', classic: CLASSIC, cupertino: CUPERTINO, fusion: FUSION, fluent: FLUENT };

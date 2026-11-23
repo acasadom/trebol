@@ -187,6 +187,48 @@ may hold a word or a text, as a server sends it, in any case. A row whose field 
 that names no role is drawn as usual: the data is not the layout's, so it is never a problem. Lists, boards and
 trees take `role-by` the same way; in a list, a column's role paints its text.
 
+## What happened, and when
+
+The workshop keeps a log: a bike came in, brakes were ordered, a payment failed. A `timeline` shows it the way
+people read a log, under the day each thing happened, newest first. It takes rows as a list does; its first
+column is the field that says when and its second what happened, and the rest go on a quieter line beneath:
+
+```trebol-ui
+log: [
+    #(at: 23-Nov-2026/9:30 text: "Bike in for a repair" who: "Ada Lovelace" tone: success)
+    #(at: 23-Nov-2026/11:05 text: "Brakes ordered" who: "Grace Hopper")
+    #(at: 22-Nov-2026/17:40 text: "Payment failed" who: "Till" tone: danger)
+    #(at: "2026-11-20T08:00:00Z" text: "Shop opened for the winter")
+]
+
+view [
+    timeline [at text who] role-by tone is [log]
+    button "A bike came back" [
+        append log make map! reduce ['at now 'text "A bike came back" 'who "Desk" 'tone 'accent]
+    ]
+]
+```
+
+The day headings say Today and Yesterday, or the weekday and date, in the language of the page, and they change
+by themselves after midnight. A time can be a `date!` or, as a server sends it, a text in ISO form. A date with
+a zone is that moment anywhere; one without is the time on the clock where the page is; one with no time is a
+whole day, shown without a time. `role-by` paints each mark and its text, as it paints a list's rows.
+
+A log of what is going on now reads better with `relative`: a time less than a day ago says how long ago it was,
+`5 minutes ago`, and keeps saying it as time goes by. A story told from the start takes `oldest`:
+
+```trebol-ui
+story: [
+    #(at: 1-Mar-2025/10:00 text: "Cog & Chain opens")
+    #(at: 23-Nov-2026/9:30 text: "The thousandth repair")
+]
+
+view [timeline [at text] oldest relative is [story]]
+```
+
+Code that appends to the block shows the new row at once, so a timeline fed by a server's events stays up to
+date with nothing more.
+
 ## A board
 
 Work that goes through stages reads best as a board: a lane for each stage, and a card for each job in the lane

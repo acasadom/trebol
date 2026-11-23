@@ -12,6 +12,7 @@ Trebol [
         %dialect/styles.trb
         %dialect/styles-more.trb
         %dialect/stats.trb
+        %dialect/timelines.trb
         %dialect/problems.trb
         %dialect/layout.trb
         %dialect/steps.trb

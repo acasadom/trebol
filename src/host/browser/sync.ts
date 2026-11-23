@@ -18,6 +18,7 @@ import { syncSlider, syncProgress, syncIcon, required, syncRadio } from './field
 import { syncMedia, syncPhoto, syncUpload } from './uploads.ts';
 import { syncWidget } from './widget.ts';
 import { syncStat } from './stats.ts';
+import { syncTimeline } from './timelines.ts';
 import { syncLookup } from './lookup.ts';
 import { syncCanvas, syncChart } from './drawings.ts';
 import { syncOrbit } from './orbits.ts';
@@ -189,6 +190,7 @@ function draw(m: Mounted): void {
     case 'board': void fire('ui-board', f); break;
     case 'progress': syncProgress(m); return;
     case 'stat': syncStat(m); return;
+    case 'timeline': syncTimeline(m); return;
     case 'canvas': syncCanvas(m); return;
     case 'chart': syncChart(m); return;
     case 'orbit': syncOrbit(m); return;

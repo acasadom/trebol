@@ -82,6 +82,8 @@ face: make object! [
     sortable: false     ; a table the host sorts, from the rows it has, when a header is chosen
     sorted: none        ; a table: the order shown, [column asc] or [column desc]
     totals: none        ; a table: a row shown at the foot, never chosen nor sorted
+    order: none         ; a timeline: which rows come first, newest or oldest
+    relative: false     ; a timeline: a time says how long ago it was, and keeps saying it
     kind: none          ; a chart: bar line area pie
     stacked: false      ; a chart: its series one on top of another
     segmented: false    ; a radio: its options as buttons joined in a bar, one pressed
@@ -100,4 +102,4 @@ styles: make map! []
 
 container-styles: [view column row form panel grid dialog scroll split toolbar desktop]
 input-styles: [field password number money date date-range time area rich check toggle choice radio upload photo lookup rows widget slider]
-data-styles: [table list tree chart board]
+data-styles: [table list tree chart board timeline]

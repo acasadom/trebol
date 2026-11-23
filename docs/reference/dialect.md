@@ -291,6 +291,28 @@ A flag, of [`table`](#style-table).
 
 A table whose headers sort the rows it has, without the program. See `on-sort` for the program to sort them.
 
+(word-newest)=
+## newest
+
+An order of a timeline.
+
+A timeline whose newest rows come first, as it starts.
+
+(word-oldest)=
+## oldest
+
+An order of a timeline.
+
+A timeline whose oldest rows come first, as a story is told.
+
+(word-relative)=
+## relative
+
+A flag, of [`timeline`](#style-timeline).
+
+A timeline whose times less than a day ago say how long ago they were, `5 minutes ago`, and keep saying it as time
+goes by; older ones show the time on the clock, as their day is said above them.
+
 (word-stacked)=
 ## stacked
 
@@ -544,7 +566,7 @@ link.
 A word followed by its value, of [`rows-face`](#style-rows-face) and [`board`](#style-board).
 
 `role-by tone`: the field of each row whose value, `success`, `danger`, `warning`, `primary`, `accent` or
-`muted`, as a word or a text, is the role a table, list, board or tree paints that row or card in. In a block of
+`muted`, as a word or a text, is the role a table, list, board, tree or timeline paints that row or card in. In a block of
 columns, after a column, `[state "State" role-by tone]`, it paints that column's cell instead. Any other value
 paints nothing.
 

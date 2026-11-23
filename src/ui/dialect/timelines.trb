@@ -1,0 +1,30 @@
+; A part of the UI dialect: see ui.trb, whose words it shares.
+
+; --- what happened, and when (after styles-more.trb) ------------------------------------
+;
+; timeline log [at text "What" who] oldest relative role-by tone
+;
+; Its rows are a block of map! or object! rows, as a list's. The first column is the field
+; that says when (a date!, or a text in ISO form as a server sends it), the second what
+; happened, and the rest a quieter line beneath. The rows go under the day they happened,
+; newest first unless oldest; with relative, a time says how long ago it was ("5 minutes
+; ago") and keeps saying it as time goes by. role-by paints each mark in the role its row
+; names.
+
+timeline-orders: [newest oldest]
+
+stylize [
+    timeline: rows-face [style: 'timeline  order: 'newest  takes: [
+        order: one-of timeline-orders "which rows come first: newest, as it starts, or oldest"
+        relative: 'relative "a time says how long ago it was, 5 minutes ago, and keeps saying it"
+        done: :timeline-check
+    ]]
+]
+
+; timeline log [at text]: the field of when and the field of what, at least
+timeline-check: func [f place [block!]] [
+    all [
+        any [not block? f/columns  4 > length? f/columns]
+        ui-problem place "a timeline takes the field of its time and of its text: timeline log [at text]"
+    ]
+]

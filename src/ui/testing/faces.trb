@@ -79,7 +79,7 @@ test-cells: function [f row /local w label] [
 
 ; The rows a table, list or tree shows, in order: in a tree, the rows of an open row follow it.
 test-row-list: function [f] [
-    unless all [find [table list tree] f/style  block? f/data] [return copy []]
+    unless all [find [table list tree timeline] f/style  block? f/data] [return copy []]
     unless f/style = 'tree [return f/data]
     out: copy []
     walk: function [rows] [
@@ -117,7 +117,7 @@ test-texts: function [/local f p t] [
                 if all [map? o  (form v) = form o/value] [append out test-text o/text]
             ]
         ]
-        if all [find [table list tree] f/style  block? f/data] [
+        if all [find [table list tree timeline] f/style  block? f/data] [
             foreach row test-row-list f [append out test-cells f row]
         ]
         ; the title of every node of an orbit, its focus too
