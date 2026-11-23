@@ -176,6 +176,10 @@ async function evErr(src: string): Promise<string> {
 }
 
 describe('tasks and timers', () => {
+  test('a wait of 30 days waits: it does not end at once as a setTimeout of that many milliseconds would', async () => {
+    assert.equal(await ev('done: false t: spawn [wait 720:00 done: true] wait 0.05 cancel t done'), 'false');
+  });
+
   test('wait pauses only the task', async () => {
     assert.equal(await ev('t: spawn [wait 0.02 "late"] r: copy [] append r "early" append r wait t r'), '["early" "late"]');
   });
