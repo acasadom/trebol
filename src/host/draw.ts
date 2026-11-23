@@ -27,7 +27,7 @@ export const svgEl = (tag: string, attrs: Record<string, string | number> = {}, 
 const round = (n: number): string => String(Math.round(n * 100) / 100);
 
 /** Theme roles a drawing may use as colors. */
-export const DRAW_ROLES = ['primary', 'accent', 'danger', 'success', 'warning', 'muted', 'text', 'border', 'surface', 'raised', 'bg'] as const;
+export const DRAW_ROLES = ['primary', 'accent', 'danger', 'success', 'warning', 'muted', 'text', 'border', 'border-strong', 'surface', 'raised', 'bg'] as const;
 
 /**
  * Red's color words Trebol knows, as OKLCH hue and chroma with a lightness for

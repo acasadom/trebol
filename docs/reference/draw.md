@@ -7,15 +7,15 @@ The commands of the draw dialect, which a [`canvas`](styles.md) shows: `canvas 1
 from `0x0` at the top left to its size at the bottom right, and the drawing scales with the canvas. Each
 command draws with the pen, fill and font in force: they start as the theme's text color, no fill, a line 1
 wide and the size of the page's text. Colors are the theme's, so a drawing looks right in light and dark: its
-roles `primary`, `accent`, `danger`, `success`, `warning`, `muted`, `text`, `border`, `surface`, `raised` (the
-color of a card) and `bg`, or Red's color words. A canvas with `stretch` spreads its points across its width,
+roles `primary`, `accent`, `danger`, `success`, `warning`, `muted`, `text`, `border`, `border-strong` (a line
+that must be seen), `surface`, `raised` (the color of a card) and `bg`, or Red's color words. A canvas with `stretch` spreads its points across its width,
 and only its points: radii, sizes of ellipses and arcs, widths of lines and text stay what they say.
 See [drawings and charts](../ui/10-charts.md).
 
 (draw-pen)=
 ## pen
 
-Written `pen color [percent]`. A color is a role of the theme (`primary`, `accent`, `danger`, `success`, `warning`, `muted`, `text`, `border`, `surface`, `raised`, `bg`), one of Red's color words (`red`, `maroon`, `orange`, `brown`, `gold`, `yellow`, `olive`, `green`, `teal`, `aqua`, `cyan`, `sky`, `blue`, `navy`, `violet`, `purple`, `magenta`, `pink`, `silver`, `gray`, `black`, `white`), or `off`.
+Written `pen color [percent]`. A color is a role of the theme (`primary`, `accent`, `danger`, `success`, `warning`, `muted`, `text`, `border`, `border-strong`, `surface`, `raised`, `bg`), one of Red's color words (`red`, `maroon`, `orange`, `brown`, `gold`, `yellow`, `olive`, `green`, `teal`, `aqua`, `cyan`, `sky`, `blue`, `navy`, `violet`, `purple`, `magenta`, `pink`, `silver`, `gray`, `black`, `white`), or `off`.
 
 The color of lines, outlines and text from here on; `pen off` draws none. A percent after the color draws that
 much of it, with what is under it showing through: `pen primary 40%`.
@@ -23,7 +23,7 @@ much of it, with what is under it showing through: `pen primary 40%`.
 (draw-fill-pen)=
 ## fill-pen
 
-Written `fill-pen color [percent]`. A color is a role of the theme (`primary`, `accent`, `danger`, `success`, `warning`, `muted`, `text`, `border`, `surface`, `raised`, `bg`), one of Red's color words (`red`, `maroon`, `orange`, `brown`, `gold`, `yellow`, `olive`, `green`, `teal`, `aqua`, `cyan`, `sky`, `blue`, `navy`, `violet`, `purple`, `magenta`, `pink`, `silver`, `gray`, `black`, `white`), or `off`.
+Written `fill-pen color [percent]`. A color is a role of the theme (`primary`, `accent`, `danger`, `success`, `warning`, `muted`, `text`, `border`, `border-strong`, `surface`, `raised`, `bg`), one of Red's color words (`red`, `maroon`, `orange`, `brown`, `gold`, `yellow`, `olive`, `green`, `teal`, `aqua`, `cyan`, `sky`, `blue`, `navy`, `violet`, `purple`, `magenta`, `pink`, `silver`, `gray`, `black`, `white`), or `off`.
 
 The color inside the shapes drawn from here on; `fill-pen off` leaves them empty. A line or a curve is never
 filled. As with `pen`, `fill-pen primary 14%` lets what is under the shape show through.

@@ -172,6 +172,7 @@ describe('draw stretched and seen through', () => {
     assert.equal(r.kids[1]!.attrs['stroke'], 'none');
     assert.equal(draw('pen primary 100% line 0x0 1x1').kids[0]!.attrs['stroke'], 'var(--tb-primary)');
     assert.equal(draw('pen off 20% line 0x0 1x1').kids[0]!.attrs['stroke'], 'none');
+    assert.equal(draw('pen border-strong line 0x0 1x1').kids[0]!.attrs['stroke'], 'var(--tb-border-strong)');
   });
 });
 

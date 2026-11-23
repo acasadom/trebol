@@ -5,8 +5,8 @@ The commands of the draw dialect, which a [`canvas`](styles.md) shows: `canvas 1
 from `0x0` at the top left to its size at the bottom right, and the drawing scales with the canvas. Each
 command draws with the pen, fill and font in force: they start as the theme's text color, no fill, a line 1
 wide and the size of the page's text. Colors are the theme's, so a drawing looks right in light and dark: its
-roles `primary`, `accent`, `danger`, `success`, `warning`, `muted`, `text`, `border`, `surface`, `raised` (the
-color of a card) and `bg`, or Red's color words. A canvas with `stretch` spreads its points across its width,
+roles `primary`, `accent`, `danger`, `success`, `warning`, `muted`, `text`, `border`, `border-strong` (a line
+that must be seen), `surface`, `raised` (the color of a card) and `bg`, or Red's color words. A canvas with `stretch` spreads its points across its width,
 and only its points: radii, sizes of ellipses and arcs, widths of lines and text stay what they say.
 See [drawings and charts](../ui/10-charts.md).
 
