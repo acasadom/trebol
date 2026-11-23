@@ -144,6 +144,27 @@ around it does not see them. A role or size given to it (`success`, `large`) rea
 say none of their own, here the number, and follows it when it changes. `trebol check` reads the faces of `layout:` as it reads any others, so a mistake in
 them is a problem of every layout that uses the style.
 
+Faces of such a style share a row equally, and go on to the next line before they get narrower than a few
+words. Made from a `panel`, each is a card of its own, but inside another panel it is part of that card, as a
+card is never drawn in a card:
+
+```trebol-ui
+stylize [
+    count-card: panel [
+        takes: [value: [integer!] "how many"]
+        layout: [text muted is [it/text]  heading is [it/value]]
+    ]
+]
+view [
+    row [count-card "Bikes in" 12  count-card "Ready to collect" 5]
+    panel "Today" [
+        row [count-card "Booked in" 3  count-card "Waiting for parts" 4]
+    ]
+]
+```
+
+A plain `panel` keeps its card wherever it is, and its own width in a row.
+
 Where `layout:` says `slot`, go the faces written in a block after the style, read where they are written, so
 they see that layout's labels and keep their own role and size:
 

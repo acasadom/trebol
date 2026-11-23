@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { native, value, mold, form, errorField, type Cell, type ObjectCell } from '../src/core/index.ts';
 import { startHost, startUi, runSource, type Host } from '../src/host/index.ts';
 import { setHost } from '../src/host/browser/mount.ts';
+import { LAYOUT } from '../src/host/theme/layout.ts';
 
 native('show', '[root [object!]]', (_t, f) => value(f.args[0]!));
 native('ui-watch', '[value [object! series! map!]]', (_t, f) => value(f.args[0]!));
@@ -166,5 +167,9 @@ describe('styles made of other styles', () => {
       ui-react root
       reduce [a  k/pane/2/role  k/pane/1/role  root/pane/2/pane/1/role  root/pane/2/pane/2/role]`);
     assert.equal(mold(got), '[[muted large success large muted large] danger muted warning none]');
+  });
+  test('in a panel it is no card of its own, and in a row its faces share it equally (theme)', () => {
+    assert.match(LAYOUT, /\.tb-panel \.tb-panel\.tb-composed \{ margin: 0; padding: 0; background: none; border: 0;/);
+    assert.match(LAYOUT, /\.tb-row > \.tb-composed \{ flex: 1 1 10rem; min-width: 0; \}/);
   });
 });

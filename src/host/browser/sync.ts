@@ -64,6 +64,8 @@ function draw(m: Mounted): void {
   if (flag(f, 'fit')) cls.push('tb-fit');
   if (flag(f, 'segmented')) cls.push('tb-segmented');
   if (flag(f, 'drop')) cls.push('tb-drop-zone');
+  // made of its style's layout: (composites.trb); the theme makes it part of a panel it is in
+  if (flag(f, 'composed')) cls.push('tb-composed');
   if (role !== null && !INPUTS.has(style)) cls.push(`tb-${role}`);
   const size = word(f, 'size');
   if (size !== null) cls.push(`tb-${size}`);

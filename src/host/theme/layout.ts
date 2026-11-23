@@ -202,6 +202,10 @@ body {
 [data-tb-scroller]:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-focus-ring); }
 .tb-panel.tb-primary:focus-visible { box-shadow: inset 0 0 0 1px var(--tb-primary), 0 0 0 3px var(--tb-focus-ring); }
 .tb-panel > .tb-panel-title { margin: 0; font-family: var(--tb-headings); font-size: 17px; line-height: 1.35; font-weight: 600; letter-spacing: -0.01em; }
+/* a panel made of its style's layout: is part of the panel it is in, not a card in a card; in a row the faces
+   of such styles share it equally, and wrap before they get narrower than a few words */
+.tb-panel .tb-panel.tb-composed { margin: 0; padding: 0; background: none; border: 0; border-radius: 0; box-shadow: none; }
+.tb-row > .tb-composed { flex: 1 1 10rem; min-width: 0; }
 .tb-divider { border: 0; border-top: var(--tb-line) solid var(--tb-border); margin: var(--tb-space-2) 0; width: 100%; }
 
 .tb-title { margin: 0; font-family: var(--tb-headings); font-size: 28px; line-height: 1.2; font-weight: 650; letter-spacing: -0.02em; }
