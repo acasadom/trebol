@@ -114,6 +114,54 @@ view [
 It takes what `number` takes too: a name right after the style, `required`, a check. A style made from `stars`
 would take all of that, and more.
 
+## A style made of others
+
+A style made from a container (`column`, `row`, `panel`) may say in `layout:` the faces each face of it holds.
+Inside that block, `it` is the face written in the layout, so `is [it/value]` follows its field as any reaction
+follows a face's (`face` is still the face that reads it):
+
+```trebol-ui
+stylize [
+    tally: column [
+        takes: [value: [integer!] "how many"]
+        layout: [
+            text muted is [it/text]
+            heading is [it/value]
+            text muted is [it/hint]
+        ]
+    ]
+]
+view [
+    row [
+        tally "Bikes in" 12 "3 since this morning"
+        tally "Waiting for parts" 4 "the oldest since Monday"
+    ]
+]
+```
+
+Each `tally` gets faces of its own, and the labels written in `layout:` belong to that face only: the layout
+around it does not see them. `trebol check` reads the faces of `layout:` as it reads any others, so a mistake in
+them is a problem of every layout that uses the style.
+
+Where `layout:` says `slot`, go the faces written in a block after the style, read where they are written, so
+they see that layout's labels:
+
+```trebol-ui
+stylize [
+    section: panel [layout: [heading is [it/text]  slot]]
+]
+view [
+    bike: field "Bike"
+    section "Booking" [
+        text is [join "For " any [bike/value "..."]]
+        button "Book in"
+    ]
+]
+```
+
+A style whose layout has no `slot` takes no block: giving it one is a problem of the layout. A style made from
+one with a `layout:` holds the same faces, unless it says a `layout:` of its own.
+
 ## Styles to make others from
 
 Four styles are only made from, never written: `face`, where every style starts; `container`, a face that holds

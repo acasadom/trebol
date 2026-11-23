@@ -9,6 +9,7 @@ Trebol [
         %dialect/faces.trb
         %dialect/words.trb
         %dialect/takes.trb
+        %dialect/composites.trb
         %dialect/styles.trb
         %dialect/styles-more.trb
         %dialect/stats.trb
