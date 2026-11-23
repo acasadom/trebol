@@ -18,7 +18,6 @@ import { buildOrbit } from './orbits.ts';
 import { buildRowsField } from './row-faces.ts';
 import { buildRich } from './richtext.ts';
 import { buildRows } from './tables.ts';
-import { buildTimeline } from './timelines.ts';
 import { buildTree } from './trees.ts';
 import { buildToolbar, buildBreadcrumb } from './toolbars.ts';
 import { buildDialog, buildTabs, buildSteps, buildSplit } from './dialogs.ts';
@@ -279,7 +278,6 @@ export function build(face: ObjectCell): HTMLElement {
         break;
       }
       case 'progress': node = buildProgress(m); break;
-      case 'timeline': node = buildTimeline(m); break;
       case 'image': node = el('img', 'tb-image'); break;
       case 'video': case 'audio': {
         const media = el(style, `tb-${style}`) as HTMLMediaElement;

@@ -19,7 +19,6 @@ import { syncPick } from './pick.ts';
 import { syncSlider, syncProgress, syncIcon, required, syncRadio } from './fields.ts';
 import { syncMedia, syncPhoto, syncUpload } from './uploads.ts';
 import { syncWidget } from './widget.ts';
-import { syncTimeline } from './timelines.ts';
 import { syncLookup } from './lookup.ts';
 import { syncCanvas, syncChart } from './drawings.ts';
 import { syncOrbit } from './orbits.ts';
@@ -210,7 +209,6 @@ function draw(m: Mounted): void {
     // its data may have changed: the dialect deals the cards to their lanes again, if they moved
     case 'board': void fire('ui-board', f); break;
     case 'progress': syncProgress(m); return;
-    case 'timeline': syncTimeline(m); return;
     case 'canvas': syncCanvas(m); return;
     case 'chart': syncChart(m); return;
     case 'orbit': syncOrbit(m); return;
