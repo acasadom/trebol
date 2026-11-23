@@ -25,7 +25,8 @@ ui-define/abstract 'face none [takes: [
     menu: 'menu [block!] :menu-of "its context menu, or the menu a button opens"
     morph: 'morph [lit-word! block!] :morph-of "a name shared with a face of the next screen, which this one becomes"
     with: 'with [block!] "a block run bound to the face once it is read: the last way out, for a field nothing else sets"
-    on: [on-over on-dbl-click on-key on-focus on-unfocus on-menu on-select on-drop on-reorder]
+    rate: 'rate [integer! time!] :rate-of "ticks while shown, each firing on-time: rate 2 is twice a second, rate 0:00:30 every half minute"
+    on: [on-over on-dbl-click on-key on-focus on-unfocus on-menu on-select on-drop on-reorder on-time]
     done: :ui-run-with
 ]]
 
@@ -59,12 +60,18 @@ spacing-of: function [v f place [block!]] [
 ]
 ui-faces: func [b [block!]] [build-faces b ui-labels]
 morph-of: func [v] [either block? v [v] [to word! v]]
+rate-of: function [v f place [block!]] [
+    either v > either integer? v [0] [0:00] [v] [ui-problem place "a rate is more than none: rate 2 or rate 0:00:30"]
+]
 
 ; --- containers
 
 stylize [
     view: container [style: 'view  takes: [on: [on-key on-find]]]
-    column: container [style: 'column]
+    column: container [style: 'column  takes: [
+        rail: 'rail "its children go down a line, each with a mark on it: steps, or what happened one after another"
+        named: 'named "one part of the page, named by its first text or heading for a screen reader"
+    ]]
     row: container [style: 'row  takes: [valign: one-of valigns "where its children go up and down"]]
     form: container [style: 'form  takes: [done: :steps-take-submits]]
     panel: container [style: 'panel]
@@ -111,9 +118,15 @@ split-check: func [f place [block!]] [
 ; --- texts
 
 stylize [
-    title: face [style: 'title  takes: [count: 'count "a number that changes runs from the old one to the new"]]
-    heading: face [style: 'heading  takes: [count: 'count "a number that changes runs from the old one to the new"]]
-    text: face [style: 'text  takes: [count: 'count "a number that changes runs from the old one to the new"]]
+    title: face [style: 'title  takes: [count: 'count "a number that changes runs from the old one to the new"  shrink: 'shrink "on one line, as large as its width lets it be"]]
+    heading: face [style: 'heading  takes: [count: 'count "a number that changes runs from the old one to the new"  shrink: 'shrink "on one line, as large as its width lets it be"]]
+    text: face [style: 'text  takes: [
+        count: 'count "a number that changes runs from the old one to the new"
+        shrink: 'shrink "on one line, as large as its width lets it be"
+        bold: 'bold "its letters heavier, as the label over a number"
+        clock: 'clock "a date with a time shows only the time; the whole moment is in its tooltip"
+        ago: 'ago "a date says how long ago it was, 5 minutes ago; with rate, it keeps saying it"
+    ]]
     code: face [style: 'code]
     divider: face [style: 'divider]
 ]

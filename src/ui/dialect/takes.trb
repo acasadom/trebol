@@ -51,6 +51,8 @@ style-def: make object! [
     events: none        ; the events it fires, a block, or any
     done: none          ; the functions run once a face of it is read, the made-from style's first
     written: true       ; written in a layout; false when another face makes it
+    layout: none        ; the faces each face of it holds, made from a container (composites.trb)
+    slot: false         ; whether its layout has slot, where the faces given to it go
 ]
 
 take-entry: make object! [
@@ -108,7 +110,7 @@ takes-of: function [spec [block!] style [word!] /local field kw t c fn h v p] [
 
 ; Defines a style: name made from base (none for face itself), with the fields of defaults,
 ; and takes: [...] among them for what it takes besides what base takes.
-ui-define: function [name [word!] base defaults [block!] /abstract /local w own events done written] [
+ui-define: function [name [word!] base defaults [block!] /abstract /local w own events done written lay slot] [
     parent: none
     either base [
         unless parent: select ui-style-defs base [
@@ -123,7 +125,13 @@ ui-define: function [name [word!] base defaults [block!] /abstract /local w own 
         remove/part p 2
     ]
     set [own events done written] takes-of takes name
+    set [lay slot] composite-layout name parent defaults
     proto: make proto defaults
+    ; a face made of a layout says its own name, as in R2, and composed the container it is drawn as
+    if lay [
+        unless word? proto/composed [proto/composed: proto/style]
+        proto/style: name
+    ]
     foreach e own [
         if all [set-word? e/field  not find [rule custom name label] e/how] [
             w: to word! e/field
@@ -134,7 +142,7 @@ ui-define: function [name [word!] base defaults [block!] /abstract /local w own 
     ]
     def: make style-def []
     def/name: name  def/parent: parent  def/proto: proto  def/abstract: abstract  def/own: own
-    def/written: written
+    def/written: written  def/layout: lay  def/slot: slot
     def/entries: append copy own either parent [parent/entries] [[]]
     def/events: case [
         any [events = 'any  all [parent  parent/events = 'any]] ['any]
@@ -200,7 +208,7 @@ ui-choices: func [c] [either word? c [get c] [c]]
 ui-name?: function [def w] [
     not any [
         event-word? w
-        find [global required react is calc] w
+        find [global required react is calc slot] w
         all [find ui-style-words def w  not find [email url integer] w]
     ]
 ]

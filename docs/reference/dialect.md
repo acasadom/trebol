@@ -18,6 +18,9 @@ that is no event is a problem too (`on-chnage is not an event; did you mean on-c
 would never run (a `widget` takes any, as its element fires its own); a click is the block after the face, not an `on-click`. The faces of a
 screen or of a row of `rows` are laid out, and checked, when they are first shown.
 
+A role on a `text`, `heading` or `title` colours its letters, in a shade of the role's color that reads well
+on the page: `title "Overdue" danger`.
+
 (word-primary)=
 ## primary
 
@@ -244,6 +247,64 @@ A flag, of [`title`](#style-title), [`heading`](#style-heading), [`text`](#style
 
 A text, heading, title or stat whose number, percent or amount changes runs from the old one to the new, in about
 half a second: `title count is [total]`. Not the first it shows, nor with less motion asked for.
+
+(word-bold)=
+## bold
+
+A flag, of [`text`](#style-text).
+
+A text with heavier letters, as the label over a number or the name in a line: `text "Takings" muted bold`.
+Headings and titles are bold already.
+
+(word-shrink)=
+## shrink
+
+A flag, of [`title`](#style-title), [`heading`](#style-heading) and [`text`](#style-text).
+
+A text, heading or title on one line, its letters as large as its width lets the line be, never larger than its
+own size nor smaller than about half of it (then it ends in `…`): `title shrink is [total]`. In a row it takes an
+equal share of what is left.
+
+(word-clock)=
+## clock
+
+A flag, of [`text`](#style-text).
+
+A text of a date with a time shows only the time, to the minute, as a timetable does: `text clock is [job/booked]`
+shows 9:30 AM. Any text of a date or a time says it in a way a machine reads too, and a date has its full form,
+Monday, November 23, 2026 at 9:30 AM, in its tooltip: with `clock` it is still the whole moment there.
+
+(word-ago)=
+## ago
+
+A flag, of [`text`](#style-text).
+
+A text of a date says how long ago it was, or how long until it, in the language of the page: 5 minutes ago,
+in 2 days. With `rate` it says it again at each tick, with no `on-time`: `text ago rate 0:00:30 is [job/booked]`.
+
+(word-stretch)=
+## stretch
+
+A flag, of [`canvas`](#style-canvas).
+
+A canvas as wide as it can be and as tall as its extent: `canvas 100x32 stretch [line 0x28 50x10 100x4]`. It is
+drawn again at each width; its points spread across it, while its lines, dots and text keep their size.
+
+(word-rail)=
+## rail
+
+A flag, of [`column`](#style-column).
+
+On a `column`: its children go down a line, each with a mark on it, and the role of a child paints its mark; a
+screen reader hears a list. `column rail [text "Booked in" text "On the stand"]`.
+
+(word-named)=
+## named
+
+A flag, of [`column`](#style-column).
+
+On a `column`: it is one part of the page, named by its first text, heading or title, and a screen reader says
+that name as it goes in. `column named [heading small "Monday" column rail [...]]`.
 
 (word-drag)=
 ## drag
@@ -554,7 +615,7 @@ A word followed by its value, of [`table`](#style-table).
 (word-key)=
 ## key
 
-A word followed by its value, of [`rows-face`](#style-rows-face), [`button`](#style-button), [`link`](#style-link) and [`board`](#style-board).
+A word followed by its value, of [`rows-face`](#style-rows-face), [`button`](#style-button), [`link`](#style-link), [`board`](#style-board) and [`timeline`](#style-timeline).
 
 `key code`: the field that tells the rows of a table, list or tree apart, `id` unless told; a row keeps its
 place in the selection and moves as itself when the rows change. `key "Ctrl+S"`: the shortcut of a button or
@@ -563,7 +624,7 @@ link.
 (word-role-by)=
 ## role-by
 
-A word followed by its value, of [`rows-face`](#style-rows-face) and [`board`](#style-board).
+A word followed by its value, of [`rows-face`](#style-rows-face), [`board`](#style-board) and [`timeline`](#style-timeline).
 
 `role-by tone`: the field of each row whose value, `success`, `danger`, `warning`, `primary`, `accent` or
 `muted`, as a word or a text, is the role a table, list, board, tree or timeline paints that row or card in. In a block of
@@ -598,6 +659,15 @@ A word followed by its value, of [`face`](#style-face).
 `with [role: 'danger]`: a block run bound to the face once the rest of it is read, so its set-words set the
 face's fields. It is the last way out, for a field no word of the style sets; `trebol check` does not run it and a
 designer shows it as code, so a style that needs a field often is better given a word for it in its `takes:`.
+
+(word-rate)=
+## rate
+
+A word followed by its value, of [`face`](#style-face).
+
+`rate 2` makes a face tick twice a second, `rate 0:00:30` every half minute, as in R2 and Red; each tick runs its
+`on-time` while the face is on the page. A new rate starts the ticks again, `face/rate: none` stops them, and a
+face taken off the page stops by itself.
 
 (word-poster)=
 ## poster
@@ -765,6 +835,13 @@ clicked: it is in `event/face`.
 An event: the block after it runs when it happens.
 
 When a header of a table is chosen: `event/column` and `event/order` say how to sort, and the program sorts.
+
+(word-on-time)=
+## on-time
+
+An event: the block after it runs when it happens.
+
+At each tick of its `rate`.
 
 (word-on-unfocus)=
 ## on-unfocus

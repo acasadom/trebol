@@ -170,7 +170,7 @@ ui-takes: [
 ui-dialect-words: function ["Every word of the dialect: styles, the words they take, and the rules an app adds"] [
     out: copy words-of styles
     foreach [n def] ui-style-defs [append out ui-style-words def]
-    unique append out compose [global required react is calc later (words-of custom-rules)]
+    unique append out compose [global required react is calc later slot (words-of custom-rules)]
 ]
 
 ; The word near enough to w to be what it meant (buton: button), or none; the

@@ -1,6 +1,6 @@
 ; A part of the UI dialect: see ui.trb, whose words it shares.
 
-; --- what happened, and when (after styles-more.trb) ------------------------------------
+; --- what happened, and when (after composites.trb and styles-more.trb) -----------------
 ;
 ; timeline log [at text "What" who] oldest relative role-by tone
 ;
@@ -10,15 +10,34 @@
 ; newest first unless oldest; with relative, a time says how long ago it was ("5 minutes
 ; ago") and keeps saying it as time goes by. role-by paints each mark in the role its row
 ; names.
+;
+; It is made of other styles, as any app may make its own: its days are columns made from
+; the rows each time they change, each a rail of what happened, and every half minute it
+; says its days and times again, so Today becomes Yesterday after midnight.
 
 timeline-orders: [newest oldest]
 
 stylize [
-    timeline: rows-face [style: 'timeline  order: 'newest  takes: [
-        order: one-of timeline-orders "which rows come first: newest, as it starts, or oldest"
-        relative: 'relative "a time says how long ago it was, 5 minutes ago, and keeps saying it"
-        done: :timeline-check
-    ]]
+    timeline: column [
+        order: 'newest  relative: false
+        told: none      ; when it last said its days and times again
+        takes: [
+            name: first label "the word that labels it: timeline log is log: timeline"
+            columns: block :columns-of "the field of when, the field of what happened, and those of the line beneath"
+            key: 'key [word!] "the field that tells one row from another"
+            role-by: 'role-by [word!] "the field of a row whose value, success or danger, is the role its mark is painted in"
+            order: one-of timeline-orders "which rows come first: newest, as it starts, or oldest"
+            relative: 'relative "a time says how long ago it was, 5 minutes ago, and keeps saying it"
+            done: :timeline-check
+        ]
+        layout: [
+            column gap 5 rate 0:00:30 on-time [it/told: now] react [
+                face/pane: layout/only timeline-days it/data it/columns it/order it/relative it/role-by it/told
+            ]
+            row pad 5 center [text muted is [any [it/text  select i18n/ui 'empty]]]
+                react [face/hidden: not empty? any [it/data []]]
+        ]
+    ]
 ]
 
 ; timeline log [at text]: the field of when and the field of what, at least
@@ -27,4 +46,128 @@ timeline-check: func [f place [block!]] [
         any [not block? f/columns  4 > length? f/columns]
         ui-problem place "a timeline takes the field of its time and of its text: timeline log [at text]"
     ]
+]
+
+timeline-digits: charset "0123456789"
+
+; The moment a value names, as the clock where the page is reads it, with no zone: a date!
+; (with a zone it is that moment anywhere), or a text in ISO form, 2026-11-23,
+; 2026-11-23T09:30 or 2026-11-23T09:30:00Z. None for anything else.
+timeline-moment: function [v] [
+    if string? :v [
+        d: timeline-digits
+        v: trim copy v
+        unless parse v [
+            4 d "-" 2 d "-" 2 d
+            opt [[" " | "T"] 2 d ":" 2 d opt [":" 2 d opt ["." some d]] opt ["Z" | ["+" | "-"] 2 d opt ":" 2 d]]
+        ] [return none]
+        v: attempt [to date! replace v " " "T"]
+    ]
+    unless date? :v [return none]
+    if v/zone [
+        v: v/utc + now/zone
+        v: v/date + v/time
+    ]
+    v
+]
+
+; The text of a value of a row, for a text face: none when there is nothing to say.
+timeline-say: func [v] [
+    case [
+        none? :v [none]
+        string? :v [either empty? v [none] [v]]
+        logic? :v [select i18n/ui either v ['yes] ['no]]
+        true [:v]
+    ]
+]
+
+; How a row shows its moment: none for a whole day, as its day says it; with relative, how
+; long ago it was while that is under a day (5 minutes ago), else its time on the clock,
+; since the day is said above it. Either way the text holds the whole moment, so a machine
+; and the tooltip have it.
+timeline-time: function [m relative] [
+    unless all [m  m/time] [return none]
+    here: now
+    here: here/date + here/time
+    either all [relative  24:00 > abs difference here m] [[text muted small ago]] [[text muted small clock]]
+]
+
+; The faces of a text with what it says, which may be any value a text face shows.
+timeline-text: func [opts [block!] v] [
+    either string? :v [append copy opts v] [append append copy opts "" reduce ['with compose/only [text: quote (:v)]]]
+]
+
+; A row of a timeline: a column in the role the row names, so its mark on the rail is
+; painted in it, with what happened and its time on a line, and the rest beneath.
+timeline-item: function [row m columns relative role-by] [
+    role: none
+    if role-by [
+        r: select row role-by
+        if any [any-word? :r  any-string? :r] [
+            r: attempt [to word! lowercase form r]
+            if find roles r [role: r]
+        ]
+    ]
+    what: timeline-text compose [text fill (any [role []])] any [timeline-say select row columns/3  ""]
+    if shows: timeline-time m relative [append what timeline-text shows m]
+    line: compose/only [row top gap 3 (what)]
+    rest: copy []
+    foreach [field label] skip columns 4 [
+        if said: timeline-say select row field [append rest either string? said [said] [form said]]
+    ]
+    faces: copy line
+    unless empty? rest [
+        note: copy first rest
+        foreach t next rest [append append note " · " t]
+        append faces timeline-text [text muted small] note
+    ]
+    item: copy [column]
+    if role [append item role]
+    append item [gap 0]
+    append/only item faces
+]
+
+; The faces of the rows: under the day they happened, newest first or oldest first, the
+; rows of a day in the same order; rows at the same moment keep the order of the data. A
+; whole day goes before the times of that day when oldest first, after them when newest.
+; Rows with no moment go last, as they come, under no day.
+timeline-days: function [rows columns order relative role-by told] [
+    if any [not block? rows  not block? columns  4 > length? columns] [return copy []]
+    newest: order <> 'oldest
+    dated: copy []
+    undated: copy []
+    i: 0
+    foreach row rows [
+        i: i + 1
+        if any [map? :row  object? :row] [
+            m: timeline-moment select row columns/1
+            either m [append/only dated reduce [m  either m/time [1] [0]  i  row]] [append/only undated row]
+        ]
+    ]
+    sort/compare dated func [a b] [
+        case [
+            a/1 <> b/1 [either newest [a/1 > b/1] [a/1 < b/1]]
+            a/2 <> b/2 [either newest [a/2 > b/2] [a/2 < b/2]]
+            true [a/3 < b/3]
+        ]
+    ]
+    out: copy []
+    day: none
+    items: none
+    foreach d dated [
+        if d/1/date <> day [
+            day: d/1/date
+            items: copy []
+            append out compose/deep/only [
+                column named gap 2 [heading muted small (day-label day)  column rail (items)]
+            ]
+        ]
+        append items timeline-item d/4 d/1 columns relative role-by
+    ]
+    unless empty? undated [
+        items: copy []
+        foreach row undated [append items timeline-item row none columns relative role-by]
+        append out compose/only [column rail (items)]
+    ]
+    out
 ]

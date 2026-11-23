@@ -142,6 +142,19 @@ function toNumberCell(v: Cell): Cell | null {
   return null;
 }
 
+/**
+ * A time from its hours, minutes and seconds, as R3: to time! [9 30] is 9:30, [9 30 15.5] 9:30:15.5; minutes
+ * and seconds over 59 carry, and the sign of the hours is the sign of the whole time: [-1 30] is -1:30.
+ */
+export function timeOfParts(parts: Cell[]): Cell | null {
+  if (parts.length < 1 || parts.length > 3) return null;
+  const last = parts.length - 1;
+  if (!parts.every((c, i) => c.t === K.Integer || (i === 2 && i === last && c.t === K.Decimal))) return null;
+  const [h = 0, m = 0, s = 0] = parts.map(c => (c.t === K.Integer ? num(c) : (c as { v: number }).v));
+  const sign = h < 0 ? -1 : 1;
+  return { t: K.Time, v: sign * Math.round(((Math.abs(h) * 60 + m) * 60 + s) * 1e9) };
+}
+
 function toKind(k: Kind, v: Cell): Cell | string {
   const bad = () => `cannot convert ${kindName(v.t)} to ${kindName(k)}`;
   switch (k) {
@@ -251,6 +264,7 @@ function toKind(k: Kind, v: Cell): Cell | string {
     case K.Date: case K.Time:
       if (v.t === k) return v;
       if (k === K.Time && (v.t === K.Integer || v.t === K.Decimal)) return { t: K.Time, v: Math.round((v.t === K.Integer ? num(v) : v.v) * 1e9) };
+      if (k === K.Time && v.t === K.Block) return timeOfParts(v.s.data.slice(v.i)) ?? bad();
       return isAnyString(v.t) ? loadOne(text(v as StringCell), [k]) ?? bad() : bad();
     case K.Datatype:
       if (v.t === K.Datatype) return v;

@@ -22,12 +22,23 @@ export function svgNode(e: El): SVGElement {
   return n;
 }
 
-/** A canvas: one SVG whose viewBox is the canvas's extent, as wide as it fits up to that. */
+/**
+ * A canvas: one SVG whose viewBox is the canvas's extent, as wide as it fits up to that. With `stretch` it is as
+ * wide as it can be and as tall as its extent, and it is drawn again at each width: its points spread across it,
+ * while its lines, dots and text keep their size.
+ */
 export function buildCanvas(m: Mounted): HTMLElement {
   const node = el('div', 'tb-canvas');
   const svg = document.createElementNS(SVG_NS, 'svg');
   node.append(svg);
   m.kids = svg;
+  let width = 0;
+  watchSize(node, () => {
+    if (flag(m.face, 'stretch') && node.clientWidth !== width) {
+      width = node.clientWidth;
+      syncCanvas(m);
+    }
+  });
   return node;
 }
 
@@ -35,9 +46,15 @@ export function syncCanvas(m: Mounted): void {
   const svg = m.kids as SVGSVGElement;
   const ext = get(m.face, 'extent');
   const [w, h] = ext.t === K.Pair ? [ext.x, ext.y] : [300, 150];
-  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
-  svg.setAttribute('width', String(w));
+  const stretch = flag(m.face, 'stretch');
+  m.el.classList.toggle('tb-stretch', stretch);
+  // stretched, it takes the width the page gives it; before it has one, it is drawn at its own
+  const wide = stretch ? m.el.clientWidth || w : w;
+  svg.setAttribute('viewBox', `0 0 ${wide} ${h}`);
+  svg.setAttribute('width', String(wide));
   svg.setAttribute('height', String(h));
+  // its height is its extent's whatever its width: the page never scales it to keep the shape
+  svg.style.height = stretch ? `${h}px` : '';
   // with a text, the drawing is a picture with that name; without, it is decoration
   const t = str(m.face, 'text');
   if (t !== null) {
@@ -49,7 +66,7 @@ export function syncCanvas(m: Mounted): void {
     svg.removeAttribute('aria-label');
     svg.setAttribute('aria-hidden', 'true');
   }
-  const { kids, error } = drawSvg(get(m.face, 'draw'));
+  const { kids, error } = drawSvg(get(m.face, 'draw'), { x: w === 0 ? 1 : wide / w, y: 1 });
   if (error !== null) console.warn(`Trebol: ${error}`);
   svg.replaceChildren(...kids.map(svgNode));
 }

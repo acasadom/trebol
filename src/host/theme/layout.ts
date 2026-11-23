@@ -202,11 +202,27 @@ body {
 [data-tb-scroller]:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tb-focus-ring); }
 .tb-panel.tb-primary:focus-visible { box-shadow: inset 0 0 0 1px var(--tb-primary), 0 0 0 3px var(--tb-focus-ring); }
 .tb-panel > .tb-panel-title { margin: 0; font-family: var(--tb-headings); font-size: 17px; line-height: 1.35; font-weight: 600; letter-spacing: -0.01em; }
+/* a panel made of its style's layout: is part of the panel it is in, not a card in a card; in a row the faces
+   of such styles share it equally, and wrap before they get narrower than a few words */
+/* its pad is the card's, so it goes with the card */
+.tb-panel .tb-panel.tb-composed { margin: 0; padding: 0 !important; background: none; border: 0; border-radius: 0; box-shadow: none; }
+.tb-row > .tb-composed { flex: 1 1 10rem; min-width: 0; }
 .tb-divider { border: 0; border-top: var(--tb-line) solid var(--tb-border); margin: var(--tb-space-2) 0; width: 100%; }
 
 .tb-title { margin: 0; font-family: var(--tb-headings); font-size: 28px; line-height: 1.2; font-weight: 650; letter-spacing: -0.02em; }
 .tb-heading { margin: 0; font-family: var(--tb-headings); font-size: 20px; line-height: 1.3; font-weight: 600; letter-spacing: -0.01em; }
+/* a small heading is one over a few lines, the day above its rows: the size of the text around it, still strong */
+.tb-heading.tb-small { font-family: inherit; font-size: 13px; line-height: 1.4; letter-spacing: 0; }
 .tb-text { margin: 0; }
+.tb-text.tb-bold { font-weight: 550; }
+/* shrink: one line, its letters as large as the face's width lets them be (--tb-shrink-chars, set as it is drawn,
+   each character about 0.62 of the size wide), never larger than the face's own size nor smaller than 0.6 of it */
+.tb-shrink { container-type: inline-size; min-width: 0; }
+.tb-row > .tb-shrink { flex: 1 1 0; }
+.tb-shrink > .tb-shrink-line {
+  display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  font-size: clamp(0.6em, calc(100cqi / (0.62 * var(--tb-shrink-chars, 4))), 1em);
+}
 .tb-code {
   margin: 0; box-sizing: border-box; contain: inline-size; /* a long line scrolls; it never widens what holds it */
   padding: var(--tb-space-3) var(--tb-space-4); overflow-x: auto; white-space: pre; tab-size: 4;
@@ -215,8 +231,11 @@ body {
 }
 .tb-small { font-size: 13px; }
 .tb-muted { color: var(--tb-muted); }
-.tb-text.tb-danger { color: var(--tb-danger); }
-.tb-text.tb-success { color: var(--tb-success); }
-.tb-text.tb-primary { color: var(--tb-primary); }
+/* a role colours the letters of a text, heading or title, in the shade of it that reads on the page (-ink) */
+:is(.tb-text, .tb-heading, .tb-title).tb-primary { color: var(--tb-primary-ink); }
+:is(.tb-text, .tb-heading, .tb-title).tb-accent { color: var(--tb-accent-ink); }
+:is(.tb-text, .tb-heading, .tb-title).tb-success { color: var(--tb-success-ink); }
+:is(.tb-text, .tb-heading, .tb-title).tb-warning { color: var(--tb-warning-ink); }
+:is(.tb-text, .tb-heading, .tb-title).tb-danger { color: var(--tb-danger-ink); }
 
 `;

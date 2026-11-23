@@ -25,6 +25,7 @@ face: make object! [
     narrow-only: false  ; shown only on narrow screens
     wide-only: false    ; hidden on narrow screens
     hidden: false
+    rate: none          ; ticks: times a second (integer) or the time between (time!); each fires on-time
     disabled: false
     readonly: false     ; shown and sent, but the user cannot change it, and no rule applies
     inert: false        ; shown as it is, but neither it nor its children can be used
@@ -33,6 +34,13 @@ face: make object! [
     mark-text: none
     round: false        ; an image: cut to a circle, as for a person's photo
     count: false        ; a text whose number changes runs from the old one to the new
+    rail: false         ; a column: its children down a line, a mark each
+    named: false        ; a column: one part of the page, named by its first text
+    bold: false         ; a text with heavier letters, as the label over a number
+    shrink: false       ; a text on one line, its letters as large as its width lets them be, never larger than its size
+    clock: false        ; a text of a date with a time shows only the time, the whole moment for machines and the tooltip
+    ago: false          ; a text of a date says how long ago it was, 5 minutes ago
+    composed: false     ; holds the faces of its style's layout: (the container it is drawn as: panel), which show its text
     trend: none         ; a stat: the numbers that came before its own, drawn as a small line
     tag: none           ; a widget: the name of the element it is, as the page's JavaScript defines it
     props: none         ; a widget: the element's properties, an object
@@ -89,6 +97,7 @@ face: make object! [
     segmented: false    ; a radio: its options as buttons joined in a bar, one pressed
     draw: none          ; a canvas: the block of the draw dialect it shows
     extent: none        ; a canvas: the size of its drawing space, a pair
+    stretch: false      ; a canvas: as wide as it can be, as tall as its extent; its points spread, its sizes stay
     form: none          ; the enclosing form, if any
     root: none          ; the view this face belongs to
     place: none         ; where the face was written, file:line:col; none if made at run time

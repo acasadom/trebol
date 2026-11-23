@@ -40,8 +40,9 @@ Every face takes:
 - [`menu`](#word-menu) and a block: its context menu, or the menu a button opens
 - [`morph`](#word-morph) and a lit-word or a block: a name shared with a face of the next screen, which this one becomes
 - [`with`](#word-with) and a block: a block run bound to the face once it is read: the last way out, for a field nothing else sets
+- [`rate`](#word-rate) and an integer or a time: ticks while shown, each firing on-time: rate 2 is twice a second, rate 0:00:30 every half minute
 
-It fires [`on-over`](#word-on-over), [`on-dbl-click`](#word-on-dbl-click), [`on-key`](#word-on-key), [`on-focus`](#word-on-focus), [`on-unfocus`](#word-on-unfocus), [`on-menu`](#word-on-menu), [`on-select`](#word-on-select), [`on-drop`](#word-on-drop), [`on-reorder`](#word-on-reorder).
+It fires [`on-over`](#word-on-over), [`on-dbl-click`](#word-on-dbl-click), [`on-key`](#word-on-key), [`on-focus`](#word-on-focus), [`on-unfocus`](#word-on-unfocus), [`on-menu`](#word-on-menu), [`on-select`](#word-on-select), [`on-drop`](#word-on-drop), [`on-reorder`](#word-on-reorder), [`on-time`](#word-on-time).
 
 What every face is and takes. Its last way out, `with [...]`, runs a block bound to the face once it is read,
 to set a field no word sets: use it when nothing else does, since check and a designer cannot see into it.
@@ -106,6 +107,11 @@ The whole page: its children one under another. `view [...]` shows it; words bef
 ## column
 
 Made from [`container`](#style-container).
+
+It takes what [`container`](#style-container) takes, and:
+
+- [`rail`](#word-rail): its children go down a line, each with a mark on it: steps, or what happened one after another
+- [`named`](#word-named): one part of the page, named by its first text or heading for a screen reader
 
 Children one under another.
 
@@ -193,6 +199,7 @@ Made from [`face`](#style-face).
 It takes what [`face`](#style-face) takes, and:
 
 - [`count`](#word-count): a number that changes runs from the old one to the new
+- [`shrink`](#word-shrink): on one line, as large as its width lets it be
 
 The title of the page or of a screen: the text the browser shows for it, too.
 
@@ -204,8 +211,10 @@ Made from [`face`](#style-face).
 It takes what [`face`](#style-face) takes, and:
 
 - [`count`](#word-count): a number that changes runs from the old one to the new
+- [`shrink`](#word-shrink): on one line, as large as its width lets it be
 
-A heading inside a page.
+A heading inside a page. A `small` one is a heading over a few lines, as the day over what happened in it: the
+size of the text around it, still strong, and one level under the headings around it for a screen reader.
 
 (style-text)=
 ## text
@@ -215,8 +224,13 @@ Made from [`face`](#style-face).
 It takes what [`face`](#style-face) takes, and:
 
 - [`count`](#word-count): a number that changes runs from the old one to the new
+- [`shrink`](#word-shrink): on one line, as large as its width lets it be
+- [`bold`](#word-bold): its letters heavier, as the label over a number
+- [`clock`](#word-clock): a date with a time shows only the time; the whole moment is in its tooltip
+- [`ago`](#word-ago): a date says how long ago it was, 5 minutes ago; with rate, it keeps saying it
 
-Text. A date, a time, a number or an amount is shown in the format of the active language.
+Text. A date, a time, a number or an amount is shown in the format of the active language; a date or a time is
+also said in a way a machine reads, and a date has its full form in its tooltip (see `clock` and `ago`).
 
 (style-code)=
 ## code
@@ -527,9 +541,9 @@ A bar: its value is a percent or a number from 0 to 1; with `none`, it moves wit
 (style-stat)=
 ## stat
 
-Made from [`face`](#style-face).
+Made from [`panel`](#style-panel). It starts with `pad: 5`, `gap: 1`, `composed: panel`.
 
-It takes what [`face`](#style-face) takes, and:
+It takes what [`panel`](#style-panel) takes, and:
 
 - a number or a money (`value`): the number it shows
 - [`count`](#word-count): a number that changes runs from the old one to the new
@@ -542,7 +556,9 @@ numbers at least, or it is a problem of the layout. A role colours the number an
 danger`), and with `count` a new number runs from the old one, as a text's does. `is [...]` gives it its number.
 On its own it is a card; in a panel it drops its border. The number is as large as the width of the stat lets it
 be, so four in a row never break one in two. A screen reader reads the text, the number and the line under it;
-the trend is for the eye.
+the trend is for the eye. It is made of other styles, as an app makes its own: a panel whose `layout:` holds a
+`text`, a `title shrink`, a `text` and a `canvas stretch` (see
+[styles of your own](../ui/13-styles-of-your-own.md)).
 
 (style-image)=
 ## image
@@ -582,10 +598,12 @@ It takes what [`face`](#style-face) takes, and:
 
 - a pair (`extent`): the size of its drawing space
 - a block (`draw`): what it draws, in the draw dialect
+- [`stretch`](#word-stretch): as wide as it can be and as tall as its extent: its points spread across, its lines and dots keep their size
 
 A drawing: `canvas 120x120 [fill-pen primary circle 60x60 50]`. The pair is the size of its drawing space, and
 the block is in the [draw dialect](draw.md). It is as wide as that size, or narrower when there is no room,
-and `fill` makes it as wide as it can be. With a string, the drawing is a picture with that name for a screen
+and `fill` makes it as wide as it can be. `stretch` makes it as wide as it can be and as tall as its
+size: it is drawn again at each width, its points spread across it, its lines, dots and text keep their size. With a string, the drawing is a picture with that name for a screen
 reader; without one, it is decoration. Setting `draw` redraws it.
 
 (style-chart)=
@@ -744,10 +762,14 @@ a column of images goes first. `role-by` paints a whole item, and, after a colum
 (style-timeline)=
 ## timeline
 
-Made from [`rows-face`](#style-rows-face). It starts with `order: newest`.
+Made from [`column`](#style-column). It starts with `composed: column`, `order: newest`. Fields of its own: `told: none`.
 
-It takes what [`rows-face`](#style-rows-face) takes, and:
+It takes what [`column`](#style-column) takes, and:
 
+- a word, right after the style: the word that labels it: timeline log is log: timeline
+- a block (`columns`): the field of when, the field of what happened, and those of the line beneath
+- [`key`](#word-key) and a word: the field that tells one row from another
+- [`role-by`](#word-role-by) and a word: the field of a row whose value, success or danger, is the role its mark is painted in
 - one of `newest`, `oldest` (`order`): which rows come first: newest, as it starts, or oldest
 - [`relative`](#word-relative): a time says how long ago it was, 5 minutes ago, and keeps saying it
 

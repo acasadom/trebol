@@ -81,7 +81,7 @@ build-faces: function [
 ] [
     out: copy []
     ; what starts the next face
-    face-start: [set-word! | 'global | set w word! if (ui-style w)]
+    face-start: [set-word! | 'global | 'slot | set w word! if (ui-style w)]
     modifier: [
         ; ui-check reads view compose [...] with its parens in it: menu (looks)
         if (ui-checking) opt [set w word! if (any [ui-keyword def w  select ui-takes w])] some paren!
@@ -101,6 +101,8 @@ build-faces: function [
         opt ['global (global?: true)]
         opt [set label set-word!]
         [
+            pos: 'slot (ui-take-slot out pos)
+        |
             ; a face that compose puts in: check takes what follows as words of a face it cannot know,
             ; up to the next style; a bare block is its action or pane, which check cannot read either
             if (ui-checking) paren! (def: ui-any  f: make def/proto []  used: copy []) any [
@@ -125,6 +127,7 @@ build-faces: function [
                 ]
             ]
             ended: (f/written: reduce [loaded-at began  loaded-at back ended])
+            (if def/layout [ui-compose f def began])
             (ui-take-done f def began)
             ; not a style: a problem, then on to the next face
         |   pos: skip (

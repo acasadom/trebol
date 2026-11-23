@@ -65,6 +65,51 @@ The canvas starts empty, and setting its `draw` draws it: every time it is set, 
 animate it. (In the dialect, a word after `canvas` would be read as a word of the dialect, not as the value
 it holds; `compose` is the other way to put a block in.)
 
+## As wide as it can be
+
+A canvas with `stretch` is as wide as what holds it and as tall as its extent. Its points spread across that
+width, and only its points: lines keep their width, dots stay round and text keeps its size, so a small drawing
+can run under a number from one side of a card to the other. A percent after a color draws that much of it,
+with what is under it showing through, which makes an area under a line:
+
+```trebol-ui
+takings: [820 760 990 1040 930 1240]
+
+line-of: function [numbers] [
+    lo: hi: first numbers
+    foreach n numbers [lo: min lo n  hi: max hi n]
+    step: 100 / ((length? numbers) - 1)
+    points: copy []
+    repeat i length? numbers [
+        y: 28 - to integer! ((pick numbers i) - lo * 24 / (hi - lo))
+        append points as-pair i - 1 * step y
+    ]
+    points
+]
+
+points: line-of takings
+
+view [
+    panel [
+        heading "Takings this week"
+        global week: canvas 100x32 stretch []
+    ]
+]
+
+week/draw: compose [
+    pen off fill-pen primary 14%
+    polygon (points) 100x32 0x32
+    pen primary line-width 2 line-join round fill-pen off
+    line (points)
+    pen raised fill-pen primary
+    circle (last points) 4
+]
+```
+
+The canvas is 100 units wide, so the six days sit 20 apart, and on a wide card they sit further apart. The
+last dot has a ring of `raised`, the color of the card under it, so it stands out from the line. Make the
+window narrower and the line follows it.
+
 ## A chart
 
 Most of the time, though, the numbers are already rows, and a chart reads them directly. Its block is a
@@ -189,6 +234,23 @@ ends on, each written in the active language. The number it first shows does not
 the user asked the system for less motion: it is there at once. A number, a percent and an amount count; a
 text that is no number shows as it is.
 
+A large number in a narrow place, a phone or a column of a grid, would break in two. With `shrink`, a text,
+heading or title stays on one line and its letters are as large as its width lets them be, never larger than its
+own size: in a wide place it looks as it always does, in a narrow one it is made smaller.
+
+```trebol-ui
+view [
+    grid 3 [
+        title shrink "$1,240.00"
+        title shrink "$98,765,432.10"
+        title shrink "7"
+    ]
+]
+```
+
+It never goes below about half its size: a line that still does not fit ends in `…`. It works with `count`, so a
+number that runs keeps fitting.
+
 A `stat` says what such a number is, puts a line under it, and draws how it got there: the board at the top of
 a screen that tells the shop how the day goes.
 
@@ -210,6 +272,39 @@ view [
 Its text says what the number is and a second text is the line under it. `trend` takes the numbers it had,
 oldest first, and draws them as a small line ending on a dot; a role colours the number and the line. Each stat
 is a card of its own, so a `grid` lines them up, and the trends sit at the foot of each, side by side.
+
+## A face that ticks
+
+Some faces say something that changes with time alone: a clock, how long a bike has been on the stand. With
+`rate`, as in R2 and Red, a face ticks — `rate 1` once a second, `rate 0:00:30` every half minute — and each tick
+runs its `on-time`:
+
+```trebol-ui
+since: now
+view [
+    panel "On the stand" [
+        title "0:00:00" rate 1 on-time [face/text: form to time! round difference now since]
+        text muted "since the bike came in"
+    ]
+]
+```
+
+It ticks only while the face is on the page: a screen that leaves takes its ticks with it. `face/rate: none`
+stops it, and a new rate starts it again.
+
+A text of a date can say how long ago it was with `ago`, and only its time with `clock`; either way its tooltip
+has the whole date, and a screen reader or a search engine reads the moment itself. With a rate, the `ago` text
+keeps up by itself:
+
+```trebol-ui
+booked: now - 0:20
+view [
+    panel "Booked in" [
+        text clock is [booked]
+        text muted ago rate 0:00:30 is [booked]
+    ]
+]
+```
 
 ## Moving through a graph
 

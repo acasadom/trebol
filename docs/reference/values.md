@@ -31,6 +31,10 @@ to type value
 - `type` (`datatype!` `any-value!`)
 - `value` (`any-type!`)
 
+A block gives a pair, a tuple or a time from its parts, as in R3: `to pair! [3 4]` is `3x4`, `to time! [9 30]`
+is `9:30`, and `to time! [9 30 15.5]` is `9:30:15.5`; minutes and seconds over 59 carry over, and `make time!`
+takes the same block.
+
 (fn-as-pair)=
 ## as-pair
 

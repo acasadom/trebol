@@ -172,11 +172,14 @@ function dateArith(op: Arith, a: DateCell, b: Cell): Step | null {
     const days = Math.floor(total / DAY_NS);
     return value(fromDayNumber(dayNumber(d) + days, total - days * DAY_NS, d.zone));
   }
-  if (b.t === K.Date && op === A.Sub) {
-    const ns = dateDiff(d, b.v);
-    return value(d.time === null && b.v.time === null ? integer(Math.round(ns / DAY_NS)) : time(ns));
-  }
+  // as in R3, the days from one date to the other, each taken on its day in UTC; difference gives the time
+  if (b.t === K.Date && op === A.Sub) return value(integer(utcDay(d) - utcDay(b.v)));
   return null;
+}
+
+/** The day number of a date on its day in UTC: a time in a zone may fall on the day before or after. */
+function utcDay(d: DateVal): number {
+  return dayNumber(d) + Math.floor(((d.time ?? 0) - (d.zone ?? 0) * 60e9) / DAY_NS);
 }
 
 /** Nanoseconds from date `e` to date `d`, zones taken into account. */

@@ -129,6 +129,29 @@ the new value; a day past the end of its month goes on into the next:
 == 1-Dec-2026/16:30
 ```
 
+A date with a zone after its time is that moment anywhere; `utc` gives it in UTC, the zone at 0:00. Two
+dates subtracted give the days between them, each taken on its day in UTC; `difference` gives the time:
+
+```trebol-console
+>> pickup: 15-Nov-2026/1:30+2:00
+== 15-Nov-2026/1:30+2:00
+>> pickup/utc
+== 14-Nov-2026/23:30+0:00
+>> pickup - 14-Nov-2026/9:00
+== 0
+>> difference pickup 14-Nov-2026/9:00
+== 14:30
+```
+
+Setting the zone to `none` drops it and keeps the clock: the date is then that time wherever it is read:
+
+```trebol-console
+>> pickup/zone: none
+== none
+>> pickup
+== 15-Nov-2026/1:30
+```
+
 Pairs (`390x844`) and tuples (`1.2.3`) set their parts the same way: `size/x: 400`. `due:` gave the date a
 name; the next page is about names.
 

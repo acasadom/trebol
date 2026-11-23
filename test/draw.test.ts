@@ -140,6 +140,42 @@ describe('chart', () => {
   });
 });
 
+describe('draw stretched and seen through', () => {
+  const at = (src: string, x: number) => drawSvg(load(`[${src}]`).s.data[0]!, { x, y: 1 });
+
+  test('a stretched drawing spreads where things are, never how big they are', () => {
+    const r = at('line-width 2 line 0x10 50x20 100x0 circle 100x16 3.5 ellipse 10x0 4x6 text 50x0 "a"', 3);
+    assert.equal(r.error, null);
+    const [line, circle, ellipse, txt] = r.kids;
+    assert.equal(line!.attrs['points'], '0,10 150,20 300,0');
+    assert.equal(line!.attrs['stroke-width'], '2');
+    assert.deepEqual([circle!.attrs['cx'], circle!.attrs['cy'], circle!.attrs['r']], ['300', '16', '3.5']);
+    // the corner spreads, the size does not
+    assert.deepEqual([ellipse!.attrs['cx'], ellipse!.attrs['rx'], ellipse!.attrs['ry']], ['32', '2', '3']);
+    assert.equal(txt!.attrs['x'], '150');
+    assert.equal(txt!.attrs['font-size'], '15');
+  });
+
+  test('a stretched arc spreads its center, not its radii; translate and push spread too', () => {
+    const r = at('translate 10x0 push [arc 20x10 5x5 0 90]', 2);
+    assert.equal(r.error, null);
+    assert.equal(r.kids[0]!.attrs['transform'], 'translate(20 0)');
+    assert.equal(r.kids[0]!.kids[0]!.kids[0]!.attrs['d'], 'M45,10 A5,5 0 0 1 40,15');
+  });
+
+  test('a percent after a color draws that much of it, what is under it showing through', () => {
+    const r = draw('fill-pen primary 14% pen danger 50% box 0x0 10x10 fill-pen raised pen off circle 5x5 2');
+    assert.equal(r.error, null);
+    assert.equal(r.kids[0]!.attrs['fill'], 'color-mix(in oklch, var(--tb-primary) 14%, transparent)');
+    assert.equal(r.kids[0]!.attrs['stroke'], 'color-mix(in oklch, var(--tb-danger) 50%, transparent)');
+    assert.equal(r.kids[1]!.attrs['fill'], 'var(--tb-raised)');
+    assert.equal(r.kids[1]!.attrs['stroke'], 'none');
+    assert.equal(draw('pen primary 100% line 0x0 1x1').kids[0]!.attrs['stroke'], 'var(--tb-primary)');
+    assert.equal(draw('pen off 20% line 0x0 1x1').kids[0]!.attrs['stroke'], 'none');
+    assert.equal(draw('pen border-strong line 0x0 1x1').kids[0]!.attrs['stroke'], 'var(--tb-border-strong)');
+  });
+});
+
 describe('canvas and chart in the dialect', () => {
   let host: Host;
   native('show', '[root [object!]]', (_t, f) => value(f.args[0]!));
@@ -159,6 +195,11 @@ describe('canvas and chart in the dialect', () => {
     assert.equal(await ev('c: first (layout/only [canvas 120x80 "Logo" [circle 60x40 30]]) reduce [c/style c/extent c/text c/draw]'),
       '[canvas 120x80 "Logo" [circle 60x40 30]]');
     assert.equal(await ev('c: first layout/only [canvas [line 0x0 1x1]] c/extent'), '300x150');
+  });
+
+  test('a canvas takes stretch', async () => {
+    assert.equal(await ev('c: first layout/only [canvas 100x32 stretch [line 0x0 100x32]] reduce [c/extent c/stretch]'), '[100x32 true]');
+    assert.equal(await ev('c: first layout/only [canvas 100x32 [line 0x0 1x1]] c/stretch'), 'false');
   });
 
   test('a chart takes its kind, its label, its columns and stacked', async () => {

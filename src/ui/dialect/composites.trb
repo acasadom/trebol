@@ -1,0 +1,94 @@
+; A part of the UI dialect: see ui.trb, whose words it shares.
+
+; --- styles made of other styles (after takes.trb, before the styles) -------------------
+;
+; stylize [
+;     kpi: column [hint: none  takes: [value: [number! money!] "the number"]
+;         layout: [text muted is [it/text]  heading is [it/value]  text muted is [it/hint]]]
+;     section: panel [layout: [heading is [it/text]  slot]]
+; ]
+; view [kpi "Takings" $1240.00 "12 repairs today"  section "Clients" [table clients [name]]]
+;
+; A style made from a container may say, in layout:, the faces each face of it holds, as R2's
+; VID filled a pane in init:. Each face gets its own: its labels are its own, and `it` is the
+; face itself, so `is [it/value]` follows the field of that face (`face` stays the face that
+; reads it, as in every reaction). Where slot is, go the faces written in a block after it; a
+; style with no slot takes no block. A style made from it holds the same, unless it says its own.
+
+; While the layout of such a face is read: the faces of the block written after it, for slot.
+ui-slot: none
+
+; How many times slot is in a block, at any depth.
+slot-count: function [b [block!]] [
+    n: 0
+    foreach v b [
+        case [
+            all [word? :v  v = 'slot] [n: n + 1]
+            block? :v [n: n + slot-count v]
+        ]
+    ]
+    n
+]
+
+; Takes layout: [...] out of the fields of style name, made from parent: [layout slot?],
+; the parent's if it says none; an error if it cannot have one.
+composite-layout: function [name [word!] parent defaults [block!]] [
+    p: find defaults first [layout:]
+    unless p [return either parent [reduce [parent/layout parent/slot]] [reduce [none false]]]
+    b: second p
+    remove/part p 2
+    unless block? :b [do make error! rejoin ["stylize: " name " layout: a block of faces"]]
+    d: parent
+    while [all [d  d/name <> 'container]] [d: d/parent]
+    unless d [
+        do make error! rejoin ["stylize: " name " has a layout:, so it is made from a container: column row panel"]
+    ]
+    n: slot-count b
+    if n > 1 [do make error! rejoin ["stylize: " name " layout: has slot " n " times; it takes one at most"]]
+    reduce [b n = 1]
+]
+
+; Fills a face of a style with a layout: with its own faces, slot holding those it was given.
+ui-compose: function [f def place [block!]] [
+    given: any [f/pane  copy []]
+    if all [not def/slot  not empty? given] [
+        ui-problem place rejoin [def/name " holds its own faces and takes no block: its layout has no slot"]
+        given: copy []
+    ]
+    spec: copy/deep def/layout
+    labels: copy []
+    outer: ui-slot
+    set 'ui-slot given
+    out: try [build-faces spec labels]
+    set 'ui-slot outer
+    if error? out [do out]
+    bind-labels spec labels reduce [to set-word! 'it f]
+    f/pane: out
+    follow-it out given make object! reduce [to set-word! 'it f]
+]
+
+; The faces of a layout that say no role or size of their own take the face's, and follow
+; it when it changes: `kpi "Takings" 12 success` colours its number. Those given for slot
+; are the user's and keep theirs; a face made of a layout passes it on to its own.
+follow-it: function [faces [block!] given [block!] ctx [object!]] [
+    foreach g faces [
+        unless find/same given g [
+            foreach facet [role size] [
+                if none? select g facet [
+                    add-reaction g 'react bind reduce [to set-path! reduce ['face facet] to path! reduce ['it facet]] ctx false
+                ]
+            ]
+            if all [block? g/pane  not g/composed] [follow-it g/pane given ctx]
+        ]
+    ]
+]
+
+; slot in a block of faces: where those given go, or a problem out of a layout:.
+ui-take-slot: function [out [block!] place [block!]] [
+    either ui-slot [
+        append out ui-slot
+        set 'ui-slot copy []
+    ] [
+        ui-problem place "slot goes only in the layout: of a style, where the faces written after it go"
+    ]
+]

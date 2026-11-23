@@ -50,6 +50,40 @@ format-local value language
 - `value` (`any-type!`)
 - `language` (`word!` `string!`)
 
+(fn-day-label)=
+## day-label
+
+The day of a date said in the active language, from today where the page is: Today, Yesterday, Tomorrow, or its weekday and date, with the year when it is another.
+
+```text
+day-label date
+```
+
+- `date` (`date!`)
+
+```trebol-console
+>> day-label now
+== "Today"
+>> day-label 1-Jan-2020
+== "Wednesday, January 1, 2020"
+```
+
+(fn-time-ago)=
+## time-ago
+
+How long ago a date was, or how long until it, in the active language: now, 5 minutes ago, 3 hours ago, in 2 days. A date with no time is said in days.
+
+```text
+time-ago date
+```
+
+- `date` (`date!`)
+
+```trebol-console
+>> time-ago now - 0:05
+== "5 minutes ago"
+```
+
 (fn-set-language)=
 ## set-language
 

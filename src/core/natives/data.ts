@@ -19,6 +19,7 @@ import { pick, poke, blockFind } from '../access.ts';
 import type { Runtime, Step } from '../eval.ts';
 import { native, value, fail, doBlock, hostCall } from './define.ts';
 import { pushAll } from '../arrays.ts';
+import { timeOfParts } from './text.ts';
 import { touch } from '../values.ts';
 
 /** Loads a string into a block bound to the user context. */
@@ -166,6 +167,10 @@ function makeOf(k: Kind, spec: Cell): Cell | string {
       if (x === null || y === null) return 'make pair! needs two numbers';
       return pair(x, y);
     }
+    case K.Time:
+      // make time! [9 30], as R3
+      if (spec.t === K.Block) return timeOfParts(spec.s.data.slice(spec.i)) ?? 'make time! needs hours, minutes and seconds: [9 30]';
+      break;
     case K.Typeset: {
       if (spec.t !== K.Block) break;
       const bits = typesOf(spec);

@@ -4,7 +4,7 @@
 
 import type { Cell, Sym } from '../core/index.ts';
 import { rowField } from './rows.ts';
-import { momentOf } from './timeline-days.ts';
+import { momentOf } from './dates.ts';
 
 /** Rows in the order of their moments, each moment in milliseconds, and whether every one is a whole day. */
 export interface Timed { rows: Cell[]; times: number[]; allDay: boolean }

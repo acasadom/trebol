@@ -9,6 +9,7 @@ import './page.ts';
 import './compress.ts';
 import './share.ts';
 import './locale.ts';
+import './dates.ts';
 import { setLoader, defaultLoader, type Loader } from './modules.ts';
 import {
   makeRuntime, load, bindSeries, runSync, scriptStart, errorMessage, form,

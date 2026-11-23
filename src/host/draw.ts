@@ -27,7 +27,7 @@ export const svgEl = (tag: string, attrs: Record<string, string | number> = {}, 
 const round = (n: number): string => String(Math.round(n * 100) / 100);
 
 /** Theme roles a drawing may use as colors. */
-export const DRAW_ROLES = ['primary', 'accent', 'danger', 'success', 'warning', 'muted', 'text', 'border', 'surface', 'bg'] as const;
+export const DRAW_ROLES = ['primary', 'accent', 'danger', 'success', 'warning', 'muted', 'text', 'border', 'border-strong', 'surface', 'raised', 'bg'] as const;
 
 /**
  * Red's color words Trebol knows, as OKLCH hue and chroma with a lightness for
@@ -61,8 +61,8 @@ export const DRAW_COLORS: Record<string, { h: number; c: number; light: number; 
 
 /** The commands of the dialect, and how each is written. */
 export const DRAW_COMMANDS: Record<string, string> = {
-  pen: 'pen color',
-  'fill-pen': 'fill-pen color',
+  pen: 'pen color [percent]',
+  'fill-pen': 'fill-pen color [percent]',
   'line-width': 'line-width number',
   'line-cap': 'line-cap flat | square | round',
   'line-join': 'line-join miter | round | bevel',
@@ -103,14 +103,26 @@ export function drawColor(w: string): string | null | undefined {
   return undefined;
 }
 
+/** A color as CSS seen through: the given part of it, 0 to 1, over what is under it. */
+export function seeThrough(color: string, part: number): string {
+  const p = Math.max(0, Math.min(1, part));
+  return p >= 1 ? color : `color-mix(in oklch, ${color} ${round(p * 100)}%, transparent)`;
+}
+
 class DrawError extends Error {}
 
+/**
+ * How far a stretched drawing spreads its points: x and y times the canvas's own space. Only where things are
+ * spreads; sizes (radii, widths of lines, text) stay what they say.
+ */
+export interface Spread { x: number; y: number }
+
 /** The SVG elements of a draw block, and what was wrong with it, if anything. Drawing stops at the first error. */
-export function drawSvg(block: Cell): { kids: El[]; error: string | null } {
+export function drawSvg(block: Cell, spread: Spread = { x: 1, y: 1 }): { kids: El[]; error: string | null } {
   const out: El[] = [];
   if (block.t !== K.Block) return { kids: out, error: block.t === K.None ? null : 'draw takes a block' };
   try {
-    run(block as BlockCell, { ...START }, out);
+    run(block as BlockCell, { ...START }, out, spread);
     return { kids: out, error: null };
   } catch (e) {
     if (e instanceof DrawError) return { kids: out, error: e.message };
@@ -118,7 +130,7 @@ export function drawSvg(block: Cell): { kids: El[]; error: string | null } {
   }
 }
 
-function run(b: BlockCell, st: State, out: El[]): void {
+function run(b: BlockCell, st: State, out: El[], spread: Spread): void {
   const d = b.s.data;
   let i = b.i;
   let into = out;
@@ -129,15 +141,23 @@ function run(b: BlockCell, st: State, out: El[]): void {
   const fail = (cmd: string): never => {
     throw new DrawError(`draw: ${cmd} is written ${DRAW_COMMANDS[cmd]}`);
   };
+  // a pair that says where something is: spread when the drawing is stretched
   const point = (cmd: string): [number, number] => {
     const c = d[i];
     if (c === undefined || c.t !== K.Pair) return fail(cmd);
     i++;
-    return [c.x, c.y];
+    return [c.x * spread.x, c.y * spread.y];
   };
   const optPoint = (): [number, number] | null => {
     const c = d[i];
     if (c === undefined || c.t !== K.Pair) return null;
+    i++;
+    return [c.x * spread.x, c.y * spread.y];
+  };
+  // a pair that says how big something is: never spread
+  const size = (cmd: string): [number, number] => {
+    const c = d[i];
+    if (c === undefined || c.t !== K.Pair) return fail(cmd);
     i++;
     return [c.x, c.y];
   };
@@ -182,8 +202,12 @@ function run(b: BlockCell, st: State, out: El[]): void {
           throw new DrawError(`draw: ${cmd} takes a role (${DRAW_ROLES.join(' ')}), a color (${Object.keys(DRAW_COLORS).join(' ')}) or off`);
         }
         i++;
-        if (cmd === 'pen') st.pen = color;
-        else st.fill = color;
+        // a percent after the color: that much of it, the rest of what is under it showing through
+        const part = d[i];
+        const shown = part !== undefined && part.t === K.Percent && color !== null ? seeThrough(color, part.v) : color;
+        if (part !== undefined && part.t === K.Percent) i++;
+        if (cmd === 'pen') st.pen = shown;
+        else st.fill = shown;
         break;
       }
       case 'line-width': st.width = Math.max(0, number(cmd)); break;
@@ -247,13 +271,13 @@ function run(b: BlockCell, st: State, out: El[]): void {
       }
       case 'ellipse': {
         const [x, y] = point(cmd);
-        const [w, h] = point(cmd);
+        const [w, h] = size(cmd);
         into.push(svgEl('ellipse', { cx: x + w / 2, cy: y + h / 2, rx: w / 2, ry: h / 2, ...paint(true) }));
         break;
       }
       case 'arc': {
         const [cx, cy] = point(cmd);
-        const [rx, ry] = point(cmd);
+        const [rx, ry] = size(cmd);
         const begin = number(cmd);
         const sweep = number(cmd);
         const closed = word(d[i]) === 'closed';
@@ -308,7 +332,7 @@ function run(b: BlockCell, st: State, out: El[]): void {
         i++;
         const g = svgEl('g');
         into.push(g);
-        run(inner as BlockCell, { ...st }, g.kids);
+        run(inner as BlockCell, { ...st }, g.kids, spread);
         break;
       }
     }

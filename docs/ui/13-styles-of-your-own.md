@@ -114,6 +114,114 @@ view [
 It takes what `number` takes too: a name right after the style, `required`, a check. A style made from `stars`
 would take all of that, and more.
 
+## A style made of others
+
+A style made from a container (`column`, `row`, `panel`) may say in `layout:` the faces each face of it holds.
+Inside that block, `it` is the face written in the layout, so `is [it/value]` follows its field as any reaction
+follows a face's (`face` is still the face that reads it):
+
+```trebol-ui
+stylize [
+    tally: column [
+        takes: [value: [integer!] "how many"]
+        layout: [
+            text muted is [it/text]
+            heading is [it/value]
+            text muted is [it/hint]
+        ]
+    ]
+]
+view [
+    row [
+        tally "Bikes in" 12 "3 since this morning" success
+        tally "Waiting for parts" 4 "the oldest since Monday"
+    ]
+]
+```
+
+Each `tally` gets faces of its own, and the labels written in `layout:` belong to that face only: the layout
+around it does not see them. A role or size given to it (`success`, `large`) reaches the faces of its layout that
+say none of their own, here the number, and follows it when it changes; the face itself keeps no colour of it,
+so a panel made this way never gets a coloured border. `trebol check` reads the faces of `layout:` as it reads any others, so a mistake in
+them is a problem of every layout that uses the style.
+
+Faces of such a style share a row equally, and go on to the next line before they get narrower than a few
+words. Made from a `panel`, each is a card of its own, but inside another panel it is part of that card, as a
+card is never drawn in a card:
+
+```trebol-ui
+stylize [
+    count-card: panel [
+        takes: [value: [integer!] "how many"]
+        layout: [text muted is [it/text]  heading is [it/value]]
+    ]
+]
+view [
+    row [count-card "Bikes in" 12  count-card "Ready to collect" 5]
+    panel "Today" [
+        row [count-card "Booked in" 3  count-card "Waiting for parts" 4]
+    ]
+]
+```
+
+A plain `panel` keeps its card wherever it is, and its own width in a row. To a screen reader each face of a
+style made of others is one group, named by its text: "Bikes in", then what its layout holds.
+
+Where `layout:` says `slot`, go the faces written in a block after the style, read where they are written, so
+they see that layout's labels and keep their own role and size:
+
+```trebol-ui
+stylize [
+    section: panel [layout: [heading is [it/text]  slot]]
+]
+view [
+    bike: field "Bike"
+    section "Booking" [
+        text is [join "For " any [bike/value "..."]]
+        button "Book in"
+    ]
+]
+```
+
+A face of such a style shows only what its layout says: `section` is a panel, but its text is not drawn as the
+panel's title, only where the layout puts it. Its `style` is its own name, `section`, and its `composed` the
+container it is drawn as, `panel`. A style whose layout has no `slot` takes no block: giving it one is a problem of the layout. A style made from
+one with a `layout:` holds the same faces, unless it says a `layout:` of its own.
+
+## Faces from what it holds
+
+The faces of a `layout:` may also come from a field of the face. A container in it whose reaction lays out a
+block made from that field (`layout/only`, as in [Faces made by code](03-layout.md)) holds new faces each time
+the field changes:
+
+```trebol-ui
+stylize [
+    progress-log: column [
+        steps: none
+        takes: [steps: block "what has been done, in order"]
+        layout: [
+            text muted small bold is [it/text]
+            column rail react [
+                face/pane: layout/only collect [
+                    foreach s any [it/steps []] [keep compose [text (s)]]
+                ]
+            ]
+        ]
+    ]
+]
+view [
+    log: progress-log "Brompton, flat tyre" ["Booked in" "Inner tube changed"]
+    button "Ready" [log/steps: append copy log/steps "Ready to collect"]
+]
+```
+
+Trebol's own `stat` and `timeline` are made this way, with no code of their own in the browser: `stat` is a
+panel of texts and a canvas, and `timeline` a column whose days are laid out from its rows, each a `column named`
+with a `heading small` and a `column rail` of what happened. A face of the layout with a `rate` and an
+`on-time` says its faces again as time goes by: the timeline does it every half minute, so Today becomes
+Yesterday after midnight. Their source, in `src/ui/dialect/stats.trb` and `timelines.trb`, is a good place to
+start a style of your own.
+
 ## Styles to make others from
 
 Four styles are only made from, never written: `face`, where every style starts; `container`, a face that holds

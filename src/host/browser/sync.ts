@@ -7,18 +7,18 @@ import { translate } from '../index.ts';
 import { runNow, type HostTask } from '../scheduler.ts';
 import { devLog } from '../devlog.ts';
 import { changeScreen, mayMove, unfold, fold, isFolding } from '../motion.ts';
-import { get, str, optionText, entriesOf, isGroup, optionsOf, optionsKey, fillSelect, own, display, flag, word, paneFaces, paneMoved } from './faces.ts';
+import { get, str, optionText, entriesOf, isGroup, optionsOf, optionsKey, fillSelect, own, display, flag, word, paneFaces, paneMoved, drawnStyle, frameRole } from './faces.ts';
 import { type Mounted, host, byNode, byCtx, dirty, reactors, newReactor, reacting, fire, el, INPUTS, syncMark, iconLabel, appendChildren, setNewReactor, setReacting } from './mount.ts';
 import { isData } from './drag.ts';
 import { rangeText } from './calendar.ts';
 import { shortcutAria, shortcutLabel } from './keys.ts';
 import { countRun } from './count.ts';
+import { shrinkTarget } from './shrink.ts';
+import { markComposed } from './composed.ts';
 import { syncPick } from './pick.ts';
 import { syncSlider, syncProgress, syncIcon, required, syncRadio } from './fields.ts';
 import { syncMedia, syncPhoto, syncUpload } from './uploads.ts';
 import { syncWidget } from './widget.ts';
-import { syncStat } from './stats.ts';
-import { syncTimeline } from './timelines.ts';
 import { syncLookup } from './lookup.ts';
 import { syncCanvas, syncChart } from './drawings.ts';
 import { syncOrbit } from './orbits.ts';
@@ -31,6 +31,10 @@ import { syncToolbar, syncBreadcrumb } from './toolbars.ts';
 import { syncDialog, syncTabs, syncSteps, syncSplit } from './dialogs.ts';
 import { comingScreen, enteredScreen, setComingScreen } from './screens.ts';
 import { sweepSizes } from './sizes.ts';
+import { momentShown, momentTarget } from './moments.ts';
+import { syncRate, sweepRates } from './rates.ts';
+import { markRail } from './rails.ts';
+import { markNamed } from './named.ts';
 import { laterMarkScrollers } from './scrollers.ts';
 import { dirtySeries, watchShown, watchChanged, ownersOf } from './inplace.ts';
 
@@ -47,8 +51,8 @@ export function sync(m: Mounted): void {
 
 function draw(m: Mounted): void {
   const f = m.face;
-  const style = word(f, 'style') ?? '';
-  const role = word(f, 'role');
+  const style = drawnStyle(f) ?? '';
+  const role = frameRole(f);
   const t = str(f, 'text');
   const hidden = flag(f, 'hidden');
   const err = str(f, 'error');
@@ -61,8 +65,15 @@ function draw(m: Mounted): void {
   if (flag(f, 'narrow-only')) cls.push('tb-narrow-only');
   if (flag(f, 'wide-only')) cls.push('tb-wide-only');
   if (flag(f, 'fit')) cls.push('tb-fit');
+  if (flag(f, 'bold')) cls.push('tb-bold');
+  if (flag(f, 'rail')) cls.push('tb-rail');
   if (flag(f, 'segmented')) cls.push('tb-segmented');
   if (flag(f, 'drop')) cls.push('tb-drop-zone');
+  // made of its style's layout: (composites.trb); the theme makes it part of a panel it is in
+  if (flag(f, 'composed')) {
+    cls.push('tb-composed');
+    markComposed(m.el, t);
+  }
   if (role !== null && !INPUTS.has(style)) cls.push(`tb-${role}`);
   const size = word(f, 'size');
   if (size !== null) cls.push(`tb-${size}`);
@@ -90,6 +101,7 @@ function draw(m: Mounted): void {
   if (flag(f, 'drag') && !isData(m) && m.el.tabIndex < 0) m.el.tabIndex = 0;
   space(m.el, 'padding', get(f, 'pad'));
   space(m.el, 'gap', get(f, 'gap'));
+  syncRate(m);
 
   if (style === 'radio') return syncRadio(m, err);
   if (style === 'slider') return syncSlider(m, err);
@@ -161,8 +173,16 @@ function draw(m: Mounted): void {
     }
     case 'title': case 'heading': case 'text': {
       const tv = get(f, 'text');
-      if (flag(f, 'count') && countRun(m, tv)) break;
-      m.el.textContent = tv.t === K.None ? '' : tv.t === K.Map || tv.t === K.Word ? translate(tv, host.rt) : display(tv);
+      const sv = momentShown(f, tv);
+      const shown = tv.t === K.None ? '' : tv.t === K.Map || tv.t === K.Word ? translate(tv, host.rt) : display(sv);
+      const into = shrinkTarget(m, flag(f, 'shrink'), shown);
+      // a small heading is one level under the headings around it, as it looks
+      if (style === 'heading') {
+        if (word(f, 'size') === 'small') m.el.setAttribute('aria-level', '3');
+        else m.el.removeAttribute('aria-level');
+      }
+      if (flag(f, 'count') && countRun(m, tv, into)) break;
+      momentTarget(into, tv).textContent = shown;
       break;
     }
     case 'tile': {
@@ -189,8 +209,6 @@ function draw(m: Mounted): void {
     // its data may have changed: the dialect deals the cards to their lanes again, if they moved
     case 'board': void fire('ui-board', f); break;
     case 'progress': syncProgress(m); return;
-    case 'stat': syncStat(m); return;
-    case 'timeline': syncTimeline(m); return;
     case 'canvas': syncCanvas(m); return;
     case 'chart': syncChart(m); return;
     case 'orbit': syncOrbit(m); return;
@@ -235,7 +253,8 @@ function draw(m: Mounted): void {
     case 'tab': if (m.button !== null) m.button.textContent = t ?? ''; break;
     case 'panel': {
       let h = m.el.querySelector<HTMLElement>(':scope > .tb-panel-title');
-      if (t === null) h?.remove();
+      // a panel made of a style's layout: shows its text through the faces of that layout
+      if (t === null || flag(f, 'composed')) h?.remove();
       else {
         if (h === null) {
           h = el('h2', 'tb-panel-title');
@@ -295,6 +314,10 @@ function draw(m: Mounted): void {
     // let the dialect link the new faces to their view and form
     void fire('ui-pane', f);
   }
+  if (style === 'column') {
+    markRail(m.box ?? m.el, flag(f, 'rail'));
+    markNamed(m.box ?? m.el, flag(f, 'named'));
+  }
   if (style === 'screens') settleScreen(m.box ?? m.el, f);
 }
 
@@ -340,6 +363,7 @@ export function showComing(box: HTMLElement, f: ObjectCell, loading: boolean): v
     box.toggleAttribute('data-tb-loading', entering);
     enteredScreen(box);
     sweepSizes();   // the screen that left took its faces with it
+    sweepRates();
     laterMarkScrollers();
   });
 }
@@ -369,6 +393,7 @@ export function setExtra(e: HTMLElement, cls: string[]): void {
 export function react(): void {
   for (const m of reactors) if (!m.el.isConnected && comingScreen?.contains(m.el) !== true) reactors.delete(m);
   sweepSizes(n => comingScreen?.contains(n) === true);
+  sweepRates(n => comingScreen?.contains(n) === true);
   laterMarkScrollers();
   if (reacting !== null || reactors.size === 0 || (dirty.length === 0 && dirtySeries.length === 0 && !newReactor)) return;
   setNewReactor(false);

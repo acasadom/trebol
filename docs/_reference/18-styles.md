@@ -81,11 +81,13 @@ The title of the page or of a screen: the text the browser shows for it, too.
 
 ## heading
 
-A heading inside a page.
+A heading inside a page. A `small` one is a heading over a few lines, as the day over what happened in it: the
+size of the text around it, still strong, and one level under the headings around it for a screen reader.
 
 ## text
 
-Text. A date, a time, a number or an amount is shown in the format of the active language.
+Text. A date, a time, a number or an amount is shown in the format of the active language; a date or a time is
+also said in a way a machine reads, and a date has its full form in its tooltip (see `clock` and `ago`).
 
 ## code
 
@@ -224,7 +226,9 @@ numbers at least, or it is a problem of the layout. A role colours the number an
 danger`), and with `count` a new number runs from the old one, as a text's does. `is [...]` gives it its number.
 On its own it is a card; in a panel it drops its border. The number is as large as the width of the stat lets it
 be, so four in a row never break one in two. A screen reader reads the text, the number and the line under it;
-the trend is for the eye.
+the trend is for the eye. It is made of other styles, as an app makes its own: a panel whose `layout:` holds a
+`text`, a `title shrink`, a `text` and a `canvas stretch` (see
+[styles of your own](../ui/13-styles-of-your-own.md)).
 
 ## image
 
@@ -243,7 +247,8 @@ dark; muted text takes the color of the text there.
 
 A drawing: `canvas 120x120 [fill-pen primary circle 60x60 50]`. The pair is the size of its drawing space, and
 the block is in the [draw dialect](draw.md). It is as wide as that size, or narrower when there is no room,
-and `fill` makes it as wide as it can be. With a string, the drawing is a picture with that name for a screen
+and `fill` makes it as wide as it can be. `stretch` makes it as wide as it can be and as tall as its
+size: it is drawn again at each width, its points spread across it, its lines, dots and text keep their size. With a string, the drawing is a picture with that name for a screen
 reader; without one, it is decoration. Setting `draw` redraws it.
 
 ## chart

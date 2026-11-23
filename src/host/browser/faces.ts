@@ -117,6 +117,16 @@ export function word(face: ObjectCell, name: string): string | null {
   return v.t === K.Word || v.t === K.LitWord ? spell((v as WordCell).sym).toLowerCase() : null;
 }
 
+/** The style a face is drawn as: a face made of its style's layout: is drawn as the container it was made from. */
+export function drawnStyle(face: ObjectCell): string | null {
+  return word(face, 'composed') ?? word(face, 'style');
+}
+
+/** The role a face's frame shows: a face made of its style's layout: gives its role to its faces instead. */
+export function frameRole(face: ObjectCell): string | null {
+  return flag(face, 'composed') ? null : word(face, 'role');
+}
+
 export function children(face: ObjectCell): ObjectCell[] {
   const c = get(face, 'pane');
   if (c.t !== K.Block) return [];

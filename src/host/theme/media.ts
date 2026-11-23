@@ -30,6 +30,9 @@ export const MEDIA = String.raw`
 .tb-canvas { display: block; max-width: 100%; }
 .tb-canvas > svg { display: block; max-width: 100%; height: auto; overflow: visible; }
 .tb-canvas.tb-fill > svg { width: 100%; }
+/* stretched: as wide as it can be and as tall as its extent, drawn again at each width */
+.tb-canvas.tb-stretch { width: 100%; min-width: 0; }
+.tb-canvas.tb-stretch > svg { width: 100%; max-width: none; }
 .tb-chart { display: flex; flex-direction: column; gap: var(--tb-space-2); align-self: stretch; width: 100%; margin: 0; min-width: 0; }
 .tb-chart-caption { font-weight: 600; }
 .tb-chart-plot { position: relative; width: 100%; min-width: 0; }
