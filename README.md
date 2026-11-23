@@ -42,7 +42,7 @@ like any other value.
 A page needs two lines, one that brings Trebol and one that runs the app:
 
 ```html
-<script type="module" src="https://cdn.jsdelivr.net/npm/trebol@0.6/dist/trebol.js"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/trebol@0.7/dist/trebol.js"></script>
 <script type="text/trebol" src="app.trb"></script>
 ```
 
