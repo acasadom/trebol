@@ -9,8 +9,9 @@ import { get, flag } from './faces.ts';
 import { type Mounted } from './mount.ts';
 import { fireEvent } from './events.ts';
 import { sync } from './sync.ts';
+import { repeat } from '../timers.ts';
 
-interface Ticking { ms: number; id: ReturnType<typeof setInterval>; m: Mounted; seen: boolean }
+interface Ticking { ms: number; stop: () => void; m: Mounted; seen: boolean }
 
 const ticking = new Map<Element, Ticking>();
 
@@ -35,18 +36,18 @@ export function syncRate(m: Mounted): void {
   }
   if (now !== undefined) stop(node);
   if (ms === null) return;
-  const t: Ticking = { ms, m, seen: node.isConnected, id: setInterval(() => {
+  const t: Ticking = { ms, m, seen: node.isConnected, stop: repeat(ms, () => {
     if (!node.isConnected) return;
     if (flag(t.m.face, 'ago')) sync(t.m);
     fireEvent(t.m.face, 'on-time');
-  }, Math.max(1, ms)) };
+  }) };
   ticking.set(node, t);
 }
 
 function stop(node: Element): void {
   const t = ticking.get(node);
   if (t === undefined) return;
-  clearInterval(t.id);
+  t.stop();
   ticking.delete(node);
 }
 
