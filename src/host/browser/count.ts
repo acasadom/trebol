@@ -13,7 +13,7 @@ export const COUNT_MS = 600;
 /**
  * A text with `count` whose number changed runs from the old one to the new in the kind and digits of the new,
  * easing out, formatted for the active language at each frame; true while it runs, so sync leaves the text alone.
- * It writes into the face's element, or the part of it given (the number of a stat).
+ * It writes into the face's element, or the part of it given (the line of a shrink text).
  * The first number it shows, a change of kind or currency, or a page that may not move, shows the new one at once.
  */
 export function countRun(m: Mounted, to: Cell, into: HTMLElement = m.el): boolean {
