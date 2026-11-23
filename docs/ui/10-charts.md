@@ -151,6 +151,28 @@ ends on, each written in the active language. The number it first shows does not
 the user asked the system for less motion: it is there at once. A number, a percent and an amount count; a
 text that is no number shows as it is.
 
+A `stat` says what such a number is, puts a line under it, and draws how it got there: the board at the top of
+a screen that tells the shop how the day goes.
+
+```trebol-ui
+today: make object! [takings: $1240.00 waiting: 7]
+view [
+    grid 3 [
+        stat "Takings" count is [today/takings] "12 repairs today" trend [980 1100 860 1240] success
+        stat "Bikes waiting" count is [today/waiting] "2 since yesterday" trend [3 5 4 8 7]
+        stat "Late" 3 "of 41 this week" trend [0 1 1 2 3] danger
+    ]
+    button "A repair paid" [
+        today/takings: today/takings + $85.50
+        today/waiting: today/waiting - 1
+    ]
+]
+```
+
+Its text says what the number is and a second text is the line under it. `trend` takes the numbers it had,
+oldest first, and draws them as a small line ending on a dot; a role colours the number and the line. Each stat
+is a card of its own, so a `grid` lines them up, and the trends sit at the foot of each, side by side.
+
 ## Moving through a graph
 
 Some things are not rows but a web: customers ride bikes, bikes have repairs, repairs need parts. An `orbit`

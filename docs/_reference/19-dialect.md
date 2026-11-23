@@ -147,7 +147,7 @@ Cuts an image to a circle, as for a person's photo: `image %ada.jpg "Ada" 48x48 
 
 ## count
 
-A text, heading or title whose number, percent or amount changes runs from the old one to the new, in about
+A text, heading, title or stat whose number, percent or amount changes runs from the old one to the new, in about
 half a second: `title count is [total]`. Not the first it shows, nor with less motion asked for.
 
 ## drag
@@ -341,6 +341,11 @@ link.
 `muted`, as a word or a text, is the role a table, list, board or tree paints that row or card in. In a block of
 columns, after a column, `[state "State" role-by tone]`, it paints that column's cell instead. Any other value
 paints nothing.
+
+## trend
+
+`trend [3 5 4 8]`: the numbers a stat had, oldest first, numbers or amounts, two at least. It draws them as a
+small line at the stat's foot, ending on a dot, in the colour of its role.
 
 ## morph
 

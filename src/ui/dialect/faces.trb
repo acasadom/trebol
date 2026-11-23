@@ -33,6 +33,7 @@ face: make object! [
     mark-text: none
     round: false        ; an image: cut to a circle, as for a person's photo
     count: false        ; a text whose number changes runs from the old one to the new
+    trend: none         ; a stat: the numbers that came before its own, drawn as a small line
     tag: none           ; a widget: the name of the element it is, as the page's JavaScript defines it
     props: none         ; a widget: the element's properties, an object
     poster: none        ; a video: the image shown before it plays

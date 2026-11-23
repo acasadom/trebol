@@ -1,0 +1,27 @@
+; A part of the UI dialect: see ui.trb, whose words it shares.
+
+; --- a number that stands for something (after styles-more.trb) -----------------------
+;
+; stat "Takings" $1240.00 "12 repairs today" trend [980 1100 1240] success count
+;
+; Its text is what the number is, its value the number, a second text the line under it,
+; trend the numbers it had, oldest first, drawn as a small line, and its role the colour of
+; the number and the line. With count a new number runs from the old one.
+
+stylize [
+    stat: face [style: 'stat  takes: [
+        value: [number! money!] "the number it shows"
+        count: 'count "a number that changes runs from the old one to the new"
+        trend: 'trend [block!] "the numbers it had, oldest first, drawn as a small line: trend [3 5 4 8]"
+        done: :stat-check
+    ]]
+]
+
+; trend [3 5 4 8]: numbers or amounts only, two at least
+stat-check: func [f place [block!]] [
+    all [
+        f/trend
+        not parse f/trend [2 [number! | money!] any [number! | money!]]
+        ui-problem place "a trend takes two numbers or more: trend [3 5 4 8]"
+    ]
+]

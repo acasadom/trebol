@@ -524,6 +524,26 @@ It takes what [`face`](#style-face) takes, and:
 
 A bar: its value is a percent or a number from 0 to 1; with `none`, it moves without saying how far.
 
+(style-stat)=
+## stat
+
+Made from [`face`](#style-face).
+
+It takes what [`face`](#style-face) takes, and:
+
+- a number or a money (`value`): the number it shows
+- [`count`](#word-count): a number that changes runs from the old one to the new
+- [`trend`](#word-trend) and a block: the numbers it had, oldest first, drawn as a small line: trend \[3 5 4 8\]
+
+A number that stands for something, as a dashboard shows it: `stat "Takings" $1240.00`. Its text says what the
+number is, its value is the number, and a second text is the line under it: `stat "Late" 3 "of 41 this week"`.
+`trend [3 5 4 8]` draws the numbers it had, oldest first, as a small line at its foot, ending on a dot; two
+numbers at least, or it is a problem of the layout. A role colours the number and the line (`stat "Late" 3
+danger`), and with `count` a new number runs from the old one, as a text's does. `is [...]` gives it its number.
+On its own it is a card; in a panel it drops its border. The number is as large as the width of the stat lets it
+be, so four in a row never break one in two. A screen reader reads the text, the number and the line under it;
+the trend is for the eye.
+
 (style-image)=
 ## image
 

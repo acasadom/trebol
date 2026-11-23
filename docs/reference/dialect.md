@@ -240,9 +240,9 @@ Cuts an image to a circle, as for a person's photo: `image %ada.jpg "Ada" 48x48 
 (word-count)=
 ## count
 
-A flag, of [`title`](#style-title), [`heading`](#style-heading) and [`text`](#style-text).
+A flag, of [`title`](#style-title), [`heading`](#style-heading), [`text`](#style-text) and [`stat`](#style-stat).
 
-A text, heading or title whose number, percent or amount changes runs from the old one to the new, in about
+A text, heading, title or stat whose number, percent or amount changes runs from the old one to the new, in about
 half a second: `title count is [total]`. Not the first it shows, nor with less motion asked for.
 
 (word-drag)=
@@ -547,6 +547,14 @@ A word followed by its value, of [`rows-face`](#style-rows-face) and [`board`](#
 `muted`, as a word or a text, is the role a table, list, board or tree paints that row or card in. In a block of
 columns, after a column, `[state "State" role-by tone]`, it paints that column's cell instead. Any other value
 paints nothing.
+
+(word-trend)=
+## trend
+
+A word followed by its value, of [`stat`](#style-stat).
+
+`trend [3 5 4 8]`: the numbers a stat had, oldest first, numbers or amounts, two at least. It draws them as a
+small line at the stat's foot, ending on a dot, in the colour of its role.
 
 (word-morph)=
 ## morph
