@@ -7,6 +7,12 @@ have a conversion that starts with `to-`, a shorter way of writing `to`. See
 
 ## make
 
+`make object! [...]` copies its block deep before it binds and runs it, so two objects made from the same
+block never share a series. An object written inside another one is copied again by each `make` around it,
+so text that nests objects thousands of levels deep takes time and memory that grow with the square of its
+depth: a chain of 1000 loads and runs at once, one of 10000 can run out of memory. Rebol 3 binds the block in
+place instead, and its `mold` and `do` fail on such a chain sooner.
+
 ## to
 
 A block gives a pair, a tuple or a time from its parts, as in R3: `to pair! [3 4]` is `3x4`, `to time! [9 30]`
