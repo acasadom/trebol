@@ -20,7 +20,7 @@ view [
 ]
 ```
 
-![A sign-up form in the light theme](docs/screenshots/signup-light.png)
+![The New repair form of the example above, filled in](docs/screenshots/readme-example.png)
 
 Code is data: a screen is a block, so it can be built, stored, checked and changed with the language itself,
 like any other value.
@@ -78,6 +78,7 @@ npm run trb          # the console
 npm run dev          # the examples, at http://localhost:5173/examples/signup/
 npm run build        # dist/trebol.js and dist/cli.js, what the npm package runs
 npm run grammar      # the editor grammar, editors/vscode/syntaxes/trebol.tmLanguage.json
+npm run readme-shot  # the picture under the first example of this README, taken from that example
 ```
 
 A release is a tag: `npm version minor` (or `patch`) and `git push --follow-tags`. The `release` workflow checks

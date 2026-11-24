@@ -50,6 +50,20 @@ export interface Series<T> {
    */
   watch?: Series<unknown>[];
   dirty?: boolean;
+  /** Map series only: the hash index of its keys, see `maps.ts`. */
+  index?: MapIndex;
+}
+
+/**
+ * Where each key of a map sits, by a hash of the key: the offsets of the keys with that hash, in
+ * order, and the offsets of keys with no hash. Good only for the `data` array and version it was
+ * made for.
+ */
+export interface MapIndex {
+  data: unknown[];
+  ver: number;
+  at: Map<string, number[]>;
+  loose: number[];
 }
 
 let clock = 0;

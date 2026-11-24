@@ -4,6 +4,7 @@
 import { K, kindByName, isAnyBlock, isAnyString } from './kinds.ts';
 import { spell as symName } from './symbols.ts';
 import * as I64 from './int64.ts';
+import { mapData } from './maps.ts';
 import {
   NONE, UNSET, TRUE, FALSE, datatype, typeset, bitset, object, context,
   type Cell, type BlockCell, type StringCell,
@@ -12,9 +13,9 @@ import {
 /** #( key value ... ) — keys and values are not evaluated. A string is the load error. */
 export function mapOf(d: readonly Cell[]): Cell | string {
 if (d.length % 2 !== 0) return 'a map! needs key value pairs';
-const data = d.map((c, j) =>
+const data = mapData(d.map((c, j) =>
     j % 2 === 0 && c.t === K.SetWord ? { t: K.Word, sym: c.sym, bind: null } as Cell : c,
-  );
+  ));
   return { t: K.Map, s: { data } };
 }
 

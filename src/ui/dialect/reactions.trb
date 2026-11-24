@@ -157,19 +157,15 @@ react-due?: func [r] [not strict-equal? r/last react-now r]
 
 ; Where a face's facet is kept in the index of what reads it: faces and other
 ; objects are told apart by same?, as they compare by content.
-react-key: function [things [block!] g facet] [
-    unless k: find/same things :g [append things :g  k: back tail things]
-    rejoin [index? k " " mold :facet]
-]
+react-key: func [g facet] [rejoin [ui-same-id :g " " mold :facet]]
 
 ; Which reactions each one feeds, setting what they read, and which feed it:
 ; [feeds fed-by], a block of indices for each reaction, read once per round.
 react-links: function [rs [block!] /local g m] [
-    things: copy []
     readers: make map! []
     repeat i length? rs [
         foreach [g m] get in pick rs i 'sources [
-            key: react-key things :g :m
+            key: react-key :g :m
             either b: select readers key [append b i] [put readers key reduce [i]]
         ]
     ]
@@ -178,7 +174,7 @@ react-links: function [rs [block!] /local g m] [
     loop length? rs [append/only feeds copy []  append/only fed-by copy []]
     repeat j length? rs [
         foreach [g m] get in pick rs j 'targets [
-            if b: select readers react-key things :g :m [
+            if b: select readers react-key :g :m [
                 foreach i b [
                     if all [i <> j  not find pick feeds j i] [
                         append pick feeds j i
@@ -268,10 +264,11 @@ ui-react: function [
                 ran/:i: true
                 append order i
                 ; what reads what it sets may be due now
+                added: false
                 foreach k pick links/1 i [
-                    if all [not ran/:k  not waiting/:k  react-due? pick rs k] [append due k  waiting/:k: true]
+                    if all [not ran/:k  not waiting/:k  react-due? pick rs k] [append due k  waiting/:k: true  added: true]
                 ]
-                sort due
+                if added [sort due]
             ]
         ]
         if empty? order [break]

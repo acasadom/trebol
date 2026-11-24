@@ -175,6 +175,8 @@ class Lexer {
   private innerSpans: Cell[] | null = null;
   /** loadSpans only: code points before each UTF-16 index, when the text has surrogates. */
   private cps: number[] | null = null;
+  /** loadSpans only: the text was searched once for surrogates, so `cps` is final. */
+  private cpsKnown = false;
   private readonly bom: number;
 
   constructor(src: string, file?: string) {
@@ -186,11 +188,14 @@ class Lexer {
 
   /** The 1-based code point index of UTF-16 index `u` in the text as given, byte-order mark included. */
   private cpIndex(u: number): number {
-    if (this.cps === null && /[\uD800-\uDBFF]/.test(this.src)) {
-      this.cps = [0];
-      for (let j = 0; j < this.src.length; j++) {
-        const c = this.src.charCodeAt(j);
-        this.cps.push(this.cps[j]! + (c >= 0xdc00 && c <= 0xdfff ? 0 : 1));
+    if (!this.cpsKnown) {
+      this.cpsKnown = true;
+      if (/[\uD800-\uDBFF]/.test(this.src)) {
+        this.cps = [0];
+        for (let j = 0; j < this.src.length; j++) {
+          const c = this.src.charCodeAt(j);
+          this.cps.push(this.cps[j]! + (c >= 0xdc00 && c <= 0xdfff ? 0 : 1));
+        }
       }
     }
     return (this.cps === null ? u : this.cps[u]!) + this.bom + 1;

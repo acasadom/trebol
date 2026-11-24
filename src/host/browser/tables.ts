@@ -2,7 +2,8 @@
 
 import { K, NONE, form, intern, spell, canon, type Cell, type ObjectCell, type BlockCell, type WordCell, type Sym } from '../../core/index.ts';
 import { translate, activeLanguage } from '../index.ts';
-import { rowField, groupRow, sortGroups, rowWindow, DRAW_ALL_UP_TO } from '../rows.ts';
+import { rowField, groupRow, rowWindow, DRAW_ALL_UP_TO } from '../rows.ts';
+import { rowOrder, ID } from '../row-order.ts';
 import { mayMove, rowPlaces, moveRows, leaveRow } from '../motion.ts';
 import { get, str, own, display, flag, icon } from './faces.ts';
 import { type Mounted, host, rowOf, fire, el } from './mount.ts';
@@ -133,30 +134,18 @@ export function buildRows(face: ObjectCell, style: string, m: Mounted): HTMLElem
 export function syncRows(m: Mounted): void {
   const f = m.face;
   const data = get(f, 'data');
-  let rows = data.t === K.Block ? data.s.data.slice(data.i) : [];
+  let order: { sym: Sym; desc: boolean } | null = null;
   if (m.box!.tagName === 'TBODY') {
     syncHead(f, m.box!.parentElement as HTMLTableElement, columns(f));
-    const order = hostSorted(f);
-    if (order !== null) rows = sortGroups(rows, order.sym, order.desc, activeLanguage(host.rt), cellText);
+    order = hostSorted(f);
   }
   const keyWord = get(f, 'key');
-  const key = keyWord.t === K.Word || keyWord.t === K.LitWord ? (keyWord as WordCell).sym : intern('id');
-  const seen = new Set<string>();
-  m.items = rows.map((row, i) => {
-    const group = groupRow(row);
-    let k: string;
-    if (group !== null) k = `${group.kind}#${i}`;
-    else {
-      const id = rowField(row, key);
-      k = id.t === K.None ? `#${i}` : `${id.t}:${form(id)}`;
-      if (seen.has(k)) k = `${k}#${i}`;
-    }
-    seen.add(k);
-    return { row, k };
-  });
+  const key = keyWord.t === K.Word || keyWord.t === K.LitWord ? (keyWord as WordCell).sym : ID;
+  m.order = rowOrder(m.order, data, order, activeLanguage(host.rt), key, cellText);
+  m.items = m.order.items;
   drawRows(m);
   m.empty!.textContent = str(f, 'text') ?? own('empty');
-  m.empty!.hidden = rows.length > 0;
+  m.empty!.hidden = m.items.length > 0;
 }
 
 /** Tables and lists with too many rows to draw them all. */

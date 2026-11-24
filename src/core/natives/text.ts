@@ -2,6 +2,7 @@
 // block builders `compose` and `collect-words`, plus the iteration natives
 // that walk a series held in a word (`forall`, `forskip`) and `apply`.
 
+import { mapData, keyOut } from '../maps.ts';
 import { K, isAnyBlock, isAnyString, isAnyWord, kindName, kindBit, kindByName, type Kind } from '../kinds.ts';
 import { intern, canon, spell } from '../symbols.ts';
 import * as I64 from '../int64.ts';
@@ -220,7 +221,7 @@ function toKind(k: Kind, v: Cell): Cell | string {
           throw e;
         }
       }
-      if (v.t === K.Map) return { t: k, s: { data: v.s.data.slice() }, i: 0 };
+      if (v.t === K.Map) return { t: k, s: { data: v.s.data.map((c, i) => (i % 2 === 0 ? keyOut(c) : c)) }, i: 0 };
       if (v.t === K.Object || v.t === K.Error) {
         const data: Cell[] = [];
         v.ctx.keys.forEach((key, i) => data.push({ t: K.SetWord, sym: key, bind: null }, v.ctx.vals[i]!));
@@ -233,12 +234,12 @@ function toKind(k: Kind, v: Cell): Cell | string {
       if (v.t === K.Block) {
         const items = v.s.data.slice(v.i);
         if (items.length % 2 !== 0) return 'a map needs key value pairs';
-        return { t: K.Map, s: { data: items.map((c, i) => (i % 2 === 0 && isAnyWord(c.t) ? { t: K.Word, sym: (c as WordCell).sym, bind: null } as Cell : c)) } };
+        return { t: K.Map, s: { data: mapData(items) } };
       }
       if (v.t === K.Object) {
         const data: Cell[] = [];
         v.ctx.keys.forEach((key, i) => data.push({ t: K.Word, sym: key, bind: null }, v.ctx.vals[i]!));
-        return { t: K.Map, s: { data } };
+        return { t: K.Map, s: { data: mapData(data) } };
       }
       return bad();
     }

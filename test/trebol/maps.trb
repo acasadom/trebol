@@ -1,0 +1,62 @@
+Trebol [
+    title: "Map tests"
+    ; keys given twice, text keys copied in and out, and maps big enough to keep a hash index
+]
+
+"a key given twice keeps its first place and its last value, as R3"
+[m: make map! [a 1 b 2 a 3] all [2 = length? m  [a b] = keys-of m  m/a = 3]]
+[m: to map! ["x" 1 "x" 2] all [1 = length? m  2 = select m "x"]]
+[m: #(a: 1 a: 2) all [1 = length? m  m/a = 2]]
+[m: load-json {{"k": 1, "k": 2}} all [1 = length? m  m/k = 2]]
+[m: make map! [a 1 'a 2 a: 3] all [1 = length? m  m/a = 3]]
+
+"a text key is copied when it goes into a map (R3), and given out as a copy (R3 protects it)"
+[k: "a" m: make map! [] m/:k: 1 append k "b" all [1 = select m "a"  none? select m "ab"]]
+[k: "a" m: make map! reduce [k 1] append k "b" 1 = select m "a"]
+[m: make map! ["a" 1] append first keys-of m "z" 1 = select m "a"]
+[m: make map! ["a" 1] foreach [k v] m [append k "z"] 1 = select m "a"]
+[m: make map! ["a" 1] b: to block! m append b/1 "z" 1 = select m "a"]
+
+"text and char keys tell upper case from lower case, as JSON does; word keys do not, as words never do"
+[m: make map! ["Id" 1] m/("id"): 2 all [2 = length? m  1 = select m "Id"  2 = select m "id"]]
+[m: load-json {{"Id": 1, "id": 2}} all [2 = length? m  m/Id = 1  2 = select m "id"]]
+[m: load-json {{"id": 1, "x": 0, "id": 2}} all [2 = length? m  m/id = 2]]
+[m: make map! [#"a" 1] all [none? select m #"A"  1 = select m #"a"]]
+[m: make map! [Id 1] m/id: 2 all [1 = length? m  2 = m/ID]]
+
+"a big map finds each key as a small one does"
+[
+    m: make map! []
+    repeat i 100 [m/(i): i * 2  m/(join "k" i): i  put m to word! join "w" i i]
+    all [
+        300 = length? m
+        m/50 = 100
+        50 = select m "k50"
+        50 = select m 'W50
+        none? select m 50.5
+    ]
+]
+[
+    m: make map! []
+    repeat i 20 [m/(i): i]
+    m/([1 2]): "block"  m/(1.5): "dec"  m/(2026-11-24): "date"  m/(#"a"): "char"  m/(1x2): "pair"
+    m/(5): "five"
+    all [
+        m/([1 2]) = "block"  m/(1.5) = "dec"  m/(24-Nov-2026) = "date"  m/(#"a") = "char"
+        m/(1x2) = "pair"  m/5 = "five"  25 = length? m
+        none? m/([1 3])  none? m/(#"b")
+    ]
+]
+[
+    m: make map! []
+    repeat i 20 [m/(i): i]
+    clear m
+    m/3: "x"
+    all [1 = length? m  m/3 = "x"  none? m/4]
+]
+[
+    m: make map! []
+    repeat i 20 [m/(i): i]
+    n: copy m  n/21: 0  m/22: 0
+    all [21 = length? n  21 = length? m  none? n/22  none? m/21]
+]

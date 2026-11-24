@@ -34,8 +34,8 @@ async function timed(src: string): Promise<{ out: string; ms: number }> {
 // Time is not compared with a fixed limit, which a slow machine misses: each case runs with N reactions and
 // with 4 times as many, on a fresh host. Time in proportion to what runs grows about 4 times; the square of
 // the reactions there, 16 times. A floor keeps rounds of a few milliseconds from being noise.
-const N = Number(process.env.REACT_N ?? 320);
-const MOST = 9;
+const N = Number(process.env.REACT_N ?? 640);
+const MOST = 6;
 const FLOOR = 20;
 
 async function fresh(): Promise<void> {

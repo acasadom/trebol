@@ -466,5 +466,29 @@
   {
     "test": "[(unique [[$1.00] [1] [10%] [0.1]]) == [[$1.00] [10%]]]",
     "why": "[$1] = [1] in R3 too, and R3 gives one of unique [[$1] [1]], but in a longer series its hash keeps them apart."
+  },
+  {
+    "test": "[m: make map! [\"a\" 1] append first keys-of m \"z\" 1 = select m \"a\"]",
+    "why": "Trebol has no protect: words-of, foreach and to block! give a copy of a text key of a map, so changing it leaves the map as it was; R3 gives the key itself, protected, and changing it is an error."
+  },
+  {
+    "test": "[m: make map! [\"a\" 1] foreach [k v] m [append k \"z\"] 1 = select m \"a\"]",
+    "why": "Trebol has no protect: words-of, foreach and to block! give a copy of a text key of a map, so changing it leaves the map as it was; R3 gives the key itself, protected, and changing it is an error."
+  },
+  {
+    "test": "[m: make map! [\"a\" 1] b: to block! m append b/1 \"z\" 1 = select m \"a\"]",
+    "why": "Trebol has no protect: words-of, foreach and to block! give a copy of a text key of a map, so changing it leaves the map as it was; R3 gives the key itself, protected, and changing it is an error."
+  },
+  {
+    "test": "[m: make map! [\"Id\" 1] m/(\"id\"): 2 all [2 = length? m 1 = select m \"Id\" 2 = select m \"id\"]]",
+    "why": "Text keys of a map tell upper case from lower case (owner's decision, 2026-11-24), as JSON keys do, so load-json keeps \"Id\" and \"id\" apart and reaches both (a key that differs from an earlier word key only in case stays text); R3 finds and overwrites text keys whatever the case, and its load-json keeps both keys but m/id reaches only the first."
+  },
+  {
+    "test": "[m: load-json {{\"Id\": 1, \"id\": 2}} all [2 = length? m m/Id = 1 2 = select m \"id\"]]",
+    "why": "Text keys of a map tell upper case from lower case (owner's decision, 2026-11-24), as JSON keys do, so load-json keeps \"Id\" and \"id\" apart and reaches both (a key that differs from an earlier word key only in case stays text); R3 finds and overwrites text keys whatever the case, and its load-json keeps both keys but m/id reaches only the first."
+  },
+  {
+    "test": "[m: make map! [#\"a\" 1] all [none? select m #\"A\" 1 = select m #\"a\"]]",
+    "why": "Char keys of a map tell upper case from lower case, as text keys do (owner's decision, 2026-11-24); R3 finds #\"a\" with #\"A\"."
   }
 ]
