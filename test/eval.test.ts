@@ -20,6 +20,8 @@ native('test-pause', '[]', (_t, f, v) => {
 // A native that recurses on the JS stack until it overflows, as a native written wrongly would.
 const deepDown = (n: number): number => (n === 0 ? 0 : 1 + deepDown(n - 1));
 native('test-recurse', '[]', () => value(integer(deepDown(1e7))));
+// A native that grows a JS array past its length limit, as a series too long for the host would.
+native('test-too-long', '[]', () => value(integer(new Array(-1).length)));
 
 const rt = makeRuntime();
 
@@ -372,6 +374,26 @@ describe('nesting deeper than the JS stack', () => {
     assert.equal(ev(`${src} f: func [x] compose/only [(b) x] f 7`), '7');
     assert.equal(ev(`${src} collect-words/deep reduce [b 'w b [v]]`), '[w v]');
     assert.equal(ev(`${src} f: function [x] compose/only [(b) y: x + 1] f 7`), '8');
+  });
+
+  test('mold and form of an object chain deeper than the JS stack grow with its size and load back the same', () => {
+    const chain = (n: number) => `o: make object! [v: 1] loop ${n} [o: make object! [v: o]]`;
+    const n = 100000;
+    // indentation stops at 32 levels, so each level adds a bounded number of characters
+    assert.equal(ev(`${chain(n)} m: mold o reduce [(length? m) < (${n} * 300) m = mold/only load m]`), '[true true]');
+    assert.equal(ev(`${chain(n)} m: mold/all o reduce [(length? m) < (${n} * 300) m = mold/all/only load m]`), '[true true]');
+    assert.equal(ev(`${chain(n)} (length? form o) < (${n} * 300)`), 'true');
+    const indent = (k: number) => `append/dup copy "^/" " " ${k}`;
+    assert.equal(ev(`${chain(40)} m: mold o reduce [none? find m ${indent(129)} not none? find m ${indent(128)} o = do load m]`), '[true true true]');
+    assert.equal(ev(`${chain(40)} p: load mold/all o reduce [o = p o == p]`), '[true true]');
+  });
+
+  test('text or a series too long for the host is a too-long error that attempt catches', () => {
+    const big = 's: copy "0123456789" loop 17 [append s copy s] b: append/dup copy [] s 70';
+    assert.equal(evErr(`${big} mold b`), 'too-long');
+    assert.equal(ev(`${big} attempt [form b]`), 'none');
+    assert.equal(evErr('test-too-long'), 'too-long');
+    assert.equal(ev('attempt [test-too-long]'), 'none');
   });
 
   test('collect-words/deep walks a block that holds itself once', () => {

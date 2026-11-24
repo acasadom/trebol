@@ -257,14 +257,15 @@ export function resumeError(t: Task, e: ObjectCell): void {
  * runs out (call again to continue) and `await` when a native parked it.
  */
 export function run(t: Task, budget = Infinity): RunResult {
-  // A JS exception (a stack overflow on a deeply nested value, or a bug in a
-  // native) becomes a Trebol error of this task instead of escaping to the
+  // A JS exception (a stack overflow on a deeply nested value, a series past
+  // the host's length limit, or a bug in a native) becomes a Trebol error of this task instead of escaping to the
   // host, so `attempt` sees it and other tasks keep running.
   for (;;) {
     try {
       return runSteps(t, budget);
     } catch (e) {
       if (e instanceof RangeError && /call stack/i.test(e.message)) fail(t, 'internal', 'stack-overflow', 'stack overflow: a value or call is nested too deep');
+      else if (e instanceof RangeError && /invalid (array|string) length/i.test(e.message)) fail(t, 'internal', 'too-long', 'a string or series would be longer than it can hold');
       else fail(t, 'internal', 'bug', `internal error: ${e instanceof Error ? e.message : String(e)}`);
     }
   }

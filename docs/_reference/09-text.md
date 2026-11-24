@@ -2,8 +2,10 @@
 
 Making text from values, and changing text. `form` gives text for people to read, `mold` text that `load`
 reads back as the same value. A block or object that holds itself shows as `[...]` in `mold`, and a block
-that holds itself as `...` in `form`; values nested any depth are written. Strings are series too, so every series function works on
-them. See [text](../language/09-text.md).
+that holds itself as `...` in `form`; values nested any depth are written. Past 32 levels the lines indent
+no further, so the text grows with the value's size, not its depth; `load` reads it the same. Text longer
+than 67108864 characters is an internal `too-long` error. Strings are series too, so every series function
+works on them. See [text](../language/09-text.md).
 
 ## form
 

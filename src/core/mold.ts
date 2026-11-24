@@ -230,6 +230,13 @@ function hex(bytes: readonly number[], start = 0): string {
 // (which leaves the cycle guard).
 
 const INDENT = '    ';
+/**
+ * Deeper levels indent no further, so a value nested thousands of levels
+ * molds to text that grows with its size, not with its depth squared.
+ * Indentation is only layout: load reads the text the same.
+ */
+const MAX_INDENT = 32;
+const indentOf = (depth: number): string => INDENT.repeat(Math.min(depth, MAX_INDENT));
 
 type Work =
   | { w: 0; text: string }
@@ -361,14 +368,14 @@ class Molder {
     }
     this.out += open;
     // pushed first, so it runs after the contents
-    this.work.push({ w: 0, text: multiline(c.s, c.i, depth) ? '\n' + INDENT.repeat(depth) + close : close });
+    this.work.push({ w: 0, text: multiline(c.s, c.i, depth) ? '\n' + indentOf(depth) + close : close });
     this.pushContents(c.s, c.i, depth);
   }
 
   private pushContents(s: Series<Cell>, start: number, depth: number): void {
     this.active.add(s);
     const parts: Work[] = [];
-    const indent = INDENT.repeat(depth + 1);
+    const indent = indentOf(depth + 1);
     for (let j = start; j < s.data.length; j++) {
       if (s.nl?.[j] && (j > start || depth >= 0)) parts.push({ w: 0, text: '\n' + indent });
       else if (j > start) parts.push({ w: 0, text: ' ' });
@@ -430,7 +437,7 @@ class Molder {
     }
     this.active.add(ctx);
     this.out += prefix === null ? '#[object! [' : prefix + ' [';
-    const indent = INDENT.repeat(depth + 1);
+    const indent = indentOf(depth + 1);
     const parts: Work[] = [];
     ctx.keys.forEach((k, i) => {
       const v = ctx.vals[i]!;
@@ -440,7 +447,7 @@ class Molder {
       parts.push({ w: 1, c: v, depth: depth + 1 });
     });
     let close = prefix === null ? ']]' : ']';
-    if (ctx.keys.length > 0) close = '\n' + INDENT.repeat(depth) + close;
+    if (ctx.keys.length > 0) close = '\n' + indentOf(depth) + close;
     parts.push({ w: 0, text: close }, { w: 2, leave: ctx });
     this.later(parts);
   }
