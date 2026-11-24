@@ -328,6 +328,8 @@ Trebol [
 [[#a] = [a]]
 [not ([(1)] = [[1]])]
 [[[1]] = [[1.0]]]
+[a: [0 1] insert/only a next a b: reduce [[9 9] 0 1] not any [a = b b = a a == b b == a]]
+[o: make object! [x: 1] q: make object! [x: 1] p: make object! [x: 2] not any [(reduce [o o]) = (reduce [q p]) (reduce [o o]) == (reduce [q p])]]
 
 [1 = 1.0]
 

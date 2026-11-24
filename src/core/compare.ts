@@ -8,7 +8,7 @@ import { K, isAnyBlock, isAnyString, isAnyWord } from './kinds.ts';
 import { canon, spell } from './symbols.ts';
 import * as I64 from './int64.ts';
 import { decCmp, decFromNumber, decFromBig, type Dec } from './dec.ts';
-import { strictEqual, type Cell, type BlockCell, type StringCell, type WordCell } from './values.ts';
+import { strictEqual, enterPair, leavePair, type EqPath, type Cell, type BlockCell, type StringCell, type WordCell } from './values.ts';
 import { utcDayMs } from './days.ts';
 
 const isNumeric = (c: Cell): boolean =>
@@ -84,33 +84,33 @@ function almostEqual(x: number, y: number): boolean {
 const isFloat = (c: Cell): boolean => c.t === K.Decimal || c.t === K.Percent;
 
 /** A block being compared item by item: xs[at..end) against ys from at + off. */
-type EqFrame = { xs: readonly Cell[]; ys: readonly Cell[]; at: number; end: number; off: number; series: object };
+type EqFrame = { xs: readonly Cell[]; ys: readonly Cell[]; at: number; end: number; off: number; left: object };
 
 /** `=` (equal?): blocks are walked with an explicit work stack, so nesting as deep as the
- * heap allows never reaches the JS stack limit. A block met again on its own path is a cycle:
- * equal there, as `==` does. */
+ * heap allows never reaches the JS stack limit. A pair of blocks met again at the same
+ * positions on its own path is a cycle: equal there, as `==` does. */
 export function isEqual(a: Cell, b: Cell): boolean {
-  const seen = new Set<object>();
+  const path: EqPath = new Map();
   const stack: EqFrame[] = [];
-  if (!equalStep(a, b, seen, stack)) return false;
+  if (!equalStep(a, b, path, stack)) return false;
   while (stack.length > 0) {
     const f = stack[stack.length - 1]!;
     if (f.at === f.end) {
-      seen.delete(f.series);
+      leavePair(path, f.left);
       stack.pop();
       continue;
     }
     const k = f.at++;
     const x = f.xs[k]!;
     const y = f.ys[k + f.off]!;
-    if (!sameSort(x, y) || !equalStep(x, y, seen, stack)) return false;
+    if (!sameSort(x, y) || !equalStep(x, y, path, stack)) return false;
   }
   return true;
 }
 
 /** Compares two cells one level deep: false when they differ, true when they are equal or
  * when their items are left on the stack to compare. */
-function equalStep(a: Cell, b: Cell, seen: Set<object>, stack: EqFrame[]): boolean {
+function equalStep(a: Cell, b: Cell, path: EqPath, stack: EqFrame[]): boolean {
   if (a === b) return true;
   if (isNumeric(a) && isNumeric(b)) {
     if ((isFloat(a) || isFloat(b)) && a.t !== K.Money && b.t !== K.Money) {
@@ -130,9 +130,8 @@ function equalStep(a: Cell, b: Cell, seen: Set<object>, stack: EqFrame[]): boole
     const y = b as BlockCell;
     const n = x.s.data.length - x.i;
     if (n !== y.s.data.length - y.i) return false;
-    if ((x.s === y.s && x.i === y.i) || seen.has(x.s)) return true;
-    seen.add(x.s);
-    stack.push({ xs: x.s.data, ys: y.s.data, at: x.i, end: x.s.data.length, off: y.i - x.i, series: x.s });
+    if ((x.s === y.s && x.i === y.i) || enterPair(path, x.s, x.i, y.s, y.i)) return true;
+    stack.push({ xs: x.s.data, ys: y.s.data, at: x.i, end: x.s.data.length, off: y.i - x.i, left: x.s });
     return true;
   }
   // a date without time is the same day at midnight and two zones the same moment;

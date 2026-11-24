@@ -413,6 +413,12 @@ describe('nesting deeper than the JS stack', () => {
     assert.equal(ev('a: copy [1] append/only a a b: copy [1] append/only b b reduce [a = b a == b]'), '[true true]');
     assert.equal(ev('a: copy [1] append/only a a b: copy [2] append/only b b reduce [a = b a == b]'), '[false false]');
     assert.equal(ev('x: [1 2] reduce [[x x] = [x x] [[1 2] [1 2]] = reduce [x x]]'), '[true true]');
+    // a cycle is the same pair of series at the same places, never one side alone
+    const view = 'a: [0 1] insert/only a next a b: reduce [[9 9] 0 1]';
+    assert.equal(ev(`${view} reduce [a = b b = a a == b b == a]`), '[false false false false]');
+    const objs = 'o: make object! [x: 1] q: make object! [x: 1] p: make object! [x: 2]';
+    assert.equal(ev(`${objs} reduce [(reduce [o o]) = (reduce [q p]) (reduce [o o]) == (reduce [q p])]`), '[false false]');
+    assert.equal(ev('o: make object! [s: none] o/s: o p: make object! [s: none] p/s: p reduce [o = p o == p]'), '[true true]');
   });
 
   test('form shows a block met again inside itself as ..., an object as mold does', () => {
