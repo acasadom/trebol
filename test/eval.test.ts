@@ -370,6 +370,12 @@ describe('nesting deeper than the JS stack', () => {
     assert.equal(ev(`${src} c: copy/deep b block? first c`), 'true');
     assert.equal(ev(`${src} o: make object! [x: 1] block? bind b o`), 'true');
     assert.equal(ev(`${src} f: func [x] compose/only [(b) x] f 7`), '7');
+    assert.equal(ev(`${src} collect-words/deep reduce [b 'w b [v]]`), '[w v]');
+    assert.equal(ev(`${src} f: function [x] compose/only [(b) y: x + 1] f 7`), '8');
+  });
+
+  test('collect-words/deep walks a block that holds itself once', () => {
+    assert.equal(ev("b: copy [a] append/only b b append b 'c collect-words/deep b"), '[a c]');
   });
 
   test('= and == compare values nested deeper than the JS stack', () => {

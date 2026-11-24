@@ -374,23 +374,27 @@ native('collect-words', '["The words used in a block, each once." block [block!]
   const ignore = used(f.args[3]!) ? (f.args[4] as BlockCell).s.data.filter(c => isAnyWord(c.t)).map(c => canon((c as WordCell).sym)) : [];
   const seen = new Set<number>(ignore);
   const out: Cell[] = [];
-  const stack: Series<Cell>[] = [];
-  const walk = (s: Series<Cell>, from: number) => {
-    if (stack.includes(s)) return;
-    stack.push(s);
-    for (let i = from; i < s.data.length; i++) {
-      const c = s.data[i]!;
-      if ((setOnly ? c.t === K.SetWord : c.t >= K.Word && c.t <= K.LitWord) && !seen.has(canon((c as WordCell).sym))) {
-        seen.add(canon((c as WordCell).sym));
-        out.push({ t: K.Word, sym: (c as WordCell).sym, bind: null });
-      } else if (deep && isAnyBlock(c.t)) {
-        walk((c as BlockCell).s, (c as BlockCell).i);
-      }
-    }
-    stack.pop();
-  };
+  // An explicit stack of the blocks being walked, so nesting any depth never reaches the JS
+  // stack; a block met again on its own path is skipped.
   const b = f.args[0] as BlockCell;
-  walk(b.s, b.i);
+  const stack: { s: Series<Cell>; i: number }[] = [{ s: b.s, i: b.i }];
+  const path = new Set<Series<Cell>>([b.s]);
+  while (stack.length > 0) {
+    const top = stack[stack.length - 1]!;
+    if (top.i >= top.s.data.length) {
+      path.delete(top.s);
+      stack.pop();
+      continue;
+    }
+    const c = top.s.data[top.i++]!;
+    if ((setOnly ? c.t === K.SetWord : c.t >= K.Word && c.t <= K.LitWord) && !seen.has(canon((c as WordCell).sym))) {
+      seen.add(canon((c as WordCell).sym));
+      out.push({ t: K.Word, sym: (c as WordCell).sym, bind: null });
+    } else if (deep && isAnyBlock(c.t) && !path.has((c as BlockCell).s)) {
+      path.add((c as BlockCell).s);
+      stack.push({ s: (c as BlockCell).s, i: (c as BlockCell).i });
+    }
+  }
   return value({ t: K.Block, s: { data: out }, i: 0 });
 });
 
