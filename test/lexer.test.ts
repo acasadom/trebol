@@ -228,6 +228,16 @@ describe('words and paths', () => {
     fails('a/', /ends with \//);
     fails('1/2', /must start with a word/);
   });
+
+  test('a path that ends with a paren and a colon is a set-path (R3)', () => {
+    const p = one('a/(k):') as BlockCell;
+    assert.equal(p.t, K.SetPath);
+    assert.deepEqual(p.s.data.map(c => kindName(c.t)), ['word!', 'paren!']);
+    assert.equal(kindOf('a/(1)/(2):'), 'set-path!');
+    assert.equal(mold(load('m/(k): 1')), '[m/(k): 1]');
+    fails(':a/(1): 3', /invalid path/);
+    fails('a/(1):x', /invalid path/);
+  });
 });
 
 describe('blocks, maps and construction syntax', () => {

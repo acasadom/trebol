@@ -19,6 +19,12 @@ make type spec
 - `type` (`any-value!`)
 - `spec` (`any-value!`)
 
+`make object! [...]` copies its block deep before it binds and runs it, so two objects made from the same
+block never share a series. An object written inside another one is copied again by each `make` around it,
+so text that nests objects thousands of levels deep takes time and memory that grow with the square of its
+depth: a chain of 1000 loads and runs at once, one of 10000 can run out of memory. Rebol 3 binds the block in
+place instead, and its `mold` and `do` fail on such a chain sooner.
+
 (fn-to)=
 ## to
 
@@ -512,6 +518,13 @@ set-path? value
 ```
 
 - `value` (`any-type!`)
+
+A path with a colon at its end sets what it names, and its last part may be a paren worked out first:
+
+```trebol-console
+>> sizes: [5 6] n: 2 sizes/(n): 7 sizes
+== [5 7]
+```
 
 (fn-get-path-3f)=
 ## get-path?

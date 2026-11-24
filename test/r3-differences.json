@@ -100,6 +100,18 @@
     "why": "Same: to-json."
   },
   {
+    "test": "[(to-json 1-Jan-2026/0:00:00.000000001) = {\"2026-01-01T00:00:00.000000001\"}]",
+    "why": "to-json writes a date as ISO 8601 text (2026-01-01T00:00:00.000000001), as JSON readers expect; R3 writes the Rebol form (1-Jan-2026/0:00:00.000000001)."
+  },
+  {
+    "test": "[(to-json 1-Jan-2026/23:59:59.999999999+2:00) = {\"2026-01-01T23:59:59.999999999+02:00\"}]",
+    "why": "Same: to-json writes dates as ISO 8601."
+  },
+  {
+    "test": "[(to-json 1-Jan-2026/12:34:56.0005) = {\"2026-01-01T12:34:56.0005\"}]",
+    "why": "Same: to-json writes dates as ISO 8601."
+  },
+  {
     "test": "[(to-json [yes true 'false]) = {[\"yes\",true,\"false\"]}]",
     "why": "Same: to-json."
   },
@@ -253,6 +265,10 @@
   },
   {
     "test": "[(to-csv [[\"Name\" \"Age\"] [\"Lo, Wei\" 34]]) = {Name,Age\n\"Lo, Wei\",34\n}]",
+    "why": "Same: CSV."
+  },
+  {
+    "test": "[(to-csv [[1-Jan-2026/0:00:00.000000001]]) = {2026-01-01 00:00:00.000000001\n}]",
     "why": "Same: CSV."
   },
   {

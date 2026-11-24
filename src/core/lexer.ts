@@ -10,16 +10,15 @@
 // ordered regular expressions on the token text, written as data so the same
 // table can be ported to Zig.
 
-import { K, kindByName, isAnyBlock, isAnyString } from './kinds.ts';
-import { intern, spell as symName } from './symbols.ts';
+import { K } from './kinds.ts';
+import { intern } from './symbols.ts';
 import * as I64 from './int64.ts';
 import { parseDec } from './dec.ts';
 import { decodeBase } from './base.ts';
 import { decodeEscape } from './escapes.ts';
+import { construct, mapOf } from './construct.ts';
 import {
-  NONE, UNSET, TRUE, FALSE, packPos, codePoints,
-  integer, decimal, percent, money, char, pair, tuple, date, time, datatype, typeset,
-  bitset, object, context,
+  packPos, codePoints, integer, decimal, percent, money, char, pair, tuple, date, time,
   type Cell, type Series, type BlockKind, type StringKind, type WordKind, type DateVal,
   type BlockCell, type StringCell,
 } from './values.ts';
@@ -64,7 +63,7 @@ export function load(src: string, opts: LoadOptions = {}): BlockCell {
 /** Reads the whole text; blocks nested deeper than the stack allows are a load error, not a crash. */
 function topSeries(lx: Lexer, file?: string): Series<Cell> {
   try {
-    return lx.parseSeries(null);
+    return lx.parseSeries();
   } catch (e) {
     if (e instanceof RangeError && /call stack/i.test(e.message)) throw new LoadError('blocks nested too deep', 1, 1, file);
     throw e;
@@ -138,6 +137,30 @@ function daysInMonth(y: number, m: number): number {
 
 // --- the lexer ---------------------------------------------------------------
 
+type FrameKind = 'top' | 'block' | 'paren' | 'construct' | 'map' | 'pathParen';
+
+/** A path being read: kept while one of its paren segments is a frame of its own. */
+type PathState = { t: BlockKind; data: Cell[]; start: number };
+
+/** A request from parseValue to read a nested series as a frame of its own. */
+type Open = { open: FrameKind; end: ']' | ')'; start: number; path: PathState | null };
+
+/** A series being read. nlAt, posAt and fromAt describe the value being read into it. */
+type Frame = {
+  kind: FrameKind;
+  end: ']' | ')' | null;
+  path: PathState | null;
+  start: number;
+  openAt: number;
+  data: Cell[];
+  nl: boolean[];
+  pos: number[];
+  spans: Cell[] | null;
+  nlAt: boolean;
+  posAt: number;
+  fromAt: number;
+};
+
 class Lexer {
   private i = 0;
   private line = 1;
@@ -146,8 +169,10 @@ class Lexer {
   private readonly file: string | undefined;
   /** Set by loadSpans: record where each value sits. */
   track = false;
-  /** loadSpans only: the spans of the series read last. */
+  /** loadSpans only: the spans of the whole text, once read. */
   lastSpans: Cell[] | null = null;
+  /** loadSpans only: the spans inside the block or paren just read, for its own span. */
+  private innerSpans: Cell[] | null = null;
   /** loadSpans only: code points before each UTF-16 index, when the text has surrogates. */
   private cps: number[] | null = null;
   private readonly bom: number;
@@ -211,55 +236,103 @@ class Lexer {
     return sawNewline;
   }
 
-  /** Parses values until `end` (']' or ')') or end of input when `end` is null. */
-  parseSeries(end: ']' | ')' | null): Series<Cell> {
-    const data: Cell[] = [];
-    const nl: boolean[] = [];
-    const pos: number[] = [];
-    const openAt = this.i - 1;
-    const spans: Cell[] | null = this.track ? [] : null;
+  /**
+   * Parses values until end of input. Nested blocks, parens, #[...], #(...) and the parens
+   * of a path are frames on an explicit stack, never JS recursion, so nesting is bounded by
+   * the heap, not the JS stack. A finished frame builds its cell and hands it to the frame
+   * below, which records it with the newline, position and start it noted before the value.
+   */
+  parseSeries(): Series<Cell> {
+    const stack: Frame[] = [this.frame('top', null, null, 0, null)];
     for (;;) {
+      const f = stack[stack.length - 1]!;
       const sawNewline = this.skipSpace();
       const c = this.src[this.i];
-      if (c === undefined) {
-        if (end !== null) this.fail(`missing ${end}`, openAt);
-        break;
+      let v: Cell | Open;
+      if (c === undefined || c === ']' || c === ')') {
+        if (c === undefined) {
+          if (f.end !== null) this.fail(`missing ${f.end}`, f.openAt);
+        } else {
+          if (c !== f.end) this.fail(`unexpected ${c}`);
+          this.i++;
+        }
+        const out = this.close(f);
+        if (stack.length === 1) {
+          if (f.spans !== null) this.lastSpans = f.spans;
+          return out;
+        }
+        stack.pop();
+        v = this.finish(f, out);
+      } else {
+        f.nlAt = sawNewline;
+        f.posAt = packPos(this.line, this.col());
+        f.fromAt = this.i;
+        v = this.parseValue();
       }
-      if (c === ']' || c === ')') {
-        if (c !== end) this.fail(`unexpected ${c}`);
-        this.i++;
-        break;
+      if ('open' in v) {
+        stack.push(this.frame(v.open, v.end, v.path, v.start, this.i - 1));
+        continue;
       }
-      const p = packPos(this.line, this.col());
-      const from = this.i;
-      this.lastSpans = null;
-      const v = this.parseValue();
-      data.push(v);
-      nl.push(sawNewline);
-      pos.push(p);
-      if (spans !== null) {
-        const at = this.cpIndex(from);
+      const g = stack[stack.length - 1]!;
+      g.data.push(v);
+      g.nl.push(g.nlAt);
+      g.pos.push(g.posAt);
+      if (g.spans !== null) {
+        const at = this.cpIndex(g.fromAt);
         const span = pair(at, this.cpIndex(this.i) - at);
-        const inner = (c === '[' || c === '(') && (v.t === K.Block || v.t === K.Paren) ? this.lastSpans : null;
-        spans.push(inner === null ? span : { t: K.Block, s: { data: [span, ...inner] }, i: 0 });
+        g.spans.push(this.innerSpans === null ? span : { t: K.Block, s: { data: [span, ...this.innerSpans] }, i: 0 });
       }
+      this.innerSpans = null;
     }
-    if (spans !== null) this.lastSpans = spans;
-    const out: Series<Cell> = { data, nl, pos };
+  }
+
+  private frame(kind: FrameKind, end: ']' | ')' | null, path: PathState | null, start: number, openAt: number | null): Frame {
+    return {
+      kind, end, path, start, openAt: openAt ?? this.i - 1,
+      data: [], nl: [], pos: [], spans: this.track ? [] : null,
+      nlAt: false, posAt: 0, fromAt: 0,
+    };
+  }
+
+  private close(f: Frame): Series<Cell> {
+    const out: Series<Cell> = { data: f.data, nl: f.nl, pos: f.pos };
     if (this.file !== undefined) out.file = this.file;
     return out;
   }
 
-  private parseValue(): Cell {
+  /** The value a finished frame stands for, or the next frame its path opens. Only a block or
+   * paren read as a value of its own leaves its spans for the enclosing span. */
+  private finish(f: Frame, inner: Series<Cell>): Cell | Open {
+    switch (f.kind) {
+      case 'block':
+        this.innerSpans = f.spans;
+        return { t: K.Block, s: inner, i: 0 };
+      case 'paren':
+        this.innerSpans = f.spans;
+        return { t: K.Paren, s: inner, i: 0 };
+      case 'construct':
+        return this.construct(inner, f.start);
+      case 'map':
+        return this.mapOf(inner, f.start);
+      default: {
+        const st = f.path!;
+        st.data.push({ t: K.Paren, s: inner, i: 0 });
+        return this.pathNext(st);
+      }
+    }
+  }
+
+  /** One value, or a request to open a nested series. */
+  private parseValue(): Cell | Open {
     const s = this.src;
     const c = s[this.i]!;
     switch (c) {
       case '[':
         this.i++;
-        return { t: K.Block, s: this.parseSeries(']'), i: 0 };
+        return { open: 'block', end: ']', start: this.i - 1, path: null };
       case '(':
         this.i++;
-        return { t: K.Paren, s: this.parseSeries(')'), i: 0 };
+        return { open: 'paren', end: ')', start: this.i - 1, path: null };
       case '"':
         return this.str(K.String, this.quoted());
       case '{':
@@ -361,7 +434,7 @@ class Lexer {
 
   // --- # forms -----------------------------------------------------------------
 
-  private hash(): Cell {
+  private hash(): Cell | Open {
     const next = this.src[this.i + 1];
     if (next === '"') {
       this.i++;
@@ -376,15 +449,11 @@ class Lexer {
     }
     if (next === '[') {
       this.i += 2;
-      const start = this.i - 2;
-      const inner = this.parseSeries(']');
-      return this.construct(inner, start);
+      return { open: 'construct', end: ']', start: this.i - 2, path: null };
     }
     if (next === '(') {
       this.i += 2;
-      const start = this.i - 2;
-      const inner = this.parseSeries(')');
-      return this.mapOf(inner, start);
+      return { open: 'map', end: ')', start: this.i - 2, path: null };
     }
     const start = this.i;
     this.i++;
@@ -407,102 +476,19 @@ class Lexer {
     return { t: K.Binary, s: { data: bytes }, i: 0 };
   }
 
-  /** #( key value ... ) — keys and values are not evaluated. */
   private mapOf(inner: Series<Cell>, start: number): Cell {
-    if (inner.data.length % 2 !== 0) this.fail('a map! needs key value pairs', start);
-    const data = inner.data.map((c, j) =>
-      j % 2 === 0 && c.t === K.SetWord ? { t: K.Word, sym: c.sym, bind: null } as Cell : c,
-    );
-    return { t: K.Map, s: { data } };
+    const v = mapOf(inner.data);
+    return typeof v === 'string' ? this.fail(v, start) : v;
   }
 
-  /**
-   * Construction syntax #[...], for values that have no literal form:
-   *   #[none] #[true] #[false] #[unset]
-   *   #[datatype! integer!]   #[typeset! [integer! decimal!]]
-   *   #[bitset! #{...}]       #[bitset! not #{...}]
-   *   #[object! [a: 1]]       #[map! [a 1]]
-   *   #[string! "abc" 2]      #[block! [a b] 2]   (series with an index)
-   */
   private construct(inner: Series<Cell>, start: number): Cell {
-    const d = inner.data;
-    const head = d[0];
-    const bad = (): never => this.fail('invalid construction syntax', start);
-    if (!head || head.t !== K.Word) return bad();
-    const name = spellOf(head).toLowerCase();
-    if (d.length === 1) {
-      switch (name) {
-        case 'none': case 'none!': return NONE;
-        case 'unset': case 'unset!': return UNSET;
-        case 'true': return TRUE;
-        case 'false': return FALSE;
-      }
-      return bad();
-    }
-    const kind = kindByName(name);
-    if (kind === undefined) return bad();
-    const arg = d[1]!;
-    switch (kind) {
-      case K.Logic:
-        if (d.length === 2 && arg.t === K.Word) {
-          const v = spellOf(arg).toLowerCase();
-          if (v === 'true') return TRUE;
-          if (v === 'false') return FALSE;
-        }
-        return bad();
-      case K.Datatype: {
-        if (d.length !== 2 || arg.t !== K.Word) return bad();
-        const k = kindByName(spellOf(arg));
-        return k === undefined ? bad() : datatype(k);
-      }
-      case K.Typeset: {
-        if (d.length !== 2 || arg.t !== K.Block) return bad();
-        let bits = 0n;
-        for (const w of arg.s.data) {
-          const k = w.t === K.Word ? kindByName(spellOf(w)) : undefined;
-          if (k === undefined) return bad();
-          bits |= 1n << BigInt(k);
-        }
-        return typeset(bits);
-      }
-      case K.Bitset: {
-        const neg = d.length === 3 && arg.t === K.Word && spellOf(arg).toLowerCase() === 'not';
-        const bin = neg ? d[2]! : arg;
-        if (bin.t !== K.Binary || d.length !== (neg ? 3 : 2)) return bad();
-        return bitset([...bin.s.data], neg);
-      }
-      case K.Object: {
-        if (d.length !== 2 || arg.t !== K.Block) return bad();
-        const ctx = context();
-        const body = arg.s.data;
-        for (let j = 0; j < body.length; j += 2) {
-          const key = body[j]!;
-          if (key.t !== K.SetWord || j + 1 >= body.length) return bad();
-          ctx.keys.push(key.sym);
-          ctx.vals.push(literalValue(body[j + 1]!));
-        }
-        return object(ctx);
-      }
-      case K.Map:
-        if (d.length !== 2 || arg.t !== K.Block) return bad();
-        return this.mapOf(arg.s, start);
-    }
-    // A series at an index: #[kind! value index]
-    const at = d[2];
-    if (d.length === 3 && at !== undefined && at.t === K.Integer) {
-      const idx = I64.toNumber(at.v) - 1;
-      const ok = (isAnyString(kind) && isAnyString(arg.t)) || (isAnyBlock(kind) && isAnyBlock(arg.t));
-      if (!ok || idx < 0) return bad();
-      const src = arg as StringCell | BlockCell;
-      if (idx > src.s.data.length) return bad();
-      return { ...src, t: kind, i: idx } as Cell;
-    }
-    return bad();
+    const v = construct(inner.data);
+    return typeof v === 'string' ? this.fail(v, start) : v;
   }
 
   // --- % forms -------------------------------------------------------------------
 
-  private percentSign(): Cell {
+  private percentSign(): Cell | Open {
     const s = this.src;
     const next = s[this.i + 1];
     if (next === '"') {
@@ -534,7 +520,7 @@ class Lexer {
     return s.slice(start, this.i);
   }
 
-  private atom(): Cell {
+  private atom(): Cell | Open {
     const start = this.i;
     const text = this.span();
     // A path whose next segment is a paren: a/(...)
@@ -650,38 +636,61 @@ class Lexer {
 
   // --- paths -----------------------------------------------------------------------
 
-  /** Scans a path starting at the cursor: a/b, :a/b, 'a/b, a/b:, a/(x)/c. */
-  private path(): Cell {
+  /** Scans a path starting at the cursor: a/b, :a/b, 'a/b, a/b:, a/(x)/c. A paren segment
+   * is opened as a frame; the path goes on in pathNext once the paren is read. */
+  private path(): Cell | Open {
     const s = this.src;
-    const start = this.i;
-    let t: BlockKind = K.Path;
-    if (s[this.i] === ':') { t = K.GetPath; this.i++; }
-    else if (s[this.i] === "'") { t = K.LitPath; this.i++; }
-    const data: Cell[] = [];
+    const st: PathState = { t: K.Path, data: [], start: this.i };
+    if (s[this.i] === ':') { st.t = K.GetPath; this.i++; }
+    else if (s[this.i] === "'") { st.t = K.LitPath; this.i++; }
+    return this.pathSegment(st);
+  }
+
+  /** Reads segments from the cursor until the path ends or a paren segment opens. */
+  private pathSegment(st: PathState): Cell | Open {
+    const s = this.src;
     for (;;) {
       if (s[this.i] === '(') {
         this.i++;
-        data.push({ t: K.Paren, s: this.parseSeries(')'), i: 0 });
-      } else {
-        const segStart = this.i;
-        while (!isDelimiter(s[this.i]) && s[this.i] !== '/') this.i++;
-        let seg = s.slice(segStart, this.i);
-        if (seg.endsWith(':') && isDelimiter(s[this.i]) && t === K.Path && data.length > 0) {
-          t = K.SetPath;
-          seg = seg.slice(0, -1);
-        }
-        data.push(this.segment(seg, segStart));
+        return { open: 'pathParen', end: ')', start: st.start, path: st };
       }
-      if (s[this.i] === '/') {
-        this.i++;
-        if (isDelimiter(s[this.i]) && s[this.i] !== '(') this.fail('path ends with /', start);
-        continue;
+      const segStart = this.i;
+      while (!isDelimiter(s[this.i]) && s[this.i] !== '/') this.i++;
+      let seg = s.slice(segStart, this.i);
+      if (seg.endsWith(':') && isDelimiter(s[this.i]) && st.t === K.Path && st.data.length > 0) {
+        st.t = K.SetPath;
+        seg = seg.slice(0, -1);
       }
-      if (!isDelimiter(s[this.i]) || s[this.i] === '(') this.fail('invalid path', start);
-      break;
+      st.data.push(this.segment(seg, segStart));
+      if (!this.pathSlash(st)) return this.pathCell(st);
     }
-    if (data[0]!.t !== K.Word && data[0]!.t !== K.Paren) this.fail('a path must start with a word', start);
-    return { t, s: { data }, i: 0 };
+  }
+
+  /** After a paren segment: the rest of the path, or the path itself when it ends there. */
+  private pathNext(st: PathState): Cell | Open {
+    // a/(k): 2 sets, as a/b: 2 does (R3)
+    if (this.src[this.i] === ':' && st.t === K.Path && isDelimiter(this.src[this.i + 1]) && this.src[this.i + 1] !== '(') {
+      st.t = K.SetPath;
+      this.i++;
+    }
+    return this.pathSlash(st) ? this.pathSegment(st) : this.pathCell(st);
+  }
+
+  /** After a segment: true and past the '/' when another segment follows, false at the end. */
+  private pathSlash(st: PathState): boolean {
+    const s = this.src;
+    if (s[this.i] === '/') {
+      this.i++;
+      if (isDelimiter(s[this.i]) && s[this.i] !== '(') this.fail('path ends with /', st.start);
+      return true;
+    }
+    if (!isDelimiter(s[this.i]) || s[this.i] === '(') this.fail('invalid path', st.start);
+    return false;
+  }
+
+  private pathCell(st: PathState): Cell {
+    if (st.data[0]!.t !== K.Word && st.data[0]!.t !== K.Paren) this.fail('a path must start with a word', st.start);
+    return { t: st.t, s: { data: st.data }, i: 0 };
   }
 
   private segment(seg: string, at: number): Cell {
@@ -698,23 +707,6 @@ class Lexer {
 }
 
 // --- helpers -----------------------------------------------------------------------
-
-function spellOf(c: Cell): string {
-  return 'sym' in c ? symName(c.sym) : '';
-}
-
-
-/** In #[object! [...]] the words none, true and false stand for their values. */
-function literalValue(c: Cell): Cell {
-  if (c.t === K.Word) {
-    switch (symName(c.sym).toLowerCase()) {
-      case 'none': return NONE;
-      case 'true': return TRUE;
-      case 'false': return FALSE;
-    }
-  }
-  return c;
-}
 
 function timeNs(h: string, m: string, sec: string | undefined): number {
   const seconds = Number(h) * 3600 + Number(m) * 60;

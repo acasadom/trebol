@@ -1,0 +1,16 @@
+Trebol [title: "An answer of cached that comes while a long timeline is built"]
+
+; 400 rows take longer to build than /api/now takes to answer (test/browser/api.ts answers it at once),
+; so in a browser the answer comes while the reactions still run
+st: make object! [
+    t: collect [
+        repeat i 400 [
+            keep make map! reduce ['at "2026-11-22T10:00:00+00:00" 'text either i = 1 ["hello"] [join "row " i]]
+        ]
+    ]
+]
+
+view [
+    text is [rejoin ["other " either h: cached "/api/now" [h/n] [0]]]
+    timeline story [at text] is [st/t] "Nothing"
+]

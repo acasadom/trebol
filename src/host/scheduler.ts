@@ -42,23 +42,32 @@ export interface Scheduler {
 }
 
 let nextId = 1;
-const resources = new Map<number, unknown>();
+
+/** What a handle! cell carries: never more than a kind and an id. */
+interface HandleKey { readonly kind: string; readonly id: number }
+
+/**
+ * Host objects by the payload of their handle! cell. Cells are immutable and copies share the payload, so an
+ * entry lives as long as some Trebol value still holds the handle: a finished task or a fired timer nobody
+ * keeps goes with its handle, and one the app keeps can still be waited for.
+ */
+const resources = new WeakMap<HandleKey, unknown>();
 
 /** Stores a host object and returns a handle! cell for it. */
 export function makeHandle(kind: string, obj: unknown): Cell {
-  const id = nextId++;
-  resources.set(id, obj);
-  return { t: K.Handle, p: { kind, id } };
+  const key: HandleKey = { kind, id: nextId++ };
+  resources.set(key, obj);
+  return { t: K.Handle, p: key };
 }
 
 export function handleOf<T>(c: Cell, kind: string): T | null {
   if (c.t !== K.Handle) return null;
-  const h = c.p as { kind: string; id: number };
-  return h.kind === kind ? (resources.get(h.id) as T | undefined) ?? null : null;
+  const h = c.p as HandleKey;
+  return h.kind === kind ? (resources.get(h) as T | undefined) ?? null : null;
 }
 
 export function dropHandle(c: Cell): void {
-  if (c.t === K.Handle) resources.delete((c.p as { id: number }).id);
+  if (c.t === K.Handle) resources.delete(c.p as HandleKey);
 }
 
 const schedulers = new WeakMap<Runtime, Scheduler>();

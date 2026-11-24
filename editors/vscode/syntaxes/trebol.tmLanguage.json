@@ -188,6 +188,10 @@
           "name": "entity.name.variable.set-word.trebol"
         },
         {
+          "match": "(?<![^\\s\\[\\](){}\"])(?![+-]?\\.?\\d)[^\\s@#$%^,:'/\\\\\"()\\[\\]{};]+(?=(?:/(?:[^\\s\\[\\](){}\";/]+|\\([^()\\n]*\\)))*:(?=[\\s\\[\\](){}\";]|$))",
+          "name": "entity.name.variable.set-word.trebol"
+        },
+        {
           "match": "(?<![^\\s\\[\\](){}\"])(?::(?![+-]?\\.?\\d)[^\\s@#$%^,:'/\\\\\"()\\[\\]{};]+(?:/[^\\s\\[\\](){}\";/]+)*)(?=[\\s\\[\\](){}\";]|$)",
           "name": "variable.other.get-word.trebol"
         },
@@ -218,8 +222,16 @@
       ]
     },
     "path": {
-      "match": "(?<=[^\\s\\[\\](){}\";]|\\))/",
-      "name": "punctuation.separator.path.trebol"
+      "patterns": [
+        {
+          "match": "(?<=[^\\s\\[\\](){}\";]|\\))/",
+          "name": "punctuation.separator.path.trebol"
+        },
+        {
+          "match": "(?<=\\)):(?=[\\s\\[\\](){}\";]|$)",
+          "name": "entity.name.variable.set-word.trebol"
+        }
+      ]
     },
     "bracket": {
       "patterns": [

@@ -70,15 +70,35 @@ export function getWord(w: WordCell): Cell | null {
 const SELF = canon(intern('self'));
 
 /** Binds every `self` word in a block, deeply, to an object context. */
-export function bindSelf(s: Series<Cell>, ctx: Ctx, seen = new Set<Series<Cell>>()): void {
-  if (seen.has(s)) return;
-  seen.add(s);
-  const data = s.data;
-  for (let i = 0; i < data.length; i++) {
-    const c = data[i]!;
-    if (isBindable(c) && canon(c.sym) === SELF) data[i] = { t: c.t, sym: c.sym, bind: ctx };
-    else if (isAnyBlock(c.t)) bindSelf((c as BlockCell).s, ctx, seen);
+export function bindSelf(s: Series<Cell>, ctx: Ctx): void {
+  const seen = new Set<Series<Cell>>();
+  for (const data of blocksIn(s, seen)) {
+    for (let i = 0; i < data.length; i++) {
+      const c = data[i]!;
+      if (isBindable(c) && canon(c.sym) === SELF) data[i] = { t: c.t, sym: c.sym, bind: ctx };
+    }
   }
+}
+
+/**
+ * Every block-like series reachable from `s` (itself first), each once, in
+ * the order a depth-first walk meets them. Iterative, so any nesting depth
+ * walks without recursing on the JS stack. The series' data can be changed
+ * while walking, except for its blocks, which are read when it is met.
+ */
+function blocksIn(s: Series<Cell>, seen: Set<Series<Cell>>): Cell[][] {
+  const order: Cell[][] = [];
+  const stack: Series<Cell>[] = [s];
+  for (let x = stack.pop(); x !== undefined; x = stack.pop()) {
+    if (seen.has(x)) continue;
+    seen.add(x);
+    order.push(x.data);
+    for (let i = x.data.length - 1; i >= 0; i--) {
+      const c = x.data[i]!;
+      if (isAnyBlock(c.t)) stack.push((c as BlockCell).s);
+    }
+  }
+  return order;
 }
 
 /** Sets the value at `i`, marking a watched context dirty. */
@@ -109,11 +129,18 @@ export function isBindable(c: Cell): c is WordCell {
  * With `all`, every word is bound to `ctx`; otherwise only words whose
  * symbol is a key of `ctx`.
  */
-export function bindSeries(s: Series<Cell>, ctx: Ctx, all = false, seen = new Set<Series<Cell>>()): void {
-  if (seen.has(s)) return;
-  seen.add(s);
-  const data = s.data;
-  for (let i = 0; i < data.length; i++) {
+export function bindSeries(s: Series<Cell>, ctx: Ctx, all = false): void {
+  // iterative, in the order a recursive walk takes, so new keys are added in the order words appear
+  const seen = new Set<Series<Cell>>([s]);
+  const stack: { data: Cell[]; i: number }[] = [{ data: s.data, i: 0 }];
+  while (stack.length > 0) {
+    const top = stack[stack.length - 1]!;
+    const data = top.data;
+    if (top.i >= data.length) {
+      stack.pop();
+      continue;
+    }
+    const i = top.i++;
     const c = data[i]!;
     if (isBindable(c)) {
       if (c.bind === ctx && c.idx !== undefined) continue;
@@ -121,7 +148,11 @@ export function bindSeries(s: Series<Cell>, ctx: Ctx, all = false, seen = new Se
       if (at < 0 && all) at = ctxAdd(ctx, c.sym, imported(ctx, c.sym));
       if (at >= 0) data[i] = { t: c.t, sym: c.sym, bind: ctx, idx: at };
     } else if (isAnyBlock(c.t)) {
-      bindSeries((c as BlockCell).s, ctx, all, seen);
+      const inner = (c as BlockCell).s;
+      if (!seen.has(inner)) {
+        seen.add(inner);
+        stack.push({ data: inner.data, i: 0 });
+      }
     }
   }
 }
@@ -161,10 +192,11 @@ function callPlan(body: Series<Cell>, tmpl: Ctx): CallPlan {
   const plan: Map<Series<Cell>, { words: number[]; blocks: number[] }> = new Map();
   const seen = new Set<Series<Cell>>();
   let twice = false;
-  const visit = (s: Series<Cell>): void => {
+  const stack: Series<Cell>[] = [body];
+  for (let s = stack.pop(); s !== undefined; s = stack.pop()) {
     if (seen.has(s)) {
       twice = true;
-      return;
+      break;
     }
     seen.add(s);
     const words: number[] = [];
@@ -173,12 +205,11 @@ function callPlan(body: Series<Cell>, tmpl: Ctx): CallPlan {
       if (isBindable(c) && c.bind === tmpl) words.push(i);
       else if (isAnyBlock(c.t)) {
         blocks.push(i);
-        visit((c as BlockCell).s);
+        stack.push((c as BlockCell).s);
       }
     });
     plan.set(s, { words, blocks });
-  };
-  visit(body);
+  }
   return twice ? null : plan;
 }
 
@@ -193,9 +224,8 @@ export function instantiate(body: Series<Cell>, tmpl: Ctx, ctx: Ctx): Series<Cel
     PLANS.set(body, plan);
   }
   if (plan === null) return copyDeep(body, 0, tmpl, ctx);
-  const p = plan;
-  const copy = (s: Series<Cell>): Series<Cell> => {
-    const at = p.get(s)!;
+  // a tree (the plan is null otherwise): each block is copied once, children after their parent
+  const copyOf = (s: Series<Cell>): Series<Cell> => {
     const out: Series<Cell> = { data: s.data.slice() };
     // newline markers and source positions are shared until an edit (see ownMeta)
     if (s.nl || s.pos) {
@@ -204,6 +234,13 @@ export function instantiate(body: Series<Cell>, tmpl: Ctx, ctx: Ctx): Series<Cel
       out.sharedMeta = true;
     }
     if (s.file !== undefined) out.file = s.file;
+    return out;
+  };
+  const root = copyOf(body);
+  const todo: [Series<Cell>, Series<Cell>][] = [[body, root]];
+  for (let job = todo.pop(); job !== undefined; job = todo.pop()) {
+    const [src, out] = job;
+    const at = plan.get(src)!;
     const d = out.data;
     for (const i of at.words) {
       const w = d[i] as WordCell;
@@ -211,11 +248,12 @@ export function instantiate(body: Series<Cell>, tmpl: Ctx, ctx: Ctx): Series<Cel
     }
     for (const i of at.blocks) {
       const b = d[i] as BlockCell;
-      d[i] = { t: b.t, s: copy(b.s), i: b.i };
+      const inner = copyOf(b.s);
+      d[i] = { t: b.t, s: inner, i: b.i };
+      todo.push([b.s, inner]);
     }
-    return out;
-  };
-  return copy(body);
+  }
+  return root;
 }
 
 /**
@@ -224,35 +262,39 @@ export function instantiate(body: Series<Cell>, tmpl: Ctx, ctx: Ctx): Series<Cel
  * way, which is how a function body is instantiated for each call.
  */
 export function copyDeep(s: Series<Cell>, start = 0, rebindFrom: Ctx | null = null, rebindTo: Ctx | null = null): Series<Cell> {
-  return copyRec(s, start, rebindFrom, rebindTo, new Map());
-}
-
-function copyRec(
-  s: Series<Cell>, start: number, from: Ctx | null, to: Ctx | null,
-  done: Map<Series<Cell>, Series<Cell>>,
-): Series<Cell> {
-  const whole = start === 0;
-  if (whole) {
-    const prev = done.get(s);
-    if (prev !== undefined) return prev;
-  }
-  const out: Series<Cell> = { data: [] };
-  if (whole) done.set(s, out);
-  if (s.nl) out.nl = s.nl.slice(start);
-  if (s.pos) out.pos = s.pos.slice(start);
-  if (s.file !== undefined) out.file = s.file;
-  const data = s.data;
-  for (let i = start; i < data.length; i++) {
-    const c = data[i]!;
-    if (from !== null && isBindable(c) && c.bind === from) {
-      // `to` has the keys of `from` in the same order (a call frame, or an object made from a proto)
-      out.data.push(c.idx === undefined ? { t: c.t, sym: c.sym, bind: to } : { t: c.t, sym: c.sym, bind: to, idx: c.idx });
-    } else if (isAnyBlock(c.t)) {
-      const b = c as BlockCell;
-      out.data.push({ t: b.t, s: copyRec(b.s, 0, from, to, done), i: b.i });
-    } else {
-      out.data.push(c);
+  // iterative: each series to copy is a job; a series met again (sharing, cycles) gets its one copy
+  const done = new Map<Series<Cell>, Series<Cell>>();
+  const fresh = (x: Series<Cell>, from: number): Series<Cell> => {
+    const out: Series<Cell> = { data: [] };
+    if (x.nl) out.nl = x.nl.slice(from);
+    if (x.pos) out.pos = x.pos.slice(from);
+    if (x.file !== undefined) out.file = x.file;
+    return out;
+  };
+  const root = fresh(s, start);
+  const todo: { src: Series<Cell>; from: number; out: Series<Cell> }[] = [{ src: s, from: start, out: root }];
+  if (start === 0) done.set(s, root);
+  for (let job = todo.pop(); job !== undefined; job = todo.pop()) {
+    const { src, from, out } = job;
+    const data = src.data;
+    for (let i = from; i < data.length; i++) {
+      const c = data[i]!;
+      if (rebindFrom !== null && isBindable(c) && c.bind === rebindFrom) {
+        // `to` has the keys of `from` in the same order (a call frame, or an object made from a proto)
+        out.data.push(c.idx === undefined ? { t: c.t, sym: c.sym, bind: rebindTo } : { t: c.t, sym: c.sym, bind: rebindTo, idx: c.idx });
+      } else if (isAnyBlock(c.t)) {
+        const b = c as BlockCell;
+        let copy = done.get(b.s);
+        if (copy === undefined) {
+          copy = fresh(b.s, 0);
+          done.set(b.s, copy);
+          todo.push({ src: b.s, from: 0, out: copy });
+        }
+        out.data.push({ t: b.t, s: copy, i: b.i });
+      } else {
+        out.data.push(c);
+      }
     }
   }
-  return out;
+  return root;
 }

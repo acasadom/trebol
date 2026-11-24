@@ -5,6 +5,8 @@ import {
   native, value, errorField, makeError, form, integer,
   type RunResult, type Cell, type ObjectCell, type Ctx,
 } from '../src/core/index.ts';
+import { K } from '../src/core/kinds.ts';
+import { loadSpans } from '../src/core/index.ts';
 
 let pending: { resolve: (v: Cell) => void } | null = null;
 
@@ -14,6 +16,12 @@ native('test-pause', '[]', (_t, f, v) => {
   f.phase = 1;
   return { k: 'await', p: new Promise<Cell>(resolve => { pending = { resolve }; }) };
 });
+
+// A native that recurses on the JS stack until it overflows, as a native written wrongly would.
+const deepDown = (n: number): number => (n === 0 ? 0 : 1 + deepDown(n - 1));
+native('test-recurse', '[]', () => value(integer(deepDown(1e7))));
+// A native that grows a JS array past its length limit, as a series too long for the host would.
+native('test-too-long', '[]', () => value(integer(new Array(-1).length)));
 
 const rt = makeRuntime();
 
@@ -323,20 +331,125 @@ describe('tasks', () => {
 describe('nesting deeper than the JS stack', () => {
   const deep = (n: number) => '['.repeat(n) + ']'.repeat(n);
 
-  test('load of blocks nested too deep is a load error, not a crash', () => {
-    assert.throws(() => load(deep(100000)), /nested too deep/);
-    assert.equal(evErr(`load ${JSON.stringify(deep(100000))}`), 'load');
-    assert.equal(ev(`attempt [load ${JSON.stringify(deep(100000))}]`), 'none');
+  test('load reads blocks, parens, #[...], #(...) and path parens nested deeper than the JS stack', () => {
+    const n = 100000;
+    const depth = (b: Cell): number => {
+      let d = 0;
+      for (let c: Cell | undefined = b; c !== undefined && 's' in c && Array.isArray(c.s.data); c = (c.s.data as Cell[])[c.t === K.Map ? 1 : 0]) d++;
+      return d;
+    };
+    assert.equal(depth(load(deep(n))), n + 1);
+    assert.equal(depth(load('('.repeat(n) + ')'.repeat(n))), n + 1);
+    assert.equal(mold(load('#(a '.repeat(3) + '1' + ')'.repeat(3))), '[#(a: #(a: #(a: 1)))]');
+    assert.equal(depth(load('#(a '.repeat(n) + '1' + ')'.repeat(n))), n + 1);
+    const wrap = (k: number) => { let x = '[]'; for (let j = 0; j < k; j++) x = `#[block! [${x}] 1]`; return x; };
+    assert.equal(mold(load(wrap(2))), '[[[[]]]]');
+    assert.equal(depth(load(wrap(n))), n + 2);
+    assert.equal(mold(load('a/('.repeat(3) + 'b' + ')/c'.repeat(3))), '[a/(a/(a/(b)/c)/c)/c]');
+    assert.equal(load('a/('.repeat(n) + 'b' + ')'.repeat(n)).s.data[0]!.t, K.Path);
+    assert.equal(ev(`length? load ${JSON.stringify(deep(n))}`), '1');
+    assert.equal(ev(`b: load ${JSON.stringify(deep(n))} b = copy/deep b`), 'true');
+    assert.equal(loadSpans(deep(n)).s.data.length, 1);
+  });
+
+  test('a nested series left open or closed with the wrong bracket is a load error where it opened', () => {
+    assert.throws(() => load('[ [ (1 2]'), /unexpected \]/);
+    assert.throws(() => load('[1\n [2'), /missing \]/);
+    assert.throws(() => load('#(a 1 b)'), /key value pairs/);
+    assert.throws(() => load('a/(b c'), /missing \)/);
+    assert.throws(() => load('a/(b)c'), /invalid path/);
+    assert.throws(() => load('a/(b)/'), /path ends with/);
+    assert.equal(mold(load(':a/(b)/c d: a/(1)/x: 2')), '[:a/(b)/c d: a/(1)/x: 2]');
+  });
+
+  test('writers and walkers take values nested deeper than the JS stack', () => {
+    const src = 'b: copy [] loop 100000 [b: reduce [b]]';
+    const deep = `${'['.repeat(100001)}${']'.repeat(100001)}`; // b holds the first []
+    assert.equal(ev(`${src} (length? mold b) = length? mold/all b`), 'true');
+    assert.equal(ev(`${src} length? mold b`), String(deep.length));
+    assert.equal(ev(`${src} form b`), '""');
+    assert.equal(ev(`${src} length? to-json b`), String(deep.length));
+    assert.equal(ev(`${src} c: copy/deep b block? first c`), 'true');
+    assert.equal(ev(`${src} o: make object! [x: 1] block? bind b o`), 'true');
+    assert.equal(ev(`${src} f: func [x] compose/only [(b) x] f 7`), '7');
+    assert.equal(ev(`${src} collect-words/deep reduce [b 'w b [v]]`), '[w v]');
+    assert.equal(ev(`${src} f: function [x] compose/only [(b) y: x + 1] f 7`), '8');
+  });
+
+  test('mold and form of an object chain deeper than the JS stack grow with its size and load back the same', () => {
+    const chain = (n: number) => `o: make object! [v: 1] loop ${n} [o: make object! [v: o]]`;
+    const n = 100000;
+    // indentation stops at 32 levels, so each level adds a bounded number of characters
+    assert.equal(ev(`${chain(n)} m: mold o reduce [(length? m) < (${n} * 300) m = mold/only load m]`), '[true true]');
+    assert.equal(ev(`${chain(n)} m: mold/all o reduce [(length? m) < (${n} * 300) m = mold/all/only load m]`), '[true true]');
+    assert.equal(ev(`${chain(n)} (length? form o) < (${n} * 300)`), 'true');
+    const indent = (k: number) => `append/dup copy "^/" " " ${k}`;
+    assert.equal(ev(`${chain(40)} m: mold o reduce [none? find m ${indent(129)} not none? find m ${indent(128)} o = do load m]`), '[true true true]');
+    assert.equal(ev(`${chain(40)} p: load mold/all o reduce [o = p o == p]`), '[true true]');
+  });
+
+  test('text or a series too long for the host is a too-long error that attempt catches', () => {
+    const big = 's: copy "0123456789" loop 17 [append s copy s] b: append/dup copy [] s 70';
+    assert.equal(evErr(`${big} mold b`), 'too-long');
+    assert.equal(ev(`${big} attempt [form b]`), 'none');
+    assert.equal(evErr('test-too-long'), 'too-long');
+    assert.equal(ev('attempt [test-too-long]'), 'none');
+  });
+
+  test('collect-words/deep walks a block that holds itself once', () => {
+    assert.equal(ev("b: copy [a] append/only b b append b 'c collect-words/deep b"), '[a c]');
+    // a block shared by many blocks is walked once (2^60 paths), from the lowest place met (R3 order)
+    assert.equal(ev("b: [x] loop 60 [b: reduce [b b]] collect-words/deep b"), '[x]');
+    assert.equal(ev("a: [p q r] collect-words/deep reduce [next a a]"), '[q r p]');
+  });
+
+  test('to-json writes a map key on the same walk as its map, so a cycle through the key is null', () => {
+    assert.equal(ev('m: make map! [] b: reduce [m] put m b 1 (to-json m) = {{"[null]":1}}'), 'true');
+    assert.equal(ev(String.raw`(to-json make map! reduce [[1 "a"] 2 3 4]) = {{"[1,\"a\"]":2,"3":4}}`), 'true');
+    assert.equal(ev(String.raw`k: make map! reduce [[x] 1] (to-json make map! reduce [k 2]) = {{"{\"[\\\"x\\\"]\":1}":2}}`), 'true');
+  });
+
+  test('= and == compare values nested deeper than the JS stack', () => {
+    const src = 'b: copy [] loop 100000 [b: reduce [b]] c: copy/deep b';
+    assert.equal(ev(`${src} reduce [b = c b == c strict-equal? b c equal? b c]`), '[true true true true]');
+    assert.equal(ev(`${src} d: copy [1] loop 100000 [d: reduce [d]] reduce [b = d b == d]`), '[false false]');
+    const chain = (w: string, v: string) => `${w}: make object! [v: ${v}] loop 100000 [${w}: make object! [v: ${w}]]`;
+    assert.equal(ev(`${chain('o', '1')} ${chain('p', '1')} reduce [o = p o == p]`), '[true true]');
+    assert.equal(ev(`${chain('o', '1')} ${chain('p', '2')} reduce [o = p o == p]`), '[false false]');
+  });
+
+  test('= and == take a block met again inside itself as equal there', () => {
+    assert.equal(ev('a: copy [1] append/only a a b: copy [1] append/only b b reduce [a = b a == b]'), '[true true]');
+    assert.equal(ev('a: copy [1] append/only a a b: copy [2] append/only b b reduce [a = b a == b]'), '[false false]');
+    assert.equal(ev('x: [1 2] reduce [[x x] = [x x] [[1 2] [1 2]] = reduce [x x]]'), '[true true]');
+    // a cycle is the same pair of series at the same places, never one side alone
+    const view = 'a: [0 1] insert/only a next a b: reduce [[9 9] 0 1]';
+    assert.equal(ev(`${view} reduce [a = b b = a a == b b == a]`), '[false false false false]');
+    const objs = 'o: make object! [x: 1] q: make object! [x: 1] p: make object! [x: 2]';
+    assert.equal(ev(`${objs} reduce [(reduce [o o]) = (reduce [q p]) (reduce [o o]) == (reduce [q p])]`), '[false false]');
+    assert.equal(ev('o: make object! [s: none] o/s: o p: make object! [s: none] p/s: p reduce [o = p o == p]'), '[true true]');
+    // parts both sides share are compared once per pair, never once per path to them (2^60 paths)
+    const dag = 'chain: func [n x /local o] [o: make object! [v: x] loop n [o: make object! [a: o b: o]] o] ' +
+      'blocks: func [n x /local b] [b: reduce [x] loop n [b: reduce [b b]] b] ';
+    assert.equal(ev(`${dag} reduce [(chain 60 0) == chain 60 0 (chain 60 0) = chain 60 0 (blocks 60 0) == blocks 60 0 (blocks 60 0) = blocks 60 0]`), '[true true true true]');
+    assert.equal(ev(`${dag} reduce [(chain 60 0) == chain 60 1 (chain 60 0) = chain 60 1 (blocks 60 0) == blocks 60 1 (blocks 60 0) = blocks 60 1]`), '[false false false false]');
+    // a pair found equal stays equal; a pair met again with one side changed is compared afresh
+    assert.equal(ev('o: make object! [x: 1] q: make object! [x: 1] p: make object! [x: 2] reduce [(reduce [o o o]) == (reduce [q q p]) (reduce [o o o]) = (reduce [q q p])]'), '[false false]');
+  });
+
+  test('form shows a block met again inside itself as ..., an object as mold does', () => {
+    assert.equal(ev('b: copy [1 2] append/only b b form b'), '"1 2 ..."');
+    assert.equal(ev('o: make object! [a: 1 b: none] o/b: o form o'), '{a: 1\nb: make object! [...]}');
+    assert.equal(ev('b: [x] form reduce [b b]'), '"x x"');
   });
 
   test('a stack overflow in a native is a Trebol error that attempt catches', () => {
-    const src = 'b: copy [] loop 100000 [b: reduce [b]]';
-    assert.equal(evErr(`${src} mold b`), 'stack-overflow');
-    assert.equal(ev(`${src} attempt [mold b]`), 'none');
+    assert.equal(evErr('test-recurse'), 'stack-overflow');
+    assert.equal(ev('attempt [test-recurse]'), 'none');
   });
 
   test('another task keeps running after one overflows', () => {
-    const bad = load('b: copy [] loop 100000 [b: reduce [b]] mold b');
+    const bad = load('test-recurse');
     const good = load('1 + 2');
     bindSeries(bad.s, rt.user, true);
     bindSeries(good.s, rt.user, true);

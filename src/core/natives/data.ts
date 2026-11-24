@@ -84,9 +84,34 @@ native('load-spans', '["Where each value of Trebol source text sits in it, as an
 });
 
 native('mold', '["The value as Trebol source text, the way you would type it." value [any-type!] /only /all]', (_t, f) =>
-  value(string(mold(f.args[0]!, { only: f.args[1] === TRUE, all: f.args[2] === TRUE }))));
+  textOf(() => mold(f.args[0]!, { only: f.args[1] === TRUE, all: f.args[2] === TRUE })));
 
-native('form', '["The value as text for people to read." value [any-type!]]', (_t, f) => value(string(form(f.args[0]!))));
+native('form', '["The value as text for people to read." value [any-type!]]', (_t, f) => textOf(() => form(f.args[0]!)));
+
+/**
+ * The most characters mold and form give. Each one is a cell of the
+ * string's series, so longer text would take gigabytes and could exhaust
+ * the host's memory instead of failing cleanly.
+ */
+const MAX_TEXT = 2 ** 26;
+
+/** The text `make` gives as a string!, or a clear error when it is too long. */
+function textOf(make: () => string): Step {
+  let s: string;
+  try {
+    s = make();
+  } catch (e) {
+    if (e instanceof RangeError && /invalid string length/i.test(e.message)) return fail('internal', 'too-long', 'the text would be longer than a string can hold');
+    throw e;
+  }
+  if (s.length > MAX_TEXT) return fail('internal', 'too-long', `the text would have ${s.length} characters, more than the ${MAX_TEXT} mold and form give`);
+  try {
+    return value(string(s));
+  } catch (e) {
+    if (e instanceof RangeError && /invalid array length/i.test(e.message)) return fail('internal', 'too-long', `the text has ${s.length} characters, more than a string can hold`);
+    throw e;
+  }
+}
 
 // --- make ------------------------------------------------------------------------
 

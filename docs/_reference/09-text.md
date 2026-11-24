@@ -1,10 +1,22 @@
 # Text
 
 Making text from values, and changing text. `form` gives text for people to read, `mold` text that `load`
-reads back as the same value. Strings are series too, so every series function works on them. See
-[text](../language/09-text.md).
+reads back as the same value. A block or object that holds itself shows as `[...]` in `mold`, and a block
+that holds itself as `...` in `form`; values nested any depth are written. Past 32 levels the lines indent
+no further, so the text grows with the value's size, not its depth; `load` reads it the same. Text longer
+than 67108864 characters is an internal `too-long` error. Strings are series too, so every series function
+works on them. See [text](../language/09-text.md).
 
 ## form
+
+An object forms as its fields, one per line, each value molded so a string keeps its quotes and a block its
+brackets:
+
+```trebol-console
+>> form make object! [part: "chain" sizes: [5 6]]
+== {part: "chain"
+sizes: [5 6]}
+```
 
 ## mold
 

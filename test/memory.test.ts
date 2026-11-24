@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { setFlagsFromString } from 'node:v8';
 import { runInNewContext } from 'node:vm';
 import { makeRuntime, doSource, form, errorField, mold } from '../src/core/index.ts';
+import { startHost, runSource } from '../src/host/index.ts';
 
 setFlagsFromString('--expose-gc');
 const gc = runInNewContext('gc') as () => void;
@@ -48,5 +49,26 @@ describe('memory', () => {
     assert.equal(run(`m-b: append/dup copy [] 1 ${N} length? remove-each x m-b [x > 1]`), String(N));
     assert.equal(run(`length? load-json to-json m-b`), String(N));
     run('m-s: m-b: none');
+  });
+
+  test('finished tasks and fired timers nobody keeps are let go', async () => {
+    const host = startHost({ onError: () => {} });
+    const round = 'loop 5000 [spawn [append make block! 100 1]] loop 500 [delay 0 [1]] wait 0.05';
+    await runSource(host, round);
+    gc(); gc();
+    const before = process.memoryUsage().heapUsed;
+    for (let r = 0; r < 3; r++) await runSource(host, round);
+    gc(); gc();
+    const grew = (process.memoryUsage().heapUsed - before) / 1048576;
+    assert.ok(grew < 1, `${grew.toFixed(1)} MiB kept by 16500 finished tasks and timers`);
+    assert.equal(host.sch.live, 0);
+  });
+
+  test('a task the app keeps can be waited for after it finished and memory was swept', async () => {
+    const host = startHost({ onError: () => {} });
+    await runSource(host, 'm-t: spawn [6 * 7] m-u: reduce [spawn [1] spawn [2]] wait 0.05');
+    gc(); gc();
+    assert.equal(mold(await runSource(host, 'wait m-t')), '42');
+    assert.equal(mold(await runSource(host, 'wait m-u')), '[1 2]');
   });
 });

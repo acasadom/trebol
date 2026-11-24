@@ -275,11 +275,51 @@ export function sameValue(a: Cell, b: Cell): boolean {
   return strictEqual(a, b);
 }
 
-export function strictEqual(a: Cell, b: Cell): boolean {
-  return eq(a, b, new Set());
+/** The pairs of series (or contexts) met during one compare, each with its two positions:
+ * left -> right -> "i j". A pair met again is taken as equal: either it is still being
+ * compared (a cycle) or it was compared already and found equal, since any difference ends
+ * the whole compare as false. Kept for the whole compare, so values that share their parts
+ * are compared once per pair, never once per path to it. One side alone met again is not
+ * a pair met again. */
+export type EqSeen = Map<object, Map<object, Set<string>>>;
+
+/** Whether x at i against y at j was met already in this compare; if not, notes it. */
+export function seenPair(seen: EqSeen, x: object, i: number, y: object, j: number): boolean {
+  let rights = seen.get(x);
+  if (rights === undefined) seen.set(x, (rights = new Map()));
+  let places = rights.get(y);
+  if (places === undefined) rights.set(y, (places = new Set()));
+  const at = `${i} ${j}`;
+  if (places.has(at)) return true;
+  places.add(at);
+  return false;
 }
 
-function eq(a: Cell, b: Cell, seen: Set<object>): boolean {
+/** A block (or an object's values) being compared item by item: xs[at..end) against ys from at + off. */
+type EqFrame = { xs: readonly Cell[]; ys: readonly Cell[]; at: number; end: number; off: number };
+
+/** Deep compare with an explicit work stack, so nesting as deep as the heap allows never
+ * reaches the JS stack limit. A pair of series met again at the same positions (a cycle, or
+ * a part both sides share) is equal there: see EqSeen. */
+export function strictEqual(a: Cell, b: Cell): boolean {
+  const seen: EqSeen = new Map();
+  const stack: EqFrame[] = [];
+  if (!eq(a, b, seen, stack)) return false;
+  while (stack.length > 0) {
+    const f = stack[stack.length - 1]!;
+    if (f.at === f.end) {
+      stack.pop();
+      continue;
+    }
+    const k = f.at++;
+    if (!eq(f.xs[k]!, f.ys[k + f.off]!, seen, stack)) return false;
+  }
+  return true;
+}
+
+/** Compares two cells one level deep: false when they differ, true when they are equal or
+ * when their items are left on the stack to compare. */
+function eq(a: Cell, b: Cell, seen: EqSeen, stack: EqFrame[]): boolean {
   if (a === b) return true;
   if (a.t !== b.t) return false;
   switch (a.t) {
@@ -323,19 +363,20 @@ function eq(a: Cell, b: Cell, seen: Set<object>): boolean {
       return a.sym === (b as WordCell).sym;
     case K.Block: case K.Paren: case K.Path: case K.SetPath: case K.GetPath: case K.LitPath: {
       const o = b as BlockCell;
-      return cellsEqual(a.s, a.i, o.s, o.i, seen);
+      return cellsEqual(a.s, a.i, o.s, o.i, seen, stack);
     }
     case K.Map:
-      return cellsEqual(a.s, 0, (b as typeof a).s, 0, seen);
+      return cellsEqual(a.s, 0, (b as typeof a).s, 0, seen, stack);
     case K.Object:
     case K.Error: {
       const x = a.ctx;
       const y = (b as typeof a).ctx;
       if (x === y) return true;
       if (x.keys.length !== y.keys.length) return false;
-      if (seen.has(x)) return true;
-      seen.add(x);
-      return x.keys.every((k, i) => sameSym(k, y.keys[i]!) && eq(x.vals[i]!, y.vals[i]!, seen));
+      if (!x.keys.every((k, i) => sameSym(k, y.keys[i]!))) return false;
+      if (seenPair(seen, x, 0, y, 0)) return true;
+      stack.push({ xs: x.vals, ys: y.vals, at: 0, end: x.vals.length, off: 0 });
+      return true;
     }
     case K.Datatype:
       return a.k === (b as typeof a).k;
@@ -352,14 +393,10 @@ function arraysEqual(x: number[], i: number, y: number[], j: number): boolean {
   return true;
 }
 
-function cellsEqual(x: Series<Cell>, i: number, y: Series<Cell>, j: number, seen: Set<object>): boolean {
+function cellsEqual(x: Series<Cell>, i: number, y: Series<Cell>, j: number, seen: EqSeen, stack: EqFrame[]): boolean {
   if (x === y && i === j) return true;
   if (x.data.length - i !== y.data.length - j) return false;
-  if (seen.has(x)) return true; // cyclic: assume equal at the cycle
-  seen.add(x);
-  for (let n = 0; n < x.data.length - i; n++) {
-    if (!eq(x.data[i + n]!, y.data[j + n]!, seen)) return false;
-  }
-  seen.delete(x);
+  if (seenPair(seen, x, i, y, j)) return true; // a cycle, or a part both sides share
+  stack.push({ xs: x.data, ys: y.data, at: i, end: x.data.length, off: j - i });
   return true;
 }
