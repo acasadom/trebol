@@ -73,6 +73,7 @@ There is no build step while working on Trebol: Node runs the TypeScript directl
 ```sh
 npm install
 npm run check        # type check and every test
+npm run test:browser # built apps in headless Chromium (npx playwright install chromium first)
 npm run trb          # the console
 npm run dev          # the examples, at http://localhost:5173/examples/signup/
 npm run build        # dist/trebol.js and dist/cli.js, what the npm package runs

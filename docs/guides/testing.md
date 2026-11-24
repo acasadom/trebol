@@ -25,6 +25,12 @@
   [last page of the UI tutorial](../ui/11-testing.md)). Trebol uses it on `examples/clients` and on fixtures
   in `test/fixtures/screens` that cover every word and how each failure is told; the words are in
   `src/ui/test.trb` and their host, which keeps the view, the notices and the history, in `tools/test.ts`.
+- **Built apps in a real browser.** `npm run test:browser` builds some of those fixtures with `trebol build`,
+  serves them with `trebol dev` and a backend that answers slowly (`test/browser/api.ts`), and opens them in
+  headless Chromium through Playwright. The screen tests answer at once; here answers come while reactions
+  run or wait, as on a real server, so the browser host is checked too: its scheduler, its requests, its
+  drawing. A console error or an uncaught exception fails the test. It needs Chromium once
+  (`npx playwright install chromium`), and CI runs it on every push and pull request.
 - **A round trip on random values.** `test/roundtrip-fuzz.test.ts` makes thousands of random values, nested
   blocks, maps, objects, dates, money, odd strings, and checks that `load mold/all x` gives `x` back. It is
   seeded, so a failure can be repeated. Every change to the lexer or to `mold` has to keep it green.
@@ -48,9 +54,9 @@ difference cannot slip in unseen.
   TypeScript core. Tests in Trebol are part of the language, and they read as examples of it.
 - **Comparing with Rebol 3 by hand**, when a question comes up. It finds the differences someone thought
   to ask about. Running the whole suite in R3 finds the ones nobody thought of.
-- **Screen tests in a browser** (Playwright, Selenium). They see the real page, CSS and all, but need a
+- **Every screen test in a browser** (Playwright, Selenium). They see the real page, CSS and all, but need a
   browser installed, take seconds per test and break on timing. The dialect's logic is Trebol, so the same
-  calls the browser makes (`ui-click`, `ui-input`) run it without one; what only a browser shows is checked
-  in Chrome by hand.
+  calls the browser makes (`ui-click`, `ui-input`) run it without one. Only what the browser host adds, its
+  timing above all, runs in Chromium, on a few apps.
 - **Examples in the documentation that are not run.** They go wrong silently as the language changes, and
   a reader trusts them. Running them costs a few seconds per build.
