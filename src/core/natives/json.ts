@@ -198,10 +198,10 @@ export function toJson(v: Cell, seen: Set<unknown> = new Set()): string {
       const pad = (n: number, w = 2) => String(n).padStart(w, '0');
       let s = `${pad(d.y, 4)}-${pad(d.m)}-${pad(d.d)}`;
       if (d.time !== null) {
-        const secs = d.time / 1e9;
-        const whole = Math.floor(secs % 60);
-        const frac = secs % 1 === 0 ? '' : String(Number((secs % 1).toFixed(9))).slice(1);
-        s += `T${pad(Math.floor(secs / 3600))}:${pad(Math.floor((secs % 3600) / 60))}:${pad(whole)}${frac}`;
+        // whole seconds and nanoseconds apart, so a fraction is always digits, never 1e-9
+        const secs = Math.floor(d.time / 1e9), ns = d.time - secs * 1e9;
+        const frac = ns === 0 ? '' : '.' + String(ns).padStart(9, '0').replace(/0+$/, '');
+        s += `T${pad(Math.floor(secs / 3600))}:${pad(Math.floor(secs / 60) % 60)}:${pad(secs % 60)}${frac}`;
         if (d.zone !== null) {
           const z = Math.abs(d.zone);
           s += d.zone === 0 ? 'Z' : `${d.zone < 0 ? '-' : '+'}${pad(Math.floor(z / 60))}:${pad(z % 60)}`;
