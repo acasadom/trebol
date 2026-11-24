@@ -65,19 +65,22 @@ export function sortGroups(rows: Cell[], col: Sym, desc: boolean, language: stri
  */
 function sortRows(rows: Cell[], col: Sym, desc: boolean, language: string, shows: (v: Cell) => string): Cell[] {
   const collator = new Intl.Collator(language, { numeric: true });
-  const blank = (v: Cell): boolean => v.t === K.None || (v.t === K.String && text(v as StringCell) === '');
-  const order = (a: Cell, b: Cell): number => {
-    if (a.t === K.String && b.t === K.String) return collator.compare(text(a as StringCell), text(b as StringCell));
+  // each text is made once, not at each comparison
+  const all = rows.map(row => {
+    const v = rowField(row, col);
+    const s = v.t === K.String ? text(v as StringCell) : null;
+    return { row, v, s, blank: v.t === K.None || s === '' };
+  });
+  type Item = (typeof all)[number];
+  const order = (a: Item, b: Item): number => {
+    if (a.s !== null && b.s !== null) return collator.compare(a.s, b.s);
     // values that cannot be ordered together (a text and a number) go by what they show
-    return compare(a, b) ?? collator.compare(shows(a), shows(b));
+    return compare(a.v, b.v) ?? collator.compare(shows(a.v), shows(b.v));
   };
-  return rows
-    .map(row => ({ row, v: rowField(row, col) }))
+  return all
     .sort((a, b) => {
-      const ea = blank(a.v);
-      const eb = blank(b.v);
-      if (ea || eb) return ea === eb ? 0 : ea ? 1 : -1;
-      return desc ? order(b.v, a.v) : order(a.v, b.v);
+      if (a.blank || b.blank) return a.blank === b.blank ? 0 : a.blank ? 1 : -1;
+      return desc ? order(b, a) : order(a, b);
     })
     .map(x => x.row);
 }

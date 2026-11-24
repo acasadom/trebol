@@ -4,6 +4,7 @@ import { K, NONE, string, ctxFind, intern, spell, type Cell, type ObjectCell, ty
 import { report, type Host } from '../index.ts';
 import { spawn, taskResult, type HostTask } from '../scheduler.ts';
 import { linkHref } from '../markdown.ts';
+import type { RowOrder } from '../row-order.ts';
 import { devLog } from '../devlog.ts';
 import { faceRef } from '../devtools.ts';
 import { get, str, flag, word, children, iconName, icon, paneFaces, drawnStyle } from './faces.ts';
@@ -41,6 +42,8 @@ export interface Mounted {
   rows: Map<string, HTMLElement> | null;
   /** A table or list: all its rows, in the order shown, with their keys; only some may be drawn. */
   items: { row: Cell; k: string }[];
+  /** A table or list: what `items` was made from, kept while it holds (see row-order.ts). */
+  order: RowOrder | null;
   /** A table or list: the rows drawn, [first, end), and about how tall each is. */
   first: number;
   end: number;
@@ -177,7 +180,7 @@ export function build(face: ObjectCell): HTMLElement {
   const m: Mounted = {
     face, el: null!, input: null, label: null, error: null, kids: get(face, 'pane'), paneFaces: paneFaces(face),
     box: null, rows: null, empty: null, button: null, radios: null, open: null, shown: undefined,
-    typing: 0, typed: null, items: [], first: 0, end: 0, rowHeight: 0,
+    typing: 0, typed: null, items: [], order: null, first: 0, end: 0, rowHeight: 0,
   };
   let node: HTMLElement;
   if (INPUTS.has(style)) {
