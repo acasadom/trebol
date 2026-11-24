@@ -398,6 +398,9 @@ describe('nesting deeper than the JS stack', () => {
 
   test('collect-words/deep walks a block that holds itself once', () => {
     assert.equal(ev("b: copy [a] append/only b b append b 'c collect-words/deep b"), '[a c]');
+    // a block shared by many blocks is walked once (2^60 paths), from the lowest place met (R3 order)
+    assert.equal(ev("b: [x] loop 60 [b: reduce [b b]] collect-words/deep b"), '[x]');
+    assert.equal(ev("a: [p q r] collect-words/deep reduce [next a a]"), '[q r p]');
   });
 
   test('to-json writes a map key on the same walk as its map, so a cycle through the key is null', () => {
@@ -425,6 +428,13 @@ describe('nesting deeper than the JS stack', () => {
     const objs = 'o: make object! [x: 1] q: make object! [x: 1] p: make object! [x: 2]';
     assert.equal(ev(`${objs} reduce [(reduce [o o]) = (reduce [q p]) (reduce [o o]) == (reduce [q p])]`), '[false false]');
     assert.equal(ev('o: make object! [s: none] o/s: o p: make object! [s: none] p/s: p reduce [o = p o == p]'), '[true true]');
+    // parts both sides share are compared once per pair, never once per path to them (2^60 paths)
+    const dag = 'chain: func [n x /local o] [o: make object! [v: x] loop n [o: make object! [a: o b: o]] o] ' +
+      'blocks: func [n x /local b] [b: reduce [x] loop n [b: reduce [b b]] b] ';
+    assert.equal(ev(`${dag} reduce [(chain 60 0) == chain 60 0 (chain 60 0) = chain 60 0 (blocks 60 0) == blocks 60 0 (blocks 60 0) = blocks 60 0]`), '[true true true true]');
+    assert.equal(ev(`${dag} reduce [(chain 60 0) == chain 60 1 (chain 60 0) = chain 60 1 (blocks 60 0) == blocks 60 1 (blocks 60 0) = blocks 60 1]`), '[false false false false]');
+    // a pair found equal stays equal; a pair met again with one side changed is compared afresh
+    assert.equal(ev('o: make object! [x: 1] q: make object! [x: 1] p: make object! [x: 2] reduce [(reduce [o o o]) == (reduce [q q p]) (reduce [o o o]) = (reduce [q q p])]'), '[false false]');
   });
 
   test('form shows a block met again inside itself as ..., an object as mold does', () => {

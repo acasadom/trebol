@@ -375,14 +375,14 @@ native('collect-words', '["The words used in a block, each once." block [block!]
   const seen = new Set<number>(ignore);
   const out: Cell[] = [];
   // An explicit stack of the blocks being walked, so nesting any depth never reaches the JS
-  // stack; a block met again on its own path is skipped.
+  // stack. Each series is walked once from the lowest place it is met at: a block met again
+  // there or after (on its own path, or shared by several blocks) has no word not met yet.
   const b = f.args[0] as BlockCell;
   const stack: { s: Series<Cell>; i: number }[] = [{ s: b.s, i: b.i }];
-  const path = new Set<Series<Cell>>([b.s]);
+  const from = new Map<Series<Cell>, number>([[b.s, b.i]]);
   while (stack.length > 0) {
     const top = stack[stack.length - 1]!;
     if (top.i >= top.s.data.length) {
-      path.delete(top.s);
       stack.pop();
       continue;
     }
@@ -390,9 +390,12 @@ native('collect-words', '["The words used in a block, each once." block [block!]
     if ((setOnly ? c.t === K.SetWord : c.t >= K.Word && c.t <= K.LitWord) && !seen.has(canon((c as WordCell).sym))) {
       seen.add(canon((c as WordCell).sym));
       out.push({ t: K.Word, sym: (c as WordCell).sym, bind: null });
-    } else if (deep && isAnyBlock(c.t) && !path.has((c as BlockCell).s)) {
-      path.add((c as BlockCell).s);
-      stack.push({ s: (c as BlockCell).s, i: (c as BlockCell).i });
+    } else if (deep && isAnyBlock(c.t)) {
+      const { s: cs, i: ci } = c as BlockCell;
+      const walked = from.get(cs);
+      if (walked !== undefined && walked <= ci) continue;
+      from.set(cs, ci);
+      stack.push({ s: cs, i: ci });
     }
   }
   return value({ t: K.Block, s: { data: out }, i: 0 });
