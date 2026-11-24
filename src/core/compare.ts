@@ -83,7 +83,34 @@ function almostEqual(x: number, y: number): boolean {
 
 const isFloat = (c: Cell): boolean => c.t === K.Decimal || c.t === K.Percent;
 
+/** A block being compared item by item: xs[at..end) against ys from at + off. */
+type EqFrame = { xs: readonly Cell[]; ys: readonly Cell[]; at: number; end: number; off: number; series: object };
+
+/** `=` (equal?): blocks are walked with an explicit work stack, so nesting as deep as the
+ * heap allows never reaches the JS stack limit. A block met again on its own path is a cycle:
+ * equal there, as `==` does. */
 export function isEqual(a: Cell, b: Cell): boolean {
+  const seen = new Set<object>();
+  const stack: EqFrame[] = [];
+  if (!equalStep(a, b, seen, stack)) return false;
+  while (stack.length > 0) {
+    const f = stack[stack.length - 1]!;
+    if (f.at === f.end) {
+      seen.delete(f.series);
+      stack.pop();
+      continue;
+    }
+    const k = f.at++;
+    const x = f.xs[k]!;
+    const y = f.ys[k + f.off]!;
+    if (!sameSort(x, y) || !equalStep(x, y, seen, stack)) return false;
+  }
+  return true;
+}
+
+/** Compares two cells one level deep: false when they differ, true when they are equal or
+ * when their items are left on the stack to compare. */
+function equalStep(a: Cell, b: Cell, seen: Set<object>, stack: EqFrame[]): boolean {
   if (a === b) return true;
   if (isNumeric(a) && isNumeric(b)) {
     if ((isFloat(a) || isFloat(b)) && a.t !== K.Money && b.t !== K.Money) {
@@ -103,7 +130,9 @@ export function isEqual(a: Cell, b: Cell): boolean {
     const y = b as BlockCell;
     const n = x.s.data.length - x.i;
     if (n !== y.s.data.length - y.i) return false;
-    for (let k = 0; k < n; k++) if (!itemEqual(x.s.data[x.i + k]!, y.s.data[y.i + k]!)) return false;
+    if ((x.s === y.s && x.i === y.i) || seen.has(x.s)) return true;
+    seen.add(x.s);
+    stack.push({ xs: x.s.data, ys: y.s.data, at: x.i, end: x.s.data.length, off: y.i - x.i, series: x.s });
     return true;
   }
   // a date without time is the same day at midnight and two zones the same moment;
@@ -117,8 +146,6 @@ export function isEqual(a: Cell, b: Cell): boolean {
 export function sameSort(a: Cell, b: Cell): boolean {
   return a.t === b.t || (isNumeric(a) && isNumeric(b)) || (isAnyWord(a.t) && isAnyWord(b.t));
 }
-
-const itemEqual = (a: Cell, b: Cell): boolean => sameSort(a, b) && isEqual(a, b);
 
 /** Ordering for `<`, `>` and sort; null when the two cannot be ordered. */
 export function compare(a: Cell, b: Cell): -1 | 0 | 1 | null {

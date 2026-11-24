@@ -275,11 +275,32 @@ export function sameValue(a: Cell, b: Cell): boolean {
   return strictEqual(a, b);
 }
 
+/** A block (or an object's values) being compared item by item: xs[at..end) against ys from at + off.
+ * `series` is the left series while it is on the path, to be let go when the frame ends. */
+type EqFrame = { xs: readonly Cell[]; ys: readonly Cell[]; at: number; end: number; off: number; series: object | null };
+
+/** Deep compare with an explicit work stack, so nesting as deep as the heap allows never
+ * reaches the JS stack limit. A series met again on its own path is a cycle: equal there. */
 export function strictEqual(a: Cell, b: Cell): boolean {
-  return eq(a, b, new Set());
+  const seen = new Set<object>();
+  const stack: EqFrame[] = [];
+  if (!eq(a, b, seen, stack)) return false;
+  while (stack.length > 0) {
+    const f = stack[stack.length - 1]!;
+    if (f.at === f.end) {
+      if (f.series !== null) seen.delete(f.series);
+      stack.pop();
+      continue;
+    }
+    const k = f.at++;
+    if (!eq(f.xs[k]!, f.ys[k + f.off]!, seen, stack)) return false;
+  }
+  return true;
 }
 
-function eq(a: Cell, b: Cell, seen: Set<object>): boolean {
+/** Compares two cells one level deep: false when they differ, true when they are equal or
+ * when their items are left on the stack to compare. */
+function eq(a: Cell, b: Cell, seen: Set<object>, stack: EqFrame[]): boolean {
   if (a === b) return true;
   if (a.t !== b.t) return false;
   switch (a.t) {
@@ -323,10 +344,10 @@ function eq(a: Cell, b: Cell, seen: Set<object>): boolean {
       return a.sym === (b as WordCell).sym;
     case K.Block: case K.Paren: case K.Path: case K.SetPath: case K.GetPath: case K.LitPath: {
       const o = b as BlockCell;
-      return cellsEqual(a.s, a.i, o.s, o.i, seen);
+      return cellsEqual(a.s, a.i, o.s, o.i, seen, stack);
     }
     case K.Map:
-      return cellsEqual(a.s, 0, (b as typeof a).s, 0, seen);
+      return cellsEqual(a.s, 0, (b as typeof a).s, 0, seen, stack);
     case K.Object:
     case K.Error: {
       const x = a.ctx;
@@ -334,8 +355,10 @@ function eq(a: Cell, b: Cell, seen: Set<object>): boolean {
       if (x === y) return true;
       if (x.keys.length !== y.keys.length) return false;
       if (seen.has(x)) return true;
-      seen.add(x);
-      return x.keys.every((k, i) => sameSym(k, y.keys[i]!) && eq(x.vals[i]!, y.vals[i]!, seen));
+      if (!x.keys.every((k, i) => sameSym(k, y.keys[i]!))) return false;
+      seen.add(x); // an object stays seen: once on the path, it is never compared again
+      stack.push({ xs: x.vals, ys: y.vals, at: 0, end: x.vals.length, off: 0, series: null });
+      return true;
     }
     case K.Datatype:
       return a.k === (b as typeof a).k;
@@ -352,14 +375,11 @@ function arraysEqual(x: number[], i: number, y: number[], j: number): boolean {
   return true;
 }
 
-function cellsEqual(x: Series<Cell>, i: number, y: Series<Cell>, j: number, seen: Set<object>): boolean {
+function cellsEqual(x: Series<Cell>, i: number, y: Series<Cell>, j: number, seen: Set<object>, stack: EqFrame[]): boolean {
   if (x === y && i === j) return true;
   if (x.data.length - i !== y.data.length - j) return false;
   if (seen.has(x)) return true; // cyclic: assume equal at the cycle
   seen.add(x);
-  for (let n = 0; n < x.data.length - i; n++) {
-    if (!eq(x.data[i + n]!, y.data[j + n]!, seen)) return false;
-  }
-  seen.delete(x);
+  stack.push({ xs: x.data, ys: y.data, at: i, end: x.data.length, off: j - i, series: x });
   return true;
 }

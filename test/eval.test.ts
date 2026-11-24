@@ -345,6 +345,21 @@ describe('nesting deeper than the JS stack', () => {
     assert.equal(ev(`${src} f: func [x] compose/only [(b) x] f 7`), '7');
   });
 
+  test('= and == compare values nested deeper than the JS stack', () => {
+    const src = 'b: copy [] loop 100000 [b: reduce [b]] c: copy/deep b';
+    assert.equal(ev(`${src} reduce [b = c b == c strict-equal? b c equal? b c]`), '[true true true true]');
+    assert.equal(ev(`${src} d: copy [1] loop 100000 [d: reduce [d]] reduce [b = d b == d]`), '[false false]');
+    const chain = (w: string, v: string) => `${w}: make object! [v: ${v}] loop 100000 [${w}: make object! [v: ${w}]]`;
+    assert.equal(ev(`${chain('o', '1')} ${chain('p', '1')} reduce [o = p o == p]`), '[true true]');
+    assert.equal(ev(`${chain('o', '1')} ${chain('p', '2')} reduce [o = p o == p]`), '[false false]');
+  });
+
+  test('= and == take a block met again inside itself as equal there', () => {
+    assert.equal(ev('a: copy [1] append/only a a b: copy [1] append/only b b reduce [a = b a == b]'), '[true true]');
+    assert.equal(ev('a: copy [1] append/only a a b: copy [2] append/only b b reduce [a = b a == b]'), '[false false]');
+    assert.equal(ev('x: [1 2] reduce [[x x] = [x x] [[1 2] [1 2]] = reduce [x x]]'), '[true true]');
+  });
+
   test('form shows a block or object met again inside itself as ...', () => {
     assert.equal(ev('b: copy [1 2] append/only b b form b'), '"1 2 ..."');
     assert.equal(ev('o: make object! [a: 1 b: none] o/b: o form o'), '{a: 1\nb: ...}');
