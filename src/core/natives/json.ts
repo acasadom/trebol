@@ -9,7 +9,7 @@
 
 import { mapData } from '../maps.ts';
 import { K, isAnyString, isAnyWord } from '../kinds.ts';
-import { intern, spell } from '../symbols.ts';
+import { intern, spell, canon } from '../symbols.ts';
 import * as I64 from '../int64.ts';
 import { formatDec } from '../dec.ts';
 import {
@@ -21,12 +21,20 @@ import { native, value, fail } from './define.ts';
 
 const KEY_WORD = /^[A-Za-z_][A-Za-z0-9_-]*$/;
 
-/** A JSON object key as a map key: a word when it reads as one. */
-function keyCell(k: string): Cell {
-  return KEY_WORD.test(k) ? { t: K.Word, sym: intern(k), bind: null } : string(k);
+/** A JSON object key as a map key: a word when it reads as one. JSON keys tell case apart and words do
+ *  not, so a key that differs from an earlier word key of the same object only in case stays text
+ *  ("Id" then "id" gives Id and "id"), and both stay reachable. `words` maps each word key's canonical
+ *  symbol to its spelling. */
+function keyCell(k: string, words: Map<number, string>): Cell {
+  if (!KEY_WORD.test(k)) return string(k);
+  const sym = intern(k);
+  const seen = words.get(canon(sym));
+  if (seen === undefined) words.set(canon(sym), k);
+  else if (seen !== k) return string(k);
+  return { t: K.Word, sym, bind: null };
 }
 
-interface Open { kind: 'array' | 'object'; out: Cell[]; key: Cell | null }
+interface Open { kind: 'array' | 'object'; out: Cell[]; key: Cell | null; words: Map<number, string> | null }
 
 // sticky: matches at lastIndex, over the whole text however long the number
 const NUMBER = /-?(?:0|[1-9]\d*)(\.\d+)?([eE][+-]?\d+)?/y;
@@ -107,7 +115,7 @@ export function parseJson(src: string): Cell | string {
         ws();
         if (src[i] !== ':') return err('expected :');
         i++;
-        top.key = keyCell(k);
+        top.key = keyCell(k, top.words!);
         continue;
       }
     } else if (result === null || top !== undefined) {
@@ -120,12 +128,12 @@ export function parseJson(src: string): Cell | string {
         if (c === undefined) return err('unexpected end');
         if (c === '{') {
           i++;
-          stack.push({ kind: 'object', out: [], key: null });
+          stack.push({ kind: 'object', out: [], key: null, words: new Map() });
           continue;
         }
         if (c === '[') {
           i++;
-          stack.push({ kind: 'array', out: [], key: null });
+          stack.push({ kind: 'array', out: [], key: null, words: null });
           continue;
         }
         let v: Cell;

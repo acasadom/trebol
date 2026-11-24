@@ -17,6 +17,13 @@ Trebol [
 [m: make map! ["a" 1] foreach [k v] m [append k "z"] 1 = select m "a"]
 [m: make map! ["a" 1] b: to block! m append b/1 "z" 1 = select m "a"]
 
+"text and char keys tell upper case from lower case, as JSON does; word keys do not, as words never do"
+[m: make map! ["Id" 1] m/("id"): 2 all [2 = length? m  1 = select m "Id"  2 = select m "id"]]
+[m: load-json {{"Id": 1, "id": 2}} all [2 = length? m  m/Id = 1  2 = select m "id"]]
+[m: load-json {{"id": 1, "x": 0, "id": 2}} all [2 = length? m  m/id = 2]]
+[m: make map! [#"a" 1] all [none? select m #"A"  1 = select m #"a"]]
+[m: make map! [Id 1] m/id: 2 all [1 = length? m  2 = m/ID]]
+
 "a big map finds each key as a small one does"
 [
     m: make map! []
