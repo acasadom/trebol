@@ -3,8 +3,9 @@
 # Text
 
 Making text from values, and changing text. `form` gives text for people to read, `mold` text that `load`
-reads back as the same value. Strings are series too, so every series function works on them. See
-[text](../language/09-text.md).
+reads back as the same value. A block or object that holds itself shows as `[...]` in `mold` and `...` in
+`form`, and values nested any depth are written. Strings are series too, so every series function works on
+them. See [text](../language/09-text.md).
 
 (fn-form)=
 ## form

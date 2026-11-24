@@ -38,6 +38,46 @@ export function mold(c: Cell, opts: MoldOptions = {}): string {
 }
 
 export function form(c: Cell): string {
+  // Iterative, as the molder: blocks and objects nested any depth form
+  // without recursing on the JS stack. A block or object met again inside
+  // itself forms as "...".
+  let out = '';
+  const active = new Set<object>();
+  const work: Work[] = [{ w: 1, c, depth: 0 }];
+  for (let item = work.pop(); item !== undefined; item = work.pop()) {
+    if (item.w === 0) { out += item.text; continue; }
+    if (item.w === 2) { active.delete(item.leave); continue; }
+    const v = item.c;
+    if (v.t === K.Block || v.t === K.Paren || v.t === K.Object) {
+      const parts: Work[] = [];
+      let key: object;
+      if (v.t === K.Object) {
+        const ctx = v.ctx;
+        key = ctx;
+        ctx.keys.forEach((k, i) => {
+          parts.push({ w: 0, text: (i > 0 ? '\n' : '') + spell(k) + ': ' }, { w: 1, c: ctx.vals[i]!, depth: 0 });
+        });
+      } else {
+        const b = v as BlockCell;
+        key = b.s;
+        for (let j = b.i; j < b.s.data.length; j++) {
+          if (j > b.i) parts.push({ w: 0, text: ' ' });
+          parts.push({ w: 1, c: b.s.data[j]!, depth: 0 });
+        }
+      }
+      if (active.has(key)) { out += '...'; continue; }
+      active.add(key);
+      parts.push({ w: 2, leave: key });
+      for (let j = parts.length - 1; j >= 0; j--) work.push(parts[j]!);
+      continue;
+    }
+    out += formScalar(v);
+  }
+  return out;
+}
+
+/** form of a value that holds no blocks or objects to walk. */
+function formScalar(c: Cell): string {
   switch (c.t) {
     case K.Unset:
       return '';
@@ -47,10 +87,6 @@ export function form(c: Cell): string {
       return String.fromCodePoint(c.v);
     case K.Word: case K.SetWord: case K.GetWord: case K.LitWord: case K.Refinement: case K.Issue:
       return spell(c.sym);
-    case K.Block: case K.Paren:
-      return c.s.data.slice(c.i).map(form).join(' ');
-    case K.Object:
-      return c.ctx.keys.map((k, i) => `${spell(k)}: ${form(c.ctx.vals[i]!)}`).join('\n');
     case K.Error:
       return report(c);
     default:
@@ -189,19 +225,59 @@ function hex(bytes: readonly number[], start = 0): string {
 }
 
 // --- the molder -------------------------------------------------------------------
+//
+// The molder never recurses on the JS stack: a value nested 100000 blocks deep
+// molds as well as a flat one. Work is a stack of explicit items, popped in
+// order: text to write, a value to mold, or the end of a series or context
+// (which leaves the cycle guard).
 
 const INDENT = '    ';
+
+type Work =
+  | { w: 0; text: string }
+  | { w: 1; c: Cell; depth: number }
+  | { w: 2; leave: object };
 
 class Molder {
   out = '';
   private readonly all: boolean;
   private readonly active = new Set<object>();
+  /** Pending work, last item first; each step pushes its parts in reverse. */
+  private readonly work: Work[] = [];
 
   constructor(all: boolean) {
     this.all = all;
   }
 
   value(c: Cell, depth: number): void {
+    this.work.push({ w: 1, c, depth });
+    this.run();
+  }
+
+  /**
+   * Molds series elements from `start`, honoring newline markers.
+   * `depth` is the depth of the enclosing block (-1 for top-level contents).
+   */
+  contents(s: Series<Cell>, start: number, depth: number): void {
+    this.pushContents(s, start, depth);
+    this.run();
+  }
+
+  private run(): void {
+    const work = this.work;
+    for (let item = work.pop(); item !== undefined; item = work.pop()) {
+      if (item.w === 0) this.out += item.text;
+      else if (item.w === 1) this.step(item.c, item.depth);
+      else this.active.delete(item.leave);
+    }
+  }
+
+  /** Pushes parts so that they run in the given order. */
+  private later(parts: Work[]): void {
+    for (let j = parts.length - 1; j >= 0; j--) this.work.push(parts[j]!);
+  }
+
+  private step(c: Cell, depth: number): void {
     const all = this.all;
     switch (c.t) {
       case K.Unset: this.out += all ? '#[unset]' : ''; return;
@@ -221,13 +297,13 @@ class Molder {
       case K.Tuple: this.out += c.v.join('.'); return;
       case K.Date: this.out += formatDate(c.v); return;
       case K.Time: this.out += (c.v < 0 ? '-' : '') + formatTime(Math.abs(c.v)); return;
-      case K.String: this.indexed(c, () => moldString(c.s.data, all ? 0 : c.i)); return;
-      case K.File: this.indexed(c, () => moldFile(c.s.data, all ? 0 : c.i)); return;
+      case K.String: this.indexed(c, moldString(c.s.data, all ? 0 : c.i)); return;
+      case K.File: this.indexed(c, moldFile(c.s.data, all ? 0 : c.i)); return;
       case K.Email: case K.Url:
-        this.indexed(c, () => fromCodePoints(c.s.data, all ? 0 : c.i));
+        this.indexed(c, fromCodePoints(c.s.data, all ? 0 : c.i));
         return;
-      case K.Tag: this.indexed(c, () => '<' + fromCodePoints(c.s.data, all ? 0 : c.i) + '>'); return;
-      case K.Binary: this.indexed(c, () => '#{' + hex(c.s.data, all ? 0 : c.i) + '}'); return;
+      case K.Tag: this.indexed(c, '<' + fromCodePoints(c.s.data, all ? 0 : c.i) + '>'); return;
+      case K.Binary: this.indexed(c, '#{' + hex(c.s.data, all ? 0 : c.i) + '}'); return;
       case K.Bitset: {
         const body = (c.neg ? 'not ' : '') + '#{' + hex(c.s.data) + '}';
         this.out += all ? `#[bitset! ${body}]` : `make bitset! ${c.neg ? '[not bits ' : ''}#{${hex(c.s.data)}}${c.neg ? ']' : ''}`;
@@ -257,10 +333,12 @@ class Molder {
         // function back, so mold/all keeps the opaque form.
         if (all) break;
         const def = c.p as FuncDef;
-        this.out += 'func ';
-        this.blockLike(def.specBlock, '[', ']', depth);
-        this.out += ' ';
-        this.blockLike({ t: K.Block, s: def.body, i: 0 }, '[', ']', depth);
+        this.later([
+          { w: 0, text: 'func ' },
+          { w: 1, c: def.specBlock, depth },
+          { w: 0, text: ' ' },
+          { w: 1, c: { t: K.Block, s: def.body, i: 0 }, depth },
+        ]);
         return;
       }
     }
@@ -268,16 +346,15 @@ class Molder {
   }
 
   /** A series not at its head molds as #[kind! value index] with `all`. */
-  private indexed(c: StringCell, body: () => string): void {
-    if (this.all && c.i > 0) this.out += `#[${kindName(c.t)} ${body()} ${c.i + 1}]`;
-    else this.out += body();
+  private indexed(c: StringCell, body: string): void {
+    if (this.all && c.i > 0) this.out += `#[${kindName(c.t)} ${body} ${c.i + 1}]`;
+    else this.out += body;
   }
 
   private blockLike(c: BlockCell, open: string, close: string, depth: number): void {
     if (this.all && c.i > 0) {
       this.out += `#[${kindName(c.t)} `;
-      this.blockLike({ ...c, i: 0 }, open, close, depth);
-      this.out += ` ${c.i + 1}]`;
+      this.later([{ w: 1, c: { ...c, i: 0 }, depth }, { w: 0, text: ` ${c.i + 1}]` }]);
       return;
     }
     if (this.active.has(c.s)) {
@@ -285,41 +362,34 @@ class Molder {
       return;
     }
     this.out += open;
-    const multiline = this.contents(c.s, c.i, depth);
-    if (multiline) this.out += '\n' + INDENT.repeat(depth);
-    this.out += close;
+    // pushed first, so it runs after the contents
+    this.work.push({ w: 0, text: multiline(c.s, c.i, depth) ? '\n' + INDENT.repeat(depth) + close : close });
+    this.pushContents(c.s, c.i, depth);
   }
 
-  /**
-   * Molds series elements from `start`, honoring newline markers.
-   * `depth` is the depth of the enclosing block (-1 for top-level contents).
-   * Returns true if any element was placed on a new line.
-   */
-  contents(s: Series<Cell>, start: number, depth: number): boolean {
+  private pushContents(s: Series<Cell>, start: number, depth: number): void {
     this.active.add(s);
-    let multiline = false;
+    const parts: Work[] = [];
     const indent = INDENT.repeat(depth + 1);
     for (let j = start; j < s.data.length; j++) {
-      if (s.nl?.[j] && (j > start || depth >= 0)) {
-        this.out += '\n' + indent;
-        multiline = true;
-      } else if (j > start) {
-        this.out += ' ';
-      }
-      this.value(s.data[j]!, depth + 1);
+      if (s.nl?.[j] && (j > start || depth >= 0)) parts.push({ w: 0, text: '\n' + indent });
+      else if (j > start) parts.push({ w: 0, text: ' ' });
+      parts.push({ w: 1, c: s.data[j]!, depth: depth + 1 });
     }
-    this.active.delete(s);
-    return multiline;
+    parts.push({ w: 2, leave: s });
+    this.later(parts);
   }
 
   private path(c: BlockCell, depth: number): void {
     if (c.t === K.GetPath) this.out += ':';
     if (c.t === K.LitPath) this.out += "'";
-    c.s.data.slice(c.i).forEach((seg, j) => {
-      if (j > 0) this.out += '/';
-      this.value(seg, depth);
-    });
-    if (c.t === K.SetPath) this.out += ':';
+    const parts: Work[] = [];
+    for (let j = c.i; j < c.s.data.length; j++) {
+      if (j > c.i) parts.push({ w: 0, text: '/' });
+      parts.push({ w: 1, c: c.s.data[j]!, depth });
+    }
+    if (c.t === K.SetPath) parts.push({ w: 0, text: ':' });
+    this.later(parts);
   }
 
   private map(s: Series<Cell>, depth: number): void {
@@ -329,16 +399,17 @@ class Molder {
     }
     this.active.add(s);
     this.out += '#(';
+    const parts: Work[] = [];
     for (let j = 0; j < s.data.length; j += 2) {
-      if (j > 0) this.out += ' ';
+      if (j > 0) parts.push({ w: 0, text: ' ' });
       const key = s.data[j]!;
-      if (key.t === K.Word) this.out += spell(key.sym) + ':';
-      else this.value(key, depth + 1);
-      this.out += ' ';
-      this.value(s.data[j + 1]!, depth + 1);
+      if (key.t === K.Word) parts.push({ w: 0, text: spell(key.sym) + ':' });
+      else parts.push({ w: 1, c: key, depth: depth + 1 });
+      parts.push({ w: 0, text: ' ' });
+      parts.push({ w: 1, c: s.data[j + 1]!, depth: depth + 1 });
     }
-    this.out += ')';
-    this.active.delete(s);
+    parts.push({ w: 0, text: ')' }, { w: 2, leave: s });
+    this.later(parts);
   }
 
   /** With `prefix` null, molds as construction syntax #[object! [...]]. */
@@ -350,17 +421,26 @@ class Molder {
     this.active.add(ctx);
     this.out += prefix === null ? '#[object! [' : prefix + ' [';
     const indent = INDENT.repeat(depth + 1);
+    const parts: Work[] = [];
     ctx.keys.forEach((k, i) => {
       const v = ctx.vals[i]!;
-      this.out += '\n' + indent + spell(k) + ': ';
       // `make object! [...]` evaluates its block, so a word or path must be quoted to stay itself
-      if (prefix !== null && (v.t === K.Word || v.t === K.Path)) this.out += "'";
-      this.value(v, depth + 1);
+      const quote = prefix !== null && (v.t === K.Word || v.t === K.Path) ? "'" : '';
+      parts.push({ w: 0, text: '\n' + indent + spell(k) + ': ' + quote });
+      parts.push({ w: 1, c: v, depth: depth + 1 });
     });
-    if (ctx.keys.length > 0) this.out += '\n' + INDENT.repeat(depth);
-    this.out += prefix === null ? ']]' : ']';
-    this.active.delete(ctx);
+    let close = prefix === null ? ']]' : ']';
+    if (ctx.keys.length > 0) close = '\n' + INDENT.repeat(depth) + close;
+    parts.push({ w: 0, text: close }, { w: 2, leave: ctx });
+    this.later(parts);
   }
+}
+
+/** Whether contents molded from `start` put any element on a new line. */
+function multiline(s: Series<Cell>, start: number, depth: number): boolean {
+  if (s.nl === undefined) return false;
+  for (let j = start; j < s.data.length; j++) if (s.nl[j] && (j > start || depth >= 0)) return true;
+  return false;
 }
 
 /** "file:line:col" for an element of a loaded block, for error messages. */

@@ -13,7 +13,7 @@ import * as I64 from '../int64.ts';
 import { formatDec } from '../dec.ts';
 import {
   NONE, TRUE, FALSE, integer, decimal, string, text,
-  type Cell, type StringCell, type WordCell,
+  type Cell, type StringCell, type WordCell, type BlockCell,
 } from '../values.ts';
 import { formatTime } from '../mold.ts';
 import { native, value, fail } from './define.ts';
@@ -183,9 +183,60 @@ function jsonString(s: string): string {
 /** Functions have no JSON form: a field holding one is left out, as JSON.stringify does. */
 const isFunc = (c: Cell): boolean => c.t === K.Function || c.t === K.Native || c.t === K.Op;
 
+/** Pending writer work, last item first: text to write, a value to write, or the end of a container. */
+type Work = { w: 0; text: string } | { w: 1; c: Cell } | { w: 2; leave: object };
+
 /** Serializes a value as JSON. Cycles, and functions in a block, become null. The words true, false and
- *  none become the JSON values true, false and null; other words become strings. */
-export function toJson(v: Cell, seen: Set<unknown> = new Set()): string {
+ *  none become the JSON values true, false and null; other words become strings. Iterative: a value
+ *  nested any depth is written without recursing on the JS stack. */
+export function toJson(v: Cell): string {
+  let out = '';
+  const seen = new Set<object>();
+  const work: Work[] = [{ w: 1, c: v }];
+  for (let item = work.pop(); item !== undefined; item = work.pop()) {
+    if (item.w === 0) out += item.text;
+    else if (item.w === 2) seen.delete(item.leave);
+    else {
+      const c = item.c;
+      const key = c.t === K.Map || c.t === K.Block || c.t === K.Paren ? c.s : c.t === K.Object || c.t === K.Error ? c.ctx : null;
+      if (key === null) { out += jsonScalar(c); continue; }
+      if (seen.has(key)) { out += 'null'; continue; }
+      seen.add(key);
+      const parts: Work[] = [];
+      const comma = () => { if (parts.length > 0) parts.push({ w: 0, text: ',' }); };
+      if (c.t === K.Map) {
+        for (let k = 0; k + 1 < c.s.data.length; k += 2) {
+          const name = c.s.data[k]!, val = c.s.data[k + 1]!;
+          if (isFunc(val)) continue;
+          comma();
+          const n = isAnyWord(name.t) ? spell((name as WordCell).sym) : isAnyString(name.t) ? text(name as StringCell) : toJson(name);
+          parts.push({ w: 0, text: jsonString(n) + ':' }, { w: 1, c: val });
+        }
+      } else if (c.t === K.Object || c.t === K.Error) {
+        c.ctx.keys.forEach((name, k) => {
+          const val = c.ctx.vals[k]!;
+          if (isFunc(val)) return;
+          comma();
+          parts.push({ w: 0, text: jsonString(spell(name)) + ':' }, { w: 1, c: val });
+        });
+      } else {
+        const b = c as BlockCell;
+        for (let j = b.i; j < b.s.data.length; j++) {
+          comma();
+          parts.push({ w: 1, c: b.s.data[j]! });
+        }
+      }
+      const isList = c.t === K.Block || c.t === K.Paren;
+      out += isList ? '[' : '{';
+      work.push({ w: 2, leave: key }, { w: 0, text: isList ? ']' : '}' });
+      for (let j = parts.length - 1; j >= 0; j--) work.push(parts[j]!);
+    }
+  }
+  return out;
+}
+
+/** A value with nothing inside to walk, as JSON. */
+function jsonScalar(v: Cell): string {
   switch (v.t) {
     case K.None: case K.Unset: return 'null';
     case K.Logic: return v.v ? 'true' : 'false';
@@ -212,34 +263,6 @@ export function toJson(v: Cell, seen: Set<unknown> = new Set()): string {
     case K.Time: return jsonString(formatTime(v.v));
     case K.Pair: return `[${v.x},${v.y}]`;
     case K.Tuple: return `[${v.v.join(',')}]`;
-    case K.Map: {
-      if (seen.has(v.s)) return 'null';
-      seen.add(v.s);
-      const parts: string[] = [];
-      for (let k = 0; k + 1 < v.s.data.length; k += 2) {
-        const key = v.s.data[k]!;
-        if (isFunc(v.s.data[k + 1]!)) continue;
-        const name = isAnyWord(key.t) ? spell((key as WordCell).sym) : isAnyString(key.t) ? text(key as StringCell) : toJson(key);
-        parts.push(`${jsonString(name)}:${toJson(v.s.data[k + 1]!, seen)}`);
-      }
-      seen.delete(v.s);
-      return `{${parts.join(',')}}`;
-    }
-    case K.Object: case K.Error: {
-      if (seen.has(v.ctx)) return 'null';
-      seen.add(v.ctx);
-      const parts = v.ctx.keys.flatMap((key, k) =>
-        isFunc(v.ctx.vals[k]!) ? [] : [`${jsonString(spell(key))}:${toJson(v.ctx.vals[k]!, seen)}`]);
-      seen.delete(v.ctx);
-      return `{${parts.join(',')}}`;
-    }
-    case K.Block: case K.Paren: {
-      if (seen.has(v.s)) return 'null';
-      seen.add(v.s);
-      const out = `[${v.s.data.slice(v.i).map(c => toJson(c, seen)).join(',')}]`;
-      seen.delete(v.s);
-      return out;
-    }
   }
   if (isAnyString(v.t)) return jsonString(text(v as StringCell));
   if (isAnyWord(v.t)) {

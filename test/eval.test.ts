@@ -15,6 +15,10 @@ native('test-pause', '[]', (_t, f, v) => {
   return { k: 'await', p: new Promise<Cell>(resolve => { pending = { resolve }; }) };
 });
 
+// A native that recurses on the JS stack until it overflows, as a native written wrongly would.
+const deepDown = (n: number): number => (n === 0 ? 0 : 1 + deepDown(n - 1));
+native('test-recurse', '[]', () => value(integer(deepDown(1e7))));
+
 const rt = makeRuntime();
 
 function result(src: string): RunResult {
@@ -329,14 +333,31 @@ describe('nesting deeper than the JS stack', () => {
     assert.equal(ev(`attempt [load ${JSON.stringify(deep(100000))}]`), 'none');
   });
 
-  test('a stack overflow in a native is a Trebol error that attempt catches', () => {
+  test('writers and walkers take values nested deeper than the JS stack', () => {
     const src = 'b: copy [] loop 100000 [b: reduce [b]]';
-    assert.equal(evErr(`${src} mold b`), 'stack-overflow');
-    assert.equal(ev(`${src} attempt [mold b]`), 'none');
+    const deep = `${'['.repeat(100001)}${']'.repeat(100001)}`; // b holds the first []
+    assert.equal(ev(`${src} (length? mold b) = length? mold/all b`), 'true');
+    assert.equal(ev(`${src} length? mold b`), String(deep.length));
+    assert.equal(ev(`${src} form b`), '""');
+    assert.equal(ev(`${src} length? to-json b`), String(deep.length));
+    assert.equal(ev(`${src} c: copy/deep b block? first c`), 'true');
+    assert.equal(ev(`${src} o: make object! [x: 1] block? bind b o`), 'true');
+    assert.equal(ev(`${src} f: func [x] compose/only [(b) x] f 7`), '7');
+  });
+
+  test('form shows a block or object met again inside itself as ...', () => {
+    assert.equal(ev('b: copy [1 2] append/only b b form b'), '"1 2 ..."');
+    assert.equal(ev('o: make object! [a: 1 b: none] o/b: o form o'), '{a: 1\nb: ...}');
+    assert.equal(ev('b: [x] form reduce [b b]'), '"x x"');
+  });
+
+  test('a stack overflow in a native is a Trebol error that attempt catches', () => {
+    assert.equal(evErr('test-recurse'), 'stack-overflow');
+    assert.equal(ev('attempt [test-recurse]'), 'none');
   });
 
   test('another task keeps running after one overflows', () => {
-    const bad = load('b: copy [] loop 100000 [b: reduce [b]] mold b');
+    const bad = load('test-recurse');
     const good = load('1 + 2');
     bindSeries(bad.s, rt.user, true);
     bindSeries(good.s, rt.user, true);
