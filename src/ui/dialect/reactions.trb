@@ -94,13 +94,55 @@ react-scan: function [f b [block! paren!] sources [block!] targets [block!] /loc
 react-now: function [r /local g facet] [
     out: copy []
     foreach [g facet] r/sources [
-        either word? facet [g: select g facet] [
-            foreach w facet [
-                either object? :g [ui-watch g  g: select g w] [g: none  break]
+        ; one block per source, so that what was kept of each can be told apart
+        append/only out case [
+            react-cache? :g [reduce [react-heard r g]]
+            word? facet [react-value select g facet]
+            true [
+                foreach w facet [
+                    either object? :g [ui-watch g  g: select g w] [g: none  break]
+                ]
+                react-value :g
             ]
         ]
-        append/only out :g
-        if any [series? :g  map? :g] [ui-watch :g  append out version-of :g]
+    ]
+    out
+]
+
+react-value: function [g] [
+    either any [series? :g  map? :g] [
+        ui-watch :g
+        reduce [:g version-of :g]
+    ] [
+        reduce [:g]
+    ]
+]
+
+; Whether a source is an answer cached keeps, of a url or of any: it changes
+; when the answer comes, which may be while the reactions run (a task waits for
+; a fetch), not because a reaction set it.
+react-cache?: function [g] [
+    any [same? :g ui-cache-news  find-same ui-cache-entries :g]
+]
+
+; Of the answers of a source of cached, the count of the last one the reaction
+; did not ask for alone: one it asked for alone (refresh, a post to its path)
+; does not run it again, or it would ask again for ever.
+react-heard: function [r [object!] at [object!] /local s n] [
+    top: at/any-at
+    foreach [s n] at/solo [if all [not same? s r  n > top] [top: n]]
+    top
+]
+
+; What a reaction keeps of its sources after it runs: of the answers of cached,
+; what was heard before it ran, so that one that came while it ran, or after,
+; runs it again; of the rest, what they are now.
+react-mix: function [r [object!] kept [block!] now [block!] /local g facet] [
+    out: copy []
+    i: 1
+    foreach [g facet] r/sources [
+        append/only out pick either react-cache? :g [kept] [now] i
+        i: i + 1
     ]
     out
 ]
@@ -215,9 +257,14 @@ ui-react: function [
             r: pick rs i
             ; one run before it can have put back what it reads
             if react-due? r [
+                ; what it reads before it runs: an answer that comes while it runs runs it again
+                before: react-now r
+                ; what it asks for in this task, while it runs, is its own
+                append ui-cache-askers reduce [host-task r]
                 e: try [react-run pick fs i r  none]
+                remove/part back find/same ui-cache-askers r 2
                 if all [error? :e  not failed] [failed: :e]
-                r/last: react-now r
+                r/last: react-mix r before react-now r
                 ran/:i: true
                 append order i
                 ; what reads what it sets may be due now
@@ -231,10 +278,13 @@ ui-react: function [
         ; what reads again what changed after it ran is in a cycle: it waits for the next change
         foreach i order [
             r: pick rs i
-            if react-due? r [
+            ; an answer of cached that came meanwhile is not a cycle: it is still due,
+            ; and runs it in the next round, which its coming starts
+            now: react-mix r r/last react-now r
+            unless strict-equal? now r/last [
                 where: loaded-at r/body
                 append cut rejoin [either where [rejoin [where " "]] [""] r/kind ": left out, what it reads changed again after it ran (a cycle)"]
-                r/last: react-now r
+                r/last: now
             ]
         ]
         scopes: copy []

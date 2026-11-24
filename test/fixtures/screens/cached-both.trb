@@ -1,0 +1,14 @@
+Trebol [title: "A reaction that asks again while another task asks too"]
+
+asked-too: false
+
+view [
+    ; it asks itself, and another task asks while that is asked
+    text is [
+        n: either c: cached "/api/d" [c/n] [0]
+        refresh "/api/d"
+        unless asked-too [set 'asked-too true  spawn [fetch "/api/wait"  refresh "/api/d"]]
+        fetch "/api/wait"
+        rejoin ["d " n]
+    ]
+]

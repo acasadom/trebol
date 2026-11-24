@@ -1,0 +1,21 @@
+Trebol [title: "Screen tests of a reaction that asks again for an answer whose url is not written out"]
+
+asked: 0
+other: 0
+serve [
+    GET "/api/e" [set 'asked asked + 1  make map! reduce ['n asked]]
+    GET "/api/other" [set 'other other + 1  #(ok: true)]
+]
+
+"a reaction that asks again for any answer ends"
+[
+    see "e 1"
+    asked = 2
+]
+[
+    see "e 1"
+    click "Other"
+    see "e 2"
+    asked = 3
+    other = 1
+]

@@ -1,0 +1,7 @@
+Trebol [title: "An answer of cached that comes to a reaction in a cycle"]
+
+view [
+    ; x and y read each other; the answer to x comes while y waits (twice, so that it has come)
+    x: text is [rejoin ["x" either h: cached "/api/x" [h/n] [0] " " length? any [y/text ""]]]
+    y: text is [fetch "/api/wait"  fetch "/api/wait"  rejoin ["y" length? any [x/text ""]]]
+]

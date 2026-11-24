@@ -1,0 +1,11 @@
+Trebol [title: "Screen tests of an answer of cached that comes to a reaction in a cycle"]
+
+serve [
+    GET "/api/x" [#(n: 5)]
+    GET "/api/wait" [#(ok: true)]
+]
+
+"an answer that comes with a cycle cut is still shown"
+[
+    see "x5 "
+]

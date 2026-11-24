@@ -1,0 +1,10 @@
+Trebol [title: "Screen tests of an answer of cached that comes while the reactions run"]
+
+serve [GET "/api/h" [#(n: 7)]]
+
+; building the timeline lets the answer come before the reactions end: it is not a cycle
+"cached with one timeline row"
+[
+    see "hello"
+    see "other 7"
+]

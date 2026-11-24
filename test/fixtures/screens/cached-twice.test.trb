@@ -1,0 +1,15 @@
+Trebol [title: "Screen tests of a reaction that asks twice for what it reads"]
+
+asked: 0
+serve [
+    GET "/api/wait" [#(ok: true)]
+    GET "/api/a" [set 'asked asked + 1  make map! reduce ['n asked]]
+]
+
+; the first answer, also asked by its read, runs it again; then only its own
+; come (two each run, the second asked while the first is asked): it ends
+"a reaction that asks twice for what it reads ends"
+[
+    see "a 2"
+    asked = 4
+]

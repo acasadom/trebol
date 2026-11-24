@@ -7,13 +7,25 @@
 test-shown: function [] [
     out: copy []
     if v: shown-view [
-        ; answers that cached asks for behind come before the user looks
+        ; answers that cached asks for behind come before the user looks; one that
+        ; came while the reactions ran starts another round, as in a browser
+        rounds: 0
         forever [
+            news: ui-cache-news/version
             foreach cycle ui-react v [print cycle]
             tasks: copy []
             foreach [key e] ui-cache-entries [if e/asking [append tasks e/task]]
-            if empty? tasks [break]
-            wait tasks
+            either empty? tasks [
+                if news = ui-cache-news/version [break]
+            ] [
+                wait tasks
+            ]
+            ; reactions that ask again for what others read, round after round
+            rounds: rounds + 1
+            if rounds > 50 [
+                print "cached: the reactions still ask again for what they read after 50 rounds (a cycle)"
+                break
+            ]
         ]
         test-walk v none out
     ]

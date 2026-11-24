@@ -1,0 +1,16 @@
+Trebol [title: "Screen tests of an answer of cached another task asks for while a reaction waits"]
+
+asked: 0
+serve [
+    GET "/api/wait" [#(ok: true)]
+    GET "/api/b" [set 'asked asked + 1  make map! reduce ['n asked]]
+]
+
+; the answer another task asked for while it waited is not its own: it runs again
+"an answer asked by another task while a reaction waits is shown"
+[
+    see "b 1 0"
+    click "Go"
+    see "b 2 1"
+    asked = 2
+]

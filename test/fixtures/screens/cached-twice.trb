@@ -1,0 +1,12 @@
+Trebol [title: "A reaction that asks twice for what it reads"]
+
+view [
+    ; the second time while the first is asked
+    text is [
+        n: either c: cached "/api/a" [c/n] [0]
+        refresh "/api/a"
+        fetch "/api/wait"
+        refresh "/api/a"
+        rejoin ["a " n]
+    ]
+]

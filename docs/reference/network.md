@@ -104,6 +104,12 @@ it when it knows the server has something new, as when a stream of events says s
 on-message news [refresh "/api/status"]
 ```
 
+A reaction that asks again for a url it reads itself (`refresh`, or a post to its path) does not run again for
+an answer that it alone asked for, or it would ask again for ever. Any other answer runs it again: the first
+one, asked by its own read of `cached`, and one that a handler, a timer or another task asks for, even while
+the reaction waits. A task the reaction starts with `spawn` is another task: what it asks for is not the
+reaction's own.
+
 (fn-show-progress)=
 ## show-progress
 

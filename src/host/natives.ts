@@ -29,7 +29,14 @@ native('host-warn', '["Says a warning where the host shows them: the console, th
   return value(UNSET);
 });
 
-native('write-line', '["Writes a value and a new line to the output." value [any-type!]]', (_t, f) => {
+// Which task runs the code, so that what a reaction asks for is told apart from
+// what another task asks for while the reaction waits.
+native('host-task', '["The number of the task that runs this code."]', t => {
+  const ht = schedulerOf(t).byTask.get(t);
+  return value({ t: K.Integer, v: I64.fromNumber(ht === undefined ? 0 : ht.id)! });
+});
+
+native('write-line','["Writes a value and a new line to the output." value [any-type!]]', (_t, f) => {
   output.line(form(f.args[0]!));
   return value(UNSET);
 });

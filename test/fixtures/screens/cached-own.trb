@@ -1,0 +1,13 @@
+Trebol [title: "A reaction that asks again for what it reads"]
+
+view [
+    ; the answer it asked for itself does not run it again, or it would ask for
+    ; ever; one asked by others does
+    text is [
+        n: either c: cached "/api/count" [c/n] [0]
+        refresh "/api/count"
+        fetch "/api/wait"
+        rejoin ["count " n]
+    ]
+    button "Again" [refresh "/api/count"]
+]

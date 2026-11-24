@@ -1,0 +1,16 @@
+Trebol [title: "Screen tests of a reaction that asks again while another task asks too"]
+
+asked: 0
+serve [
+    GET "/api/wait" [#(ok: true)]
+    GET "/api/d" [set 'asked asked + 1  make map! reduce ['n asked]]
+]
+
+; the first answer, for its read too, runs it again, and it asks once more; the
+; answer the other task asked for runs it again, it shows it and asks once more;
+; the answers after are its own alone: it ends
+"an answer asked by another task while a reaction asks is shown"
+[
+    see "d 2"
+    asked = 4
+]
