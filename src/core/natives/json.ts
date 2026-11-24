@@ -183,19 +183,23 @@ function jsonString(s: string): string {
 /** Functions have no JSON form: a field holding one is left out, as JSON.stringify does. */
 const isFunc = (c: Cell): boolean => c.t === K.Function || c.t === K.Native || c.t === K.Op;
 
-/** Pending writer work, last item first: text to write, a value to write, or the end of a container. */
-type Work = { w: 0; text: string } | { w: 1; c: Cell } | { w: 2; leave: object };
+/** Pending writer work, last item first: text to write, a value to write, the end of a container,
+ * or the start and end of a map key written as a value and then quoted as one JSON string. */
+type Work = { w: 0; text: string } | { w: 1; c: Cell } | { w: 2; leave: object } | { w: 3 } | { w: 4 };
 
 /** Serializes a value as JSON. Cycles, and functions in a block, become null. The words true, false and
  *  none become the JSON values true, false and null; other words become strings. Iterative: a value
  *  nested any depth is written without recursing on the JS stack. */
 export function toJson(v: Cell): string {
   let out = '';
+  const outer: string[] = []; // text written before each key being written, innermost last
   const seen = new Set<object>();
   const work: Work[] = [{ w: 1, c: v }];
   for (let item = work.pop(); item !== undefined; item = work.pop()) {
     if (item.w === 0) out += item.text;
     else if (item.w === 2) seen.delete(item.leave);
+    else if (item.w === 3) { outer.push(out); out = ''; }
+    else if (item.w === 4) out = outer.pop()! + jsonString(out) + ':';
     else {
       const c = item.c;
       const key = c.t === K.Map || c.t === K.Block || c.t === K.Paren ? c.s : c.t === K.Object || c.t === K.Error ? c.ctx : null;
@@ -209,8 +213,11 @@ export function toJson(v: Cell): string {
           const name = c.s.data[k]!, val = c.s.data[k + 1]!;
           if (isFunc(val)) continue;
           comma();
-          const n = isAnyWord(name.t) ? spell((name as WordCell).sym) : isAnyString(name.t) ? text(name as StringCell) : toJson(name);
-          parts.push({ w: 0, text: jsonString(n) + ':' }, { w: 1, c: val });
+          // a key that is not a word or text is written as JSON on the same walk (cycles too), then quoted
+          if (isAnyWord(name.t)) parts.push({ w: 0, text: jsonString(spell((name as WordCell).sym)) + ':' });
+          else if (isAnyString(name.t)) parts.push({ w: 0, text: jsonString(text(name as StringCell)) + ':' });
+          else parts.push({ w: 3 }, { w: 1, c: name }, { w: 4 });
+          parts.push({ w: 1, c: val });
         }
       } else if (c.t === K.Object || c.t === K.Error) {
         c.ctx.keys.forEach((name, k) => {

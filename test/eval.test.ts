@@ -400,6 +400,12 @@ describe('nesting deeper than the JS stack', () => {
     assert.equal(ev("b: copy [a] append/only b b append b 'c collect-words/deep b"), '[a c]');
   });
 
+  test('to-json writes a map key on the same walk as its map, so a cycle through the key is null', () => {
+    assert.equal(ev('m: make map! [] b: reduce [m] put m b 1 (to-json m) = {{"[null]":1}}'), 'true');
+    assert.equal(ev(String.raw`(to-json make map! reduce [[1 "a"] 2 3 4]) = {{"[1,\"a\"]":2,"3":4}}`), 'true');
+    assert.equal(ev(String.raw`k: make map! reduce [[x] 1] (to-json make map! reduce [k 2]) = {{"{\"[\\\"x\\\"]\":1}":2}}`), 'true');
+  });
+
   test('= and == compare values nested deeper than the JS stack', () => {
     const src = 'b: copy [] loop 100000 [b: reduce [b]] c: copy/deep b';
     assert.equal(ev(`${src} reduce [b = c b == c strict-equal? b c equal? b c]`), '[true true true true]');
