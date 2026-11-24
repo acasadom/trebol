@@ -17,7 +17,7 @@ import { buildApp } from '../../tools/bundle.ts';
 import { startDev, type Dev } from '../../tools/dev.ts';
 
 const FIXTURES = new URL('../fixtures/screens/', import.meta.url);
-const APPS = ['cached-timeline', 'cached-own', 'cached-other'];
+const APPS = ['cached-timeline', 'cached-rows', 'cached-own', 'cached-other'];
 
 let dir = '';
 let dev: Dev;
@@ -73,6 +73,16 @@ async function settled(path: string): Promise<number> {
 test('an answer of cached that comes while a timeline is built is shown', async () => {
   const { page, errors } = await open('cached-timeline');
   await see(page, 'hello');
+  await see(page, 'other 7');
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+// 0.8.1 lost this answer in Chromium (the timeline test above passes there too: its answer comes late)
+test('an answer of cached that comes while a long timeline is still being built is shown', async () => {
+  const { page, errors } = await open('cached-rows');
+  await see(page, 'hello');
+  await see(page, 'row 400');
   await see(page, 'other 7');
   assert.deepEqual(errors, []);
   await page.close();

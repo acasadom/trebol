@@ -26,10 +26,10 @@
   in `test/fixtures/screens` that cover every word and how each failure is told; the words are in
   `src/ui/test.trb` and their host, which keeps the view, the notices and the history, in `tools/test.ts`.
 - **Built apps in a real browser.** `npm run test:browser` builds some of those fixtures with `trebol build`,
-  serves them with `trebol dev` and a backend that answers slowly (`test/browser/api.ts`), and opens them in
-  headless Chromium through Playwright. The screen tests answer at once; here answers come while reactions
-  run or wait, as on a real server, so the browser host is checked too: its scheduler, its requests, its
-  drawing. A console error or an uncaught exception fails the test. It needs Chromium once
+  serves them with `trebol dev` and a backend that answers slowly, or at once while a long view is still
+  being built (`test/browser/api.ts`), and opens them in headless Chromium through Playwright. The screen
+  tests answer at once; here answers come while reactions run or wait, as on a real server, so the browser
+  host is checked too: its scheduler, its requests, its drawing. A console error or an uncaught exception fails the test. It needs Chromium once
   (`npx playwright install chromium`), and CI runs it on every push and pull request.
 - **A round trip on random values.** `test/roundtrip-fuzz.test.ts` makes thousands of random values, nested
   blocks, maps, objects, dates, money, odd strings, and checks that `load mold/all x` gives `x` back. It is
