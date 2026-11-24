@@ -1,6 +1,6 @@
 {
   "name": "trebol",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "description": "Trebol: a Rebol-derived language for building beautiful web UIs without HTML or CSS",
   "keywords": [
     "rebol",
