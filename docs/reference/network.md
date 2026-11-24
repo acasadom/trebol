@@ -110,6 +110,10 @@ one, asked by its own read of `cached`, and one that a handler, a timer or anoth
 the reaction waits. A task the reaction starts with `spawn` is another task: what it asks for is not the
 reaction's own.
 
+Two reactions that each refresh a url the other reads run each other again for as long as the page is open,
+one fetch at a time, as a timer that sets itself again would: that is what the program asks for. To stop, make
+one of them refresh only when something it shows has changed.
+
 (fn-show-progress)=
 ## show-progress
 
