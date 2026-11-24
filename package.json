@@ -50,6 +50,7 @@
     "test": "node --test \"test/**/*.test.ts\"",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm test",
+    "readme-shot": "node --disable-warning=ExperimentalWarning tools/readme-shot.ts",
     "test:browser": "node --disable-warning=ExperimentalWarning --test \"test/browser/*.browser.ts\"",
     "build": "node --disable-warning=ExperimentalWarning tools/build.ts",
     "prepack": "npm run build",
