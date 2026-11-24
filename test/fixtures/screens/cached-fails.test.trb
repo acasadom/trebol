@@ -1,0 +1,13 @@
+Trebol [title: "Screen tests of a reaction that asks again for an answer that does not come"]
+
+asked: 0
+serve [GET "/api/f" [set 'asked asked + 1  reply 500 #(error: "down")]]
+
+; a request that fails gives no answer: nothing runs again
+"a reaction whose request fails ends"
+[
+    see "f 0"
+    click "F"
+    see "f 0"
+    asked = 2
+]

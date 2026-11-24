@@ -1,0 +1,22 @@
+Trebol [title: "Screen tests of a reaction that asks again for what it reads"]
+
+counted: 0
+serve [
+    GET "/api/wait" [#(ok: true)]
+    GET "/api/count" [set 'counted counted + 1  make map! reduce ['n counted]]
+]
+
+; it reads, then asks again: the first answer is for its read too, and runs it
+; again; the next one it asked for alone, and does not
+"a reaction that asks again for what it reads ends"
+[
+    see "count 1"
+    counted = 2
+]
+; an answer asked by others runs it, and it asks once more, and ends
+[
+    see "count 1"
+    click "Again"
+    see "count 3"
+    counted = 4
+]

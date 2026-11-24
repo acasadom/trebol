@@ -1,0 +1,12 @@
+Trebol [title: "A reaction that asks again for an answer whose url is not written out"]
+
+u: "/api/e"
+view [
+    ; it reads any answer: its own does not run it again, another one does
+    text is [
+        n: either c: cached u [c/n] [0]
+        refresh u
+        rejoin ["e " n]
+    ]
+    button "Other" [refresh "/api/other"]
+]

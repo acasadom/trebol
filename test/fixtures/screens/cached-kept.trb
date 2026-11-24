@@ -1,0 +1,28 @@
+Trebol [title: "What cached keeps of who asked, as screens come and go"]
+
+u: "/api/k"
+held: 0
+
+view [
+    screens [
+        home "Home" [
+            title "Home page"
+            link "Page" 'page
+            ; many asks while one is asked: they wait as one more request
+            button "Many" [
+                loop 1000 [refresh u]
+                e: ui-cache-entry u  p: e/pending
+                set 'held either block? :p [length? p] [1]
+            ]
+        ]
+        page "Page" [
+            ; each visit makes a new reaction, which asks for itself alone
+            text is [
+                n: either c: cached u [c/n] [0]
+                refresh u
+                rejoin ["k " n]
+            ]
+            link "Home" 'home
+        ]
+    ]
+]

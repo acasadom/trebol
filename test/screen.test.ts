@@ -106,6 +106,43 @@ test('cached gives the last answer and asks again after a post or a refresh', as
   assert.ok(passed, lines.join('\n'));
 });
 
+/** Runs screen tests, with what the app prints (a cycle cut), which goes to the output, not to the lines of the run. */
+async function ranPrinting(files: string[]): Promise<{ passed: boolean; lines: string[]; out: string }> {
+  const out: string[] = [];
+  const write = process.stdout.write;
+  process.stdout.write = ((s: string | Uint8Array, ...rest: never[]) => (out.push(String(s)), write.call(process.stdout, s, ...rest))) as typeof write;
+  try {
+    return { ...await ran(files), out: out.join('') };
+  } finally {
+    process.stdout.write = write;
+  }
+}
+
+test('an answer of cached that comes while the reactions run is shown, and is not a cycle', async () => {
+  const r = await ranPrinting(['test/fixtures/screens/cached-timeline.test.trb']);
+  assert.ok(r.passed, r.lines.join('\n'));
+  assert.ok(!r.out.includes('(a cycle)'), r.out);
+});
+
+test('a reaction that asks again for what it reads runs once for it, not for ever', async () => {
+  const r = await ranPrinting(['test/fixtures/screens/cached-own.test.trb']);
+  assert.ok(r.passed, r.lines.join('\n'));
+  assert.ok(!r.out.includes('(a cycle)'), r.out);
+});
+
+test('an answer of cached is a reaction\'s own only when it alone asked for it, in its own task', async () => {
+  const r = await ranPrinting(['twice', 'other', 'both', 'fails', 'news', 'kept'].map(n => `test/fixtures/screens/cached-${n}.test.trb`));
+  assert.ok(r.passed, r.lines.join('\n'));
+  assert.ok(!r.out.includes('(a cycle)'), r.out);
+});
+
+test('an answer of cached that comes to a reaction whose cycle is cut is still shown', async () => {
+  const r = await ranPrinting(['test/fixtures/screens/cached-cycle.test.trb']);
+  assert.ok(r.passed, r.lines.join('\n'));
+  // the cycle is still cut, and said
+  assert.ok(r.out.includes('cached-cycle.trb:5:17 is: left out'), r.out);
+});
+
 test('the set-words of a serve block are local to its answer, and those of a test file are the file\'s own', async () => {
   const { passed, lines } = await ran(['test/fixtures/screens/local.test.trb']);
   assert.ok(passed, lines.join('\n'));

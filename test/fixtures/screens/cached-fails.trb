@@ -1,0 +1,10 @@
+Trebol [title: "A reaction that asks again for an answer that does not come"]
+
+view [
+    text is [
+        n: either c: cached "/api/f" [c/n] [0]
+        refresh "/api/f"
+        rejoin ["f " n]
+    ]
+    button "F" [refresh "/api/f"]
+]

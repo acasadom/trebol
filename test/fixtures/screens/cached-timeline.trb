@@ -1,0 +1,10 @@
+Trebol [title: "An answer of cached that comes while a timeline is built"]
+
+st: make object! [
+    t: [#(at: "2026-11-22T10:00:00+00:00" text: "hello")]
+]
+
+view [
+    text is [rejoin ["other " either h: cached "/api/h" [h/n] [0]]]
+    timeline story [at text] is [st/t] "Nothing"
+]

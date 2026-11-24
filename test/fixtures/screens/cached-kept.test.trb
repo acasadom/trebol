@@ -1,0 +1,29 @@
+Trebol [title: "Screen tests of what cached keeps of who asked"]
+
+asked: 0
+serve [GET "/api/k" [set 'asked asked + 1  make map! reduce ['n asked]]]
+
+kept: func [at [object!]] [(length? at/solo) / 2]
+
+; a reaction of a screen left is not kept for ever: at most the last two that
+; asked alone, on the entry and on the news
+"reactions of screens left are not kept"
+[
+    loop 6 [
+        click "Page"
+        see "Page"
+        click "Home"
+        see "Home page"
+    ]
+    to logic! all [
+        2 >= kept ui-cache-entry u
+        2 >= kept ui-cache-news
+    ]
+]
+; a thousand asks while one is asked wait as one more request, not a thousand
+"asks that wait are kept as one"
+[
+    click "Many"
+    see "Home page"
+    held <= 1
+]

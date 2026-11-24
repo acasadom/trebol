@@ -1,0 +1,15 @@
+Trebol [title: "An answer of cached another task asks for while a reaction waits"]
+
+st: make object! [n: 0]
+
+view [
+    ; it runs again for st/n, and waits: meanwhile another task asks
+    text is [
+        n: either c: cached "/api/b" [c/n] [0]
+        k: st/n
+        fetch "/api/wait"
+        fetch "/api/wait"
+        rejoin ["b " n " " k]
+    ]
+    button "Go" [st/n: st/n + 1  spawn [fetch "/api/wait"  refresh "/api/b"]]
+]

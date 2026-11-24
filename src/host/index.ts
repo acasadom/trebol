@@ -58,16 +58,32 @@ open-events: func [
 ; --- answers kept: cached and refresh ---------------------------------------------
 ;
 ; Each url read with cached has an entry; a reaction that reads cached %/x has
-; the entry's version among its sources, so it runs again when an answer comes.
+; the entry among its sources, so it runs again when an answer comes.
 ; ui-cache-news counts every answer, for reactions whose url is not written out.
+;
+; Each ask has an asker: the reaction whose own code asks (refresh, a post to
+; the path) in the task that runs it, or none (a read of an old answer, the
+; page back into view, a handler, a timer, another task). A fetch answers the
+; asks there were when it started. An answer that only the reaction asked for
+; does not run it again, or it would ask again for ever; any other one does.
+; So what is heard is kept apart: any-at, the count of ui-cache-news of the
+; last answer not asked by one reaction alone; solo, [reaction count ...] the
+; last answer asked by one reaction alone, and the last asked by another one
+; alone: no more is needed to know what a reaction heard (react-heard), and
+; reactions of screens left are not kept for ever.
+;
+; The asks waiting for the next fetch, pending, are none (no ask), the reaction
+; that asked if one alone did, or 'any: a fetch answers them all at once, so
+; a thousand asks wait as one.
+
+ui-cache-news: make object! [version: 0  any-at: 0  solo: copy []]
 
 ui-cache-entries: copy []
-ui-cache-news: make object! [version: 0]
 
 ui-cache-entry: func ["The entry of what cached keeps for a url, made the first time." url /local key e] [
     key: form url
     unless e: select/case ui-cache-entries key [
-        e: make object! [url: none  answer: none  version: 0  stale: true  asking: false  again: false  task: none]
+        e: make object! [url: none  answer: none  version: 0  stale: true  asking: false  pending: none  task: none  any-at: 0  solo: copy []]
         e/url: url
         append ui-cache-entries reduce [key e]
     ]
@@ -83,18 +99,60 @@ ui-cache-path: func ["The path of a url, without the server, the query or the fr
     s
 ]
 
-; Asks again behind; one request at a time per url, and one more if asked meanwhile.
-ui-cache-ask: func ["Asks again behind for the answer of an entry of cached." e] [
+; The reactions running, as [task reaction ...]: what one asks in its own task is its own.
+ui-cache-askers: copy []
+
+; Who asks: the reaction that runs last in this task, or none.
+ui-cache-asker: func ["The reaction that runs in this task, which asks, or none." /local t who task r] [
+    if empty? ui-cache-askers [return none]
+    t: host-task
+    who: none
+    foreach [task r] ui-cache-askers [if task = t [who: r]]
+    who
+]
+
+; Asks again behind, as asked by the code running: by the reaction of this task, if one runs.
+ui-cache-again: func ["Asks again behind for the answer of an entry of cached, as asked by the reaction that runs." e] [
+    ui-cache-ask/by e ui-cache-asker
+]
+
+; Asks again behind; one request at a time per url, and one more for what is asked meanwhile.
+ui-cache-ask: func ["Asks again behind for the answer of an entry of cached." e /by who "The reaction that asks"] [
     e/stale: false
-    either e/asking [e/again: true] [
+    who: either all [by  object? :who] [:who] ['any]
+    e/pending: case [
+        none? e/pending [:who]
+        same? :who e/pending [:who]
+        true ['any]
+    ]
+    unless e/asking [
         e/asking: true
         e/task: spawn compose [ui-cache-answer (e)]
     ]
 ]
 
-ui-cache-answer: func ["Asks for the answer of an entry of cached, and keeps it." e /local r] [
-    forever [
-        e/again: false
+; What is heard of an answer, on an entry or on ui-cache-news: count n, asked by
+; askers (a reaction alone, or 'any). Of the answers asked alone it keeps the
+; last, and the last of another reaction: counts only grow, so for any reaction
+; these give the last answer it did not ask for alone.
+ui-cache-heard: func ["Keeps who asked for an answer heard." at [object!] askers [object! word!] n [integer!]] [
+    either object? askers [
+        either all [not empty? at/solo  same? askers first at/solo] [
+            poke at/solo 2 n
+        ] [
+            insert at/solo reduce [askers n]
+            clear skip at/solo 4
+        ]
+    ] [
+        at/any-at: n
+    ]
+]
+
+ui-cache-answer: func ["Asks for the answer of an entry of cached, and keeps it." e /local r askers] [
+    while [e/pending] [
+        ; what is asked from now on is answered by the next fetch
+        askers: e/pending
+        e/pending: none
         r: try [fetch e/url]
         either error? :r [
             ; the last answer stays; the next read asks again
@@ -103,9 +161,11 @@ ui-cache-answer: func ["Asks for the answer of an entry of cached, and keeps it.
         ] [
             e/answer: :r
             e/version: e/version + 1
+            ui-cache-heard e askers ui-cache-news/version + 1
+            ui-cache-heard ui-cache-news askers ui-cache-news/version + 1
+            ; last, as its change runs the reactions in a browser
             ui-cache-news/version: ui-cache-news/version + 1
         ]
-        unless e/again [break]
     ]
     e/asking: false
 ]
@@ -126,7 +186,7 @@ ui-cache-touched: func ["Asks again for what cached keeps of the path of url, or
     a: ui-cache-path url
     foreach [key e] ui-cache-entries [
         b: ui-cache-path e/url
-        if any [a = b  find/match a join b "/"  find/match b join a "/"] [ui-cache-ask e]
+        if any [a = b  find/match a join b "/"  find/match b join a "/"] [ui-cache-again e]
     ]
 ]
 
@@ -144,7 +204,7 @@ refresh: func [
     "Asks again for an answer kept by cached, now; reactions that read it run again when it comes."
     url [url! string!]
 ][
-    ui-cache-ask ui-cache-entry url
+    ui-cache-again ui-cache-entry url
     exit
 ]
 
