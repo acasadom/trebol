@@ -387,9 +387,9 @@ describe('nesting deeper than the JS stack', () => {
     assert.equal(ev('x: [1 2] reduce [[x x] = [x x] [[1 2] [1 2]] = reduce [x x]]'), '[true true]');
   });
 
-  test('form shows a block or object met again inside itself as ...', () => {
+  test('form shows a block met again inside itself as ..., an object as mold does', () => {
     assert.equal(ev('b: copy [1 2] append/only b b form b'), '"1 2 ..."');
-    assert.equal(ev('o: make object! [a: 1 b: none] o/b: o form o'), '{a: 1\nb: ...}');
+    assert.equal(ev('o: make object! [a: 1 b: none] o/b: o form o'), '{a: 1\nb: make object! [...]}');
     assert.equal(ev('b: [x] form reduce [b b]'), '"x x"');
   });
 

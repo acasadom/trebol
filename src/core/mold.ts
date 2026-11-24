@@ -38,9 +38,9 @@ export function mold(c: Cell, opts: MoldOptions = {}): string {
 }
 
 export function form(c: Cell): string {
-  // Iterative, as the molder: blocks and objects nested any depth form
-  // without recursing on the JS stack. A block or object met again inside
-  // itself forms as "...".
+  // Iterative, as the molder: blocks nested any depth form without recursing
+  // on the JS stack. A block met again inside itself forms as "...". An object
+  // forms as its fields, each value molded (R3), so the molder guards its cycles.
   let out = '';
   const active = new Set<object>();
   const work: Work[] = [{ w: 1, c, depth: 0 }];
@@ -48,22 +48,20 @@ export function form(c: Cell): string {
     if (item.w === 0) { out += item.text; continue; }
     if (item.w === 2) { active.delete(item.leave); continue; }
     const v = item.c;
-    if (v.t === K.Block || v.t === K.Paren || v.t === K.Object) {
+    if (v.t === K.Object) {
+      // each field molded, as R3: a: [1 2]^/s: "x"
+      const m = new Molder(false);
+      m.fields(v.ctx);
+      out += m.out;
+      continue;
+    }
+    if (v.t === K.Block || v.t === K.Paren) {
       const parts: Work[] = [];
-      let key: object;
-      if (v.t === K.Object) {
-        const ctx = v.ctx;
-        key = ctx;
-        ctx.keys.forEach((k, i) => {
-          parts.push({ w: 0, text: (i > 0 ? '\n' : '') + spell(k) + ': ' }, { w: 1, c: ctx.vals[i]!, depth: 0 });
-        });
-      } else {
-        const b = v as BlockCell;
-        key = b.s;
-        for (let j = b.i; j < b.s.data.length; j++) {
-          if (j > b.i) parts.push({ w: 0, text: ' ' });
-          parts.push({ w: 1, c: b.s.data[j]!, depth: 0 });
-        }
+      const b = v as BlockCell;
+      const key = b.s;
+      for (let j = b.i; j < b.s.data.length; j++) {
+        if (j > b.i) parts.push({ w: 0, text: ' ' });
+        parts.push({ w: 1, c: b.s.data[j]!, depth: 0 });
       }
       if (active.has(key)) { out += '...'; continue; }
       active.add(key);
@@ -410,6 +408,18 @@ class Molder {
     }
     parts.push({ w: 0, text: ')' }, { w: 2, leave: s });
     this.later(parts);
+  }
+
+  /** An object's fields for form: one per line, each value molded, words as they are (R3). */
+  fields(ctx: Ctx): void {
+    this.active.add(ctx);
+    const parts: Work[] = [];
+    ctx.keys.forEach((k, i) => {
+      parts.push({ w: 0, text: (i > 0 ? '\n' : '') + spell(k) + ': ' }, { w: 1, c: ctx.vals[i]!, depth: 0 });
+    });
+    parts.push({ w: 2, leave: ctx });
+    this.later(parts);
+    this.run();
   }
 
   /** With `prefix` null, molds as construction syntax #[object! [...]]. */
