@@ -5,6 +5,8 @@ import {
   native, value, errorField, makeError, form, integer,
   type RunResult, type Cell, type ObjectCell, type Ctx,
 } from '../src/core/index.ts';
+import { K } from '../src/core/kinds.ts';
+import { loadSpans } from '../src/core/index.ts';
 
 let pending: { resolve: (v: Cell) => void } | null = null;
 
@@ -327,10 +329,35 @@ describe('tasks', () => {
 describe('nesting deeper than the JS stack', () => {
   const deep = (n: number) => '['.repeat(n) + ']'.repeat(n);
 
-  test('load of blocks nested too deep is a load error, not a crash', () => {
-    assert.throws(() => load(deep(100000)), /nested too deep/);
-    assert.equal(evErr(`load ${JSON.stringify(deep(100000))}`), 'load');
-    assert.equal(ev(`attempt [load ${JSON.stringify(deep(100000))}]`), 'none');
+  test('load reads blocks, parens, #[...], #(...) and path parens nested deeper than the JS stack', () => {
+    const n = 100000;
+    const depth = (b: Cell): number => {
+      let d = 0;
+      for (let c: Cell | undefined = b; c !== undefined && 's' in c && Array.isArray(c.s.data); c = (c.s.data as Cell[])[c.t === K.Map ? 1 : 0]) d++;
+      return d;
+    };
+    assert.equal(depth(load(deep(n))), n + 1);
+    assert.equal(depth(load('('.repeat(n) + ')'.repeat(n))), n + 1);
+    assert.equal(mold(load('#(a '.repeat(3) + '1' + ')'.repeat(3))), '[#(a: #(a: #(a: 1)))]');
+    assert.equal(depth(load('#(a '.repeat(n) + '1' + ')'.repeat(n))), n + 1);
+    const wrap = (k: number) => { let x = '[]'; for (let j = 0; j < k; j++) x = `#[block! [${x}] 1]`; return x; };
+    assert.equal(mold(load(wrap(2))), '[[[[]]]]');
+    assert.equal(depth(load(wrap(n))), n + 2);
+    assert.equal(mold(load('a/('.repeat(3) + 'b' + ')/c'.repeat(3))), '[a/(a/(a/(b)/c)/c)/c]');
+    assert.equal(load('a/('.repeat(n) + 'b' + ')'.repeat(n)).s.data[0]!.t, K.Path);
+    assert.equal(ev(`length? load ${JSON.stringify(deep(n))}`), '1');
+    assert.equal(ev(`b: load ${JSON.stringify(deep(n))} b = copy/deep b`), 'true');
+    assert.equal(loadSpans(deep(n)).s.data.length, 1);
+  });
+
+  test('a nested series left open or closed with the wrong bracket is a load error where it opened', () => {
+    assert.throws(() => load('[ [ (1 2]'), /unexpected \]/);
+    assert.throws(() => load('[1\n [2'), /missing \]/);
+    assert.throws(() => load('#(a 1 b)'), /key value pairs/);
+    assert.throws(() => load('a/(b c'), /missing \)/);
+    assert.throws(() => load('a/(b)c'), /invalid path/);
+    assert.throws(() => load('a/(b)/'), /path ends with/);
+    assert.equal(mold(load(':a/(b)/c d: a/(1)/x: 2')), '[:a/(b)/c d: a/(1)/x: 2]');
   });
 
   test('writers and walkers take values nested deeper than the JS stack', () => {
