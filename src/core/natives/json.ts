@@ -7,6 +7,7 @@
 // block!, null as none. The parser keeps its own stack: deep JSON never
 // touches the JS stack limit.
 
+import { mapData } from '../maps.ts';
 import { K, isAnyString, isAnyWord } from '../kinds.ts';
 import { intern, spell } from '../symbols.ts';
 import * as I64 from '../int64.ts';
@@ -98,7 +99,7 @@ export function parseJson(src: string): Cell | string {
       if (src[i] === '}' && top.out.length === 0) {
         i++;
         stack.pop();
-        put({ t: K.Map, s: { data: top.out } });
+        put({ t: K.Map, s: { data: mapData(top.out) } });
       } else {
         if (src[i] !== '"') return err('expected a key');
         const k = str();
@@ -168,7 +169,7 @@ export function parseJson(src: string): Cell | string {
       if ((open.kind === 'array' && c === ']') || (open.kind === 'object' && c === '}')) {
         i++;
         stack.pop();
-        put(open.kind === 'array' ? { t: K.Block, s: { data: open.out }, i: 0 } : { t: K.Map, s: { data: open.out } });
+        put(open.kind === 'array' ? { t: K.Block, s: { data: open.out }, i: 0 } : { t: K.Map, s: { data: mapData(open.out) } });
         continue;
       }
       return err(c === undefined ? 'unexpected end' : `expected , or ${open.kind === 'array' ? ']' : '}'}`);

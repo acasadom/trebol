@@ -4,6 +4,7 @@
 // call with the arguments; later phases receive the value of the block or
 // expression the native asked the evaluator for.
 
+import { keyOut } from '../maps.ts';
 import { K } from '../kinds.ts';
 import * as I64 from '../int64.ts';
 import { NONE, UNSET, TRUE, block, context, type Cell, type BlockCell, type Ctx, type WordCell } from '../values.ts';
@@ -262,7 +263,7 @@ native('foreach', "[\"Evaluates a block for each value of a series, with a word 
   if (stop !== null) return stop;
   if (st.pairs !== null) {
     if (st.at >= st.pairs.length) return value(st.out);
-    st.ctx.vals[0] = st.pairs[st.at]!;
+    st.ctx.vals[0] = keyOut(st.pairs[st.at]!);
     if (st.ctx.vals.length === 2) st.ctx.vals[1] = st.pairs[st.at + 1]!;
     st.at += 2;
     return doBlock(st.body);

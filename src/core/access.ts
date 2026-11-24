@@ -8,25 +8,16 @@ import { K, isAnyBlock, isAnyString, isAnyWord, aKindName } from './kinds.ts';
 import { canon, spell } from './symbols.ts';
 import * as I64 from './int64.ts';
 import {
-  NONE, integer, char, decimal, time, date, pair, tuple, strictEqual, codePoints, fromCodePoints,
+  NONE, integer, char, decimal, time, date, pair, tuple, codePoints, fromCodePoints,
   type Cell, type Series, type BlockCell, type StringCell, type WordCell, type DateVal,
 } from './values.ts';
 import { ctxFind, ctxSet } from './ctx.ts';
 import { mold } from './mold.ts';
 import { touch } from './values.ts';
 import { daysOf, civilOf } from './days.ts';
+import { sameKey, mapFind, mapSet } from './maps.ts';
 
-/** Keys of maps and selects: words by symbol (any word type), the rest strictly. */
-export function sameKey(a: Cell, b: Cell): boolean {
-  if (isAnyWord(a.t) && isAnyWord(b.t)) return canon((a as WordCell).sym) === canon((b as WordCell).sym);
-  return strictEqual(a, b);
-}
-
-/** Index of the value slot for `key` in a map series, or -1. */
-export function mapFind(s: Series<Cell>, key: Cell): number {
-  for (let j = 0; j < s.data.length; j += 2) if (sameKey(s.data[j]!, key)) return j + 1;
-  return -1;
-}
+export { sameKey, mapFind };
 
 /** Position of the first element equal to `key` (as a key) from `from`, or -1. */
 export function blockFind(s: Series<Cell>, from: number, key: Cell): number {
@@ -173,18 +164,9 @@ export function poke(cur: Cell, key: Cell, v: Cell): string | null {
       ctxSet(cur.ctx, i, v);
       return null;
     }
-    case K.Map: {
-      const i = mapFind(cur.s, key);
-      if (i >= 0) {
-        cur.s.data[i] = v;
-        touch(cur.s);
-      } else {
-        const k = isAnyWord(key.t) ? { t: K.Word, sym: (key as WordCell).sym, bind: null } as Cell : key;
-        cur.s.data.push(k, v);
-        touch(cur.s);
-      }
+    case K.Map:
+      mapSet(cur.s, key, v);
       return null;
-    }
   }
   if (isAnyBlock(cur.t)) {
     const b = cur as BlockCell;

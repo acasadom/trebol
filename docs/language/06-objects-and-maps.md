@@ -179,8 +179,11 @@ Unlike an object, a map takes new keys whenever you set them, and gives `none` f
 == 3
 ```
 
-Keys can be words, as here, or strings, numbers or any other value. `words-of` and `values-of` give the
-keys and the values of a map, as they do for an object.
+Keys can be words, as here, or strings, numbers or any other value. A map has each key once: given twice,
+as in `make map! [rush $10.00 rush $12.00]`, the key keeps its first place and takes the last value. A
+string key is copied when it goes in, so changing the string you used later leaves the map as it was.
+Finding a key takes about the same time in a map of ten keys as in one of a million. `words-of` and
+`values-of` give the keys and the values of a map, as they do for an object.
 
 `foreach` walks a map one key and value at a time, or only its keys when given one word:
 

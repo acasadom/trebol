@@ -466,5 +466,17 @@
   {
     "test": "[(unique [[$1.00] [1] [10%] [0.1]]) == [[$1.00] [10%]]]",
     "why": "[$1] = [1] in R3 too, and R3 gives one of unique [[$1] [1]], but in a longer series its hash keeps them apart."
+  },
+  {
+    "test": "[m: make map! [\"a\" 1] append first keys-of m \"z\" 1 = select m \"a\"]",
+    "why": "Trebol has no protect: words-of, foreach and to block! give a copy of a text key of a map, so changing it leaves the map as it was; R3 gives the key itself, protected, and changing it is an error."
+  },
+  {
+    "test": "[m: make map! [\"a\" 1] foreach [k v] m [append k \"z\"] 1 = select m \"a\"]",
+    "why": "Trebol has no protect: words-of, foreach and to block! give a copy of a text key of a map, so changing it leaves the map as it was; R3 gives the key itself, protected, and changing it is an error."
+  },
+  {
+    "test": "[m: make map! [\"a\" 1] b: to block! m append b/1 \"z\" 1 = select m \"a\"]",
+    "why": "Trebol has no protect: words-of, foreach and to block! give a copy of a text key of a map, so changing it leaves the map as it was; R3 gives the key itself, protected, and changing it is an error."
   }
 ]

@@ -1,6 +1,7 @@
 // Data natives: making values, words and contexts, load/mold, and the few
 // series natives the core needs before the full series set arrives.
 
+import { mapData, keyOut } from '../maps.ts';
 import { K, isAnyBlock, isAnyString, isAnyWord, kindName, type Kind } from '../kinds.ts';
 import { intern, spell, canon } from '../symbols.ts';
 import { splice } from '../series.ts';
@@ -172,7 +173,7 @@ function makeOf(k: Kind, spec: Cell): Cell | string {
       if (items.length % 2 !== 0) return 'make map! needs key value pairs';
       return {
         t: K.Map,
-        s: { data: items.map((c, i) => i % 2 === 0 && isAnyWord(c.t) ? { t: K.Word, sym: (c as WordCell).sym, bind: null } as Cell : c) },
+        s: { data: mapData(items) },
       };
     }
     case K.Block: case K.Paren:
@@ -293,7 +294,7 @@ native('body-of', '["A copy of a function\'s body block, or none for a native; f
 native('words-of', '["The words of an object or map, or the arguments, refinements and local words of a function." value [any-object! map! any-function!]]', (_t, f) => {
   const c = underOp(f.args[0]!);
   if (c.t === K.Object || c.t === K.Error) return value(blockOf(K.Block, c.ctx.keys.map(k => wordOf(K.Word, k))));
-  if (c.t === K.Map) return value(blockOf(K.Block, c.s.data.filter((_v, i) => i % 2 === 0)));
+  if (c.t === K.Map) return value(blockOf(K.Block, c.s.data.filter((_v, i) => i % 2 === 0).map(keyOut)));
   // a function's arguments, refinements and local words, as its spec names them (R3)
   const p = (c as OpaqueCell).p;
   const spec = c.t === K.Function ? (p as FuncDef).spec : (p as NativeDef).spec;

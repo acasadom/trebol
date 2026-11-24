@@ -32,6 +32,21 @@ function grows<T>(name: string, n: number, f: (n: number) => T, want: (n: number
 }
 
 describe('time in proportion to size', () => {
+  test('a map filled one key at a time', () => {
+    const fill = (n: number) => run(`m: make map! [] repeat i ${n} [m/(i): i  put m join "k" i i  m/(to word! join "w" i): i] length? m`);
+    grows('map fill', 5_000, fill, n => String(3 * n));
+  });
+
+  test('a map read one key at a time', () => {
+    const read = (n: number) => run(`m: make map! [] repeat i ${n} [m/(i): i] s: 0 repeat i ${n} [s: s + m/(i)] s`);
+    grows('map read', 10_000, read, n => String(n * (n + 1) / 2));
+  });
+
+  test('a map made from many pairs', () => {
+    const make = (n: number) => run(`b: make block! 0 repeat i ${n} [append b reduce [join "k" i i]] length? make map! b`);
+    grows('make map!', 10_000, make, n => String(n));
+  });
+
   test('load-spans of text with characters outside ASCII but no surrogate pair', () => {
     grows('load-spans', 10_000, n => loadSpans('漢 '.repeat(n)).s.data.length, n => n);
   });
