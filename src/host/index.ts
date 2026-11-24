@@ -68,7 +68,9 @@ open-events: func [
 ; does not run it again, or it would ask again for ever; any other one does.
 ; So what is heard is kept apart: any-at, the count of ui-cache-news of the
 ; last answer not asked by one reaction alone; solo, [reaction count ...] the
-; last answer asked by that reaction alone.
+; last answer asked by one reaction alone, and the last asked by another one
+; alone: no more is needed to know what a reaction heard (react-heard), and
+; reactions of screens left are not kept for ever.
 
 ui-cache-news: make object! [version: 0  any-at: 0  solo: copy []]
 
@@ -120,10 +122,18 @@ ui-cache-ask: func ["Asks again behind for the answer of an entry of cached." e 
     ]
 ]
 
-; What is heard of an answer, on an entry or on ui-cache-news: count n, asked by askers.
+; What is heard of an answer, on an entry or on ui-cache-news: count n, asked by
+; askers. Of the answers asked alone it keeps the
+; last, and the last of another reaction: counts only grow, so for any reaction
+; these give the last answer it did not ask for alone.
 ui-cache-heard: func ["Keeps who asked for an answer heard." at [object!] askers [block!] n [integer!] /local s] [
-    either all [object? first askers  1 = length? ui-unique-same askers] [
-        either s: find/same at/solo first askers [poke s 2 n] [append at/solo reduce [first askers n]]
+    either all [object? first askers  1 = length? s: ui-unique-same askers] [
+        either all [not empty? at/solo  same? first s first at/solo] [
+            poke at/solo 2 n
+        ] [
+            insert at/solo reduce [first s n]
+            clear skip at/solo 4
+        ]
     ] [
         at/any-at: n
     ]

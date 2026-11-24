@@ -1,0 +1,20 @@
+Trebol [title: "What cached keeps of who asked, as screens come and go"]
+
+u: "/api/k"
+view [
+    screens [
+        home "Home" [
+            title "Home page"
+            link "Page" 'page
+        ]
+        page "Page" [
+            ; each visit makes a new reaction, which asks for itself alone
+            text is [
+                n: either c: cached u [c/n] [0]
+                refresh u
+                rejoin ["k " n]
+            ]
+            link "Home" 'home
+        ]
+    ]
+]

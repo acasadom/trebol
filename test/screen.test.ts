@@ -131,7 +131,7 @@ test('a reaction that asks again for what it reads runs once for it, not for eve
 });
 
 test('an answer of cached is a reaction\'s own only when it alone asked for it, in its own task', async () => {
-  const r = await ranPrinting(['twice', 'other', 'both', 'fails', 'news'].map(n => `test/fixtures/screens/cached-${n}.test.trb`));
+  const r = await ranPrinting(['twice', 'other', 'both', 'fails', 'news', 'kept'].map(n => `test/fixtures/screens/cached-${n}.test.trb`));
   assert.ok(r.passed, r.lines.join('\n'));
   assert.ok(!r.out.includes('(a cycle)'), r.out);
 });
