@@ -71,6 +71,10 @@ open-events: func [
 ; last answer asked by one reaction alone, and the last asked by another one
 ; alone: no more is needed to know what a reaction heard (react-heard), and
 ; reactions of screens left are not kept for ever.
+;
+; The asks waiting for the next fetch, pending, are none (no ask), the reaction
+; that asked if one alone did, or 'any: a fetch answers them all at once, so
+; a thousand asks wait as one.
 
 ui-cache-news: make object! [version: 0  any-at: 0  solo: copy []]
 
@@ -79,7 +83,7 @@ ui-cache-entries: copy []
 ui-cache-entry: func ["The entry of what cached keeps for a url, made the first time." url /local key e] [
     key: form url
     unless e: select/case ui-cache-entries key [
-        e: make object! [url: none  answer: none  version: 0  stale: true  asking: false  pending: copy []  task: none  any-at: 0  solo: copy []]
+        e: make object! [url: none  answer: none  version: 0  stale: true  asking: false  pending: none  task: none  any-at: 0  solo: copy []]
         e/url: url
         append ui-cache-entries reduce [key e]
     ]
@@ -115,7 +119,12 @@ ui-cache-again: func ["Asks again behind for the answer of an entry of cached, a
 ; Asks again behind; one request at a time per url, and one more for what is asked meanwhile.
 ui-cache-ask: func ["Asks again behind for the answer of an entry of cached." e /by who "The reaction that asks"] [
     e/stale: false
-    append e/pending either by [:who] [none]
+    who: either all [by  object? :who] [:who] ['any]
+    e/pending: case [
+        none? e/pending [:who]
+        same? :who e/pending [:who]
+        true ['any]
+    ]
     unless e/asking [
         e/asking: true
         e/task: spawn compose [ui-cache-answer (e)]
@@ -123,15 +132,15 @@ ui-cache-ask: func ["Asks again behind for the answer of an entry of cached." e 
 ]
 
 ; What is heard of an answer, on an entry or on ui-cache-news: count n, asked by
-; askers. Of the answers asked alone it keeps the
+; askers (a reaction alone, or 'any). Of the answers asked alone it keeps the
 ; last, and the last of another reaction: counts only grow, so for any reaction
 ; these give the last answer it did not ask for alone.
-ui-cache-heard: func ["Keeps who asked for an answer heard." at [object!] askers [block!] n [integer!] /local s] [
-    either all [object? first askers  1 = length? s: ui-unique-same askers] [
-        either all [not empty? at/solo  same? first s first at/solo] [
+ui-cache-heard: func ["Keeps who asked for an answer heard." at [object!] askers [object! word!] n [integer!]] [
+    either object? askers [
+        either all [not empty? at/solo  same? askers first at/solo] [
             poke at/solo 2 n
         ] [
-            insert at/solo reduce [first s n]
+            insert at/solo reduce [askers n]
             clear skip at/solo 4
         ]
     ] [
@@ -139,18 +148,11 @@ ui-cache-heard: func ["Keeps who asked for an answer heard." at [object!] askers
     ]
 ]
 
-; The asks, as a block, with each reaction once (they compare by content).
-ui-unique-same: func ["The values of a block, each once, told apart by same?." b [block!] /local out x] [
-    out: copy []
-    foreach x b [unless find/same out :x [append out :x]]
-    out
-]
-
 ui-cache-answer: func ["Asks for the answer of an entry of cached, and keeps it." e /local r askers] [
-    while [not empty? e/pending] [
+    while [e/pending] [
         ; what is asked from now on is answered by the next fetch
         askers: e/pending
-        e/pending: copy []
+        e/pending: none
         r: try [fetch e/url]
         either error? :r [
             ; the last answer stays; the next read asks again

@@ -20,3 +20,10 @@ kept: func [at [object!]] [(length? at/solo) / 2]
         2 >= kept ui-cache-news
     ]
 ]
+; a thousand asks while one is asked wait as one more request, not a thousand
+"asks that wait are kept as one"
+[
+    click "Many"
+    see "Home page"
+    held <= 1
+]
