@@ -122,6 +122,9 @@ Trebol [
 [o: make object! [v: 1] o/v: 2 o/v = 2]
 [m: make map! [k 1] m/k: 2 m/k = 2]
 [m: make map! [] none? m/missing]
+[m: make map! [] k: 3 m/(k): 1 1 = select m 3]
+[b: [1 2] b/(1 + 1): 9 b = [1 9]]
+[o: make object! [x: [1 2]] o/x/(2): 7 o/x = [1 7]]
 [d: 30-Oct-2026 d/month = 10]
 "a set-path sets a part of a pair, tuple, date or time, and stores the new value where it was, as R3"
 [s: 1x2 s/y: 5 s = 1x5]

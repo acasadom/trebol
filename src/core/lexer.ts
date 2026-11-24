@@ -668,6 +668,11 @@ class Lexer {
 
   /** After a paren segment: the rest of the path, or the path itself when it ends there. */
   private pathNext(st: PathState): Cell | Open {
+    // a/(k): 2 sets, as a/b: 2 does (R3)
+    if (this.src[this.i] === ':' && st.t === K.Path && isDelimiter(this.src[this.i + 1]) && this.src[this.i + 1] !== '(') {
+      st.t = K.SetPath;
+      this.i++;
+    }
     return this.pathSlash(st) ? this.pathSegment(st) : this.pathCell(st);
   }
 

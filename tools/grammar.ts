@@ -40,6 +40,8 @@ const WORD_CHAR = String.raw`[^\s@#$%^,:'/\\"()\[\]{};]`;
 const WORD = String.raw`(?![+-]?\.?\d)${WORD_CHAR}+`;
 /** What may follow a path's head: /segment, as many as there are. */
 const SEGMENTS = String.raw`(?:/[^${DELIMS}/]+)*`;
+/** Segments that may be parens one level deep, for a set-path such as m/(k): or a/(i)/b:. */
+const SET_SEGMENTS = String.raw`(?:/(?:[^${DELIMS}/]+|\([^()\n]*\)))*`;
 /** A decimal number with digit groups (1'000), a comma or point and an exponent. */
 const NUMBER = String.raw`[+-]?(?:\d[\d']*(?:[.,]\d*)?|[.,]\d+)(?:[eE][+-]?\d+)?`;
 const ANY = String.raw`[^${DELIMS}]`;
@@ -132,6 +134,8 @@ export function grammar(): object {
       word: {
         patterns: [
           token(`${WORD}${SEGMENTS}:`, 'entity.name.variable.set-word.trebol'),
+          // the head of a set-path with a paren in it; the rest is colored as any path
+          { match: `${START}${WORD}(?=${SET_SEGMENTS}:${END})`, name: 'entity.name.variable.set-word.trebol' },
           token(`:${WORD}${SEGMENTS}`, 'variable.other.get-word.trebol'),
           token(`'${WORD}${SEGMENTS}`, 'constant.other.symbol.lit-word.trebol'),
           token(`(?:${words(OPERATORS)})`, 'keyword.operator.trebol'),
@@ -143,7 +147,11 @@ export function grammar(): object {
       },
       path: {
         // The rest of a path after its head: a/b/c, x/(i)
-        match: String.raw`(?<=[^${DELIMS}]|\))/`, name: 'punctuation.separator.path.trebol',
+        patterns: [
+          { match: String.raw`(?<=[^${DELIMS}]|\))/`, name: 'punctuation.separator.path.trebol' },
+          // the colon of a set-path that ends with a paren: m/(k):
+          { match: `(?<=\\)):${END}`, name: 'entity.name.variable.set-word.trebol' },
+        ],
       },
       bracket: {
         patterns: [

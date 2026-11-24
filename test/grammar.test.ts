@@ -155,6 +155,7 @@ test('each kind of literal gets its scope', () => {
     ['-1.5e3', 'constant.numeric.decimal.trebol'],
     ['name:', 'entity.name.variable.set-word.trebol'],
     ['a/b:', 'entity.name.variable.set-word.trebol'],
+    ['m/(k):', 'entity.name.variable.set-word.trebol'],
     [':name', 'variable.other.get-word.trebol'],
     ["'name", 'constant.other.symbol.lit-word.trebol'],
     ['/part', 'variable.parameter.refinement.trebol'],

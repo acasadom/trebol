@@ -102,6 +102,13 @@ block or to compare with one.
 
 ## set-path?
 
+A path with a colon at its end sets what it names, and its last part may be a paren worked out first:
+
+```trebol-console
+>> sizes: [5 6] n: 2 sizes/(n): 7 sizes
+== [5 7]
+```
+
 ## get-path?
 
 ## lit-path?
