@@ -49,18 +49,26 @@ function partName(key: Cell): string | null {
   return isAnyWord(key.t) ? spell(canon((key as WordCell).sym)) : null;
 }
 
+/**
+ * What a path segment gives: url/segment and file/segment build a longer path, as in R3
+ * (`%a/b`, `%a/1`); every other value is picked as `pick` does. The `pick` native and
+ * series accessors use `pick`, where a file or url is a string of characters.
+ */
+export function pathPick(cur: Cell, key: Cell): Cell | string {
+  if (cur.t === K.Url || cur.t === K.File) {
+    if (isAnyWord(key.t) || isAnyString(key.t) || key.t === K.Integer) {
+      const base = (cur as StringCell).s.data.slice((cur as StringCell).i);
+      const seg = codePoints(isAnyWord(key.t) ? spell((key as WordCell).sym) : isAnyString(key.t) ? fromCodePoints((key as StringCell).s.data, (key as StringCell).i) : mold(key));
+      const slash = base[base.length - 1] === 47 ? [] : [47];
+      const tail = seg[0] === 47 ? seg.slice(1) : seg;
+      return { t: cur.t, s: { data: [...base, ...slash, ...tail] }, i: 0 };
+    }
+  }
+  return pick(cur, key);
+}
+
 export function pick(cur: Cell, key: Cell): Cell | string {
   switch (cur.t) {
-    case K.Url: case K.File:
-      // url/segment and file/segment build a longer path
-      if (isAnyWord(key.t) || isAnyString(key.t) || key.t === K.Integer) {
-        const base = (cur as StringCell).s.data.slice((cur as StringCell).i);
-        const seg = codePoints(isAnyWord(key.t) ? spell((key as WordCell).sym) : isAnyString(key.t) ? fromCodePoints((key as StringCell).s.data, (key as StringCell).i) : mold(key));
-        const slash = base[base.length - 1] === 47 ? [] : [47];
-        const tail = seg[0] === 47 ? seg.slice(1) : seg;
-        return { t: cur.t, s: { data: [...base, ...slash, ...tail] }, i: 0 };
-      }
-      break;
     case K.Email: {
       // email/user and email/host, as in R3
       const p = partName(key);
@@ -183,10 +191,10 @@ export function poke(cur: Cell, key: Cell, v: Cell): string | null {
     touch(b.s);
     return null;
   }
-  if (cur.t === K.String) {
+  if (isAnyString(cur.t)) {
     const s = cur as StringCell;
     const n = offset(key);
-    if (n === null || v.t !== K.Char) return `cannot set ${mold(key)} in a string`;
+    if (n === null || v.t !== K.Char) return `cannot set ${mold(key)} in ${aKindName(cur.t)}`;
     if (n < 0 || s.i + n >= s.s.data.length) return `index ${n + 1} is out of range`;
     s.s.data[s.i + n] = v.v;
     touch(s.s);
