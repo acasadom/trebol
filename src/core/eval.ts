@@ -14,7 +14,7 @@
 // Errors, `break`, `return` and `throw` travel as a `Thrown` that unwinds
 // frames until a native that traps it, or a function call for `return`.
 
-import { K, kindName } from './kinds.ts';
+import { K, kindName, aKindName } from './kinds.ts';
 import { spell, canon, type Sym } from './symbols.ts';
 import {
   NONE, UNSET, TRUE, string, blockOf,
@@ -23,8 +23,8 @@ import {
 import { getWord, setWord, instantiate } from './ctx.ts';
 import { makeError, fillErrorField } from './errors.ts';
 import { P, type Spec, type FuncDef, type NativeDef, type OpDef } from './func.ts';
-import { pick, poke, pokeValue, hasParts } from './access.ts';
-import { sourceOf } from './mold.ts';
+import { pathPick, pathPoke, pokeValue, hasParts } from './access.ts';
+import { sourceOf, mold } from './mold.ts';
 
 // --- steps and throws ------------------------------------------------------------
 
@@ -851,7 +851,9 @@ function walk(t: Task, f: PathFrame, key: Cell): void {
     let cur = f.cur, k = key, v = f.setv;
     for (;;) {
       if (!hasParts(cur)) {
-        const msg = poke(cur, k, v);
+        // f/1 is a longer file, not its first character, so f/1: has nothing to set (R3)
+        if (cur.t === K.File || cur.t === K.Url) return fail(t, 'script', 'bad-path-set', `cannot set ${mold(k)} in ${aKindName(cur.t)}`);
+        const msg = pathPoke(cur, k, v);
         if (msg !== null) return fail(t, 'script', 'bad-path-set', msg);
         break;
       }
@@ -869,7 +871,7 @@ function walk(t: Task, f: PathFrame, key: Cell): void {
     t.v = f.setv;
     return;
   }
-  const v = pick(f.cur, key);
+  const v = pathPick(f.cur, key);
   if (typeof v === 'string') return fail(t, 'script', 'bad-path', v);
   if (f.mode === PM.Set) f.trail.push(f.cur, key);
   f.cur = v;

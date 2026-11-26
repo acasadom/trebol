@@ -49,29 +49,42 @@ function partName(key: Cell): string | null {
   return isAnyWord(key.t) ? spell(canon((key as WordCell).sym)) : null;
 }
 
+/**
+ * What a path segment gives: url/segment and file/segment build a longer path, as in R3
+ * (`%a/b`, `%a/1`); every other value is picked as `pick` does. The `pick` native and
+ * series accessors use `pick`, where a file or url is a string of characters.
+ */
+export function pathPick(cur: Cell, key: Cell): Cell | string {
+  if (cur.t === K.Url || cur.t === K.File) {
+    if (isAnyWord(key.t) || isAnyString(key.t) || key.t === K.Integer) {
+      const base = (cur as StringCell).s.data.slice((cur as StringCell).i);
+      const seg = codePoints(isAnyWord(key.t) ? spell((key as WordCell).sym) : isAnyString(key.t) ? fromCodePoints((key as StringCell).s.data, (key as StringCell).i) : mold(key));
+      const slash = base[base.length - 1] === 47 ? [] : [47];
+      const tail = seg[0] === 47 ? seg.slice(1) : seg;
+      return { t: cur.t, s: { data: [...base, ...slash, ...tail] }, i: 0 };
+    }
+  }
+  if (cur.t === K.Email) {
+    // email/user and email/host, as in R3
+    const p = partName(key);
+    if (p === 'user' || p === 'host') {
+      const cps = (cur as StringCell).s.data.slice((cur as StringCell).i);
+      const at = cps.indexOf(64);
+      const part = p === 'user' ? (at < 0 ? cps : cps.slice(0, at)) : at < 0 ? [] : cps.slice(at + 1);
+      return { t: K.String, s: { data: part }, i: 0 };
+    }
+  }
+  if (isAnyBlock(cur.t) && offset(key) === null) {
+    // block/key is the value after the key, as select gives it
+    const b = cur as BlockCell;
+    const at = blockFind(b.s, b.i, key);
+    return at < 0 ? NONE : b.s.data[at + 1] ?? NONE;
+  }
+  return pick(cur, key);
+}
+
 export function pick(cur: Cell, key: Cell): Cell | string {
   switch (cur.t) {
-    case K.Url: case K.File:
-      // url/segment and file/segment build a longer path
-      if (isAnyWord(key.t) || isAnyString(key.t) || key.t === K.Integer) {
-        const base = (cur as StringCell).s.data.slice((cur as StringCell).i);
-        const seg = codePoints(isAnyWord(key.t) ? spell((key as WordCell).sym) : isAnyString(key.t) ? fromCodePoints((key as StringCell).s.data, (key as StringCell).i) : mold(key));
-        const slash = base[base.length - 1] === 47 ? [] : [47];
-        const tail = seg[0] === 47 ? seg.slice(1) : seg;
-        return { t: cur.t, s: { data: [...base, ...slash, ...tail] }, i: 0 };
-      }
-      break;
-    case K.Email: {
-      // email/user and email/host, as in R3
-      const p = partName(key);
-      if (p === 'user' || p === 'host') {
-        const cps = (cur as StringCell).s.data.slice((cur as StringCell).i);
-        const at = cps.indexOf(64);
-        const part = p === 'user' ? (at < 0 ? cps : cps.slice(0, at)) : at < 0 ? [] : cps.slice(at + 1);
-        return { t: K.String, s: { data: part }, i: 0 };
-      }
-      break;
-    }
     case K.Object: case K.Error: {
       if (!isAnyWord(key.t)) return `cannot pick ${mold(key)} in an object`;
       const i = ctxFind(cur.ctx, (key as WordCell).sym);
@@ -132,12 +145,9 @@ export function pick(cur: Cell, key: Cell): Cell | string {
   if (isAnyBlock(cur.t)) {
     const b = cur as BlockCell;
     const n = offset(key);
-    if (n !== null) {
-      const v = n >= 0 ? b.s.data[b.i + n] : undefined;
-      return v ?? NONE;
-    }
-    const at = blockFind(b.s, b.i, key);
-    return at < 0 ? NONE : b.s.data[at + 1] ?? NONE;
+    if (n === null) return `cannot pick ${mold(key)} in ${aKindName(cur.t)}`;
+    const v = n >= 0 ? b.s.data[b.i + n] : undefined;
+    return v ?? NONE;
   }
   if (isAnyString(cur.t) || cur.t === K.Binary) {
     const s = cur as StringCell;
@@ -152,6 +162,19 @@ export function pick(cur: Cell, key: Cell): Cell | string {
 
 function decimalOrInt(n: number): Cell {
   return Number.isInteger(n) ? integer(n) : decimal(n);
+}
+
+/** What a set-path sets: as `poke`, and also the value after a key in a block (`b/name: v`). */
+export function pathPoke(cur: Cell, key: Cell, v: Cell): string | null {
+  if (isAnyBlock(cur.t) && offset(key) === null) {
+    const b = cur as BlockCell;
+    const at = blockFind(b.s, b.i, key);
+    if (at < 0 || at + 1 >= b.s.data.length) return `${mold(key)} not found in the block`;
+    b.s.data[at + 1] = v;
+    touch(b.s);
+    return null;
+  }
+  return poke(cur, key, v);
 }
 
 /** Sets `key` in `cur` to `v`. Returns null on success, or an error message. */
@@ -171,22 +194,16 @@ export function poke(cur: Cell, key: Cell, v: Cell): string | null {
   if (isAnyBlock(cur.t)) {
     const b = cur as BlockCell;
     const n = offset(key);
-    if (n !== null) {
-      if (n < 0 || b.i + n >= b.s.data.length) return `index ${n + 1} is out of range`;
-      b.s.data[b.i + n] = v;
-      touch(b.s);
-      return null;
-    }
-    const at = blockFind(b.s, b.i, key);
-    if (at < 0 || at + 1 >= b.s.data.length) return `${mold(key)} not found in the block`;
-    b.s.data[at + 1] = v;
+    if (n === null) return `cannot set ${mold(key)} in ${aKindName(cur.t)}`;
+    if (n < 0 || b.i + n >= b.s.data.length) return `index ${n + 1} is out of range`;
+    b.s.data[b.i + n] = v;
     touch(b.s);
     return null;
   }
-  if (cur.t === K.String) {
+  if (isAnyString(cur.t)) {
     const s = cur as StringCell;
     const n = offset(key);
-    if (n === null || v.t !== K.Char) return `cannot set ${mold(key)} in a string`;
+    if (n === null || v.t !== K.Char) return `cannot set ${mold(key)} in ${aKindName(cur.t)}`;
     if (n < 0 || s.i + n >= s.s.data.length) return `index ${n + 1} is out of range`;
     s.s.data[s.i + n] = v.v;
     touch(s.s);
