@@ -23,7 +23,29 @@ it. See [series](../language/08-series.md).
 
 ## pick
 
+A position, in `pick`, `poke`, `at`, `skip` and a path, counts from where the series is: 1 is the value there and
+-1 the one just before it; 0 is no value. A decimal or a percent is cut toward zero, so 2.9 is 2 and 150% is 1, and
+`true` is 1 and `false` 2 (in a path `true` is a key, as any word). A key such as a word is no position:
+`select`, `put` and paths find keys. Past 32 bits a position is out of range. A count, in `/part` and `/dup`,
+may be a decimal too. This is what R3 does.
+
+```trebol-console
+>> pick [a b c] 2.9
+== b
+>> pick next [a b c] -1
+== a
+>> pick [a b] false
+== b
+>> at [a b c] 150%
+== [a b c]
+>> copy/part "abcd" 2.5
+== "ab"
+```
+
 ## poke
+
+`poke` puts a character, or a whole number that is one, in text; a byte, or a character up to 255, in a binary.
+A position with no value there is out of range.
 
 ## put
 

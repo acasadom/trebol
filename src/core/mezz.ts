@@ -196,7 +196,7 @@ pad: func [
 take: function [
     "Removes the value at the head of a series and returns it; none if there is none."
     series [series! none!]
-    /part "Takes that many values, as a series of the same type" length [integer!]
+    /part "Takes that many values, as a series of the same type" length [integer! decimal!]
     /last "Takes from the tail instead"
     /deep "Copies the series inside what is taken"
 ] [

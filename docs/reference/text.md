@@ -100,7 +100,7 @@ uppercase string
 ```
 
 - `string` (`any-string!` `char!`)
-- `/part length` (`integer!`)
+- `/part length` (`integer!` `decimal!`)
 
 (fn-lowercase)=
 ## lowercase
@@ -112,7 +112,7 @@ lowercase string
 ```
 
 - `string` (`any-string!` `char!`)
-- `/part length` (`integer!`)
+- `/part length` (`integer!` `decimal!`)
 
 (fn-trim)=
 ## trim

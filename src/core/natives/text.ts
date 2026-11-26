@@ -20,11 +20,13 @@ import { typesOf } from '../func.ts';
 import { textOf, utf8, at, type SeriesCell } from '../series.ts';
 import { T, type Feed, type Step } from '../eval.ts';
 import { native, value, fail, truthy, doBlock } from './define.ts';
+import { count, countsFail } from './counts.ts';
 import { spliceAll } from '../arrays.ts';
 import { touch } from '../values.ts';
 
 const used = (c: Cell): boolean => c === TRUE;
-const num = (c: Cell): number => I64.toNumber((c as { v: I64.I64 }).v);
+// a count may be a decimal, cut toward zero (R3)
+const num = count;
 
 const isSpace = (cp: number): boolean => cp === 32 || cp === 9 || cp === 10 || cp === 13 || cp === 0xa0;
 
@@ -39,6 +41,8 @@ function recase(upper: boolean) {
       return r.length === s.length ? r.codePointAt(0)! : cp;
     };
     if (x.t === K.Char) return value(char(conv(x.v)));
+    const bad = countsFail(used(f.args[1]!) ? f.args[2]! : null);
+    if (bad !== null) return bad;
     const s = x as StringCell;
     const end = used(f.args[1]!) ? Math.min(s.s.data.length, s.i + num(f.args[2]!)) : s.s.data.length;
     for (let i = s.i; i < end; i++) s.s.data[i] = conv(s.s.data[i]!);
@@ -47,8 +51,8 @@ function recase(upper: boolean) {
   };
 }
 
-native('uppercase', '["Changes the text to capitals." string [any-string! char!] /part length [integer!]]', recase(true));
-native('lowercase', '["Changes the text to small letters." string [any-string! char!] /part length [integer!]]', recase(false));
+native('uppercase', '["Changes the text to capitals." string [any-string! char!] /part length [integer! decimal!]]', recase(true));
+native('lowercase', '["Changes the text to small letters." string [any-string! char!] /part length [integer! decimal!]]', recase(false));
 
 // --- trim and split --------------------------------------------------------------
 
