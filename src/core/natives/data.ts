@@ -376,14 +376,20 @@ native('length?', '["The number of values from the series\' position to its tail
   return value({ t: K.Integer, v: Math.max(0, s.s.data.length - s.i) });
 });
 
-native('pick', '["The value at a position or key." series [any-value!] index [any-value!]]', (_t, f) => {
+// pick and poke take a position in a block or text, as R3: a key there is an invalid argument
+// (select, put and paths find keys)
+function badKey(x: Cell, key: Cell): boolean {
+  return (isAnyBlock(x.t) || isAnyString(x.t)) && key.t !== K.Integer;
+}
+
+native('pick', '["The value at a position in a series, or at a key of a map, object, pair, tuple, date or time." series [any-value!] index [any-value!]]', (_t, f) => {
   const r = pick(f.args[0]!, f.args[1]!);
-  return typeof r === 'string' ? fail('script', 'bad-pick', r) : value(r);
+  return typeof r === 'string' ? fail('script', badKey(f.args[0]!, f.args[1]!) ? 'invalid-arg' : 'bad-pick', r) : value(r);
 });
 
-native('poke', '["Sets the value at a position or key; gives the value." series [any-value!] index [any-value!] value [any-value!]]', (_t, f) => {
+native('poke', '["Sets the value at a position in a series, or at a key of a map or object; gives the value." series [any-value!] index [any-value!] value [any-value!]]', (_t, f) => {
   const msg = poke(f.args[0]!, f.args[1]!, f.args[2]!);
-  return msg !== null ? fail('script', 'bad-poke', msg) : value(f.args[2]!);
+  return msg !== null ? fail('script', badKey(f.args[0]!, f.args[1]!) ? 'invalid-arg' : 'bad-poke', msg) : value(f.args[2]!);
 });
 
 // put, as in R3 and Red: a map or object gets the key set; a block has the value

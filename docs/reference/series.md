@@ -98,7 +98,7 @@ last series
 (fn-pick)=
 ## pick
 
-The value at a position or key.
+The value at a position in a series, or at a key of a map, object, pair, tuple, date or time.
 
 ```text
 pick series index
@@ -110,7 +110,7 @@ pick series index
 (fn-poke)=
 ## poke
 
-Sets the value at a position or key; gives the value.
+Sets the value at a position in a series, or at a key of a map or object; gives the value.
 
 ```text
 poke series index value

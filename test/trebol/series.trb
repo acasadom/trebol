@@ -359,3 +359,21 @@ Trebol [
 [f: %abc/  f/x/1 = %abc/x/1]
 [u: http://a.b  u/c = http://a.b/c]
 [f: copy %abc  e: try [f/1: #"x"]  all [error? e  e/id = 'bad-path-set  f = %abc]]
+
+"pick and poke take a position in a block or text; a key is an invalid argument, as R3"
+[e: try [pick [a 1] 'a]  all [error? e  e/id = 'invalid-arg]]
+[e: try [poke [a 1] 'a 2]  all [error? e  e/id = 'invalid-arg]]
+[e: try [pick [x y] "x"]  all [error? e  e/id = 'invalid-arg]]
+[e: try [pick a@b 'user]  all [error? e  e/id = 'invalid-arg]]
+[e: try [pick "abc" 'w]  all [error? e  e/id = 'invalid-arg]]
+[e: try [poke copy "abc" 'w #"x"]  all [error? e  e/id = 'invalid-arg]]
+[e: try [pick %abc 'word]  all [error? e  e/id = 'invalid-arg]]
+[#"a" = pick a@b 1]
+[1 = pick make map! [a 1] 'a]
+"paths and select, put still find a key in a block"
+[b: [a 1]  1 = b/a]
+[b: [a 1]  b/a: 5  b = [a 5]]
+[b: [x [y 3]]  b/x/y: 4  b = [x [y 4]]]
+[e: a@b  all ["a" = e/user  "b" = e/host]]
+[1 = select [a 1] 'a]
+[b: [a 1]  put b 'a 9  b = [a 9]]

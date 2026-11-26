@@ -23,7 +23,7 @@ import {
 import { getWord, setWord, instantiate } from './ctx.ts';
 import { makeError, fillErrorField } from './errors.ts';
 import { P, type Spec, type FuncDef, type NativeDef, type OpDef } from './func.ts';
-import { pathPick, poke, pokeValue, hasParts } from './access.ts';
+import { pathPick, pathPoke, pokeValue, hasParts } from './access.ts';
 import { sourceOf, mold } from './mold.ts';
 
 // --- steps and throws ------------------------------------------------------------
@@ -853,7 +853,7 @@ function walk(t: Task, f: PathFrame, key: Cell): void {
       if (!hasParts(cur)) {
         // f/1 is a longer file, not its first character, so f/1: has nothing to set (R3)
         if (cur.t === K.File || cur.t === K.Url) return fail(t, 'script', 'bad-path-set', `cannot set ${mold(k)} in ${aKindName(cur.t)}`);
-        const msg = poke(cur, k, v);
+        const msg = pathPoke(cur, k, v);
         if (msg !== null) return fail(t, 'script', 'bad-path-set', msg);
         break;
       }
