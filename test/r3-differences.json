@@ -490,5 +490,13 @@
   {
     "test": "[m: make map! [#\"a\" 1] all [none? select m #\"A\" 1 = select m #\"a\"]]",
     "why": "Char keys of a map tell upper case from lower case, as text keys do (owner's decision, 2026-11-24); R3 finds #\"a\" with #\"A\"."
+  },
+  {
+    "test": "[p: load {x/2.9/50%/1.2.3/#\"c\"/1x2/$1/#iss/1:00/<t>/#{00}/a@b/%f} p = load mold p]",
+    "why": "Every scalar may be a path segment followed by another; R3 loads x/50% and x/1e3 but not x/50%/a, x/1e3/a or x/$1/b (a lexer quirk), so this path does not load there."
+  },
+  {
+    "test": "[p: to path! [x %a b] all [{x/%\"a\"/b} = mold p p = load mold p]]",
+    "why": "mold writes a file segment before the end as %\"a\" because a plain file takes the rest of the path, so the path loads back as itself; R3 writes x/%a/b, which loads as x and %a/b."
   }
 ]

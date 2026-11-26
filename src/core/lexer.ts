@@ -12,14 +12,15 @@
 
 import { K } from './kinds.ts';
 import { intern } from './symbols.ts';
-import * as I64 from './int64.ts';
-import { parseDec } from './dec.ts';
 import { decodeBase } from './base.ts';
 import { decodeEscape } from './escapes.ts';
 import { construct, mapOf } from './construct.ts';
+import { scalarOf, NUMBER_RE } from './scalars.ts';
+
+export { fullYear } from './scalars.ts';
 import {
-  packPos, codePoints, integer, decimal, percent, money, char, pair, tuple, date, time,
-  type Cell, type Series, type BlockKind, type StringKind, type WordKind, type DateVal,
+  packPos, codePoints, char, pair,
+  type Cell, type Series, type BlockKind, type StringKind, type WordKind,
   type BlockCell, type StringCell,
 } from './values.ts';
 
@@ -73,27 +74,11 @@ function topSeries(lx: Lexer, file?: string): Series<Cell> {
 // --- token classification table --------------------------------------------
 
 const RE = {
-  integer: /^[+-]?\d[\d']*$/,
-  decimal: /^[+-]?(?:\d[\d']*(?:[.,]\d*)?|[.,]\d+)(?:e[+-]?\d+)?$/i,
-  percent: /^([+-]?(?:\d[\d']*(?:[.,]\d*)?|[.,]\d+)(?:e[+-]?\d+)?)%$/i,
-  pair: /^([+-]?(?:\d[\d']*(?:[.,]\d*)?|[.,]\d+)(?:e[+-]?\d+)?)x([+-]?(?:\d[\d']*(?:[.,]\d*)?|[.,]\d+)(?:e[+-]?\d+)?)$/i,
-  tuple: /^\d+(?:\.\d+){2,11}$/,
-  time: /^([+-]?)(\d+):(\d+)(?::(\d+(?:[.,]\d+)?))?$/,
-  date: /^(\d+)([-/])([A-Za-z]+|\d+)\2(\d+)(?:[/T](.+))?$/,
-  dateTime: /^(\d+):(\d+)(?::(\d+(?:[.,]\d+)?))?(Z|[+-]\d{1,2}(?::?\d{2})?)?$/i,
-  money: /^([+-]?)([A-Za-z]{3})?\$([+-]?)(\d[\d']*(?:[.,]\d*)?|[.,]\d+)$/,
   url: /^[A-Za-z][A-Za-z0-9+.-]*:\S+$/,
   email: /^[^@\s]+@[^@\s]*$/,
   // Characters that may not appear anywhere in a word.
   wordBad: /[\s@#$%^,:'/\\"()[\]{};]/,
 } as const;
-
-const MONTHS = [
-  'january', 'february', 'march', 'april', 'may', 'june', 'july',
-  'august', 'september', 'october', 'november', 'december',
-];
-
-const NS_PER_SEC = 1e9;
 
 function isDelimiter(c: string | undefined): boolean {
   return c === undefined || c === ' ' || c === '\t' || c === '\n' || c === '\r' ||
@@ -107,32 +92,6 @@ function isWord(text: string): boolean {
   if (RE.wordBad.test(text)) return false;
   if (/^[+-]?\.?\d/.test(text)) return false; // 1, +1, -.5, .5 are numbers
   return true;
-}
-
-function num(text: string): number {
-  return Number(text.replace(/'/g, '').replace(',', '.'));
-}
-
-/** The number in `text` times 10^shift, rounded once (15% is exactly 0.15). */
-function shiftDecimal(text: string, shift: number): number {
-  const clean = text.replace(/'/g, '').replace(',', '.');
-  const m = /^(.*?)(?:e([+-]?\d+))?$/i.exec(clean)!;
-  return Number(`${m[1]}e${Number(m[2] ?? 0) + shift}`);
-}
-
-/**
- * The year a year of one or two digits names, as R3 reads it: the one at most 50 years from now, so in 2026
- * 1-Jan-76 is 2076 and 1-Jan-77 is 1977. Three digits or more are the year as written: 1-Jan-0099 is 99.
- */
-export function fullYear(n: number, thisYear = new Date().getUTCFullYear()): number {
-  const last = thisYear + 50;
-  const y = Math.floor(last / 100) * 100 + n;
-  return y > last ? y - 100 : y;
-}
-
-function daysInMonth(y: number, m: number): number {
-  if (m === 2) return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0 ? 29 : 28;
-  return [4, 6, 9, 11].includes(m) ? 30 : 31;
 }
 
 // --- the lexer ---------------------------------------------------------------
@@ -562,13 +521,16 @@ class Lexer {
 
     // Numbers and number-like scalars
     if (/^[+-]?[\d.,$]/.test(text) && !isWord(text)) {
-      const v = this.number(text, start);
+      const v = this.scalar(text, start);
       if (v) return v;
     }
-    if (RE.money.test(text)) return this.number(text, start)!;
+    if (NUMBER_RE.money.test(text)) return this.scalar(text, start)!;
 
     if (RE.url.test(text)) return this.str(K.Url, codePoints(text));
-    if (RE.email.test(text) && c !== '/') return this.str(K.Email, codePoints(text));
+    // a/b@c is a path whose last segment is an email (R3)
+    const slash = text.indexOf('/');
+    const emailPath = slash > 0 && slash < text.indexOf('@') && isWord(text.slice(0, slash));
+    if (RE.email.test(text) && c !== '/' && !emailPath) return this.str(K.Email, codePoints(text));
 
     if (c === '/') {
       if (text === '/' || text === '//') return this.wordCell(K.Word, text);
@@ -585,58 +547,11 @@ class Lexer {
     return { t, sym: intern(name), bind: null };
   }
 
-  /** Numbers, money, percent, pair, tuple, time and date. Null if none matches. */
-  private number(text: string, start: number): Cell | null {
-    let m: RegExpExecArray | null;
-    if (RE.integer.test(text)) {
-      const v = I64.parse(text);
-      if (v === null) this.fail(`integer out of 64-bit range: ${text}`, start);
-      return integer(v);
-    }
-    if (RE.decimal.test(text)) return decimal(num(text));
-    if ((m = RE.percent.exec(text))) return percent(shiftDecimal(m[1]!, -2));
-    if ((m = RE.money.exec(text))) {
-      const v = parseDec(m[4]!)!;
-      const negative = (m[1] === '-') !== (m[3] === '-');
-      return money(negative ? { d: -v.d, e: v.e } : v, (m[2] ?? '').toUpperCase());
-    }
-    if ((m = RE.pair.exec(text))) return pair(num(m[1]!), num(m[2]!));
-    if (RE.tuple.test(text)) {
-      const parts = text.split('.').map(Number);
-      if (parts.some(p => p > 255)) this.fail(`tuple values must be 0-255: ${text}`, start);
-      return tuple(parts);
-    }
-    if ((m = RE.time.exec(text))) {
-      const ns = timeNs(m[2]!, m[3]!, m[4]);
-      return time(m[1] === '-' ? -ns : ns);
-    }
-    if ((m = RE.date.exec(text))) return this.dateCell(m, text, start);
-    return null;
-  }
-
-  private dateCell(m: RegExpExecArray, text: string, start: number): Cell {
-    const [, a, , monthText, b, rest] = m;
-    let y: number;
-    let d: number;
-    if (a!.length >= 3) { y = Number(a); d = Number(b); } else { d = Number(a); y = b!.length <= 2 ? fullYear(Number(b)) : Number(b); }
-    let mon: number;
-    if (/^\d+$/.test(monthText!)) {
-      mon = Number(monthText);
-    } else {
-      const lower = monthText!.toLowerCase();
-      mon = lower.length >= 3 ? MONTHS.findIndex(n => n.startsWith(lower)) + 1 : 0;
-    }
-    if (mon < 1 || mon > 12 || d < 1 || d > daysInMonth(y, mon)) {
-      this.fail(`invalid date: ${text}`, start);
-    }
-    const v: DateVal = { y, m: mon, d, time: null, zone: null };
-    if (rest !== undefined) {
-      const t = RE.dateTime.exec(rest);
-      if (!t) this.fail(`invalid time in date: ${text}`, start);
-      v.time = timeNs(t[1]!, t[2]!, t[3]);
-      if (t[4] !== undefined) v.zone = parseZone(t[4]);
-    }
-    return date(v);
+  /** A number-like value, or null; a malformed one is a load error. */
+  private scalar(text: string, start: number): Cell | null {
+    const v = scalarOf(text);
+    if (typeof v === 'string') this.fail(v, start);
+    return v;
   }
 
   // --- paths -----------------------------------------------------------------------
@@ -653,20 +568,12 @@ class Lexer {
 
   /** Reads segments from the cursor until the path ends or a paren segment opens. */
   private pathSegment(st: PathState): Cell | Open {
-    const s = this.src;
     for (;;) {
-      if (s[this.i] === '(') {
+      if (this.src[this.i] === '(') {
         this.i++;
         return { open: 'pathParen', end: ')', start: st.start, path: st };
       }
-      const segStart = this.i;
-      while (!isDelimiter(s[this.i]) && s[this.i] !== '/') this.i++;
-      let seg = s.slice(segStart, this.i);
-      if (seg.endsWith(':') && isDelimiter(s[this.i]) && st.t === K.Path && st.data.length > 0) {
-        st.t = K.SetPath;
-        seg = seg.slice(0, -1);
-      }
-      st.data.push(this.segment(seg, segStart));
+      st.data.push(this.segment(st));
       if (!this.pathSlash(st)) return this.pathCell(st);
     }
   }
@@ -698,32 +605,59 @@ class Lexer {
     return { t: st.t, s: { data: st.data }, i: 0 };
   }
 
-  private segment(seg: string, at: number): Cell {
-    if (seg === '') this.fail('empty path segment', at);
-    if (RE.integer.test(seg)) {
-      const v = I64.parse(seg);
-      if (v !== null) return integer(v);
+  /**
+   * The segment at the cursor, read past it. Besides words, get-words, lit-words and parens, a
+   * segment is a scalar as in R3: a number-like value, a char, an issue, a binary, a tag or an
+   * email; a file or url takes the rest of the path, as R3 reads it (%"..." ends at its quote).
+   * Strings and blocks are not segments. A set-path ends in a word or an integer (R3).
+   */
+  private segment(st: PathState): Cell {
+    const s = this.src;
+    const at = this.i;
+    const next = s[at + 1] ?? '';
+    if (s[at] === '#' && (next === '"' || next === '{')) return this.hash() as Cell;
+    const base = /^(2|16|64)#\{/.exec(s.slice(at, at + 4));
+    if (base) {
+      this.i += base[1]!.length + 1;
+      return this.binary(Number(base[1]));
     }
+    if (s[at] === '<' && /[A-Za-z/!?]/.test(next)) return this.tag();
+    while (!isDelimiter(s[this.i]) && s[this.i] !== '/') this.i++;
+    let seg = s.slice(at, this.i);
+    if (seg[0] === '%' && (s[this.i] === '"' || !/^%%?:?$/.test(seg))) {
+      this.i = at;
+      return this.percentSign() as Cell;
+    }
+    const scheme = /^[A-Za-z][A-Za-z0-9+.-]*:/.test(seg);
+    if (scheme && !(seg.endsWith(':') && isDelimiter(s[this.i]))) {
+      while (!isDelimiter(s[this.i])) this.i++;
+      const text = s.slice(at, this.i);
+      if (RE.url.test(text)) return this.str(K.Url, codePoints(text));
+      this.i = at + seg.length;
+    }
+    let set = false;
+    if (seg.endsWith(':') && isDelimiter(s[this.i]) && st.t === K.Path && st.data.length > 0) {
+      st.t = K.SetPath;
+      seg = seg.slice(0, -1);
+      set = true;
+    }
+    const v = this.segmentText(seg, at);
+    if (set && v.t !== K.Integer && v.t !== K.Word && v.t !== K.GetWord && v.t !== K.LitWord) {
+      this.fail(`invalid set-path segment: ${seg}`, at);
+    }
+    return v;
+  }
+
+  /** A segment written as plain text: a word of any kind, an issue, a number-like value or an email. */
+  private segmentText(seg: string, at: number): Cell {
+    if (seg === '') this.fail('empty path segment', at);
     if (seg[0] === ':' && isWord(seg.slice(1))) return this.wordCell(K.GetWord, seg.slice(1));
     if (seg[0] === "'" && isWord(seg.slice(1))) return this.wordCell(K.LitWord, seg.slice(1));
     if (isWord(seg)) return this.wordCell(K.Word, seg);
+    if (seg[0] === '#' && seg.length > 1) return { t: K.Issue, sym: intern(seg.slice(1)), bind: null };
+    const v = this.scalar(seg, at);
+    if (v) return v;
+    if (RE.email.test(seg)) return this.str(K.Email, codePoints(seg));
     return this.fail(`invalid path segment: ${seg}`, at);
   }
 }
-
-// --- helpers -----------------------------------------------------------------------
-
-function timeNs(h: string, m: string, sec: string | undefined): number {
-  const seconds = Number(h) * 3600 + Number(m) * 60;
-  const frac = sec === undefined ? 0 : num(sec);
-  // Round to whole nanoseconds to keep values exact and comparable.
-  return Math.round(seconds * NS_PER_SEC + frac * NS_PER_SEC);
-}
-
-function parseZone(z: string): number {
-  if (z === 'Z' || z === 'z') return 0;
-  const m = /^([+-])(\d{1,2})(?::?(\d{2}))?$/.exec(z)!;
-  const minutes = Number(m[2]) * 60 + Number(m[3] ?? 0);
-  return m[1] === '-' ? -minutes : minutes;
-}
-

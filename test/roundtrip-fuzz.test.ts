@@ -88,6 +88,19 @@ function randomScalar(): Cell {
   }
 }
 
+/** A value that may stand in a path segment and mold back as one: any scalar but a string, a word
+ * holding a slash, a logic or none, and a date with a time (its slash splits it). */
+function randomSegment(): Cell {
+  for (;;) {
+    const v = randomScalar();
+    if (v.t === K.String || v.t === K.Url || v.t === K.SetWord || v.t === K.Refinement) continue;
+    if (v.t === K.None || v.t === K.Logic) continue;
+    if (v.t === K.Word && /\//.test(mold(v))) continue;
+    if (v.t === K.Date && v.v.time !== null) continue;
+    return v;
+  }
+}
+
 function randomValue(depth: number): Cell {
   if (depth > 3 || rand() < 0.7) return randomScalar();
   switch (int(4)) {
@@ -112,8 +125,12 @@ function randomValue(depth: number): Cell {
       }
       return object(ctx);
     }
-    default:
-      return blockOf(K.Path, [wordOf(K.Word, 'a' + int(9)), wordOf(K.Word, 'b'), integer(int(9))]);
+    default: {
+      const segs: Cell[] = [wordOf(K.Word, 'a' + int(9))];
+      for (let i = 1 + int(4); i > 0; i--) segs.push(randomSegment());
+      if (rand() < 0.2) segs.push(stringOf(K.Url, 'https://example.com/' + int(100)));
+      return blockOf(pick([K.Path, K.GetPath, K.LitPath]), segs);
+    }
   }
 }
 
