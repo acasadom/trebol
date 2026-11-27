@@ -237,6 +237,11 @@ test('every keyword of every style, given a value of a type it does not take, is
   assert.equal(r, '[true []]');
 });
 
+test('icon without one of the icons Trebol brings is a problem: button "Go" icon "search" is a button, then an icon', async () => {
+  assert.equal(await ev('r: ui-sketch [button "Go" icon "search" icon icon #heart]  r/2/2'), '"an icon takes one of the icons Trebol brings: icon #heart"');
+  assert.equal(await ev('r: ui-sketch [button "Go" icon "search" icon icon #heart]  (length? r/2) / 2'), '2');
+});
+
 test('every style written alone is laid out or gives problems of the layout, never an error of the dialect itself', async () => {
   const r = await ev(`
     out: copy []

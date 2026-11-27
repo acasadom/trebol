@@ -11,7 +11,7 @@ stylize [
         round: 'round "cut to a circle, as a person's photo"
     ]]
     backdrop: face [style: 'backdrop  takes: [value: [file! url!] "the picture it shows"]]
-    icon: face [style: 'icon]
+    icon: face [style: 'icon  takes: [done: :icon-check]]
     progress: face [style: 'progress  takes: [value: [percent!] "how far it is"]]
     video: face [style: 'video  takes: [
         value: [file! url!] "the video it plays"
@@ -89,6 +89,12 @@ stylize [
         done: :board-check
     ]]
     breadcrumb: face [style: 'breadcrumb  takes: [data: block :crumbs-of "its items: a label and where each goes"]]
+]
+
+; icon #heart: an icon face draws nothing without one (button "Go" icon "search" is a button, then an icon);
+; in view compose [icon (x)] check cannot know the paren's value
+icon-check: func [f place [block!]] [
+    unless any [f/icon  all [ui-checking  paren? pick place 2]] [ui-problem place "an icon takes one of the icons Trebol brings: icon #heart"]
 ]
 
 board-check: func [f place [block!]] [

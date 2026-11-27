@@ -681,7 +681,9 @@ then each neighbour as a link with the label of its edge. `small`, `medium` or `
 
 Made from [`face`](#style-face).
 
-An icon of the set Trebol brings, `icon #heart`, drawn in the color of its role.
+An icon of the set Trebol brings, `icon #heart`, drawn in the color of its role. Without one it is a problem of the
+layout: in `button "Go" icon "search"` the `icon` is a face of its own, after the button, so the icon of a button
+is written `button "Go" #search`.
 
 The icons, for `icon`, an icon before a face's text, a tile's `mark` and a menu's items; another name is a
 problem of the layout (`#hart is not an icon; did you mean #heart?`), and `ui-icons` is the list:
