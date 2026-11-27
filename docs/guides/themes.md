@@ -25,6 +25,14 @@ not depend on the hue. `theme.ts` has a `contrast()` function, and the tests run
 look and both modes: every text color meets WCAG AA on its background. A theme cannot make text you cannot
 read.
 
+A skin paints with more than the roles: the faces of buttons and tabs, their bevels, the two ends of a
+gradient. `skinFaces()` gives those colors, the same ones the stylesheet uses, and the tests check every text
+drawn on them, for every skin, hue and mode. Where a skin writes a role as text on a face of its own (fusion's
+red *Delete* on a grey button), the color is the role's ink for that face (`roleInk()`: darker, or lighter in
+dark mode, keeping its hue, until it reads). Then a test in a real browser measures what is drawn: the gallery,
+in every look and both modes, with its menu, dialogs and toast open; each piece of text is compared with the
+pixels under it, so a gradient or a mix written in CSS is caught too.
+
 An image behind the faces (`backdrop`) is a background nobody can foresee, so the theme puts a veil of the
 page's color over it. `scrimAlpha()` finds the least opacity at which the text still meets AA on the worst
 image there is, all black or all white, blending as browsers do; it comes to between 55% and 74% depending

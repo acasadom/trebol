@@ -14,7 +14,7 @@ body { font-size: 13px; }
 .tb-button:hover { background: var(--tb-surface); }
 .tb-button:active:not(:disabled, [aria-disabled="true"]) { background: var(--tb-border); }
 .tb-button:focus-visible { box-shadow: 0 0 0 1px var(--tb-border), 0 0 0 4px var(--tb-focus-ring); }
-.tb-button.tb-primary, .tb-button.tb-primary:hover, .tb-button.tb-primary[aria-disabled="true"]:hover { background: linear-gradient(color-mix(in oklch, var(--tb-primary) 85%, var(--tb-on-primary)), var(--tb-primary)); box-shadow: var(--tb-shadow-1); }
+.tb-button.tb-primary, .tb-button.tb-primary:hover, .tb-button.tb-primary[aria-disabled="true"]:hover { background: linear-gradient(var(--tb-primary-top), var(--tb-primary-bottom)); box-shadow: var(--tb-shadow-1); }
 .tb-button.tb-primary:active:not(:disabled, [aria-disabled="true"]) { background: var(--tb-primary-hover); }
 .tb-button.tb-primary:focus-visible { box-shadow: 0 0 0 4px var(--tb-focus-ring); }
 .tb-toolbar { background: transparent; border: 0; padding: 0; }
