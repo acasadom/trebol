@@ -107,6 +107,12 @@ before(async () => {
         res.writeHead(200, { 'content-type': url.searchParams.get('type')! });
         res.end(Buffer.from([0x50, 0x4b, 0xff, 0x41]));
         return;
+      case '/said-json': {
+        // a body the server calls JSON, whatever it is, with the status asked
+        res.writeHead(Number(url.searchParams.get('status') ?? 200), { 'content-type': 'application/json; charset=utf-8' });
+        res.end(url.searchParams.get('body') ?? '');
+        return;
+      }
       case '/text':
         res.writeHead(200, { 'content-type': 'text/plain' });
         res.end('plain text');
@@ -432,6 +438,22 @@ describe('http', () => {
     assert.equal(await ev('t: spawn [fetch base/never] wait 0.02 cancel t e: try [wait t] e/id'), 'cancelled');
     assert.equal(await ev('r: fetch/with base/missing [full: true] r/status'), '404');
     assert.equal(await evErr('fetch/with base/missing [full: false]'), 'http');
+  });
+
+  test('a body said to be JSON that is not is an error, an empty one is an empty string', async () => {
+    const said = (body: string, status = 200) => `(join base {/said-json?status=${status}&body=${encodeURIComponent(body)}})`;
+    for (const body of ['{"a": 1,,', '<html>oops</html>', '[1 2]', '"open']) {
+      assert.equal(await evErr(`fetch ${said(body)}`), 'bad-json', body);
+      assert.equal(await evErr(`fetch/with ${said(body)} [full: true]`), 'bad-json', body);
+    }
+    assert.match(await ev(`e: try [fetch ${said('{"a": 1,,')}] e/message`), /says it is JSON but is not: invalid JSON at/);
+    assert.equal(await ev(`fetch ${said('')}`), '""');
+    assert.equal(await ev(`fetch ${said('  ')}`), '"  "');
+    assert.equal(await ev(`r: fetch/with ${said('', 204)} [full: true] r/body`), '""');
+    assert.equal(await ev(`fetch ${said('{"a": 1}')}`), '#(a: 1)');
+    // a failed answer: its status is the error; with full the text stays to be read
+    assert.equal(await evErr(`fetch ${said('<html>down</html>', 502)}`), 'http');
+    assert.equal(await ev(`r: fetch/with ${said('<html>down</html>', 502)} [full: true] r/body`), '"<html>down</html>"');
   });
 
   test('requests run concurrently', async () => {

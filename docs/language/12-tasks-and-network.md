@@ -51,9 +51,9 @@ The supplier does not sell saddles, and says so with an HTTP error. For `fetch` 
 == "HTTP 404 Not Found for http://localhost:8089/parts/saddle"
 ```
 
-A network has more ways to fail than a supplier saying no: the supplier may be down, or slow. All of them are
-errors of the `access` type, so one `try` covers them. A function that answers `false` for anything that cannot
-be had, whatever the reason:
+A network has more ways to fail than a supplier saying no: the supplier may be down, or slow, or answer with
+something it calls JSON that is not. All of them are errors of the `access` type, so one `try` covers them. A
+function that answers `false` for anything that cannot be had, whatever the reason:
 
 ```trebol
 supplier: http://localhost:8089/parts/
