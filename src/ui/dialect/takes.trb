@@ -297,6 +297,9 @@ ui-take: function [f def pos labels] [
         if all [not e/lead  e/how <> 'value  q: ui-take-at f e pos labels] [return q]
         if all [not e/lead  e/how = 'value  block? first e/args  'one-of = first first e/args  q: ui-take-at f e pos labels] [return q]
     ]
+    ; a keyword given the wrong value is a problem, never a value of another entry (money min "x": not
+    ; the currency MIN)
+    if all [word? first pos  ui-keyword def first pos] [return none]
     foreach e def/entries [
         if all [not e/lead  e/how = 'value  q: ui-take-at f e pos labels] [return q]
     ]
