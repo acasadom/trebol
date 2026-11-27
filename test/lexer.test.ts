@@ -240,6 +240,72 @@ describe('words and paths', () => {
   });
 });
 
+describe('path segments (R3)', () => {
+  function kinds(src: string): string[] {
+    const p = one(src) as BlockCell;
+    assert.ok(p.t === K.Path || p.t === K.SetPath, `${src} is not a path`);
+    return p.s.data.map(c => kindName(c.t));
+  }
+
+  test('a segment may be any scalar', () => {
+    const cases: [string, string][] = [
+      ['x/2.9', 'decimal!'], ['x/-2.5', 'decimal!'], ['x/1,5', 'decimal!'], ['x/1e3', 'decimal!'],
+      ['x/.5', 'decimal!'], ['x/50%', 'percent!'], ['x/1.2.3', 'tuple!'], ['x/#"c"', 'char!'],
+      ['x/#"/"', 'char!'], ['x/1x2', 'pair!'], ['x/$1', 'money!'], ['x/-$1.50', 'money!'],
+      ['x/#iss', 'issue!'], ['x/1:00', 'time!'], ['x/12:30:45.5', 'time!'], ['x/%f', 'file!'],
+      ['x/<t>', 'tag!'], ['x/</t>', 'tag!'], ['x/#{00}', 'binary!'], ['x/2#{00000000}', 'binary!'],
+      ['x/a@b', 'email!'], ['x/http://a', 'url!'], ['x/a:b', 'url!'], ['x/1-Jan-2000', 'date!'],
+      ['x/2000-01-01T10:00', 'date!'], ['x/%"a b"', 'file!'],
+    ];
+    for (const [src, kind] of cases) assert.deepEqual(kinds(src), ['word!', kind], src);
+  });
+
+  test('scalar segments go on to the next one', () => {
+    assert.deepEqual(kinds('x/a/2.5'), ['word!', 'word!', 'decimal!']);
+    assert.deepEqual(kinds('x/1.5/y'), ['word!', 'decimal!', 'word!']);
+    assert.deepEqual(kinds('x/1.2.3/a'), ['word!', 'tuple!', 'word!']);
+    assert.deepEqual(kinds('x/#a/b'), ['word!', 'issue!', 'word!']);
+    assert.deepEqual(kinds('x/#{00}/a'), ['word!', 'binary!', 'word!']);
+    assert.deepEqual(kinds('x/#"c"/a'), ['word!', 'char!', 'word!']);
+    assert.deepEqual(kinds('a/b@c/d'), ['word!', 'email!', 'word!']);
+    assert.deepEqual(kinds('x/1-Jan-2000/10:00'), ['word!', 'date!', 'time!']);
+    assert.deepEqual(kinds('x/%"a b"/c'), ['word!', 'file!', 'word!']);
+    assert.deepEqual(kinds('x/<a/b>/c'), ['word!', 'tag!', 'word!']);
+    assert.equal(kindOf(':x/2.5'), 'get-path!');
+    assert.equal(kindOf("'x/2.5"), 'lit-path!');
+  });
+
+  test('a plain file or url takes the rest of the path', () => {
+    assert.deepEqual(kinds('x/%f/b'), ['word!', 'file!']);
+    assert.deepEqual(kinds('x/a:/b'), ['word!', 'url!']);
+    assert.equal(mold(load('x/%f/b')), '[x/%f/b]');
+  });
+
+  test('% and %% stay words', () => {
+    assert.deepEqual(kinds('x/%'), ['word!', 'word!']);
+    assert.deepEqual(kinds('x/%%/b'), ['word!', 'word!', 'word!']);
+  });
+
+  test('strings, blocks and scalars at the end of a set-path are invalid (R3)', () => {
+    fails('x/"s"', /ends with \//);
+    fails('x/[b]', /ends with \//);
+    for (const src of ['x/2.9: 1', 'x/1x2: 1', 'x/$1: 1', 'x/#a: 1', 'x/a@b: 1', 'x/10:00: 1']) {
+      fails(src, /invalid set-path segment/);
+    }
+    assert.equal(kindOf('x/-1:'), 'set-path!');
+    fails('x/#', /invalid path segment/);
+    fails('x/<t', /missing >/);
+  });
+
+  test('a path molds back to text that loads as the same path', () => {
+    const src = 'x/2.9/50%/1.2.3/#"c"/1x2/$1.00/#iss/1:00/<t>/#{00}/a@b/%f';
+    assert.equal(mold(load(src)), `[${src}]`);
+    const files: BlockCell = { t: K.Path, s: { data: [one('x'), one('%a'), one('b')] }, i: 0 };
+    assert.equal(mold(files), 'x/%"a"/b');
+    assert.equal(mold(load(mold(files))), '[x/%"a"/b]');
+  });
+});
+
 describe('blocks, maps and construction syntax', () => {
   test('nested blocks and parens', () => {
     const b = one('[a (b [c])]') as BlockCell;

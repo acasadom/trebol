@@ -508,6 +508,25 @@ path? value
 
 - `value` (`any-type!`)
 
+After its first word, a path's parts are words, numbers, parens, or any other plain value written in place, as
+in Rebol: a decimal, a percent, money, a pair, a tuple, a char, an issue, a tag, a time, a date, a binary or an
+email. Such a value finds itself in a block, and a decimal or percent picks by position, cut toward zero:
+
+```trebol-console
+>> codes: [#a 10 <b> 20 #"c" 30]
+== [#a 10 <b> 20 #"c" 30]
+>> codes/<b>
+== 20
+>> codes/#"c"
+== 30
+>> codes/2.9
+== 10
+```
+
+A file or a url takes the rest of the path, so `x/%a/b` has two parts, the second `%a/b`; write `x/%"a"/b`
+for a file part followed by another, which is how `mold` writes it. A string or a block is not a path part,
+and a path that sets ends with a word, an integer or a paren.
+
 (fn-set-path-3f)=
 ## set-path?
 

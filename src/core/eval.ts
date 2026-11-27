@@ -23,7 +23,7 @@ import {
 import { getWord, setWord, instantiate } from './ctx.ts';
 import { makeError, fillErrorField } from './errors.ts';
 import { P, type Spec, type FuncDef, type NativeDef, type OpDef } from './func.ts';
-import { pathPick, pathPoke, pokeValue, hasParts } from './access.ts';
+import { pathPick, pathPoke, pokeValue, hasParts, isMiss } from './access.ts';
 import { sourceOf, mold } from './mold.ts';
 
 // --- steps and throws ------------------------------------------------------------
@@ -853,8 +853,8 @@ function walk(t: Task, f: PathFrame, key: Cell): void {
       if (!hasParts(cur)) {
         // f/1 is a longer file, not its first character, so f/1: has nothing to set (R3)
         if (cur.t === K.File || cur.t === K.Url) return fail(t, 'script', 'bad-path-set', `cannot set ${mold(k)} in ${aKindName(cur.t)}`);
-        const msg = pathPoke(cur, k, v);
-        if (msg !== null) return fail(t, 'script', 'bad-path-set', msg);
+        const m = pathPoke(cur, k, v);
+        if (m !== null) return fail(t, 'script', 'bad-path-set', m.msg);
         break;
       }
       const nv = pokeValue(cur, k, v);
@@ -872,7 +872,7 @@ function walk(t: Task, f: PathFrame, key: Cell): void {
     return;
   }
   const v = pathPick(f.cur, key);
-  if (typeof v === 'string') return fail(t, 'script', 'bad-path', v);
+  if (isMiss(v)) return fail(t, 'script', v.miss === 'out-of-range' || v.miss === 'invalid-path' ? v.miss : 'bad-path', v.msg);
   if (f.mode === PM.Set) f.trail.push(f.cur, key);
   f.cur = v;
   if (f.mode === PM.Call && (v.t === K.Function || v.t === K.Native)) {

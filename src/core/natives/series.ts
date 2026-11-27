@@ -14,7 +14,8 @@ import {
 } from '../values.ts';
 import { bindSeries, copyDeep } from '../ctx.ts';
 import { isEqual, compare, foldCase } from '../compare.ts';
-import { pick } from '../access.ts';
+import { pick, isMiss } from '../access.ts';
+import { count, countsFail, positionOf } from './counts.ts';
 import { context, sameValue, string, type BitsetCell } from '../values.ts';
 import { sourceOf } from '../mold.ts';
 import {
@@ -26,7 +27,8 @@ import { native, value, fail, truthy, doBlock } from './define.ts';
 import { pushAll } from '../arrays.ts';
 import { touch } from '../values.ts';
 
-const num = (c: Cell): number => I64.toNumber((c as { v: I64.I64 }).v);
+// a count may be a decimal, cut toward zero (R3)
+const num = count;
 const used = (c: Cell): boolean => c === TRUE;
 
 /** The cell for element `i` of a series. */
@@ -40,7 +42,7 @@ export function cellAt(s: SeriesCell, i: number): Cell {
 /** End index for a /part argument: a count or a position in the same series. */
 function partEnd(s: SeriesCell, part: Cell | null): number {
   if (part === null || part.t === K.None) return s.s.data.length;
-  if (part.t === K.Integer) return clampIndex(s, s.i + num(part));
+  if ((part.t === K.Integer || part.t === K.Decimal)) return clampIndex(s, s.i + num(part));
   return clampIndex(s, (part as SeriesCell).i);
 }
 
@@ -49,7 +51,7 @@ function partEnd(s: SeriesCell, part: Cell | null): number {
  * position before the series' own, goes back from where the series is.
  */
 function partSpan(s: SeriesCell, part: Cell): [number, number] {
-  const e = part.t === K.Integer ? clampIndex(s, s.i + num(part)) : clampIndex(s, (part as SeriesCell).i);
+  const e = (part.t === K.Integer || part.t === K.Decimal) ? clampIndex(s, s.i + num(part)) : clampIndex(s, (part as SeriesCell).i);
   return e < s.i ? [e, s.i] : [s.i, e];
 }
 
@@ -57,7 +59,7 @@ function partSpan(s: SeriesCell, part: Cell): [number, number] {
 function toPut(s: SeriesCell, v: Cell, only: boolean, part: Cell | null, dup: Cell | null): { add: Item[]; nl?: boolean[] } {
   let { add, nl } = itemsFor(s.t, v, only);
   if (part !== null) {
-    const n = part.t === K.Integer ? Math.max(0, num(part)) : Math.max(0, (part as SeriesCell).i - (v as SeriesCell).i);
+    const n = (part.t === K.Integer || part.t === K.Decimal) ? Math.max(0, num(part)) : Math.max(0, (part as SeriesCell).i - (v as SeriesCell).i);
     add = add.slice(0, n);
     nl = nl?.slice(0, n);
   }
@@ -81,13 +83,20 @@ native('next', '["The series one position on." series [series!]]', (_t, f) => va
 native('back', '["The series one position back." series [series!]]', (_t, f) => value(at(f.args[0] as SeriesCell, (f.args[0] as SeriesCell).i - 1)));
 native('head', '["The series at its first position." series [series!]]', (_t, f) => value(at(f.args[0] as SeriesCell, 0)));
 native('tail', '["The series just past its last value." series [series!]]', (_t, f) => value(at(f.args[0] as SeriesCell, Infinity)));
-native('skip', '["The series moved on, or back, by an offset." series [series!] offset [integer!]]', (_t, f) => {
+// at and skip take a position as pick does: 2.9 is 2, 150% is 1, true 1 and false 2 (R3)
+const POSITION = '[integer! decimal! percent! logic! pair!]';
+
+native('skip', `["The series moved on, or back, by an offset." series [series!] offset ${POSITION}]`, (_t, f) => {
   const s = f.args[0] as SeriesCell;
-  return value(at(s, s.i + num(f.args[1]!)));
+  const n = positionOf(f.args[1]!);
+  if (typeof n !== 'number') return n;
+  // true and false are the 1st and 2nd places: no move and one on
+  return value(at(s, s.i + (f.args[1]!.t === K.Logic ? n - 1 : n)));
 });
-native('at', '["The series at a position, counted from where it is." series [series!] index [integer!]]', (_t, f) => {
+native('at', `["The series at a position, counted from where it is." series [series!] index ${POSITION}]`, (_t, f) => {
   const s = f.args[0] as SeriesCell;
-  const n = num(f.args[1]!);
+  const n = positionOf(f.args[1]!);
+  if (typeof n !== 'number') return n;
   return value(at(s, s.i + (n > 0 ? n - 1 : n)));
 });
 native('index?', '["The position of the series, from 1." series [series!]]', (_t, f) => value(integer((f.args[0] as SeriesCell).i + 1)));
@@ -101,12 +110,15 @@ native('loaded-at', '["Where the value at the position of a block was loaded fro
 
 // --- editing ---------------------------------------------------------------------
 
-const PUT_SPEC = 'series [series!] value [any-value!] /part "Put in only part of the value" range [integer! series!] /only "A block goes in as one value" /dup "Put it in several times" count [integer!]';
+const PUT_SPEC = 'series [series!] value [any-value!] /part "Put in only part of the value" range [integer! decimal! series!] /only "A block goes in as one value" /dup "Put it in several times" count [integer! decimal!]';
+const putFail = (f: NativeFrame) => countsFail(used(f.args[2]!) ? f.args[3]! : null, used(f.args[5]!) ? f.args[6]! : null);
 const putArgs = (f: NativeFrame) => toPut(f.args[0] as SeriesCell, f.args[1]!, used(f.args[4]!),
   used(f.args[2]!) ? f.args[3]! : null, used(f.args[5]!) ? f.args[6]! : null);
 
 native('append', `["Puts a value at the tail of a series; gives the series at its head." ${PUT_SPEC}]`, (_t, f) => {
   const s = f.args[0] as SeriesCell;
+  const bad = putFail(f);
+  if (bad !== null) return bad;
   const { add, nl } = putArgs(f);
   splice(s.s as Series<Item>, s.s.data.length, 0, add, nl);
   return value(at(s, 0));
@@ -114,21 +126,27 @@ native('append', `["Puts a value at the tail of a series; gives the series at it
 
 native('insert', `["Puts a value where the series is; gives the series just after it." ${PUT_SPEC}]`, (_t, f) => {
   const s = f.args[0] as SeriesCell;
+  const bad = putFail(f);
+  if (bad !== null) return bad;
   const { add, nl } = putArgs(f);
   splice(s.s as Series<Item>, s.i, 0, add, nl);
   return value(at(s, s.i + add.length));
 });
 
-native('change', '["Puts a value over what the series holds where it is; gives the series just after it." series [series!] value [any-value!] /part "Change this much of the series" range [integer! series!] /only "A block goes in as one value" /dup "Put the value in several times" count [integer!]]', (_t, f) => {
+native('change', '["Puts a value over what the series holds where it is; gives the series just after it." series [series!] value [any-value!] /part "Change this much of the series" range [integer! decimal! series!] /only "A block goes in as one value" /dup "Put the value in several times" count [integer! decimal!]]', (_t, f) => {
   const s = f.args[0] as SeriesCell;
+  const bad = putFail(f);
+  if (bad !== null) return bad;
   const { add, nl } = toPut(s, f.args[1]!, used(f.args[4]!), null, used(f.args[5]!) ? f.args[6]! : null);
   const end = used(f.args[2]!) ? partEnd(s, f.args[3]!) : Math.min(s.s.data.length, s.i + add.length);
   splice(s.s as Series<Item>, s.i, Math.max(0, end - s.i), add, nl);
   return value(at(s, s.i + add.length));
 });
 
-native('remove', '["Removes what the series holds where it is; gives the series." series [series!] /part "Remove this much" range [integer! series!]]', (_t, f) => {
+native('remove', '["Removes what the series holds where it is; gives the series." series [series!] /part "Remove this much" range [integer! decimal! series!]]', (_t, f) => {
   const s = f.args[0] as SeriesCell;
+  const bad = countsFail(used(f.args[1]!) ? f.args[2]! : null);
+  if (bad !== null) return bad;
   const [from, end] = used(f.args[1]!) ? partSpan(s, f.args[2]!) : [s.i, Math.min(s.s.data.length, s.i + 1)];
   splice(s.s as Series<Item>, from, Math.max(0, end - from), []);
   return value(at(s, from));
@@ -146,7 +164,7 @@ native('clear', '["Removes everything from the series\' position to its tail." s
   return value(s);
 });
 
-native('copy', '["A copy of the series, map, object or bitset." value [series! map! object! bitset!] /part length [integer! series!] /deep]', (_t, f) => {
+native('copy', '["A copy of the series, map, object or bitset." value [series! map! object! bitset!] /part length [integer! decimal! series!] /deep]', (_t, f) => {
   const x = f.args[0]!;
   const deep = used(f.args[3]!);
   if (x.t === K.Map) return value({ t: K.Map, s: deep ? copyDeep(x.s) : { data: x.s.data.slice() } });
@@ -157,6 +175,8 @@ native('copy', '["A copy of the series, map, object or bitset." value [series! m
   }
   if (x.t === K.Bitset) return value({ t: K.Bitset, s: { data: x.s.data.slice() }, neg: x.neg });
   const s = x as SeriesCell;
+  const bad = countsFail(used(f.args[1]!) ? f.args[2]! : null);
+  if (bad !== null) return bad;
   const [from, end] = used(f.args[1]!) ? partSpan(s, f.args[2]!) : [s.i, s.s.data.length];
   if (isAnyBlock(s.t)) {
     const b = s as BlockCell;
@@ -169,8 +189,10 @@ native('copy', '["A copy of the series, map, object or bitset." value [series! m
   return value({ t: s.t, s: { data: (s.s.data as number[]).slice(from, end) }, i: 0 } as StringCell);
 });
 
-native('reverse', '["Reverses the order of the values from the series\' position." series [series!] /part length [integer! series!]]', (_t, f) => {
+native('reverse', '["Reverses the order of the values from the series\' position." series [series!] /part length [integer! decimal! series!]]', (_t, f) => {
   const s = f.args[0] as SeriesCell;
+  const bad = countsFail(used(f.args[1]!) ? f.args[2]! : null);
+  if (bad !== null) return bad;
   const end = used(f.args[1]!) ? partEnd(s, f.args[2]!) : s.s.data.length;
   const d = s.s.data as Item[];
   ownMeta(s.s);
@@ -274,9 +296,11 @@ function findIn(s: SeriesCell, v: Cell, o: FindOpts): { at: number; len: number 
   return { at: -1, len };
 }
 
-native('find', '["Finds a value in a series; gives the series where it is, or none." series [series! none! typeset! bitset!] value [any-type!] /part "Look only this far" length [integer! series!] /only "A block is one value" /case "Capitals matter" /skip "Look only at every so many" size [integer!] /last "Find the last one" /tail "Give the series just after it" /match "Only where the series is" /reverse "Look back from where the series is" /any "In a string, * is any run of characters and ? any one" /same "In a block, the very same value (same?), not an equal one"]', (_t, f) => {
+native('find', '["Finds a value in a series; gives the series where it is, or none." series [series! none! typeset! bitset!] value [any-type!] /part "Look only this far" length [integer! decimal! series!] /only "A block is one value" /case "Capitals matter" /skip "Look only at every so many" size [integer!] /last "Find the last one" /tail "Give the series just after it" /match "Only where the series is" /reverse "Look back from where the series is" /any "In a string, * is any run of characters and ? any one" /same "In a block, the very same value (same?), not an equal one"]', (_t, f) => {
   const x = f.args[0]!;
   if (x.t === K.None) return value(NONE);
+  const bad = countsFail(used(f.args[2]!) ? f.args[3]! : null);
+  if (bad !== null) return bad;
   if (x.t === K.Typeset) {
     const v = f.args[1]!;
     return value(logic(v.t === K.Datatype && (x.bits & kindBit(v.k)) !== 0n));
@@ -302,7 +326,7 @@ native('select', '["The value after the one found, or none." series [series! map
   if (x.t === K.None) return value(NONE);
   if (x.t === K.Map || x.t === K.Object || x.t === K.Error) {
     const r = pick(x, a[1]!);
-    return value(typeof r === 'string' ? NONE : r);
+    return value(isMiss(r) ? NONE : r);
   }
   const s = x as SeriesCell;
   const skip = used(a[4]!) ? Math.max(1, num(a[5]!)) : 1;

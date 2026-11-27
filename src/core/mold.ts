@@ -391,7 +391,13 @@ class Molder {
     const parts: Work[] = [];
     for (let j = c.i; j < c.s.data.length; j++) {
       if (j > c.i) parts.push({ w: 0, text: '/' });
-      parts.push({ w: 1, c: c.s.data[j]!, depth });
+      const seg = c.s.data[j]!;
+      // A plain file segment takes the rest of the path when loaded, so one before the end is quoted
+      if (seg.t === K.File && seg.i === 0 && j < c.s.data.length - 1) {
+        parts.push({ w: 0, text: '%"' + seg.s.data.map(cp => encodeChar(cp, '"')).join('') + '"' });
+      } else {
+        parts.push({ w: 1, c: seg, depth });
+      }
     }
     if (c.t === K.SetPath) parts.push({ w: 0, text: ':' });
     this.later(parts);

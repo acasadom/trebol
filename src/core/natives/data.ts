@@ -16,7 +16,7 @@ import { makeError } from '../errors.ts';
 import { makeFunc, typesOf, P, type FuncDef, type NativeDef, type OpDef } from '../func.ts';
 import { load, loadSpans, LoadError } from '../lexer.ts';
 import { mold, form } from '../mold.ts';
-import { pick, poke, blockFind } from '../access.ts';
+import { pick, poke, blockFind, isMiss } from '../access.ts';
 import type { Runtime, Step } from '../eval.ts';
 import { native, value, fail, doBlock, hostCall } from './define.ts';
 import { pushAll } from '../arrays.ts';
@@ -376,20 +376,14 @@ native('length?', '["The number of values from the series\' position to its tail
   return value({ t: K.Integer, v: Math.max(0, s.s.data.length - s.i) });
 });
 
-// pick and poke take a position in a block or text, as R3: a key there is an invalid argument
-// (select, put and paths find keys)
-function badKey(x: Cell, key: Cell): boolean {
-  return (isAnyBlock(x.t) || isAnyString(x.t)) && key.t !== K.Integer;
-}
-
 native('pick', '["The value at a position in a series, or at a key of a map, object, pair, tuple, date or time." series [any-value!] index [any-value!]]', (_t, f) => {
   const r = pick(f.args[0]!, f.args[1]!);
-  return typeof r === 'string' ? fail('script', badKey(f.args[0]!, f.args[1]!) ? 'invalid-arg' : 'bad-pick', r) : value(r);
+  return isMiss(r) ? fail('script', r.miss, r.msg) : value(r);
 });
 
 native('poke', '["Sets the value at a position in a series, or at a key of a map or object; gives the value." series [any-value!] index [any-value!] value [any-value!]]', (_t, f) => {
-  const msg = poke(f.args[0]!, f.args[1]!, f.args[2]!);
-  return msg !== null ? fail('script', badKey(f.args[0]!, f.args[1]!) ? 'invalid-arg' : 'bad-poke', msg) : value(f.args[2]!);
+  const m = poke(f.args[0]!, f.args[1]!, f.args[2]!);
+  return m !== null ? fail('script', m.miss, m.msg) : value(f.args[2]!);
 });
 
 // put, as in R3 and Red: a map or object gets the key set; a block has the value
@@ -411,6 +405,6 @@ native('put', '["Sets the value of a key; gives the value." series [map! object!
     }
     return value(v);
   }
-  const msg = poke(x, key, v);
-  return msg !== null ? fail('script', 'bad-poke', msg) : value(v);
+  const m = poke(x, key, v);
+  return m !== null ? fail('script', m.miss, m.msg) : value(v);
 });

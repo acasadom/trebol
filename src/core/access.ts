@@ -1,8 +1,8 @@
 // Picking and poking by key: what paths do at each segment, and what the
 // `pick`, `select` and `poke` natives build on.
 //
-// Both return an error message string instead of throwing; the caller turns
-// it into a Trebol error.
+// Both return a Miss (an error id and message) instead of throwing; the caller
+// turns it into a Trebol error.
 
 import { K, isAnyBlock, isAnyString, isAnyWord, aKindName } from './kinds.ts';
 import { canon, spell } from './symbols.ts';
@@ -25,10 +25,49 @@ export function blockFind(s: Series<Cell>, from: number, key: Cell): number {
   return -1;
 }
 
-/** 0-based offset for a 1-based integer index, or null if it is not one. */
+/** Why a pick or poke failed: the error id (script type) and its message. */
+export interface Miss { readonly miss: string; readonly msg: string }
+
+export function isMiss(r: Cell | Miss | null): r is Miss {
+  return r !== null && 'miss' in r;
+}
+
+const miss = (id: string, msg: string): Miss => ({ miss: id, msg });
+
+/** 0-based offset for a 1-based integer index, or null if it is not one (date and time parts). */
 function offset(key: Cell): number | null {
   if (key.t !== K.Integer) return null;
   return I64.toNumber(key.v) - 1;
+}
+
+const POS_MAX = 2147483647;
+const POS_MIN = -2147483648;
+
+/**
+ * A position as R3 takes one in pick, poke, at and paths: an integer, or a decimal or percent
+ * cut toward zero (2.9 is 2, 150% is 1), and with `logic` true as 1 and false as 2. Gives null
+ * when the key is no position, 'range' past 32 bits (as R3: its positions are 32-bit), else
+ * the 1-based number, which may be 0 or count back when negative.
+ */
+export function posOf(key: Cell, logic: boolean): number | 'range' | null {
+  let n: number;
+  if (key.t === K.Integer) n = I64.toNumber(key.v);
+  else if (key.t === K.Decimal || key.t === K.Percent) n = key.v;
+  else if (key.t === K.Logic && logic) return key.v ? 1 : 2;
+  else return null;
+  if (Number.isNaN(n)) return 0;
+  if (n > POS_MAX || n < POS_MIN) return 'range';
+  return Math.trunc(n) + 0;
+}
+
+/**
+ * Where position `n` from `i` falls in a series, as R3 counts it: 1 is the value at `i`, -1 the
+ * one just before it; 0 is no place (-1 here), as is anything before the head.
+ */
+export function placeOf(i: number, n: number): number {
+  if (n === 0) return -1;
+  const at = n > 0 ? i + n - 1 : i + n;
+  return at < 0 ? -1 : at;
 }
 
 const DATE_PARTS = ['year', 'month', 'day', 'time', 'zone', 'date', 'weekday', 'yearday', 'hour', 'minute', 'second'] as const;
@@ -54,7 +93,7 @@ function partName(key: Cell): string | null {
  * (`%a/b`, `%a/1`); every other value is picked as `pick` does. The `pick` native and
  * series accessors use `pick`, where a file or url is a string of characters.
  */
-export function pathPick(cur: Cell, key: Cell): Cell | string {
+export function pathPick(cur: Cell, key: Cell): Cell | Miss {
   if (cur.t === K.Url || cur.t === K.File) {
     if (isAnyWord(key.t) || isAnyString(key.t) || key.t === K.Integer) {
       const base = (cur as StringCell).s.data.slice((cur as StringCell).i);
@@ -74,8 +113,8 @@ export function pathPick(cur: Cell, key: Cell): Cell | string {
       return { t: K.String, s: { data: part }, i: 0 };
     }
   }
-  if (isAnyBlock(cur.t) && offset(key) === null) {
-    // block/key is the value after the key, as select gives it
+  if (isAnyBlock(cur.t) && posOf(key, false) === null) {
+    // block/key is the value after the key, as select gives it; true there is a key too (R3)
     const b = cur as BlockCell;
     const at = blockFind(b.s, b.i, key);
     return at < 0 ? NONE : b.s.data[at + 1] ?? NONE;
@@ -83,12 +122,12 @@ export function pathPick(cur: Cell, key: Cell): Cell | string {
   return pick(cur, key);
 }
 
-export function pick(cur: Cell, key: Cell): Cell | string {
+export function pick(cur: Cell, key: Cell): Cell | Miss {
   switch (cur.t) {
     case K.Object: case K.Error: {
-      if (!isAnyWord(key.t)) return `cannot pick ${mold(key)} in an object`;
+      if (!isAnyWord(key.t)) return miss('bad-pick', `cannot pick ${mold(key)} in an object`);
       const i = ctxFind(cur.ctx, (key as WordCell).sym);
-      if (i < 0) return `${mold(key)} is not a field of the object`;
+      if (i < 0) return miss('bad-pick', `${mold(key)} is not a field of the object`);
       return cur.ctx.vals[i]!;
     }
     case K.Map: {
@@ -97,18 +136,24 @@ export function pick(cur: Cell, key: Cell): Cell | string {
     }
     case K.Pair: {
       const p = partName(key);
-      const n = offset(key);
-      if (p === 'x' || n === 0) return decimalOrInt(cur.x);
-      if (p === 'y' || n === 1) return decimalOrInt(cur.y);
-      return `cannot pick ${mold(key)} in a pair`;
+      const n = posOf(key, true);
+      if (p === 'x' || n === 1) return decimalOrInt(cur.x);
+      if (p === 'y' || n === 2) return decimalOrInt(cur.y);
+      // a pair has only 1 and 2, as R3
+      if (n !== null) return miss('out-of-range', `a pair has no position ${mold(key)}`);
+      return miss('bad-pick', `cannot pick ${mold(key)} in a pair`);
     }
     case K.Tuple: {
-      const n = offset(key);
-      if (n === null) return `cannot pick ${mold(key)} in a tuple`;
-      const x = cur.v[n];
+      const n = posOf(key, true);
+      if (n === 'range') return miss('out-of-range', `index ${mold(key)} is out of range`);
+      if (n === null) return miss('bad-pick', `cannot pick ${mold(key)} in a tuple`);
+      const x = n > 0 ? cur.v[n - 1] : undefined;
       return x === undefined ? NONE : integer(x);
     }
     case K.Date: {
+      // a number other than a whole one names no part: none, as R3
+      if (posOf(key, true) !== null && key.t !== K.Integer) return NONE;
+      if (key.t === K.Integer && DATE_PARTS[offset(key)!] === undefined) return NONE;
       const p = partName(key) ?? DATE_PARTS[offset(key) ?? -1] ?? null;
       const d = cur.v;
       switch (p) {
@@ -125,9 +170,12 @@ export function pick(cur: Cell, key: Cell): Cell | string {
         case 'hour': case 'minute': case 'second':
           return d.time === null ? NONE : pick(time(d.time), key.t === K.Integer ? integer(TIME_PARTS.indexOf(p) + 1) : key);
       }
-      return `cannot pick ${mold(key)} in a date`;
+      return miss('bad-pick', `cannot pick ${mold(key)} in a date`);
     }
     case K.Time: {
+      // as R3: a whole number past its parts is none, any other number an invalid path
+      if (posOf(key, true) !== null && key.t !== K.Integer) return miss('invalid-path', `cannot pick ${mold(key)} in a time`);
+      if (key.t === K.Integer && TIME_PARTS[offset(key)!] === undefined) return NONE;
       const p = partName(key) ?? TIME_PARTS[offset(key) ?? -1] ?? null;
       const ns = Math.abs(cur.v);
       const sign = cur.v < 0 ? -1 : 1;
@@ -139,25 +187,22 @@ export function pick(cur: Cell, key: Cell): Cell | string {
           return Number.isInteger(s) ? integer(sign * s) : decimal(sign * s);
         }
       }
-      return `cannot pick ${mold(key)} in a time`;
+      return miss('bad-pick', `cannot pick ${mold(key)} in a time`);
     }
   }
-  if (isAnyBlock(cur.t)) {
-    const b = cur as BlockCell;
-    const n = offset(key);
-    if (n === null) return `cannot pick ${mold(key)} in ${aKindName(cur.t)}`;
-    const v = n >= 0 ? b.s.data[b.i + n] : undefined;
-    return v ?? NONE;
+  if (isAnyBlock(cur.t) || isAnyString(cur.t) || cur.t === K.Binary) {
+    const s = cur as BlockCell | StringCell;
+    const n = posOf(key, true);
+    // a key is no position in a block or text: select, put and paths find keys (R3)
+    if (n === null) return miss(cur.t === K.Binary ? 'bad-pick' : 'invalid-arg', `cannot pick ${mold(key)} in ${aKindName(cur.t)}`);
+    if (n === 'range') return miss('out-of-range', `index ${mold(key)} is out of range`);
+    const at = placeOf(s.i, n);
+    const x = at < 0 ? undefined : s.s.data[at];
+    if (x === undefined) return NONE;
+    if (isAnyBlock(cur.t)) return x as Cell;
+    return cur.t === K.Binary ? integer(x as number) : char(x as number);
   }
-  if (isAnyString(cur.t) || cur.t === K.Binary) {
-    const s = cur as StringCell;
-    const n = offset(key);
-    if (n === null) return `cannot pick ${mold(key)} in ${aKindName(cur.t)}`;
-    const cp = n >= 0 ? s.s.data[s.i + n] : undefined;
-    if (cp === undefined) return NONE;
-    return cur.t === K.Binary ? integer(cp) : char(cp);
-  }
-  return `cannot pick ${mold(key)} in ${aKindName(cur.t)}`;
+  return miss('bad-pick', `cannot pick ${mold(key)} in ${aKindName(cur.t)}`);
 }
 
 function decimalOrInt(n: number): Cell {
@@ -165,11 +210,11 @@ function decimalOrInt(n: number): Cell {
 }
 
 /** What a set-path sets: as `poke`, and also the value after a key in a block (`b/name: v`). */
-export function pathPoke(cur: Cell, key: Cell, v: Cell): string | null {
-  if (isAnyBlock(cur.t) && offset(key) === null) {
+export function pathPoke(cur: Cell, key: Cell, v: Cell): Miss | null {
+  if (isAnyBlock(cur.t) && posOf(key, false) === null) {
     const b = cur as BlockCell;
     const at = blockFind(b.s, b.i, key);
-    if (at < 0 || at + 1 >= b.s.data.length) return `${mold(key)} not found in the block`;
+    if (at < 0 || at + 1 >= b.s.data.length) return miss('bad-path-set', `${mold(key)} not found in the block`);
     b.s.data[at + 1] = v;
     touch(b.s);
     return null;
@@ -177,13 +222,27 @@ export function pathPoke(cur: Cell, key: Cell, v: Cell): string | null {
   return poke(cur, key, v);
 }
 
-/** Sets `key` in `cur` to `v`. Returns null on success, or an error message. */
-export function poke(cur: Cell, key: Cell, v: Cell): string | null {
+const CP_MAX = 0x10ffff;
+
+/** What a code point or byte `v` stands for in text or binary, or a Miss, as R3's poke takes it. */
+function unitOf(cur: Cell, v: Cell): number | Miss {
+  const max = cur.t === K.Binary ? 255 : CP_MAX;
+  if (v.t === K.Char) return v.v <= max ? v.v : miss('out-of-range', `${mold(v)} does not fit in ${aKindName(cur.t)}`);
+  if (v.t === K.Integer) {
+    const n = I64.toNumber(v.v);
+    if (n < 0 || (cur.t !== K.Binary && n > CP_MAX)) return miss('invalid-arg', `${mold(v)} is not a character`);
+    return n <= max ? n : miss('out-of-range', `${mold(v)} does not fit in a byte`);
+  }
+  return miss('invalid-arg', `cannot put ${mold(v)} in ${aKindName(cur.t)}`);
+}
+
+/** Sets `key` in `cur` to `v`. Returns null on success, or a Miss. */
+export function poke(cur: Cell, key: Cell, v: Cell): Miss | null {
   switch (cur.t) {
     case K.Object: case K.Error: {
-      if (!isAnyWord(key.t)) return `cannot set ${mold(key)} in an object`;
+      if (!isAnyWord(key.t)) return miss('bad-poke', `cannot set ${mold(key)} in an object`);
       const i = ctxFind(cur.ctx, (key as WordCell).sym);
-      if (i < 0) return `${mold(key)} is not a field of the object`;
+      if (i < 0) return miss('bad-poke', `${mold(key)} is not a field of the object`);
       ctxSet(cur.ctx, i, v);
       return null;
     }
@@ -191,25 +250,23 @@ export function poke(cur: Cell, key: Cell, v: Cell): string | null {
       mapSet(cur.s, key, v);
       return null;
   }
-  if (isAnyBlock(cur.t)) {
-    const b = cur as BlockCell;
-    const n = offset(key);
-    if (n === null) return `cannot set ${mold(key)} in ${aKindName(cur.t)}`;
-    if (n < 0 || b.i + n >= b.s.data.length) return `index ${n + 1} is out of range`;
-    b.s.data[b.i + n] = v;
-    touch(b.s);
-    return null;
-  }
-  if (isAnyString(cur.t)) {
-    const s = cur as StringCell;
-    const n = offset(key);
-    if (n === null || v.t !== K.Char) return `cannot set ${mold(key)} in ${aKindName(cur.t)}`;
-    if (n < 0 || s.i + n >= s.s.data.length) return `index ${n + 1} is out of range`;
-    s.s.data[s.i + n] = v.v;
+  if (isAnyBlock(cur.t) || isAnyString(cur.t) || cur.t === K.Binary) {
+    const s = cur as BlockCell | StringCell;
+    const n = posOf(key, true);
+    if (n === null) return miss(cur.t === K.Binary ? 'bad-poke' : 'invalid-arg', `cannot set ${mold(key)} in ${aKindName(cur.t)}`);
+    const at = n === 'range' ? -1 : placeOf(s.i, n);
+    if (at < 0 || at >= s.s.data.length) return miss('out-of-range', `index ${mold(key)} is out of range`);
+    if (isAnyBlock(cur.t)) {
+      (s as BlockCell).s.data[at] = v;
+    } else {
+      const u = unitOf(cur, v);
+      if (typeof u !== 'number') return u;
+      (s as StringCell).s.data[at] = u;
+    }
     touch(s.s);
     return null;
   }
-  return `cannot set ${mold(key)} in ${aKindName(cur.t)}`;
+  return miss('bad-poke', `cannot set ${mold(key)} in ${aKindName(cur.t)}`);
 }
 
 /** Whether a value is immediate with parts a path can set: x of a pair, 2 of a tuple, year of a date. */
@@ -232,14 +289,16 @@ export function pokeValue(cur: Cell, key: Cell, v: Cell): Cell | string {
   const n = numberOf(v);
   switch (cur.t) {
     case K.Pair: {
-      const p = partName(key) ?? (['x', 'y'] as const)[offset(key) ?? -1] ?? null;
+      const at = posOf(key, true);
+      const p = partName(key) ?? (at === 1 ? 'x' : at === 2 ? 'y' : null);
       if (p !== 'x' && p !== 'y') return `cannot set ${mold(key)} in a pair`;
       if (n === null) return `a pair's ${p} is a number, not ${mold(v)}`;
       return p === 'x' ? pair(n, cur.y) : pair(cur.x, n);
     }
     case K.Tuple: {
-      const i = offset(key);
-      if (i === null || i < 0 || i >= 10) return `cannot set ${mold(key)} in a tuple`;
+      const at = posOf(key, true);
+      const i = typeof at === 'number' ? at - 1 : -1;
+      if (i < 0 || i >= 10) return `cannot set ${mold(key)} in a tuple`;
       if (n === null || !Number.isInteger(n) || n < 0 || n > 255) return `a tuple's part is a whole number from 0 to 255, not ${mold(v)}`;
       const parts = [...cur.v];
       while (parts.length <= i) parts.push(0);

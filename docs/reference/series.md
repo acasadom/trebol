@@ -107,6 +107,25 @@ pick series index
 - `series` (`any-value!`)
 - `index` (`any-value!`)
 
+A position, in `pick`, `poke`, `at`, `skip` and a path, counts from where the series is: 1 is the value there and
+-1 the one just before it; 0 is no value. A decimal or a percent is cut toward zero, so 2.9 is 2 and 150% is 1, and
+`true` is 1 and `false` 2 (in a path `true` is a key, as any word). A key such as a word is no position:
+`select`, `put` and paths find keys. Past 32 bits a position is out of range. A count, in `/part` and `/dup`,
+may be a decimal too. This is what R3 does.
+
+```trebol-console
+>> pick [a b c] 2.9
+== b
+>> pick next [a b c] -1
+== a
+>> pick [a b] false
+== b
+>> at [a b c] 150%
+== [a b c]
+>> copy/part "abcd" 2.5
+== "ab"
+```
+
 (fn-poke)=
 ## poke
 
@@ -119,6 +138,9 @@ poke series index value
 - `series` (`any-value!`)
 - `index` (`any-value!`)
 - `value` (`any-value!`)
+
+`poke` puts a character, or a whole number that is one, in text; a byte, or a character up to 255, in a binary.
+A position with no value there is out of range.
 
 (fn-put)=
 ## put
@@ -187,7 +209,7 @@ skip series offset
 ```
 
 - `series` (`series!`)
-- `offset` (`integer!`)
+- `offset` (`integer!` `decimal!` `percent!` `logic!` `pair!`)
 
 (fn-at)=
 ## at
@@ -199,7 +221,7 @@ at series index
 ```
 
 - `series` (`series!`)
-- `index` (`integer!`)
+- `index` (`integer!` `decimal!` `percent!` `logic!` `pair!`)
 
 (fn-index-3f)=
 ## index?
@@ -267,9 +289,9 @@ append series value
 
 - `series` (`series!`)
 - `value` (`any-value!`)
-- `/part range` (`integer!` `series!`): Put in only part of the value
+- `/part range` (`integer!` `decimal!` `series!`): Put in only part of the value
 - `/only`: A block goes in as one value
-- `/dup count` (`integer!`): Put it in several times
+- `/dup count` (`integer!` `decimal!`): Put it in several times
 
 (fn-insert)=
 ## insert
@@ -282,9 +304,9 @@ insert series value
 
 - `series` (`series!`)
 - `value` (`any-value!`)
-- `/part range` (`integer!` `series!`): Put in only part of the value
+- `/part range` (`integer!` `decimal!` `series!`): Put in only part of the value
 - `/only`: A block goes in as one value
-- `/dup count` (`integer!`): Put it in several times
+- `/dup count` (`integer!` `decimal!`): Put it in several times
 
 (fn-change)=
 ## change
@@ -297,9 +319,9 @@ change series value
 
 - `series` (`series!`)
 - `value` (`any-value!`)
-- `/part range` (`integer!` `series!`): Change this much of the series
+- `/part range` (`integer!` `decimal!` `series!`): Change this much of the series
 - `/only`: A block goes in as one value
-- `/dup count` (`integer!`): Put the value in several times
+- `/dup count` (`integer!` `decimal!`): Put the value in several times
 
 (fn-remove)=
 ## remove
@@ -311,7 +333,7 @@ remove series
 ```
 
 - `series` (`series!`)
-- `/part range` (`integer!` `series!`): Remove this much
+- `/part range` (`integer!` `decimal!` `series!`): Remove this much
 
 (fn-clear)=
 ## clear
@@ -334,7 +356,7 @@ copy value
 ```
 
 - `value` (`series!` `map!` `object!` `bitset!`)
-- `/part length` (`integer!` `series!`)
+- `/part length` (`integer!` `decimal!` `series!`)
 - `/deep`
 
 (fn-take)=
@@ -347,7 +369,7 @@ take series
 ```
 
 - `series` (`series!` `none!`)
-- `/part length` (`integer!`): Takes that many values, as a series of the same type
+- `/part length` (`integer!` `decimal!`): Takes that many values, as a series of the same type
 - `/last`: Takes from the tail instead
 - `/deep`: Copies the series inside what is taken
 
@@ -361,7 +383,7 @@ reverse series
 ```
 
 - `series` (`series!`)
-- `/part length` (`integer!` `series!`)
+- `/part length` (`integer!` `decimal!` `series!`)
 
 (fn-move)=
 ## move
@@ -439,7 +461,7 @@ find series value
 
 - `series` (`series!` `none!` `typeset!` `bitset!`)
 - `value` (`any-type!`)
-- `/part length` (`integer!` `series!`): Look only this far
+- `/part length` (`integer!` `decimal!` `series!`): Look only this far
 - `/only`: A block is one value
 - `/case`: Capitals matter
 - `/skip size` (`integer!`): Look only at every so many
