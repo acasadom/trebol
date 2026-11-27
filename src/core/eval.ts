@@ -271,12 +271,23 @@ export function run(t: Task, budget = Infinity): RunResult {
   }
 }
 
+/**
+ * The most frames a task may hold. A call takes about six, so this allows some
+ * 160000 nested calls (R3 stops near 5000); past it, endless recursion gives a
+ * stack-overflow error instead of filling the host's memory.
+ */
+export const MAX_FRAMES = 1_000_000;
+
 function runSteps(t: Task, budget: number): RunResult {
   if (t.waiting !== null) return { k: 'await', p: t.waiting };
   for (let n = 0; n < budget; n++) {
     if (t.thrown !== null) {
       const done = unwind(t);
       if (done !== null) return done;
+      continue;
+    }
+    if (t.stack.length > MAX_FRAMES) {
+      fail(t, 'internal', 'stack-overflow', 'stack overflow: a value or call is nested too deep');
       continue;
     }
     const f = t.stack[t.stack.length - 1];

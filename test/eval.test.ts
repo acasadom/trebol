@@ -448,6 +448,13 @@ describe('nesting deeper than the JS stack', () => {
     assert.equal(ev('attempt [test-recurse]'), 'none');
   });
 
+  test('endless recursion is a stack-overflow error, not the host running out of memory', () => {
+    assert.equal(evErr('f: func [] [f] f'), 'stack-overflow');
+    assert.equal(ev('f: func [] [f] attempt [f]'), 'none');
+    assert.equal(ev('g: func [n] [either n = 0 [0] [1 + g n - 1]] g 100000'), '100000');
+    assert.equal(ev('f: func [] [f] e: try [f] reduce [e/type e/id]'), "[internal stack-overflow]");
+  });
+
   test('another task keeps running after one overflows', () => {
     const bad = load('test-recurse');
     const good = load('1 + 2');
