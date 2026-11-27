@@ -208,3 +208,17 @@ view [rating r "R" stars 3 on-rate [x]  rating q "Q" starz 4]
     'app.trb:3:54  starz is not a word of rating; did you mean stars?',
   ]);
 });
+
+test('every style written alone is laid out or gives problems of the layout, never an error of the dialect itself', async () => {
+  const r = await ev(`
+    out: copy []
+    foreach [name def] ui-style-defs [
+      if all [def/written  not def/abstract] [
+        foreach [place m] second ui-sketch reduce [name] [
+          if any [find m "does not allow"  find m "has no value"  find m "internal"] [append out reduce [name m]]
+        ]
+      ]
+    ]
+    out`);
+  assert.equal(r, '[]');
+});

@@ -112,7 +112,7 @@ toolbar-faces: function [b [block!]] [
     out
 ]
 split-check: func [f place [block!]] [
-    if 2 <> length? f/pane [ui-problem place "split takes two faces, one per pane"]
+    if 2 <> length? any [f/pane []] [ui-problem place "split takes two faces, one per pane"]
 ]
 
 ; --- texts
