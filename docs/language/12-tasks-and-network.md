@@ -164,6 +164,25 @@ check 3
 == none
 ```
 
+Each tick starts the block afresh, as a new task, even if the run before is still waiting for the supplier. When
+the supplier is slower than the period, the checks pile up side by side. A counter that wants one check at a
+time keeps a flag, and a tick that finds a check going does nothing:
+
+```trebol
+checking: no
+check: does [
+    if not checking [
+        checking: yes
+        wait 0.3                    ; asking the supplier takes its time
+        checking: no
+    ]
+]
+ticker: every 1 [check]
+cancel ticker
+```
+
+`cancel` stops the ticks; a check already going ends as usual.
+
 ## When the server speaks first
 
 With `fetch`, the counter asks and the supplier answers, once. Some news comes without asking: the day's
