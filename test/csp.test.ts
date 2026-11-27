@@ -15,7 +15,9 @@ const BANNED: [RegExp, string][] = [
 ];
 
 test('csp: the browser host makes no inline style, HTML or code from strings', () => {
-  for (const file of readdirSync(HOST).filter(f => f.endsWith('.ts'))) {
+  const files = readdirSync(HOST, { recursive: true, encoding: 'utf8' }).filter(f => f.endsWith('.ts'));
+  assert.ok(files.some(f => f.includes('/')), 'the host parts in folders are read too');
+  for (const file of files) {
     readFileSync(join(HOST, file), 'utf8').split('\n').forEach((line, i) => {
       if (/^\s*(\/\/|\*)/.test(line)) return;
       for (const [re, what] of BANNED) assert.ok(!re.test(line), `${file}:${i + 1} makes ${what}: ${line.trim()}`);
