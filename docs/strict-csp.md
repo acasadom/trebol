@@ -26,6 +26,10 @@ Trebol works under such a policy. This page says what to set up and why.
   web, mail and phone addresses; a `javascript:` address goes nowhere.
 - **No code from text.** Trebol runs no JavaScript made from a string.
 
+Each release is checked this way in a real browser: the gallery, with every component, is built with `--csp`
+and served under the policy above, its menus, dialogs and messages are opened, and anything the browser blocks
+fails the check.
+
 ## Putting the app on such a server
 
 `trebol build` writes one page with everything inside, so it opens even from the disk. A strict policy blocks
