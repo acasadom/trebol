@@ -50,6 +50,14 @@ export interface Series<T> {
    */
   watch?: Series<unknown>[];
   dirty?: boolean;
+  /**
+   * Set by a host whose reactions read this series: the first change through `touch` pushes
+   * the series here and sets `heard`, so the host checks only the reactions that read what
+   * changed. The host clears `heard` when it reads the array. Apart from `watch`, which the
+   * repaint clears.
+   */
+  hear?: Series<unknown>[];
+  heard?: boolean;
   /** Map series only: the hash index of its keys, see `maps.ts`. */
   index?: MapIndex;
 }
@@ -74,6 +82,10 @@ export function touch(s: Series<unknown>): void {
   if (s.watch !== undefined && s.dirty !== true) {
     s.dirty = true;
     s.watch.push(s);
+  }
+  if (s.hear !== undefined && s.heard !== true) {
+    s.heard = true;
+    s.hear.push(s);
   }
 }
 
@@ -107,6 +119,9 @@ export interface Ctx {
    */
   watch?: Ctx[];
   dirty?: boolean;
+  /** As for a series: set by a host whose reactions read this context, cleared when it reads it. */
+  hear?: Ctx[];
+  heard?: boolean;
 }
 
 // --- dates -----------------------------------------------------------------

@@ -101,12 +101,16 @@ function blocksIn(s: Series<Cell>, seen: Set<Series<Cell>>): Cell[][] {
   return order;
 }
 
-/** Sets the value at `i`, marking a watched context dirty. */
+/** Sets the value at `i`, marking a watched context dirty and a heard one heard. */
 export function ctxSet(ctx: Ctx, i: number, v: Cell): void {
   ctx.vals[i] = v;
   if (ctx.watch !== undefined && ctx.dirty !== true) {
     ctx.dirty = true;
     ctx.watch.push(ctx);
+  }
+  if (ctx.hear !== undefined && ctx.heard !== true) {
+    ctx.heard = true;
+    ctx.hear.push(ctx);
   }
 }
 
