@@ -13,6 +13,28 @@ is an `access` error `bad-json`, never its text passed on as the value; an empty
 empty text is (a `204 No Content` may say JSON). A failed answer stays an `http` error, and with `full: true`
 its body is kept as text when it is not JSON, to be read.
 
+A redirect is followed where the server sends it, to any address. In a browser that is harmless and out of an
+app's hands: the request leaves the user's own computer, the browser decides about redirects, and it lets no page
+read another site's answer unless that site allows it.
+
+It matters only for an app run by Node on a server that fetches addresses its users give, such as "import from
+this address". Inside a cloud, a server reaches addresses no one outside can, such as `169.254.169.254`, where
+the machine keeps its own credentials. A user can give such an address, or an address of their own that
+redirects there, so checking the address given is not enough:
+
+```text
+user                 server (Trebol on Node)             evil.example        169.254.169.254
+ | "import from         |                                     |                     |
+ |  evil.example/x"  -> | not a private address: fetch it  -> |                     |
+ |                      | <- 302, go to 169.254.169.254       |                     |
+ |                      | follows it, with no check  ----------------------------->  |
+ |                      | <- the machine's credentials  -----------------------------|
+ | <- "imported: ..."   |                                     |                     |
+```
+
+Such a server must have its private addresses closed to it: by the cloud's network rules, or on AWS by
+requiring IMDSv2, whose token a redirected fetch does not send.
+
 The options of `/with`, a block or an object:
 
 | Option | What it does |
