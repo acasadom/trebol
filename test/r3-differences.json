@@ -498,5 +498,9 @@
   {
     "test": "[p: to path! [x %a b] all [{x/%\"a\"/b} = mold p p = load mold p]]",
     "why": "mold writes a file segment before the end as %\"a\" because a plain file takes the rest of the path, so the path loads back as itself; R3 writes x/%a/b, which loads as x and %a/b."
+  },
+  {
+    "test": "[e: try [remainder 5.0 0] all [error? e e/id = 'zero-divide]]",
+    "why": "A decimal remainder by zero is a zero-divide error, as for integers and as / gives; R3 gives 1.#NaN, a value that is no number and spreads silently."
   }
 ]

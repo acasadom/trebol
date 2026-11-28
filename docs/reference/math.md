@@ -66,6 +66,9 @@ remainder a b
 - `a` (`number!` `money!` `time!` `pair!` `date!`)
 - `b` (`number!` `money!` `time!` `pair!` `date!`)
 
+`remainder` and its operator `//` by zero are a `zero-divide` error, for decimals too: R3 gives `1.#NaN` there,
+a value that is no number and spreads unseen. There is no `%` operator: a `%` alone is a word with no value, and `%a` is a file name.
+
 (fn-mod)=
 ## mod
 
