@@ -19,6 +19,9 @@ make type spec
 - `type` (`any-value!`)
 - `spec` (`any-value!`)
 
+`make string! 100`, and the same for any series, makes an empty one with room for that many items; a size below
+zero, or past 32 bits, is an `out-of-range` error, as in R3.
+
 `make object! [...]` copies its block deep before it binds and runs it, so two objects made from the same
 block never share a series. An object written inside another one is copied again by each `make` around it,
 so text that nests objects thousands of levels deep takes time and memory that grow with the square of its

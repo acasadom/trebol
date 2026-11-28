@@ -14,6 +14,9 @@ number. `money!` is exact, every digit kept, while `decimal!` is a floating-poin
 
 ## remainder
 
+`remainder` and its operator `//` by zero are a `zero-divide` error, for decimals too: R3 gives `1.#NaN` there,
+a value that is no number and spreads unseen. There is no `%` operator: a `%` alone is a word with no value, and `%a` is a file name.
+
 ## mod
 
 ## modulo
