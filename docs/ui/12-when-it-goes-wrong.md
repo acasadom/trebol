@@ -41,6 +41,7 @@ The other errors you will meet most read the same way:
 | `layout: on-chnage is not an event; did you mean on-change?` | an event mistyped: it would never run                  |
 | `HTTP 404 Not Found for /api/client`                  | the server has nothing at that address                      |
 | `cannot reach http://...`                             | the server is not running, or the address is wrong          |
+| `the answer of ... says it is JSON but is not`        | the server sent a broken body, often an error page          |
 
 ## Check first
 

@@ -97,9 +97,9 @@ select.tb-input:focus { box-shadow: var(--tb-raise), var(--tb-ring); }
 .tb-selectable tbody tr.tb-selected:focus-visible, .tb-selectable .tb-list > li.tb-selected:focus-visible { box-shadow: inset 0 0 0 2px var(--tb-focus), inset 0 0 0 3px var(--tb-on-primary); }
 .tb-tree-row { border-radius: 0; }
 
-/* tabs: raised tabs on a line; the chosen one is taller and opens onto what it shows */
+/* tabs: raised tabs on a line, all labelled in the text color; the chosen one is taller and opens onto what it shows */
 .tb-tablist { gap: 2px; padding: 0 var(--tb-space-2); box-shadow: inset 0 -1px 0 var(--tb-border-strong); }
-.tb-tab { font-size: 13px; font-weight: 700; min-height: calc(var(--tb-control) - 4px); margin-top: 4px; border: 1px solid var(--tb-border-strong); border-bottom: 0; border-radius: var(--tb-radius) var(--tb-radius) 0 0; background: var(--tb-face); color: var(--tb-muted); box-shadow: inset 1px 1px 0 var(--tb-bevel-hi); }
+.tb-tab { font-size: 13px; font-weight: 700; min-height: calc(var(--tb-control) - 4px); margin-top: 4px; border: 1px solid var(--tb-border-strong); border-bottom: 0; border-radius: var(--tb-radius) var(--tb-radius) 0 0; background: var(--tb-face); color: var(--tb-text); box-shadow: inset 1px 1px 0 var(--tb-bevel-hi); }
 .tb-tab[aria-selected="true"] { margin-top: 0; min-height: var(--tb-control); background: var(--tb-bg); color: var(--tb-text); }
 
 /* what floats: raised, with a hard shadow; the item under the pointer or the keys in the primary color */

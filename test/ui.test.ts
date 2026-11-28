@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { K, NONE, UNSET, load, spell, TRUE, FALSE, native, value, mold, form, string, text, money, blockOf, errorField, type Cell, type ObjectCell, type StringCell } from '../src/core/index.ts';
 import { startHost, startUi, runSource, readLocal, editLocal, readDate, readRange, readTime, weekStart, fileSize, translate, uiText, amountOf, countStep, shown as shownLocal, type Host } from '../src/host/index.ts';
 import { fileHandle } from '../src/host/net.ts';
-import { themeCss, DEFAULT_THEME, LOOKS, palette, contrast, contrastOverImage, scrimAlpha, CONTRAST_PAIRS, INKED, roleInk } from '../src/host/theme.ts';
+import { themeCss, DEFAULT_THEME, LOOKS, palette, skinFaces, contrast, contrastOverImage, scrimAlpha, CONTRAST_PAIRS, INKED, roleInk, type Oklch } from '../src/host/theme.ts';
 
 let shown: Cell | null = null;
 let themed: Cell | null = null;
@@ -1036,6 +1036,42 @@ describe('theme', () => {
           for (const [fg, bg] of CONTRAST_PAIRS) {
             const c = contrast(p[fg], p[bg]);
             assert.ok(c >= 4.5, `${fg} on ${bg}: ${c.toFixed(2)} (hue ${h}, ${neutral}, ${dark ? 'dark' : 'light'})`);
+          }
+        }
+      }
+    }
+  });
+
+  test('every skin keeps its text AA, on its roles and on its own faces and gradients, for every hue and mode', () => {
+    // color-mix(in oklch, a w%, b) as the skins write it (a grey has no hue: the mix keeps the other one)
+    const mix = (a: Oklch, w: number, b: Oklch): Oklch => ({ l: a.l * w + b.l * (1 - w), c: a.c * w + b.c * (1 - w), h: a.c > 0 ? a.h : b.h });
+    for (const look of ['classic', 'cupertino', 'fusion', 'fluent']) {
+      for (let h = 0; h < 360; h += 5) {
+        for (const dark of [false, true]) {
+          const t = { ...DEFAULT_THEME, ...LOOKS[look], base: h, accent: (h + 150) % 360 };
+          const p = palette(t, dark);
+          const f = skinFaces(t, dark);
+          const pairs: Array<[string, Oklch, Oklch]> = CONTRAST_PAIRS.map(([fg, bg]) => [`${fg} on ${bg}`, p[fg], p[bg]]);
+          if (look === 'classic') {
+            for (const face of ['face-hi', 'face-lo']) pairs.push([`text on ${face}`, p.text, f[face]]);
+            // a colored button: its tint, lit at the top by the bevel
+            for (const r of ['primary', 'accent', 'danger'] as const) pairs.push([`on-${r} on its lit top`, p[`on-${r}`], mix(p[r], 0.85, f['bevel-hi'])]);
+          }
+          if (look === 'cupertino') {
+            pairs.push(['on-primary on primary-top', p['on-primary'], f['primary-top']], ['on-primary on primary-bottom', p['on-primary'], f['primary-bottom']]);
+            pairs.push(['text on segment', p.text, f.segment]);
+          }
+          if (look === 'fusion') {
+            for (const face of ['face-hi', 'face-lo']) {
+              for (const fg of ['danger-face', 'accent-face']) pairs.push([`${fg} on ${face}`, f[fg], f[face]]);
+              pairs.push([`text on ${face}`, p.text, f[face]]);
+            }
+            // the default button: framed and lightly tinted in the primary color
+            pairs.push(['text on the default button', p.text, mix(p.primary, 0.22, f['face-lo'])], ['text on the default button top', p.text, mix(p.primary, 0.12, f['face-hi'])]);
+          }
+          for (const [what, fg, bg] of pairs) {
+            const c = contrast(fg, bg);
+            assert.ok(c >= 4.5, `${what}: ${c.toFixed(2)} (${look}, hue ${h}, ${dark ? 'dark' : 'light'})`);
           }
         }
       }

@@ -86,7 +86,7 @@ const TINTED: ReadonlySet<Skin> = new Set(['fluent']);
 /** Lightness of the neutral roles, and of the primary, for the skins that change them: [light, dark]. */
 const TONES: Partial<Record<Skin, Record<'bg' | 'surface' | 'raised' | 'border' | 'border-strong' | 'muted' | 'primary', [number, number]>>> = {
   // a light window, group boxes a shade darker, controls lighter than the window in the dark
-  cupertino: { bg: [0.945, 0.23], surface: [1, 0.29], raised: [0.925, 0.26], border: [0.86, 0.37], 'border-strong': [0.76, 0.45], muted: [0.48, 0.74], primary: [0.52, 0.7] },
+  cupertino: { bg: [0.945, 0.23], surface: [1, 0.29], raised: [0.925, 0.26], border: [0.86, 0.37], 'border-strong': [0.76, 0.45], muted: [0.48, 0.74], primary: [0.47, 0.7] },
   // group boxes are the window itself; in the dark, wells are darker and frames darker still
   fusion: { bg: [0.95, 0.31], surface: [1, 0.25], raised: [0.95, 0.31], border: [0.84, 0.24], 'border-strong': [0.7, 0.2], muted: [0.46, 0.76], primary: [0.5, 0.72] },
   // a calm window under white layers
@@ -103,15 +103,15 @@ export const ROLES = [
 ] as const;
 export type Role = (typeof ROLES)[number];
 
-/** Text/background pairs that must reach WCAG AA (4.5:1). */
 /** The roles a face, a row or a cell is painted in, each with a soft tint and an ink. */
 export const INKED = ['danger', 'primary', 'accent', 'success', 'warning', 'muted'] as const;
 
+/** Text/background pairs that must reach WCAG AA (4.5:1), in every skin, hue and mode. */
 export const CONTRAST_PAIRS: ReadonlyArray<[Role, Role]> = [
   ['text', 'bg'], ['text', 'surface'], ['text', 'raised'],
   ['muted', 'bg'], ['muted', 'surface'],
   ['on-primary', 'primary'], ['on-primary', 'primary-hover'], ['on-accent', 'accent'], ['on-danger', 'danger'],
-  ['danger', 'surface'], ['primary', 'surface'], ['success', 'surface'],
+  ['danger', 'surface'], ['primary', 'surface'], ['primary', 'bg'], ['primary', 'raised'], ['success', 'surface'],
 ];
 
 const NEUTRAL_HUE = { cool: 255, neutral: 0, warm: 70 } as const;
@@ -150,7 +150,7 @@ function basePalette(t: ThemeParams, dark: boolean): Record<Role, Oklch> {
     'border-strong': n(dark ? 0.18 : 0.52, 2),
     text: n(dark ? 0.95 : 0.18, dark ? 1 : 3),
     muted: n(dark ? 0.8 : 0.38, 3),
-    primary: hue(dark ? 0.8 : 0.45, 0.12, t.base),
+    primary: hue(dark ? 0.8 : 0.44, 0.12, t.base),
     'primary-hover': hue(dark ? 0.85 : 0.4, 0.12, t.base),
     'on-primary': n(dark ? 0.18 : 1, dark ? 2 : 0),
     accent: hue(dark ? 0.8 : 0.48, 0.13, t.accent),
@@ -314,21 +314,40 @@ function colorVars(t: ThemeParams, dark: boolean): string {
   lines.push(`  --tb-shadow-1: ${t.depth === 'flat' ? 'none' : `${shadow}, 0 ${k}px ${3 * k}px ${css(n0(p), dark ? 0.4 : 0.08)}`};`);
   lines.push(`  --tb-shadow-2: ${t.depth === 'flat' ? 'none' : `${shadow}, 0 ${4 * k}px ${12 * k}px ${css(n0(p), dark ? 0.5 : 0.08)}`};`);
   lines.push(`  --tb-shadow-3: ${shadow}, 0 ${12 * k}px ${32 * k}px ${css(n0(p), dark ? 0.6 : 0.12)};`);
-  const g = (l: number): string => css({ l, c: p.bg.c, h: p.bg.h });
-  if (t.skin === 'classic') {
-    // the two edges of what stands out or sinks in, and the faces of buttons and bars
-    lines.push(`  --tb-bevel-hi: ${g(dark ? 0.5 : 1)};`, `  --tb-bevel-lo: ${g(dark ? 0.15 : 0.55)};`);
-    lines.push(`  --tb-face-hi: ${g(dark ? 0.47 : 0.97)};`, `  --tb-face-lo: ${g(dark ? 0.36 : 0.8)};`);
-  }
-  // the chosen segment of a segmented control
-  if (t.skin === 'cupertino') lines.push(`  --tb-segment: ${g(dark ? 0.47 : 1)};`);
-  if (t.skin === 'fusion') lines.push(`  --tb-face-hi: ${g(dark ? 0.37 : 0.99)};`, `  --tb-face-lo: ${g(dark ? 0.32 : 0.91)};`);
+  for (const [name, c] of Object.entries(skinFaces(t, dark))) lines.push(`  --tb-${name}: ${css(c)};`);
   // focus is drawn in the color of the text, and what is hovered or chosen is a shade of it
   if (t.skin === 'fluent') lines.push(`  --tb-focus-ring: ${css(p.text)};`, `  --tb-subtle: ${css(p.text, dark ? 0.08 : 0.06)};`);
   // Red's color words, for drawings and charts: each one light enough, or dark enough, for this mode
   for (const [name, c] of Object.entries(DRAW_COLORS)) lines.push(`  --tb-c-${name}: ${css({ l: dark ? c.dark : c.light, c: c.c, h: c.h })};`);
   lines.push(`  color-scheme: ${dark ? 'dark' : 'light'};`);
   return lines.join('\n');
+}
+
+/**
+ * The colors a skin paints with besides the roles: faces of buttons and bars, bevels, the ends of a gradient,
+ * and a role as text on those faces. test/ui.test.ts checks that what is read on them reaches AA.
+ */
+export function skinFaces(t: ThemeParams, dark: boolean): Record<string, Oklch> {
+  const p = palette(t, dark);
+  const g = (l: number): Oklch => ({ l, c: p.bg.c, h: p.bg.h });
+  if (t.skin === 'classic') return {
+    // the two edges of what stands out or sinks in, and the faces of buttons and bars
+    'bevel-hi': g(dark ? 0.5 : 1), 'bevel-lo': g(dark ? 0.15 : 0.55),
+    'face-hi': g(dark ? 0.47 : 0.97), 'face-lo': g(dark ? 0.36 : 0.8),
+  };
+  if (t.skin === 'cupertino') {
+    // a button of the primary color is lighter at the top; the chosen segment of a segmented control
+    const [top, bottom] = dark ? [p['primary-hover'], p.primary] : [p.primary, p['primary-hover']];
+    return { 'primary-top': top, 'primary-bottom': bottom, segment: g(dark ? 0.47 : 1) };
+  }
+  if (t.skin === 'fusion') {
+    const hi = g(dark ? 0.37 : 0.99);
+    const lo = g(dark ? 0.32 : 0.91);
+    // a button that warns or stands out colors its text, made readable on the whole face
+    const worst = dark ? hi : lo;
+    return { 'face-hi': hi, 'face-lo': lo, 'danger-face': roleInk(p.danger, worst), 'accent-face': roleInk(p.accent, worst) };
+  }
+  return {};
 }
 
 const n0 = (p: Record<Role, Oklch>): Oklch => ({ l: 0.2, c: p.text.c, h: p.text.h });

@@ -17,11 +17,18 @@ Trebol works under such a policy. This page says what to set up and why.
 ## What Trebol does to fit
 
 - **No styles written into the page.** The theme and the Inter font are given to the browser as constructed
-  style sheets, which a policy allows; Trebol makes no `<style>` element and no `style` attribute.
+  style sheets, which a policy allows; Trebol makes no `<style>` element and writes no `style` attribute.
+  What it sets while the app runs, such as a height or a position, goes through the element's own style
+  object, which a policy allows too. The browser's inspector shows that as a `style` on the element; it is
+  not one written into the page, and no policy blocks it.
 - **No HTML from text.** Every text, from the app or from a server, is put on the page as text, never read as
   HTML, so there is nothing for an attacker to inject. A `link` whose address comes from the data opens only
   web, mail and phone addresses; a `javascript:` address goes nowhere.
 - **No code from text.** Trebol runs no JavaScript made from a string.
+
+Each release is checked this way in a real browser: the gallery, with every component, is built with `--csp`
+and served under the policy above, its menus, dialogs and messages are opened, and anything the browser blocks
+fails the check.
 
 ## Putting the app on such a server
 

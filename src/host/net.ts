@@ -159,11 +159,20 @@ export function pairs(c: Cell): Array<[string, string]> {
   return out;
 }
 
-/** Turns a decoded body into a value: JSON when the server says so, text, or binary. */
-function decodeBody(type: string, bytes: Uint8Array): Cell {
+/**
+ * Turns a decoded body into a value: JSON when the server says so, text, or binary.
+ * A body said to be JSON that is not is an error, never its text passed on as if it were the value
+ * (an answer that failed keeps its text, the status says more). An empty one is an empty string, as an empty text
+ * is: a 204 No Content says JSON at times.
+ */
+function decodeBody(type: string, bytes: Uint8Array, url: string, ok: boolean): Cell {
   if (/json/i.test(type)) {
-    const r = parseJson(new TextDecoder().decode(bytes));
-    return typeof r === 'string' ? string(new TextDecoder().decode(bytes)) : r;
+    const src = new TextDecoder().decode(bytes);
+    if (src.trim() === '') return string(src);
+    const r = parseJson(src);
+    if (typeof r !== 'string') return r;
+    if (!ok) return string(src);
+    throw makeError('access', 'bad-json', `the answer of ${url} says it is JSON but is not: ${r}`);
   }
   // xml only as the subtype or its +xml suffix: the type of an Excel file (…openxmlformats…) is binary
   if (/^text\/|^[^;]*\/(?:xml|[^;]*\+xml)\s*(?:;|$)|javascript|x-www-form-urlencoded/i.test(type) || type === '') {
@@ -353,7 +362,7 @@ native('http-request', '["Sends an HTTP request; used by fetch." url [url! strin
         : await sendFetch(url, init, shown === null ? null : shown.tell);
       status = res.status;
       const type = res.headers.find(([k]) => k === 'content-type')?.[1] ?? '';
-      const data = decodeBody(type, res.bytes);
+      const data = decodeBody(type, res.bytes, url, res.ok);
       if (full) {
         const hs: Cell[] = [];
         for (const [k, val] of res.headers) hs.push(string(k), string(val));

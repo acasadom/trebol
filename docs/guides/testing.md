@@ -29,7 +29,10 @@
   serves them with `trebol dev` and a backend that answers slowly, or at once while a long view is still
   being built (`test/browser/api.ts`), and opens them in headless Chromium through Playwright. The screen
   tests answer at once; here answers come while reactions run or wait, as on a real server, so the browser
-  host is checked too: its scheduler, its requests, its drawing. A console error or an uncaught exception fails the test. It needs Chromium once
+  host is checked too: its scheduler, its requests, its drawing. A console error or an uncaught exception fails the test.
+  The same command checks contrast as it is drawn: `test/browser/contrast.browser.ts` builds the gallery in
+  every look and shows it light and dark, with its menu, dialogs and toast open, and compares every piece of
+  text with the pixels under it (WCAG AA: 4.5:1, or 3:1 for large text). It needs Chromium once
   (`npx playwright install chromium`), and CI runs it on every push and pull request.
 - **A round trip on random values.** `test/roundtrip-fuzz.test.ts` makes thousands of random values, nested
   blocks, maps, objects, dates, money, odd strings, and checks that `load mold/all x` gives `x` back. It is

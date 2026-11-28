@@ -51,9 +51,9 @@ The supplier does not sell saddles, and says so with an HTTP error. For `fetch` 
 == "HTTP 404 Not Found for http://localhost:8089/parts/saddle"
 ```
 
-A network has more ways to fail than a supplier saying no: the supplier may be down, or slow. All of them are
-errors of the `access` type, so one `try` covers them. A function that answers `false` for anything that cannot
-be had, whatever the reason:
+A network has more ways to fail than a supplier saying no: the supplier may be down, or slow, or answer with
+something it calls JSON that is not. All of them are errors of the `access` type, so one `try` covers them. A
+function that answers `false` for anything that cannot be had, whatever the reason:
 
 ```trebol
 supplier: http://localhost:8089/parts/
@@ -163,6 +163,25 @@ check 2
 check 3
 == none
 ```
+
+Each tick starts the block afresh, as a new task, even if the run before is still waiting for the supplier. When
+the supplier is slower than the period, the checks pile up side by side. A counter that wants one check at a
+time keeps a flag, and a tick that finds a check going does nothing:
+
+```trebol
+checking: no
+check: does [
+    if not checking [
+        checking: yes
+        wait 0.3                    ; asking the supplier takes its time
+        checking: no
+    ]
+]
+ticker: every 1 [check]
+cancel ticker
+```
+
+`cancel` stops the ticks; a check already going ends as usual.
 
 ## When the server speaks first
 

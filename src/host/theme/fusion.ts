@@ -16,8 +16,8 @@ export const FUSION = String.raw`
 .tb-button.tb-primary, .tb-button.tb-primary:hover, .tb-button.tb-primary[aria-disabled="true"]:hover { background: linear-gradient(color-mix(in oklch, var(--tb-primary) 12%, var(--tb-face-hi)), color-mix(in oklch, var(--tb-primary) 22%, var(--tb-face-lo))); border-color: var(--tb-primary); color: var(--tb-text); font-weight: 600; box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--tb-primary) 35%, transparent); }
 .tb-button.tb-primary:hover:not(:disabled, [aria-disabled="true"]) { background: linear-gradient(color-mix(in oklch, var(--tb-primary) 8%, var(--tb-face-hi)), color-mix(in oklch, var(--tb-primary) 14%, var(--tb-face-hi))); }
 .tb-button.tb-primary:focus-visible { box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--tb-primary) 35%, transparent), 0 0 0 2px var(--tb-focus-ring); }
-.tb-button.tb-danger, .tb-button.tb-accent { background: linear-gradient(var(--tb-face-hi), var(--tb-face-lo)); color: var(--tb-danger); border-color: var(--tb-border-strong); }
-.tb-button.tb-accent { color: var(--tb-accent); }
+.tb-button.tb-danger, .tb-button.tb-accent { background: linear-gradient(var(--tb-face-hi), var(--tb-face-lo)); color: var(--tb-danger-face); border-color: var(--tb-border-strong); }
+.tb-button.tb-accent { color: var(--tb-accent-face); }
 .tb-toolbar { padding: 2px; background: linear-gradient(var(--tb-face-hi), var(--tb-face-lo)); border-color: var(--tb-border); border-radius: 0; }
 .tb-toolbar > .tb-button:not(.tb-primary, .tb-accent, .tb-danger):hover { background: var(--tb-face-hi); border-color: var(--tb-border-strong); }
 .tb-input { border-radius: 2px; border-color: var(--tb-border-strong); box-shadow: inset 0 1px 1px var(--tb-border); }

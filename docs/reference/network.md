@@ -20,7 +20,10 @@ fetch url
 
 What comes back follows the type the server gives: JSON as Trebol values, text (`text/...`, XML such as
 `application/xml` or `image/svg+xml`, JavaScript, form data) as a string, and any other file as `binary!`, an
-Excel file among them although its type has `xml` in its name.
+Excel file among them although its type has `xml` in its name. A body the server calls JSON that is not JSON
+is an `access` error `bad-json`, never its text passed on as the value; an empty one is an empty string, as an
+empty text is (a `204 No Content` may say JSON). A failed answer stays an `http` error, and with `full: true`
+its body is kept as text when it is not JSON, to be read.
 
 The options of `/with`, a block or an object:
 

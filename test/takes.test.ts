@@ -208,3 +208,50 @@ view [rating r "R" stars 3 on-rate [x]  rating q "Q" starz 4]
     'app.trb:3:54  starz is not a word of rating; did you mean stars?',
   ]);
 });
+
+test('every keyword of every style, given a value of a type it does not take, is a problem that names it', async () => {
+  // a value of none of the types the keyword takes, for each keyword that takes typed values
+  const r = await ev(`
+    wrongs: reduce [<x-tag> "x" 1.2.3.4 %f.png #nope [a] 5 12-Dec-2026]
+    missed: copy []  tried: 0
+    foreach [name def] ui-style-defs [
+      if all [def/written  not def/abstract] [
+        foreach e def/entries [
+          a: all [find [keyword rule] e/how  not empty? e/args  first e/args]
+          if all [block? a  'one-of <> first a] [
+            bad: none
+            rule: copy []  foreach t a [append rule t  append rule '|]  take/last rule
+            foreach w wrongs [if all [none? bad  not parse reduce [w] rule] [bad: w]]
+            if bad [
+              tried: tried + 1
+              found: second ui-sketch reduce [name e/kw bad]
+              hit: false
+              foreach [place m] found [if find m form e/kw [hit: true]]
+              unless hit [append missed reduce [name e/kw bad]]
+            ]
+          ]
+        ]
+      ]
+    ]
+    reduce [tried > 20  missed]`);
+  assert.equal(r, '[true []]');
+});
+
+test('icon without one of the icons Trebol brings is a problem: button "Go" icon "search" is a button, then an icon', async () => {
+  assert.equal(await ev('r: ui-sketch [button "Go" icon "search" icon icon #heart]  r/2/2'), '"an icon takes one of the icons Trebol brings: icon #heart"');
+  assert.equal(await ev('r: ui-sketch [button "Go" icon "search" icon icon #heart]  (length? r/2) / 2'), '2');
+});
+
+test('every style written alone is laid out or gives problems of the layout, never an error of the dialect itself', async () => {
+  const r = await ev(`
+    out: copy []
+    foreach [name def] ui-style-defs [
+      if all [def/written  not def/abstract] [
+        foreach [place m] second ui-sketch reduce [name] [
+          if any [find m "does not allow"  find m "has no value"  find m "internal"] [append out reduce [name m]]
+        ]
+      ]
+    ]
+    out`);
+  assert.equal(r, '[]');
+});
