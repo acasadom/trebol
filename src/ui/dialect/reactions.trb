@@ -6,8 +6,10 @@
 ; whenever a facet it reads changes: `total/text`, `face/value`, `values/qty`.
 ; Which facets it reads is found by reading the block, not by running it. The
 ; host checks them at the end of each round, before it repaints, against what
-; they were when the block last ran. `is [...]` gives the face's main facet what
-; the block gives, and `calc [...]` its value, which the user cannot change.
+; they were when the block last ran: only the reactions that read something
+; that changed in the round (ui-changed), and those new or back on the page.
+; `is [...]` gives the face's main facet what the block gives, and `calc [...]`
+; its value, which the user cannot change.
 
 reaction: make object! [
     kind: 'react        ; react, is or calc
@@ -91,27 +93,30 @@ react-scan: function [f b [block! paren!] sources [block!] targets [block!] /loc
 ; with its version, as it is the same series that is kept: a change made in
 ; it, or in a series inside it (append values/items 4), shows only there. It
 ; is watched too, deeply, so that a change in place alone runs the reactions.
+; Each object and series met is also marked as read by the reaction (ui-reads),
+; so that ui-react checks it only when one of them changed.
 react-now: function [r /local g facet] [
     out: copy []
     foreach [g facet] r/sources [
         ; one block per source, so that what was kept of each can be told apart
         append/only out case [
-            react-cache? :g [reduce [react-heard r g]]
-            word? facet [react-value select g facet]
+            react-cache? :g [ui-reads g r  reduce [react-heard r g]]
+            word? facet [ui-reads g r  react-value r select g facet]
             true [
                 foreach w facet [
-                    either object? :g [ui-watch g  g: select g w] [g: none  break]
+                    either object? :g [ui-watch g  ui-reads g r  g: select g w] [g: none  break]
                 ]
-                react-value :g
+                react-value r :g
             ]
         ]
     ]
     out
 ]
 
-react-value: function [g] [
+react-value: function [r g] [
     either any [series? :g  map? :g] [
         ui-watch :g
+        ui-reads :g r
         reduce [:g version-of :g]
     ] [
         reduce [:g]
@@ -155,37 +160,9 @@ find-same: function [b [block!] v] [
 
 react-due?: func [r] [not strict-equal? r/last react-now r]
 
-; Where a face's facet is kept in the index of what reads it: faces and other
-; objects are told apart by same?, as they compare by content.
-react-key: func [g facet] [rejoin [ui-same-id :g " " mold :facet]]
-
-; Which reactions each one feeds, setting what they read, and which feed it:
-; [feeds fed-by], a block of indices for each reaction, read once per round.
-react-links: function [rs [block!] /local g m] [
-    readers: make map! []
-    repeat i length? rs [
-        foreach [g m] get in pick rs i 'sources [
-            key: react-key :g :m
-            either b: select readers key [append b i] [put readers key reduce [i]]
-        ]
-    ]
-    feeds: copy []
-    fed-by: copy []
-    loop length? rs [append/only feeds copy []  append/only fed-by copy []]
-    repeat j length? rs [
-        foreach [g m] get in pick rs j 'targets [
-            if b: select readers react-key :g :m [
-                foreach i b [
-                    if all [i <> j  not find pick feeds j i] [
-                        append pick feeds j i
-                        append pick fed-by i j
-                    ]
-                ]
-            ]
-        ]
-    ]
-    reduce [feeds fed-by]
-]
+; Which reactions each one feeds, setting what they read, and which feed it,
+; [feeds fed-by], is ui-react-links: a block of places for each reaction, kept
+; by the host while the reactions and what they read and set stay the same.
 
 react-run: function [f r] [
     if r/kind = 'react [
@@ -204,24 +181,20 @@ react-run: function [f r] [
 ui-react: function [
     "Called by the host at the end of each round: runs the reactions of the faces whose facets they read changed. Gives the cycles it cut, as texts."
     faces [block! object!] "The faces, or a face to take every face in it"
-    /local f r
+    /local f r fs rs fresh
 ] [
     if object? faces [faces: all-faces faces]
-    fs: copy []
-    rs: copy []
-    foreach f faces [
-        foreach r any [select f 'reactions []] [
-            unless r/sources [
-                r/sources: copy []
-                r/targets: copy []
-                react-scan f r/body r/sources r/targets
-                if r/kind <> 'react [append r/targets reduce [f either r/kind = 'calc ['value] [main-facet f]]]
-                ; none is never a list of values: due, so it runs when shown
-                r/last: either r/later [react-now r] [none]
-            ]
-            append fs f
-            append rs r
-        ]
+    ; [faces reactions new]: each reaction with its face, and those met for the first time
+    set [fs rs fresh] ui-reactions faces
+    foreach i fresh [
+        f: pick fs i
+        r: pick rs i
+        r/sources: copy []
+        r/targets: copy []
+        react-scan f r/body r/sources r/targets
+        if r/kind <> 'react [append r/targets reduce [f either r/kind = 'calc ['value] [main-facet f]]]
+        ; none is never a list of values: due, so it runs when shown
+        r/last: either r/later [react-now r] [none]
     ]
     cut: copy []
     failed: none
@@ -229,17 +202,18 @@ ui-react: function [
     n: length? rs
     ; a second cascade, for what the forms changed after the first (an error, a disabled submit)
     loop 2 [
-        ran: array/initial n false
-        waiting: array/initial n false
+        ; by place, those run and those due (append/dup, as array loops in Trebol)
+        ran: append/dup make block! n false n
+        waiting: append/dup make block! n false n
         due: copy []
         order: copy []
         forever [
-            ; all not run yet are checked when none waits: a block can change
-            ; what another reads in ways that reading it does not show
+            ; all not run yet whose sources changed are checked when none waits: a
+            ; block can change what another reads in ways that reading it does not show
             if empty? due [
-                repeat i n [if all [not ran/:i  react-due? pick rs i] [append due i  waiting/:i: true]]
+                foreach i ui-changed rs [if all [not ran/:i  react-due? pick rs i] [append due i  waiting/:i: true]]
                 if empty? due [break]
-                unless links [links: react-links rs]
+                unless links [links: ui-react-links rs]
             ]
             ; the first that no other one due feeds; if they all feed each other, the first
             i: first due
@@ -277,12 +251,15 @@ ui-react: function [
             r: pick rs i
             ; an answer of cached that came meanwhile is not a cycle: it is still due,
             ; and runs it in the next round, which its coming starts
-            now: react-mix r r/last react-now r
+            full: react-now r
+            now: react-mix r r/last full
             unless strict-equal? now r/last [
                 where: loaded-at r/body
                 append cut rejoin [either where [rejoin [where " "]] [""] r/kind ": left out, what it reads changed again after it ran (a cycle)"]
                 r/last: now
             ]
+            ; still due: what told of it was heard while it ran, so it is checked next time
+            unless strict-equal? full r/last [ui-again r]
         ]
         scopes: copy []
         foreach i order [

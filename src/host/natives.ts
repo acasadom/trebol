@@ -5,7 +5,7 @@ import { devLog } from './devlog.ts';
 import { after, repeat } from './timers.ts';
 import {
   K, NONE, UNSET, I64, native, value, form, mold, date, word, pick, throwError, getWord, text,
-  type Cell, type BlockCell, type StringCell, type ObjectCell, type Step,
+  type Cell, type BlockCell, type StringCell, type Step,
 } from '../core/index.ts';
 import {
   schedulerOf, spawn, spawnHandler, cancelTask, taskResult, makeHandle, handleOf, dropHandle,
@@ -34,17 +34,6 @@ native('host-warn', '["Says a warning where the host shows them: the console, th
 native('host-task', '["The number of the task that runs this code."]', t => {
   const ht = schedulerOf(t).byTask.get(t);
   return value({ t: K.Integer, v: I64.fromNumber(ht === undefined ? 0 : ht.id)! });
-});
-
-// A number for an object, the same for the same object (same?), so that the reactions can keep an
-// index by the faces and objects they read: objects compare by content, so a map cannot.
-const objectIds = new WeakMap<object, number>();
-let lastObjectId = 0;
-native('ui-same-id', '["A number for an object, the same each time for the same object (same?)." value [object!]]', (_t, f) => {
-  const ctx = (f.args[0] as ObjectCell).ctx;
-  let id = objectIds.get(ctx);
-  if (id === undefined) objectIds.set(ctx, id = ++lastObjectId);
-  return value({ t: K.Integer, v: I64.fromNumber(id)! });
 });
 
 native('write-line','["Writes a value and a new line to the output." value [any-type!]]', (_t, f) => {

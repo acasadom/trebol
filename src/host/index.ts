@@ -2,6 +2,8 @@
 // runtime and a scheduler, and runs programs as tasks.
 
 import './natives.ts';
+import './reads.ts';
+import './react-links.ts';
 import './net.ts';
 import './net/streams.ts';
 import './net/events.ts';
