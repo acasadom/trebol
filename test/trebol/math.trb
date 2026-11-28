@@ -41,6 +41,8 @@ Trebol [
 [(mod -0:10 0:03) = 0:02]
 [(modulo 0.3 0.1) = 0.0]
 [(-7 // 3) = -1]
+[e: try [remainder 5.0 0]  all [error? e  e/id = 'zero-divide]]
+[e: try [5.0 // 0]  all [error? e  e/id = 'zero-divide]]
 
 "signs"
 [(sign? -5) = -1]

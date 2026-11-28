@@ -183,6 +183,10 @@ function makeOf(k: Kind, spec: Cell): Cell | string {
     case K.String: case K.File: case K.Email: case K.Url: case K.Tag:
       if (spec.t === K.Integer) return { t: k, s: { data: [] }, i: 0 };
       return { t: k, s: { data: codePoints(form(spec)) }, i: 0 };
+    case K.Binary:
+      // make binary! 10 is empty, room kept for 10 bytes, as R3
+      if (spec.t === K.Integer) return { t: k, s: { data: [] }, i: 0 } as Cell;
+      break;
     case K.Pair: {
       // make pair! [3 4], as R3
       if (spec.t !== K.Block) break;
@@ -224,6 +228,11 @@ native('make', '["Makes a new value of a type, or from a prototype object." type
     proto = type.ctx;
     kind = type.t;
   } else if (type.t === K.Datatype) {
+    // a size below zero or past 32 bits is out of range, as R3
+    if (spec.t === K.Integer && (isAnyBlock(type.k) || isAnyString(type.k) || type.k === K.Binary)
+        && (I64.toNumber(spec.v) < 0 || I64.toNumber(spec.v) > 0x7fffffff)) {
+      return fail('script', 'out-of-range', `${mold(spec)} is out of range`);
+    }
     const made = makeOf(type.k, spec);
     return typeof made === 'string' ? fail('script', 'bad-make', made) : value(made);
   } else {

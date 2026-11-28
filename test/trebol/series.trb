@@ -2,6 +2,15 @@ Trebol [
     title: "Series, text, conversion, JSON, CSV and XML tests"
 ]
 
+"making a series of a size"
+[empty? make string! 10]
+[empty? make block! 0]
+[#{} = make binary! 10]
+[e: try [make string! -5]  e/id = 'out-of-range]
+[e: try [make block! -1]  e/id = 'out-of-range]
+[e: try [make binary! -1]  e/id = 'out-of-range]
+[e: try [make file! 2147483648]  e/id = 'out-of-range]
+
 "navigation"
 [b: [1 2 3] (first next b) = 2]
 [b: [1 2 3] (index? tail b) = 4]
